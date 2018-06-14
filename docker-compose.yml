@@ -1,0 +1,47 @@
+version: '3'
+# https://stackoverflow.com/questions/29181032/add-a-volume-to-docker-but-exclude-a-sub-folder/38601156#38601156
+# volumes:
+#   node_modules:
+services:
+  # crm-db:
+  #   container_name: crm-db
+  #   image: percona:5.6
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: example
+  # crm-api:
+  #   container_name: crm-api
+  #   # build: docker
+  #   image: bazawinner/dev-crm
+  #   volumes:
+  #     - .:/home/nvm/crm
+  #     - ./docker/home/gitconfig:/home/nvm/.gitconfig
+  #     - ./docker/home/ssh:/home/nvm/.ssh
+  #     - ~:/home/nvm/crm/docker/host/home
+  #     - node_modules:/home/nvm/crm/node_modules
+  #   links:
+  #     - crm-db
+  #     # - test-crm-db
+  #     # - dev-crm-db
+  #   entrypoint: /bin/bash
+  #   # https://stackoverflow.com/questions/36249744/interactive-shell-using-docker-compose/39150040#39150040
+  #   stdin_open: true
+  #   tty: true
+  #   expose:
+  #     - 3000
+  bw-nginx:
+    container_name: bw-nginx
+    image: nginx:alpine
+    volumes:
+      # - ./docker/nginx/:/etc/nginx/
+      - .:/etc/nginx/html
+      # - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      # - ./docker/nginx/ssl:/etc/ssl
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/main.conf:/etc/nginx/main.conf
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/ssl
+    # links:
+    #   - crm-api
+    ports:
+      - ${BW_LOCAL_HTTP_PORT:-8082}:80 # makes available by localhost:$BW_LOCAL_HTTP_PORT
+      - ${BW_LOCAL_HTTPS_PORT:-8083}:443 # makes available by localhost:$BW_LOCAL_HTTPS_PORT

@@ -1,0 +1,10 @@
+.DS_Store
+*.sublime-workspace
+generated/
+core/ansiSupport.bash
+old.bw.bash
+tgz/
+tmp/
+tmp2/
+red/
+libRedRT*
