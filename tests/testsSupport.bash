@@ -397,9 +397,8 @@ _runBashTestHelper() {
   done
 
   _rm "$stdoutTstFileSpec" "$stderrTstFileSpec"
-  [[ -z $BW_PROFILE ]] \
-    || local profileTmpFileSpec="/tmp/bw.profile.$$.bash"
-  (
+  _profileInitTransfer
+  ( profileTmpFileSpec="$_profileTmpFileSpec"
     eval "$testCmd" 1>"$stdoutTstFileSpec" 2>"$stderrTstFileSpec";
     local returnTst=$?
 
@@ -436,19 +435,10 @@ _runBashTestHelper() {
       fi
     done
 
-    if [[ -n $BW_PROFILE ]]; then
-      echo >"$profileTmpFileSpec"
-      local prefix=_profileTotal_
-      local varName; for varName in $(compgen -v | grep "^$prefix" ); do # https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash/5691#5691
-        echo "$varName=${!varName}" >>"$profileTmpFileSpec"
-        local funcName=${varName:${#prefix}}
-        varName=_profileCount_$funcName
-        echo "$varName=${!varName}" >>"$profileTmpFileSpec"
-      done
-    fi
-    return $returnTst
+    _profileDoTransfer
+    exit $returnTst
   ); returnTst=$?
-  [[ -z $BW_PROFILE ]] || . "$profileTmpFileSpec"
+  _profileGetTransfer
 
   local i; for ((i=0; i<_runBashTestOptionsMaxVarNumber; i++)); do
     local varPrefix=var; [[ $i -gt 0 ]] && varPrefix+="$i"

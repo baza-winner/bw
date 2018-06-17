@@ -85,6 +85,32 @@ _profileResult() {
   echo total ${total}ms
 }
 
+_profileTmpFileSpec=
+_profileInitTransfer() {
+  if [[ -n $BW_PROFILE ]]; then 
+    _profileTmpFileSpec="/tmp/bw.profile.$$.bash"
+  fi
+}
+
+_profileDoTransfer() {
+  if [[ -n $BW_PROFILE ]]; then 
+    echo >"$profileTmpFileSpec"
+    local prefix=_profileTotal_
+    local varName; for varName in $(compgen -v | grep "^$prefix" ); do # https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash/5691#5691
+      echo "$varName=${!varName}" >>"$profileTmpFileSpec"
+      local funcName=${varName:${#prefix}}
+      varName=_profileCount_$funcName
+      echo "$varName=${!varName}" >>"$profileTmpFileSpec"
+    done
+  fi
+}
+
+_profileGetTransfer() {
+  if [[ -n $BW_PROFILE ]]; then 
+    . "$_profileTmpFileSpec"
+  fi
+}
+
 _noSleepWhileProfile=true
 _funcToProfile() { _profileBegin;
   [[ -n $_noSleepWhileProfile ]] || sleep 1
