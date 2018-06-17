@@ -28,10 +28,11 @@ _spinner() { eval "$_funcParams2"
       $cmd "$@"; returnCode=$?
       _profileDoTransfer
       exit $returnCode
-    ) & 2>/dev/null; _spinnerProcessPid=$!
+    ) & 
+    _spinnerProcessPid=$!
     _profileGetTransfer
 
-    _showSpinner "$title" & 2>/dev/null
+    _showSpinner "$title" & 
     _spinnerShowPid=$!
 
     trap 'trap - SIGINT; trap - EXIT; kill -SIGTERM $_spinnerProcessPid' SIGINT
@@ -102,22 +103,29 @@ _showSpinner() { # https://unix.stackexchange.com/questions/11498/how-to-trap-a-
 _runInBackgroundParamsOpt=( --canBeMoreParams )
 _runInBackgroundParams=( 'cmd' )
 _runInBackground() { eval "$_funcParams2"
-
   _profileInitTransfer
   ( profileTmpFileSpec="$_profileTmpFileSpec"
-    $cmd "$@"; returnCode=$?
+    _profileInitTransfer
+    ( profileTmpFileSpec="$_profileTmpFileSpec"
+      $cmd "$@"; returnCode=$?
+      _profileDoTransfer
+      exit $returnCode
+    ) & 
+    local pid=$!
+    _profileGetTransfer
+
+    trap 'trap - SIGINT; kill -SIGTERM $pid' SIGINT
+    trap 'trap - EXIT; kill -SIGTERM $pid' EXIT
+
+    wait $pid 2>/dev/null; local returnCode=$?
+    
+    trap - SIGINT
+    trap - EXIT
+
     _profileDoTransfer
     exit $returnCode
-  ) & 2>/dev/null; local pid=$!
+  ); local returnCode=$?
   _profileGetTransfer
-
-  trap 'trap - SIGINT; kill -SIGTERM $pid' SIGINT
-  trap 'trap - EXIT; kill -SIGTERM $pid' EXIT
-
-  wait $pid 2>/dev/null; local returnCode=$?
-  
-  trap - SIGINT
-  trap - EXIT
   return $returnCode
 }
 
