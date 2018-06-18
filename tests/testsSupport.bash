@@ -237,18 +237,13 @@ bw_bashTestsHelper() {
     [[ -n $noTiming ]] \
       || echo "Время выполнения: $timeElapsed $(_getPluralWord $timeElapsed секунда секунды секунд)"
     if [[ $returnCode -eq 0 ]]; then
+      _rm -pd "$_bwDir/tmp"
       if [[ -n $_isBwDevelop ]]; then
         [[ ${#args[@]} -gt 0 ]] || _buildBw || returnCode=$?
       else
         local fileNameToProcess; for fileNameToProcess in "${fileNamesToProcess[@]}"; do
           _unsetBash "$testsDirSpec/$fileNameToProcess"
         done
-        # local funcName; for funcName in ${funcNamesToPregen[@]}; do
-        #   _fileSpec="$_bwDir/$_generatedDir/$funcName.completion.code$_unsetFileExt" codeHolder=_codeSourceIf eval "$_evalCode"
-        # done
-        # for _fileSpec in "$_bwDir/tests/$_generatedDir"/*$_unsetFileExt; do
-        #   codeHolder=_codeSource eval "$_evalCode"
-        # done
       fi
     fi
     return $returnCode
