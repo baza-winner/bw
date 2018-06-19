@@ -568,7 +568,7 @@ _showResult() {
   fi
 }
 
-_showSettleResult() {
+_showProjectResult() {
   toFolder="в папку ${_ansiFileSpec}$folder"
   fromFolder="из папки ${_ansiFileSpec}$folder"
   titlePrefix=проект didInstall="установлен $toFolder" didUninstall="удален $fromFolder" toInstall="установить $toFolder" toUninstall="полностью удалить $fromFolder" _showResult
@@ -584,159 +584,230 @@ _showRunResult() {
 
 # =============================================================================
 
+_bw_project_billgate() {
+  _exec "${sub_OPT[@]}" git submodule update --init --recursive
+}
+_bw_project_billcore() {
+  _exec "${sub_OPT[@]}" git submodule update --init --recursive
+}
+
+
+_mlsGitOrigin='github.com:baza-winner/mls-pm.git'
+_billgateGitOrigin='github.com:baza-winner/billing-gate.git'
+_billcoreGitOrigin='github.com:baza-winner/billingcore.git'
 bw_projectParams=(
   '!--uninstall/u'
   '!--force/f'
+  '--branch=develop'
+  '--info/i'
+  '--all/a'
   "${_verbosityParams[@]}"
+  'projName:?:(mls billgate billcore)'
+  'projDir:?'
 )
-bw_projectParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
+bw_projectParamsOpt=(--canBeMixedOptionsAndArgs)
 _uninstall_description='включает режим удаления'
 _force_description='игнорировать факт предыдущей установки'
-bw_project_cmd_name=Имя-проекта
+bw_project_projName_description=Имя-проекта
 bw_project_description='разворачивание/удаление проекта'
+bw_projectShortcuts=( 'p' )
 bw_project() { eval "$_funcParams2"
-}
-
-# =============================================================================
-
-_mlsGitOrigin='github.com:baza-winner/mls-pm.git'
-bw_project_mlsParams=(
-  '--branch=develop'
-  'mlsDir=${BW_MLS_DIR:-$HOME/mls-pm}'
-)
-bw_project_mls_mlsDir_description='Папка, куда будет развернут проект'
-bw_project_mls_branch_description='Ветка проекта'
-bw_project_mlsParamsOpt=(
-  --canBeMixedOptionsAndArgs
-)
-bw_project_mlsShortcuts=( 'mls-pm' )
-bw_project_mls_description='Устанавливает проект mls-pm'
-bw_project_mls() { eval "$_funcParams2"
   codeHolder=_codeToInitSubOPT eval "$_evalCode"
 
-  _profileCorrections=()
-  local -a OPT_no=(); [[ -n $uninstall ]] && OPT_no=( --no )
-  if [[ $verbosity != dry && -z $force ]]; then
-    if _hasLineAtProfile ${OPT_no[@]} -e BW_MLS_DIR; then
+  if [[ -n $info ]]; then
+    _bwProjectInfo
+  else
+    [[ -n $projName ]] || return $(_err "Не указано ${_ansiOutline}$bw_project_projName_description")
+    local gitOrigin=; _bwPrepareGitOrigin || return $?
+
+    local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projName\.bash\"?\s*$"
+    local alreadyProjDir=
+      ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1 || alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
+    if [[ -n $alreadyProjDir ]]; then
       if [[ -n $uninstall ]]; then
-        [[ $verbosity == none ]] || _warn "Проект ${_ansiPrimaryLiteral}mls-pm${_ansiWarn} не обнаружен: в ${_ansiFileSpec}$(_shortenFileSpec "$_profileFileSpec")${_ansiWarn} отсутстует переменная ${_ansiOutline}BW_MLS_DIR"
-        return 2
-      else
-        [[ $verbosity == none ]] || {
-          _warn "Проект ${_ansiPrimaryLiteral}mls-pm${_ansiWarn} уже установлен: в ${_ansiFileSpec}$(_shortenFileSpec "$_profileFileSpec")${_ansiWarn} обнаружена строка:${_ansiReset}"
-          grep -E "^(export )?BW_MLS_DIR=" "$_profileFileSpec"
-        }
-        [[ $verbosity == none ]] || { 
-          local cmd="${FUNCNAME[0]//_/ }"
-          _warn "Перед повторной установкой его необходимо удалить командой${_nl}  ${_ansiCmd}$cmd -u${_nl}${_ansiWarn}или установить с опцией ${_ansiCmd}--force${_ansiWarn}:${_nl}  ${_ansiCmd}$cmd -f"
-        }
-        return 2
+        projDir="$alreadyProjDir"
+      elif [[ $verbosity != dry && -z $force ]]; then
+        if [[ $verbosity != none ]]; then
+          local cmd="${FUNCNAME[0]//_/ } $projName"
+          local msg=
+          msg+="Проект ${_ansiPrimaryLiteral}$projName${_ansiWarn} уже установлен в ${_ansiFileSpec}$(_shortenFileSpec "$alreadyProjDir")${_ansiWarn}$_nl"
+          msg+="Перед повторной установкой его необходимо удалить командой$_nl"
+          msg+="  ${_ansiCmd}$cmd -u${_ansiWarn}$_nl"
+          msg+="или установить с опцией ${_ansiCmd}--force${_ansiWarn}:$_nl"
+          msg+="  ${_ansiCmd}$cmd -f${_ansiWarn}"
+          _warn "$msg"
+        fi
+        return 4
       fi
-    fi
-  fi
-
-  local returnCode=0
-  while true; do
-    if [[ -z $uninstall ]]; then
-      BW_MLS_DIR="$mlsDir"
-      MLS_LOCAL_HTTP_PORT_DEFAULT=8084
-      MLS_LOCAL_HTTPS_PORT_DEFAULT=8085
-    else
-      mlsDir="$BW_MLS_DIR"
-    fi
-    local mlsFileSpec="$mlsDir/bin/mls.bash"
-
-    if [[ -n $uninstall && -f "$mlsFileSpec" ]]; then
-      fileSpec="$mlsFileSpec" _unsetBash ${sub_OPT_verbosity[1]}
+    elif [[ -n $uninstall ]]; then
+      [[ $verbosity == none ]] || _err "Проект ${_ansiPrimaryLiteral}$projName${_ansiWarn} не обнаружен"
+      return 5
     fi
 
+    [[ -n $projDir ]] || projDir="$HOME/$(basename "$gitOrigin" .git)"
+
+
+    local returnCode=0
     while true; do
-      if [[ -z $uninstall ]]; then
-        if [[ -d $mlsDir ]]; then
-          local gitDirty
-          if ! _inDir -v none "$mlsDir" _prepareGitDirty "$_mlsGitOrigin"; then
-            if [[ -z $(ls -A "$mlsDir") ]]; then
-              _rm "${sub_OPT[@]}" -d "$mlsDir" \
-                || { returnCode=$?; break; }
-            else
-              _exec "${sub_OPT[@]}" cd "$mlsDir"
-              _err "Папка ${_ansiCmd}$mlsDir${_ansiErr} существует и непуста. Ее надо предварительно удалить вручную" \
-                || { returnCode=$?; break; }
-            fi
-          else
-            _warn "Папка ${_ansiCmd}$mlsDir${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}mls-pm"
-            _exec "${sub_OPT[@]}" cd "$mlsDir" || { returnCode=$?; break; }
-            _hasItem "$gitDirty" '?' '*' '+' '^' || _exec "${sub_OPT[@]}" git pull
-            break
-          fi
+
+      if [[ -n $alreadyProjDir ]]; then
+        local cmdFileSpec="$alreadyProjDir/bin/cmd.bash"
+        if [[ -f "$cmdFileSpec" ]]; then
+          fileSpec="$cmdFileSpec" _unsetBash ${sub_OPT_verbosity[1]}
         fi
-        _mkDir "${sub_OPT[@]}" "$mlsDir" || { returnCode=$?; break; }
-        _exec "${sub_OPT[@]}" git clone git@github.com:baza-winner/mls-pm.git "$mlsDir" || { returnCode=$?; break; }
-        _exec "${sub_OPT[@]}" cd "$mlsDir"
-        _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
-      else
-        if [[ -d $mlsDir ]]; then
-          local gitDirty=
-          if ! _inDir -v none "$mlsDir" _prepareGitDirty "$_mlsGitOrigin"; then
-            if [[ -z $(ls -A "$mlsDir") ]]; then
-              _rm "${sub_OPT[@]}" -d "$mlsDir" \
-                || { returnCode=$?; break; }
-            else
-              _warn "Папка ${_ansiCmd}$mlsDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}mls-pm${_ansiWarn}; оставлена для ручного удаления"
-            fi
-          elif _hasItem "$gitDirty" '?' '*' '+'; then
-            _err "Репозиторий проекта ${_ansiCmd}mls-pm${_ansiWarn} содержит изменения, проверьте ${_ansiCmd}git status" \
-              || { returnCode=$?; break; }
-          elif [[ $gitDirty == '^' ]]; then
-            _err "Репозиторий проекта ${_ansiCmd}mls-pm${_ansiWarn} содержит изменения, отсутствующие на сервере, проверьте ${_ansiCmd}git log --branches --not --remotes" \
-              || { returnCode=$?; break; }
-          elif  [[ $gitDirty == '$' ]]; then
-            _err "Репозиторий проекта ${_ansiCmd}mls-pm${_ansiWarn} stashed-изменения,проверьте ${_ansiCmd}git stash list" \
-              || { returnCode=$?; break; }
-          fi
-        fi
-        local needChangePwd=
-        [[ $(cd "$mlsDir" && pwd) != $(pwd) ]] || needChangePwd=true
-        _exec "${sub_OPT[@]}" rm -rf "$mlsDir" \
-          || { returnCode=$?; break; }
-        [[ -z $needChangePwd ]] || _exec "${sub_OPT[@]}" cd $HOME \
-          || { returnCode=$?; break; }
       fi
+
+      while true; do
+        if [[ -z $uninstall ]]; then
+          if [[ -d $projDir ]]; then
+            local gitDirty
+            if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
+              if [[ -z $(ls -A "$projDir") ]]; then
+                _rm "${sub_OPT[@]}" -d "$projDir" \
+                  || { returnCode=$?; break; }
+              else
+                # _exec "${sub_OPT[@]}" cd "$projDir"
+                _err "Папка ${_ansiCmd}$projDir${_ansiErr} существует и непуста. Ее надо предварительно удалить вручную" \
+                  || { returnCode=$?; break; }
+              fi
+            else
+              _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}$projName"
+              _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
+              _hasItem "$gitDirty" '?' '*' '+' '^' || _exec "${sub_OPT[@]}" git pull
+              break
+            fi
+          fi
+          _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; break; }
+          _exec "${sub_OPT[@]}" git clone git@$gitOrigin "$projDir" || { returnCode=$?; break; }
+          _exec "${sub_OPT[@]}" cd "$projDir"
+          _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
+          local funcName="_${FUNCNAME[0]}_$projName"
+          ! _funcExists $funcName || $funcName || { returnCode=$?; break; }
+        else
+          if [[ -d $projDir ]]; then
+            local gitDirty=
+            if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
+              if [[ -z $(ls -A "$projDir") ]]; then
+                _rm "${sub_OPT[@]}" -d "$projDir" \
+                  || { returnCode=$?; break; }
+              else
+                _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projName${_ansiWarn}; оставлена для ручного удаления"
+              fi
+            elif _hasItem "$gitDirty" '?' '*' '+'; then
+              _err "Репозиторий проекта ${_ansiCmd}$projName${_ansiWarn} содержит изменения, проверьте ${_ansiCmd}git status" \
+                || { returnCode=$?; break; }
+            elif [[ $gitDirty == '^' ]]; then
+              _err "Репозиторий проекта ${_ansiCmd}$projName${_ansiWarn} содержит изменения, отсутствующие на сервере, проверьте ${_ansiCmd}git log --branches --not --remotes" \
+                || { returnCode=$?; break; }
+            elif  [[ $gitDirty == '$' ]]; then
+              _err "Репозиторий проекта ${_ansiCmd}$projName${_ansiWarn} stashed-изменения,проверьте ${_ansiCmd}git stash list" \
+                || { returnCode=$?; break; }
+            fi
+          fi
+          local needChangePwd=
+          [[ $(cd "$projDir" && pwd) != $(pwd) ]] || needChangePwd=true
+          _exec "${sub_OPT[@]}" rm -rf "$projDir" \
+            || { returnCode=$?; break; }
+          [[ -z $needChangePwd ]] || _exec "${sub_OPT[@]}" cd $HOME \
+            || { returnCode=$?; break; }
+        fi
+        break
+      done; [[ $returnCode -eq 0 ]] || break
+
+      local cmdFileSpec="$projDir/bin/${projName}.bash"
+      local profileLine=". $(_quotedArgs "$cmdFileSpec")"
+      local perlCode=
+      if [[ $verbosity == dry ]]; then
+        echo "${_ansiCmd}echo \"$profileLine\" >> \"$_profileFileSpec\"${_ansiReset}"
+      else
+        if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
+          [[ -n $uninstall ]] \
+            && perlCode="print unless /$profileLineRegExp/" \
+            || perlCode="if (! /$profileLineRegExp/) { print } elsif (! \$state) { print $(_quotedArgs --quote:all "$profileLine") . \"\n\"; \$state=1 }"
+        elif [[ -z $uninstall ]]; then
+          echo "$profileLine" >> "$_profileFileSpec"
+        fi
+        if [[ -n $perlCode ]]; then
+          local newFileSpec="$_profileFileSpec.new"
+          cat "$_profileFileSpec" | perl -ne "$perlCode" > "$_profileFileSpec.new"
+          mv "$_profileFileSpec.new" "$_profileFileSpec"
+        fi
+      fi
+
       break
-    done; [[ $returnCode -eq 0 ]] || break
+    done
 
-    _profileUnless "${sub_OPT[@]}" ${OPT_uninstall[@]} -e BW_MLS_DIR || { returnCode=$?; break; }
-    _profileUnless "${sub_OPT[@]}" ${OPT_uninstall[@]} -e MLS_LOCAL_HTTP_PORT_DEFAULT || { returnCode=$?; break; }
-    _profileUnless "${sub_OPT[@]}" ${OPT_uninstall[@]} -e MLS_LOCAL_HTTPS_PORT_DEFAULT || { returnCode=$?; break; }
-    _profileUnless "${sub_OPT[@]}" ${OPT_uninstall[@]} ". \"$mlsDir/bin/mls.bash\"" || { returnCode=$?; break; }
+    folder="$projDir" name="$projName" _showProjectResult
 
-    if [[ $verbosity != dry ]]; then
-      local item; for item in "${_profileCorrections[@]}"; do
-        eval "$item"
-      done
+    if [[ $returnCode -eq 0 && -z $uninstall && $verbosity != dry ]]; then
+      if [[ ! -f "$cmdFileSpec" ]]; then
+        local msg=
+        msg+="Не найден файл ${_ansiFileSpec}bin/$projName.bash${_ansiErr}$_nl"
+        msg+="Не удалось инициализировать команду ${_ansiCmd}$cmdFileSpec"
+        [[ $verbosity == none  ]] || _err "$msg"
+        returnCode=1
+      else
+        _exec "${sub_OPT[@]}" . "$cmdFileSpec"
+        local -a __completions=();
+        local -a funcNames=( $(_getFuncNamesOfScriptToUnset "$cmdFileSpec") )
+        _exec "${sub_OPT[@]}" _pregen "${funcNames[@]}"
+        for _fileSpec in "${__completions[@]}"; do
+          _exec "${sub_OPT[@]}" . "$_fileSpec"
+        done
+        [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$projName${_ansiReset}"
+        _exec "${sub_OPT[@]}" --treatAsOK 3 $projName -?
+      fi
     fi
 
-    break
-  done
+    return $returnCode
+  fi
+}
 
-  if [[ -z $uninstall && -f "$mlsFileSpec" && $verbosity != dry ]]; then
-    . "$mlsFileSpec"
-    local -a __completions=();
-    local -a funcNames=( $(_getFuncNamesOfScriptToUnset "$mlsFileSpec") )
-    _pregen "${funcNames[@]}"
-    for _fileSpec in "${__completions[@]}"; do
-      . "$_fileSpec"
+_bwPrepareGitOrigin() {
+  gitOrigin=
+  local gitOriginHolder="_${projName}GitOrigin"
+  if [[ -n ${!gitOriginHolder} ]]; then
+    gitOrigin=${!gitOriginHolder}
+  else
+    return $(_err "Не задана переменная ${_ansiOutline}$gitOriginHolder")
+  fi
+}
+
+_bwProjectInfo() {
+  local skipNonExistent=
+  if [[ -n $projName ]]; then
+    _bwProjectInfoHelper
+  else
+    eval local -a enumValues="$__ENUM_projName"
+    [[ -n $all ]] || skipNonExistent=true
+    for projName in "${enumValues[@]}"; do
+      _bwProjectInfoHelper
     done
   fi
+}
 
-  folder="$mlsDir" name=mls-pm _showSettleResult
-  if [[ -z $uninstall && $returnCode -eq 0 && ! $verbosity =~ ^(dry|none)$ ]]; then
-    echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}mls${_ansiReset}"
-    if [[ -f "$mlsFileSpec" ]]; then
-      mls -?
+_bwProjectInfoHelper() {
+  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projName\.bash\"?\s*$"
+  if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
+    local alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
+    if [[ ! -d $alreadyProjDir ]]; then
+      _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$projName${_ansiWarn} не обнаружена"
+      return 7
+    else
+      local gitOrigin=; _bwPrepareGitOrigin || return $?
+      if ! _inDir "$alreadyProjDir" _prepareGitDirty "$gitOrigin"; then
+        _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projName${_ansiWarn}"
+        return 6
+      else
+        local gitBranchName=; _inDir "$alreadyProjDir" _prepareGitBranchName
+        _ok "Ветка ${_ansiSecondaryLiteral}$gitBranchName${_ansiOK} проекта ${_ansiPrimaryLiteral}$projName${_ansiOK} обнаружена в ${_ansiFileSpec}$alreadyProjDir"
+        return 0
+      fi
     fi
+  elif [[ -z $skipNonExistent ]]; then
+    _warn "Проект ${_ansiPrimaryLiteral}$projName${_ansiWarn} не обнаружен"
+    return 5
   fi
-  return $returnCode
 }
 
 _prepareGitDirtyParams=( 'originSuffix' )
@@ -744,8 +815,7 @@ _prepareGitDirty() { eval "$_funcParams2"
   local returnCode=0
   gitDirty=
   local gitOrigin=$(_gitOrigin)
-  gitOrigin=${gitOrigin:$(( ${#gitOrigin} - ${#originSuffix} ))}
-  if [[ $gitOrigin == $originSuffix ]]; then
+  if [[ ${#gitOrigin} -ge ${#originSuffix} && $originSuffix == ${gitOrigin:$(( ${#gitOrigin} - ${#originSuffix} ))} ]]; then
     gitDirty=$(_gitDirty)
   else
     returnCode=1
