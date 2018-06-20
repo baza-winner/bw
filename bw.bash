@@ -9,7 +9,7 @@ _bwGithubSshUrl='git@github.com:baza-winner/bw.git'
 _bwGithubHttpsUrl='https://github.com/baza-winner/bw.git'
 
 _getSelfFileSpec() {
-  local src="${BASH_SOURCE[1]}"
+  local src="${BASH_SOURCE[${1:-1}]}"
   while [ -h "$src" ]; do # resolve $SOURCE until the file is no longer a symlink
     local dir="$( cd -P "$( dirname "$src" )" && pwd )"
     src="$(readlink "$src")"

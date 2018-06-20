@@ -20,10 +20,10 @@ _selfUpdate() { eval "$_funcParams2"
 # _codeOfSelfUpdateSource='${BW_SELF_UPDATE_SOURCE:-$_bwGithubSource/master}'
 _defaultBwUpdateSource="$_bwGithubSource/master"
 _bwMainParamsOpt=(--canBeMoreParams)
-_bwMainParams=( 
-  '--pregenOnly/p:?=$BW_PREGEN_ONLY' 
-  '--force/f' 
-  '--selfUpdateSource/u=${BW_SELF_UPDATE_SOURCE:-'"$_defaultBwUpdateSource"'}' 
+_bwMainParams=(
+  '--pregenOnly/p:?=$BW_PREGEN_ONLY'
+  '--force/f'
+  '--selfUpdateSource/u=${BW_SELF_UPDATE_SOURCE:-'"$_defaultBwUpdateSource"'}'
 )
 _bwMain_pregenOnly_description="Ограничивает прегенерацию только указанными функциями, значение ${_ansiPrimaryLiteral}-${_ansiReset} имеет смысл \"отключить прегенерацию\""
 _bwMain_force_description="Форсирует прегенерацию, независимо от значения ${_ansiOutline}_isBwDevelop${_ansiReset}"
@@ -51,11 +51,6 @@ _bwMain() { eval "$_funcParams2"
         || { returnCode=$?; break; }
       selfUpdateSource="$gitBranchName"
     fi
-    if [[ $selfUpdateSource == $_defaultBwUpdateSource ]]; then
-      export BW_SELF_UPDATE_SOURCE=
-    else
-      export BW_SELF_UPDATE_SOURCE="$selfUpdateSource"
-    fi
 
     if [[ ! $pregenOnly =~ ^- && ( -n $_isBwDevelop || -n $OPT_force ) ]]; then
       _spinner \
@@ -65,28 +60,19 @@ _bwMain() { eval "$_funcParams2"
         || { returnCode=$?; break; }
     fi
 
+    if [[ $selfUpdateSource == $_defaultBwUpdateSource ]]; then
+      export BW_SELF_UPDATE_SOURCE=
+    else
+      export BW_SELF_UPDATE_SOURCE="$selfUpdateSource"
+    fi
+
+    _exportVarAtBashProfile BW_SELF_UPDATE_SOURCE
+
     local profileLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
     if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]]; then
       profileLine+=" -p -"
     fi
-    if [[ -z $_isBwDevelop && -z $_isBwDevelopInherited && -n $selfUpdateSource ]]; then
-      profileLine+=" -u $(_quotedArgs "$selfUpdateSource")"
-    fi
-    local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bw\.bash\"\s+*$"
-    if [[ ! -f "$_profileFileSpec" ]] || ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
-      echo "$profileLine" >> "$_profileFileSpec"
-    else
-      local perlCode="if (! /$profileLineRegExp/) { print } elsif (! \$state) { print $(_quotedArgs --quote:all "$profileLine") . \"\n\"; \$state=1 }"
-      local newFileSpec="$_profileFileSpec.new"
-      cat "$_profileFileSpec" | perl -ne "$perlCode" > "$_profileFileSpec.new"
-      mv "$_profileFileSpec.new" "$_profileFileSpec"
-    fi
-    # if [[ ! -f "$_profileFileSpec" ]] || ! grep -x "$line" "$_profileFileSpec" >/dev/null 2>&1; then
-    #   local newFileSpec="$_profileFileSpec.new"
-    #   grep -v -E "^\s*\.\s.*?/bw.bash" "$_profileFileSpec" >"$newFileSpec"
-    #   echo "$line" >>"$newFileSpec"
-    #   mv "$newFileSpec" "$_profileFileSpec"
-    # fi
+    _setAtBashProfile "$profileLine" "^\s*\.\s+\"?(.+?)\/bw\.bash\"?"
 
     _cmdToExecute=( "$@" )
     break
@@ -119,9 +105,9 @@ _pregen() {
         ${funcName}ScalarOptions \
         ${funcName}ListOptions \
       ; do
-        [[ $holder =~ Params$ ]] && _funcExists $holder && needPrepare=Params && break
+        [[ $holder =~ Params$ ]] && _funcExists $holder && needPrepare=Params2 && break
         if [[ $(declare -p $holder 2>/dev/null) =~ ^declare[[:space:]]-a ]]; then
-          [[ $holder =~ Params$ ]] && needPrepare=Params || needPrepare=Options
+          [[ $holder =~ Params$ ]] && needPrepare=Params2 || needPrepare=Options2
           break
         fi
       done

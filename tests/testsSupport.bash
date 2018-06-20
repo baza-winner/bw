@@ -289,7 +289,7 @@ _stdStreams=( 'stdout' 'stderr' )
 _runBashTestOptionsMaxVarNumber=3
 _runBashTestParams=()
 _runBashTestParams() {
-  varName=_runBashTestParams codeHolder=_codeToUseCache eval "$_evalCode"
+  varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
   _runBashTestParams=(
     '@--before/b=' '@--immediatly/i=' '@--after/a='
     '--return/r=0'
@@ -299,9 +299,9 @@ _runBashTestParams() {
     _runBashTestParams+=( "--$stdStream:?=" )
     tstEntities+=( $stdStream )
   done
-  local varPrefix i=0; while [[ i -lt _runBashTestOptionsMaxVarNumber ]]; do 
-    i=$(( i + 1 )) 
-    varPrefix=var 
+  local varPrefix i=0; while [[ i -lt _runBashTestOptionsMaxVarNumber ]]; do
+    i=$(( i + 1 ))
+    varPrefix=var
     [[ $i -gt 1 ]] && varPrefix+="$i"
     _runBashTestParams+=( "--${varPrefix}Name=" "--${varPrefix}Value=" )
     tstEntities+=( $varPrefix )
@@ -318,7 +318,7 @@ _runBashTestParams() {
   _runBashTestParams+=( --catOptions "")
   _runBashTestParams+=( "--inTmpDir")
   _runBashTestParams+=( "testCmd" "testName" "testNum:0..=0")
-  _saveToCache '_runBashTestParams'
+  _saveToCache "${FUNCNAME[0]}"
 }
 
 _bwTmpDir="$_bwDir/tmp"
@@ -410,9 +410,9 @@ _runBashTestHelper() {
     local stdStream; for stdStream in ${_stdStreams[@]}; do
       tstEntities+=( $stdStream )
     done
-    local varPrefix i=0; while [[ i -lt _runBashTestOptionsMaxVarNumber ]]; do 
-      i=$(( i + 1 )) 
-      varPrefix=var         
+    local varPrefix i=0; while [[ i -lt _runBashTestOptionsMaxVarNumber ]]; do
+      i=$(( i + 1 ))
+      varPrefix=var
       [[ $i -gt 1 ]] && varPrefix+="$i"
       tstEntities+=( $varPrefix )
     done
@@ -528,8 +528,8 @@ _getArrangedMultilineDescription() { eval "$_funcParams2"
 # =============================================================================
 
 _postProcessDeclareArray='"perl -e \"
-    undef \\\$/; 
-    \\\$_=<STDIN>; 
+    undef \\\$/;
+    \\\$_=<STDIN>;
     if ( s/^declare -a\S* ([\w][\w\d]*)='\''\\(/declare -a \\\$1=(/s ) {
       s/'\''\\\$//s;
     }
@@ -542,7 +542,7 @@ _postProcessDeclareArray='"perl -e \"
         \\\$q . \\\$val . \\\$q
       }
     }
-    s/(\\\")([^\\\"]+)\\\"/replaceTo(\\\$1,\\\$2)/sge; 
+    s/(\\\")([^\\\"]+)\\\"/replaceTo(\\\$1,\\\$2)/sge;
     print;
   \""'
 

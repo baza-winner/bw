@@ -39,7 +39,7 @@ bw_version() { eval "$_funcParams2"
 
 bw_update_description="обновляет bw"
 bw_update() { eval "$_funcParams2"
-  . "$_bwFileSpec" -p -
+  . "$_bwFileSpec"
   echo "Current version: $(bw_version)"
 }
 
@@ -584,125 +584,176 @@ _showRunResult() {
 
 # =============================================================================
 
-_bw_project_billgate() {
-  _exec "${sub_OPT[@]}" git submodule update --init --recursive
-}
-_bw_project_billcore() {
-  _exec "${sub_OPT[@]}" git submodule update --init --recursive
-}
-
-
-_mlsGitOrigin='github.com:baza-winner/mls-pm.git'
-_billgateGitOrigin='github.com:baza-winner/billing-gate.git'
-_billcoreGitOrigin='github.com:baza-winner/billingcore.git'
-bw_projectParams=(
-  '!--uninstall/u'
-  '!--force/f'
-  '--branch=develop'
-  '--info/i'
-  '--all/a'
-  "${_verbosityParams[@]}"
-  'projName:?:(mls billgate billcore)'
-  'projDir:?'
+_bwProjDefs=(
+  'mls' 'github.com:baza-winner/mls-pm.git'
+  'bgate' 'github.com:baza-winner/billing-gate.git'
+  'bcore' 'github.com:baza-winner/billingcore.git'
+  'crm' 'git@github.com:baza-winner/crm.git'
 )
+
+_bw_project_bgate() {
+  _exec "${sub_OPT[@]}" git submodule update --init --recursive
+}
+_bw_project_bcore() {
+  _exec "${sub_OPT[@]}" git submodule update --init --recursive
+}
+
+_prepareBwProjDef() {
+  [[ -n $projShortcut ]] \
+    || return $(_err "${_ansiCmd}${FUNCNAME[0]}${_ansiErr} ожидает, что переменная ${_ansiOutline}projShortcut${_ansiErr} будет иметь непустое значение")
+  gitOrigin=
+  projName=
+  projTitle=
+  local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+    if [[ $projShortcut == ${_bwProjDefs[$i]} ]]; then
+      gitOrigin=${_bwProjDefs[$((i + 1))]}
+      projName=$(basename "$gitOrigin" .git)
+      break
+    fi
+  done
+  if [[ -z $gitOrigin ]]; then
+    return $(_err "not found gitOrigin for projShortcut ${_ansiPrimaryLiteral}$projTitle")
+  else
+    projTitle="$projName ($projShortcut)"
+  fi
+}
+
+_codeToPrepareDescriptionsOf_bw_project='
+  local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+    local projShortcut="${_bwProjDefs[$i]}"
+    local gitOrigin=${_bwProjDefs[$((i + 1))]}
+    local projName=$(basename "$gitOrigin" .git)
+    eval local bw_project_projShortcut_${projShortcut}_description=\"Сокращение для проекта \${_ansiSecondaryLiteral}\$projName \${_ansiUrl}\$gitOrigin\${_ansiReset}\"
+  done
+'
+
+bw_projectParams=()
+bw_projectParams() {
+  varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
+  local -a projShortcuts=()
+  local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+    local projShortcut="${_bwProjDefs[$i]}"
+    if [[ ! $projShortcut =~ $_isValidVarNameRegExp ]]; then
+      return $(_err "projShortcut ${_ansiPrimaryLiteral}$projTitle${_ansiErr} $_mustBeValidVarName")
+    elif _hasItem "$projShortcut" "${projShortcuts[@]}"; then
+      return $(_err "Duplicate projShortcut ${_ansiPrimaryLiteral}$projTitle")
+    else
+      projShortcuts+=( "$projShortcut" )
+    fi
+  done
+  local projShortcutsAsString="${projShortcuts[@]}"
+  verbosityDefault=allBrief silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
+  bw_projectParams=(
+    '!--uninstall/u'
+    '!--force/f'
+    '--branch=develop'
+    "${_verbosityParams[@]}"
+    "projShortcut:( $projShortcutsAsString )"
+    'projDir:?'
+  )
+  _saveToCache "${FUNCNAME[0]}"
+}
+
 bw_projectParamsOpt=(--canBeMixedOptionsAndArgs)
-_uninstall_description='включает режим удаления'
-_force_description='игнорировать факт предыдущей установки'
-bw_project_projName_description=Имя-проекта
-bw_project_description='разворачивание/удаление проекта'
+_uninstall_description='Включить режим удаления'
+_force_description='Игнорировать факт предыдущей установки'
+bw_project_projShortcut_name='Сокращенное-имя-проекта'
+bw_project_projDir_name='Папка-проекта'
+bw_project_projDir_description='
+  Папка, куда будет установлен проект
+  По умолчанию, в качестве папки проекта используется ${_ansiCmd}~/${_ansiOutline}Полное-имя-проекта${_ansiReset}
+  ${_ansiOutline}Полное-имя-проекта${_ansiReset} - имя проекта на github'\''е
+'
+bw_project_branch_description='Ветка, на которую следует переключиться после установки проекта'
+bw_project_description='Разворачивает/удаляет проект'
 bw_projectShortcuts=( 'p' )
 bw_project() { eval "$_funcParams2"
   codeHolder=_codeToInitSubOPT eval "$_evalCode"
 
-  if [[ -n $info ]]; then
-    _bwProjectInfo
-  else
-    [[ -n $projName ]] || return $(_err "Не указано ${_ansiOutline}$bw_project_projName_description")
-    local gitOrigin=; _bwPrepareGitOrigin || return $?
+  [[ -n $projShortcut ]] || return $(_err "Не указано ${_ansiOutline}$bw_project_projShortcut_description")
+  local gitOrigin projName projTitle; _prepareBwProjDef || return $?
 
-    local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projName\.bash\"?\s*$"
-    local alreadyProjDir=
-      ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1 || alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
-    if [[ -n $alreadyProjDir ]]; then
-      if [[ -n $uninstall ]]; then
-        projDir="$alreadyProjDir"
-      elif [[ $verbosity != dry && -z $force ]]; then
-        if [[ $verbosity != none ]]; then
-          local cmd="${FUNCNAME[0]//_/ } $projName"
-          local msg=
-          msg+="Проект ${_ansiPrimaryLiteral}$projName${_ansiWarn} уже установлен в ${_ansiFileSpec}$(_shortenFileSpec "$alreadyProjDir")${_ansiWarn}$_nl"
-          msg+="Перед повторной установкой его необходимо удалить командой$_nl"
-          msg+="  ${_ansiCmd}$cmd -u${_ansiWarn}$_nl"
-          msg+="или установить с опцией ${_ansiCmd}--force${_ansiWarn}:$_nl"
-          msg+="  ${_ansiCmd}$cmd -f${_ansiWarn}"
-          _warn "$msg"
-        fi
-        return 4
+  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projShortcut\.bash\"?\s*$"
+  local alreadyProjDir=
+    ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1 || alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
+  if [[ -n $alreadyProjDir ]]; then
+    if [[ -n $uninstall ]]; then
+      projDir="$alreadyProjDir"
+    elif [[ $verbosity != dry && -z $force ]]; then
+      if [[ $verbosity != none ]]; then
+        local cmd="${FUNCNAME[0]//_/ } $projShortcut"
+        local msg=
+        msg+="Проект ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} уже установлен в ${_ansiFileSpec}$(_shortenFileSpec "$alreadyProjDir")${_ansiWarn}$_nl"
+        msg+="Перед повторной установкой его необходимо удалить командой$_nl"
+        msg+="  ${_ansiCmd}$cmd -u${_ansiWarn}$_nl"
+        msg+="или установить с опцией ${_ansiCmd}--force${_ansiWarn}:$_nl"
+        msg+="  ${_ansiCmd}$cmd -f${_ansiWarn}"
+        _warn "$msg"
       fi
-    elif [[ -n $uninstall ]]; then
-      [[ $verbosity == none ]] || _err "Проект ${_ansiPrimaryLiteral}$projName${_ansiWarn} не обнаружен"
-      return 5
+      return 4
+    fi
+  elif [[ -n $uninstall ]]; then
+    [[ $verbosity == none ]] || _err "Проект ${_ansiPrimaryLiteral}$projTitle${_ansiErr} не обнаружен"
+    return 5
+  fi
+
+  [[ -n $projDir ]] || projDir="$HOME/$(basename "$gitOrigin" .git)"
+
+
+  local returnCode=0
+  while true; do
+
+    if [[ -n $alreadyProjDir ]]; then
+      local cmdFileSpec="$alreadyProjDir/bin/cmd.bash"
+      if [[ -f "$cmdFileSpec" ]]; then
+        fileSpec="$cmdFileSpec" _unsetBash ${sub_OPT_verbosity[1]}
+      fi
     fi
 
-    [[ -n $projDir ]] || projDir="$HOME/$(basename "$gitOrigin" .git)"
-
-
-    local returnCode=0
     while true; do
-
-      if [[ -n $alreadyProjDir ]]; then
-        local cmdFileSpec="$alreadyProjDir/bin/cmd.bash"
-        if [[ -f "$cmdFileSpec" ]]; then
-          fileSpec="$cmdFileSpec" _unsetBash ${sub_OPT_verbosity[1]}
-        fi
-      fi
-
-      while true; do
-        if [[ -z $uninstall ]]; then
-          if [[ -d $projDir ]]; then
-            local gitDirty
-            if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
-              if [[ -z $(ls -A "$projDir") ]]; then
-                _rm "${sub_OPT[@]}" -d "$projDir" \
-                  || { returnCode=$?; break; }
-              else
-                # _exec "${sub_OPT[@]}" cd "$projDir"
-                _err "Папка ${_ansiCmd}$projDir${_ansiErr} существует и непуста. Ее надо предварительно удалить вручную" \
-                  || { returnCode=$?; break; }
-              fi
+      if [[ -z $uninstall ]]; then
+        if [[ -d $projDir ]]; then
+          local gitDirty
+          if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
+            if [[ -z $(ls -A "$projDir") ]]; then
+              _rm "${sub_OPT[@]}" -d "$projDir" \
+                || { returnCode=$?; break; }
             else
-              _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}$projName"
-              _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
-              _hasItem "$gitDirty" '?' '*' '+' '^' || _exec "${sub_OPT[@]}" git pull
-              break
+              _err "Папка ${_ansiCmd}$projDir${_ansiErr} существует и непуста. Ее надо предварительно удалить вручную" \
+                || { returnCode=$?; break; }
             fi
+          else
+            _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}$projTitle"
+            _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
+            _hasItem "$gitDirty" '?' '*' '+' '^' || _exec "${sub_OPT[@]}" git pull
+            break
           fi
-          _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; break; }
-          _exec "${sub_OPT[@]}" git clone git@$gitOrigin "$projDir" || { returnCode=$?; break; }
-          _exec "${sub_OPT[@]}" cd "$projDir"
-          _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
-          local funcName="_${FUNCNAME[0]}_$projName"
-          ! _funcExists $funcName || $funcName || { returnCode=$?; break; }
-        else
-          if [[ -d $projDir ]]; then
-            local gitDirty=
-            if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
-              if [[ -z $(ls -A "$projDir") ]]; then
-                _rm "${sub_OPT[@]}" -d "$projDir" \
-                  || { returnCode=$?; break; }
-              else
-                _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projName${_ansiWarn}; оставлена для ручного удаления"
-              fi
-            elif _hasItem "$gitDirty" '?' '*' '+'; then
-              _err "Репозиторий проекта ${_ansiCmd}$projName${_ansiWarn} содержит изменения, проверьте ${_ansiCmd}git status" \
+        fi
+        _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; break; }
+        _exec "${sub_OPT[@]}" git clone git@$gitOrigin "$projDir" || { returnCode=$?; break; }
+        _exec "${sub_OPT[@]}" cd "$projDir"
+        _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
+        local funcName="_${FUNCNAME[0]}_$projShortcut"
+        ! _funcExists $funcName || $funcName || { returnCode=$?; break; }
+      else
+        if [[ -d $projDir ]]; then
+          local gitDirty=
+          if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
+            if [[ -z $(ls -A "$projDir") ]]; then
+              _rm "${sub_OPT[@]}" -d "$projDir" \
                 || { returnCode=$?; break; }
-            elif [[ $gitDirty == '^' ]]; then
-              _err "Репозиторий проекта ${_ansiCmd}$projName${_ansiWarn} содержит изменения, отсутствующие на сервере, проверьте ${_ansiCmd}git log --branches --not --remotes" \
-                || { returnCode=$?; break; }
-            elif  [[ $gitDirty == '$' ]]; then
-              _err "Репозиторий проекта ${_ansiCmd}$projName${_ansiWarn} stashed-изменения,проверьте ${_ansiCmd}git stash list" \
-                || { returnCode=$?; break; }
+            else
+              _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn}; оставлена для ручного удаления"
             fi
+          elif _hasItem "$gitDirty" '?' '*' '+'; then
+            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} содержит изменения, проверьте ${_ansiCmd}git status" \
+              || { returnCode=$?; break; }
+          elif [[ $gitDirty == '^' ]]; then
+            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} содержит изменения, отсутствующие на сервере, проверьте ${_ansiCmd}git log --branches --not --remotes" \
+              || { returnCode=$?; break; }
+          elif  [[ $gitDirty == '$' ]]; then
+            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} stashed-изменения,проверьте ${_ansiCmd}git stash list" \
+              || { returnCode=$?; break; }
           fi
           local needChangePwd=
           [[ $(cd "$projDir" && pwd) != $(pwd) ]] || needChangePwd=true
@@ -710,104 +761,40 @@ bw_project() { eval "$_funcParams2"
             || { returnCode=$?; break; }
           [[ -z $needChangePwd ]] || _exec "${sub_OPT[@]}" cd $HOME \
             || { returnCode=$?; break; }
-        fi
-        break
-      done; [[ $returnCode -eq 0 ]] || break
-
-      local cmdFileSpec="$projDir/bin/${projName}.bash"
-      local profileLine=". $(_quotedArgs "$cmdFileSpec")"
-      local perlCode=
-      if [[ $verbosity == dry ]]; then
-        echo "${_ansiCmd}echo \"$profileLine\" >> \"$_profileFileSpec\"${_ansiReset}"
-      else
-        if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
-          [[ -n $uninstall ]] \
-            && perlCode="print unless /$profileLineRegExp/" \
-            || perlCode="if (! /$profileLineRegExp/) { print } elsif (! \$state) { print $(_quotedArgs --quote:all "$profileLine") . \"\n\"; \$state=1 }"
-        elif [[ -z $uninstall ]]; then
-          echo "$profileLine" >> "$_profileFileSpec"
-        fi
-        if [[ -n $perlCode ]]; then
-          local newFileSpec="$_profileFileSpec.new"
-          cat "$_profileFileSpec" | perl -ne "$perlCode" > "$_profileFileSpec.new"
-          mv "$_profileFileSpec.new" "$_profileFileSpec"
-        fi
+          fi
       fi
-
       break
-    done
+    done; [[ $returnCode -eq 0 ]] || break
 
-    folder="$projDir" name="$projName" _showProjectResult
+    local cmdFileSpec="$projDir/bin/${projShortcut}.bash"
+    local profileLine=". $(_quotedArgs "$cmdFileSpec")"
+    _setAtBashProfile ${OPT_uninstall[@]} "$profileLine" "$profileLineRegExp"
+    break
+  done
 
-    if [[ $returnCode -eq 0 && -z $uninstall && $verbosity != dry ]]; then
-      if [[ ! -f "$cmdFileSpec" ]]; then
-        local msg=
-        msg+="Не найден файл ${_ansiFileSpec}bin/$projName.bash${_ansiErr}$_nl"
-        msg+="Не удалось инициализировать команду ${_ansiCmd}$cmdFileSpec"
-        [[ $verbosity == none  ]] || _err "$msg"
-        returnCode=1
-      else
-        _exec "${sub_OPT[@]}" . "$cmdFileSpec"
-        local -a __completions=();
-        local -a funcNames=( $(_getFuncNamesOfScriptToUnset "$cmdFileSpec") )
-        _exec "${sub_OPT[@]}" _pregen "${funcNames[@]}"
-        for _fileSpec in "${__completions[@]}"; do
-          _exec "${sub_OPT[@]}" . "$_fileSpec"
-        done
-        [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$projName${_ansiReset}"
-        _exec "${sub_OPT[@]}" --treatAsOK 3 $projName -?
-      fi
-    fi
+  folder="$projDir" name="$projTitle" _showProjectResult
 
-    return $returnCode
-  fi
-}
-
-_bwPrepareGitOrigin() {
-  gitOrigin=
-  local gitOriginHolder="_${projName}GitOrigin"
-  if [[ -n ${!gitOriginHolder} ]]; then
-    gitOrigin=${!gitOriginHolder}
-  else
-    return $(_err "Не задана переменная ${_ansiOutline}$gitOriginHolder")
-  fi
-}
-
-_bwProjectInfo() {
-  local skipNonExistent=
-  if [[ -n $projName ]]; then
-    _bwProjectInfoHelper
-  else
-    eval local -a enumValues="$__ENUM_projName"
-    [[ -n $all ]] || skipNonExistent=true
-    for projName in "${enumValues[@]}"; do
-      _bwProjectInfoHelper
-    done
-  fi
-}
-
-_bwProjectInfoHelper() {
-  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projName\.bash\"?\s*$"
-  if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
-    local alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
-    if [[ ! -d $alreadyProjDir ]]; then
-      _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$projName${_ansiWarn} не обнаружена"
-      return 7
+  if [[ $returnCode -eq 0 && -z $uninstall && $verbosity != dry ]]; then
+    if [[ ! -f "$cmdFileSpec" ]]; then
+      local msg=
+      msg+="Не найден файл ${_ansiFileSpec}bin/$projShortcut.bash${_ansiErr}$_nl"
+      msg+="Не удалось инициализировать команду ${_ansiCmd}$projShortcut"
+      [[ $verbosity == none  ]] || _err "$msg"
+      returnCode=1
     else
-      local gitOrigin=; _bwPrepareGitOrigin || return $?
-      if ! _inDir "$alreadyProjDir" _prepareGitDirty "$gitOrigin"; then
-        _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projName${_ansiWarn}"
-        return 6
-      else
-        local gitBranchName=; _inDir "$alreadyProjDir" _prepareGitBranchName
-        _ok "Ветка ${_ansiSecondaryLiteral}$gitBranchName${_ansiOK} проекта ${_ansiPrimaryLiteral}$projName${_ansiOK} обнаружена в ${_ansiFileSpec}$alreadyProjDir"
-        return 0
-      fi
+      _exec "${sub_OPT[@]}" . "$cmdFileSpec"
+      local -a __completions=();
+      local -a funcNames=( $(_getFuncNamesOfScriptToUnset "$cmdFileSpec") )
+      _exec "${sub_OPT[@]}" _pregen "${funcNames[@]}"
+      for _fileSpec in "${__completions[@]}"; do
+        _exec "${sub_OPT[@]}" . "$_fileSpec"
+      done
+      [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$projShortcut${_ansiReset}"
+      _exec "${sub_OPT[@]}" --treatAsOK 3 $projShortcut -?
     fi
-  elif [[ -z $skipNonExistent ]]; then
-    _warn "Проект ${_ansiPrimaryLiteral}$projName${_ansiWarn} не обнаружен"
-    return 5
   fi
+
+  return $returnCode
 }
 
 _prepareGitDirtyParams=( 'originSuffix' )
@@ -821,6 +808,177 @@ _prepareGitDirty() { eval "$_funcParams2"
     returnCode=1
   fi
   return $returnCode
+}
+
+# =============================================================================
+
+_initBwProjCmd() {
+  local fileSpec=$(_getSelfFileSpec 2)
+  local projShortcut=$(basename "$fileSpec" .bash)
+  local gitOrigin projName projTitle; _prepareBwProjDef || return $?
+  eval _${projShortcut}FileSpec="$fileSpec"
+  eval _${projShortcut}Dir="$(realpath "$(dirname "$fileSpec")/..")"
+  export _${projShortcut}DockerImageName="bazawinner/dev-${projShortcut}"
+  export _${projShortcut}DockerContainerName="${projShortcut}"
+
+  eval ${projShortcut}_description=\"'Базовая утилита проекта ${_ansiPrimaryLiteral}'$projName' ${_ansiUrl}'$gitOrigin'${_ansiReset}'\"
+  eval ${projShortcut}Params='()'
+  eval ${projShortcut}ParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
+  eval $projShortcut'() { eval "$_funcParams2"; }'
+
+  eval ${projShortcut}_updateParams='()'
+  eval ${projShortcut}_update_description=\"'Обновить команду ${_ansiCmd}'${projShortcut}'${_ansiReset}'\"
+  eval ${projShortcut}_updateCondition=\"'! _isInDocker'\"
+  eval $projShortcut'_update() { eval "$_funcParams2"
+    . "$_bwFileSpec" -p -
+    . "$_'${projShortcut}'FileSpec"
+    '$projShortcut'_updateHelper
+  }'
+  eval $projShortcut'_updateHelper() {
+    local -a __completions=();
+    _pregen $(compgen -c '${projShortcut}')
+    for fileSpec in "${__completions[@]}"; do
+      . "$fileSpec"
+    done
+  }'
+
+  eval ${projShortcut}_dockerParams='()'
+  eval ${projShortcut}_dockerParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
+  eval ${projShortcut}_docker_description=\"'Docker-операции'\"
+  eval ${projShortcut}_dockerCondition=\""! _isInDocker"\"
+  eval ${projShortcut}'_docker() { eval "$_funcParams2"; }'
+
+  eval ${projShortcut}_docker_buildParams='()'
+  eval ${projShortcut}_docker_build_description=\"'Собирает docker-образ $_'${projShortcut}'DockerImageName'\"
+  eval ${projShortcut}'_docker_build() { eval "$_funcParams2"
+    _isInDocker && return 4
+    docker build -t "$_'${projShortcut}'DockerImageName" $_'${projShortcut}'Dir/docker
+  }'
+
+  eval ${projShortcut}_docker_pushParams='()'
+  eval ${projShortcut}_docker_push_description=\"'Push'\''ит docker-образ $_'${projShortcut}'DockerImageName'\"
+  eval ${projShortcut}'_docker_push() { eval "$_funcParams2"
+    _isInDocker && return 4
+    docker push "$_'${projShortcut}'DockerImageName"
+  }'
+
+  eval ${projShortcut}_docker_upParams='()'
+  eval ${projShortcut}_docker_up_description=\"'Up'\''ит docker-образ $_'${projShortcut}'DockerImageName'\"
+  eval ${projShortcut}'_docker_up() { eval "$_funcParams2"
+    _isInDocker && return 4
+
+    local stderrFileSpec="/tmp/docker-compose.stderr"
+    _pushd "$_'${projShortcut}'Dir/docker"
+      export _bwProjName="'$projName'"
+      export _bwProjShortcut="'$projShortcut'"
+      _dockerCompose up -d --remove-orphans 2> >(tee "$stderrFileSpec"); local returnCode=$?
+    _popd
+
+    if [[ $returnCode -ne 0 ]] && grep -P -o '\''(?<=:)\d+(?= failed: port is already allocated)'\'' "$stderrFileSpec" >/dev/null; then
+      _err "port is already allocated"
+    fi
+
+    [[ $returnCode -eq 0 ]] || return $returnCode
+    _docker attach '${projShortcut}'
+
+    return $returnCode
+  }'
+
+  eval ${projShortcut}_docker_down_description=\"'Down'\''ит docker-образ $_'${projShortcut}'DockerImageName'\"
+  eval ${projShortcut}_docker_downParams='()'
+  eval ${projShortcut}'_docker_down() { eval "$_funcParams2"
+    _isInDocker && return 4
+    _inDir "$_'${projShortcut}'Dir/docker" _dockerCompose down
+  }'
+}
+
+# =============================================================================
+
+bw_projectInfoShortcuts=( 'pi' )
+bw_projectInfoParams=()
+bw_projectInfoParams() {
+  varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
+  local -a projShortcuts=()
+  local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+    local projShortcut="${_bwProjDefs[$i]}"
+    if [[ ! $projShortcut =~ $_isValidVarNameRegExp ]]; then
+      return $(_err "projShortcut ${_ansiPrimaryLiteral}$projTitle${_ansiErr} $_mustBeValidVarName")
+    elif _hasItem "$projShortcut" "${projShortcuts[@]}"; then
+      return $(_err "Duplicate projShortcut ${_ansiPrimaryLiteral}$projTitle")
+    else
+      projShortcuts+=( "$projShortcut" )
+    fi
+  done
+  local projShortcutsAsString="${projShortcuts[@]}"
+  bw_projectInfoParams=(
+    '--all/a'
+    "projShortcut:?:( $projShortcutsAsString )"
+  )
+  _saveToCache "${FUNCNAME[0]}"
+}
+_codeToPrepareDescriptionsOf_bw_projectInfo='
+  local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+    local projShortcut="${_bwProjDefs[$i]}"
+    local gitOrigin=${_bwProjDefs[$((i + 1))]}
+    local projName=$(basename "$gitOrigin" .git)
+    eval local bw_projectInfo_projShortcut_${projShortcut}_description=\"Сокращение для проекта \${_ansiSecondaryLiteral}\$projName \${_ansiUrl}\$gitOrigin\${_ansiReset}\"
+  done
+'
+bw_projectInfo_projShortcut_name="Сокращенное-имя-проекта"
+bw_projectInfo_projShortcut_description='
+  Если ${_ansiOutline}$bw_projectInfo_projShortcut_name${_ansiReset} не задано, то выводит информация обо всех ${_ansiOutline}обнаруженных${_ansiReset} проектах
+  С опцией ${_ansiCmd}--all${_ansiReset} -- обо всех проектах
+'
+bw_projectInfo_all_description='
+  Выводит информацию обо всех проектах
+  Без опции ${_ansiCmd}--all${_ansiReset} -- обо всех ${_ansiOutline}обнаруженных${_ansiReset} проектах
+'
+bw_projectInfo_description="Выводит информацию о проекте/проектах"
+bw_projectInfo() { eval "$_funcParams2"
+  local skipNonExistent=
+  if [[ -n $projShortcut ]]; then
+    local gitOrigin projName projTitle; _prepareBwProjDef || return $?
+    _bwProjectInfoHelper
+  else
+    eval local -a enumValues="$__ENUM_projShortcut"
+    [[ -n $all ]] || skipNonExistent=true
+    local -a found=()
+    for projShortcut in "${enumValues[@]}"; do
+      local gitOrigin projName projTitle; _prepareBwProjDef || return $?
+      _bwProjectInfoHelper; local returnCode=$?
+      if [[ $returnCode -ne 5 ]]; then
+        found+=( "$projTitle" )
+      fi
+    done
+    if [[ ${#found[@]} -gt 0 ]]; then
+      _ok "Всего $(_getPluralWord ${#found[@]} обнаружен обнаружено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[@]}"
+    else
+      _warn "Не обнаружено ни одного проекта"
+    fi
+  fi
+}
+
+_bwProjectInfoHelper() {
+  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projShortcut\.bash\"?\s*$"
+  if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
+    local alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
+    if [[ ! -d $alreadyProjDir ]]; then
+      _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} не обнаружена"
+      return 7
+    else
+      if ! _inDir "$alreadyProjDir" _prepareGitDirty "$gitOrigin"; then
+        _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn}"
+        return 6
+      else
+        local gitBranchName=; _inDir "$alreadyProjDir" _prepareGitBranchName
+        _ok "Ветка ${_ansiSecondaryLiteral}$gitBranchName${_ansiOK} проекта ${_ansiPrimaryLiteral}$projTitle${_ansiOK} обнаружена в ${_ansiFileSpec}$alreadyProjDir"
+        return 0
+      fi
+    fi
+  else
+    [[ -n $skipNonExistent ]] || _warn "Проект ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} не обнаружен"
+    return 5
+  fi
 }
 
 # =============================================================================

@@ -1473,7 +1473,8 @@ _prepareParamDescription2() {
       local __i; for (( __i=0; __i < ${#enumValues[@]}; __i++ )); do
         local enumValue="${enumValues[$__i]}"
         valueDescription+="$_nl$(_indent $((2 * $__indentLevel)) )"'_indent '$(( $__indentLevel * 4 + 2 ))'; echo "${_ansiPrimaryLiteral}"'\'$(_quotedArgs "$enumValue")\''"${_ansiReset}'
-        __indentLevel=3; eval "$_codeToPrepareHelpLinePrefixTemplate"
+        # __indentLevel=3; eval "$_codeToPrepareHelpLinePrefixTemplate"
+        __indentLevel=$(( __indentLevel + 1 )); eval "$_codeToPrepareHelpLinePrefixTemplate"
         alwaysMultiline=
         local __descriptionOutput=
         \
@@ -1481,7 +1482,8 @@ _prepareParamDescription2() {
           descriptionOf='значения опции' \
         _prepareDescriptionOutput2
         valueDescription+="$__descriptionOutput"
-        __indentLevel=2; eval "$_codeToPrepareHelpLinePrefixTemplate"
+        # __indentLevel=2; eval "$_codeToPrepareHelpLinePrefixTemplate"
+        __indentLevel=$(( __indentLevel - 1 )); eval "$_codeToPrepareHelpLinePrefixTemplate"
       done
     fi
     alwaysMultiline=--alwaysMultiline

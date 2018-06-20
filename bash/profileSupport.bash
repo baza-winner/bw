@@ -160,3 +160,43 @@ _prepareGrepParamsForProfileHelper() {
 
 # =============================================================================
 
+verbosityDefault=none silentDefault=yes codeHolder=_codeToPrepareCommonProfileParams eval "$_evalCode"
+
+_exportVarAtBashProfileParams=(
+  "${_verbosityParams[@]}"
+  '--uninstall/u'
+  'varName'
+)
+_exportVarAtBashProfile() { eval "$_funcParams2"
+  local profileLine="export $varName=$(_quotedArgs "${!varName}")"
+  local profileLineRegExp="^\s*(export\s+)?BW_SELF_UPDATE_SOURCE="
+  _setAtBashProfile "${OPT_verbosity[@]}" "${OPT_silent[@]}" "$profileLine" "$profileLineRegExp"
+}
+
+_setAtBashProfileParams=(
+  "${_verbosityParams[@]}"
+  '--uninstall/u'
+  'profileLine'
+  'profileLineRegExp'
+)
+_setAtBashProfile() { eval "$_funcParams2"
+  if [[ $verbosity == dry ]]; then
+    echo "${_ansiCmd}echo \"$profileLine\" >> \"$_profileFileSpec\""
+  else
+    if _exec "${OPT_verbosity[@]}" "${OPT_silent[@]}" grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
+      [[ -n $uninstall ]] \
+        && perlCode="print unless /$profileLineRegExp/" \
+        || perlCode="if (! /$profileLineRegExp/) { print } elsif (! \$state) { print $(_quotedArgs --quote:all "$profileLine") . \"\n\"; \$state=1 }"
+    elif [[ -z $uninstall ]]; then
+      echo "$profileLine" >> "$_profileFileSpec"
+    fi
+    if [[ -n $perlCode ]]; then
+      local newFileSpec="$_profileFileSpec.new"
+      _exec "${OPT_verbosity[@]}" --cmdAsIs "cat $(_quotedArgs "$_profileFileSpec") | perl -ne $(_quotedArgs --quote:dollarSign "$perlCode") > $(_quotedArgs "$_profileFileSpec.new")"
+      _mvFile "${OPT_verbosity[@]}" "${OPT_silent[@]}" "$_profileFileSpec.new" "$_profileFileSpec"
+    fi
+  fi
+}
+
+# =============================================================================
+
