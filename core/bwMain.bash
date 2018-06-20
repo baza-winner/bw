@@ -65,16 +65,28 @@ _bwMain() { eval "$_funcParams2"
         || { returnCode=$?; break; }
     fi
 
-    local line=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")") -p -"
+    local profileLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
+    if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]]; then
+      profileLine+=" -p -"
+    fi
     if [[ -z $_isBwDevelop && -z $_isBwDevelopInherited && -n $selfUpdateSource ]]; then
-      line+=" -u $(_quotedArgs "$selfUpdateSource")"
+      profileLine+=" -u $(_quotedArgs "$selfUpdateSource")"
     fi
-    if [[ ! -f "$_profileFileSpec" ]] || ! grep -x "$line" "$_profileFileSpec" >/dev/null 2>&1; then
+    local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bw\.bash\"\s+*$"
+    if [[ ! -f "$_profileFileSpec" ]] || ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
+      echo "$profileLine" >> "$_profileFileSpec"
+    else
+      local perlCode="if (! /$profileLineRegExp/) { print } elsif (! \$state) { print $(_quotedArgs --quote:all "$profileLine") . \"\n\"; \$state=1 }"
       local newFileSpec="$_profileFileSpec.new"
-      grep -v -E "^\s*\.\s.*?/bw.bash" "$_profileFileSpec" >"$newFileSpec"
-      echo "$line" >>"$newFileSpec"
-      mv "$newFileSpec" "$_profileFileSpec"
+      cat "$_profileFileSpec" | perl -ne "$perlCode" > "$_profileFileSpec.new"
+      mv "$_profileFileSpec.new" "$_profileFileSpec"
     fi
+    # if [[ ! -f "$_profileFileSpec" ]] || ! grep -x "$line" "$_profileFileSpec" >/dev/null 2>&1; then
+    #   local newFileSpec="$_profileFileSpec.new"
+    #   grep -v -E "^\s*\.\s.*?/bw.bash" "$_profileFileSpec" >"$newFileSpec"
+    #   echo "$line" >>"$newFileSpec"
+    #   mv "$newFileSpec" "$_profileFileSpec"
+    # fi
 
     _cmdToExecute=( "$@" )
     break
