@@ -862,7 +862,7 @@ _initBwProjCmd() {
     docker push "$_'${projShortcut}'DockerImageName"
   }'
 
-  eval ${projShortcut}_docker_upParams='()'
+  eval ${projShortcut}_docker_upParams='( --http=8086 --https=8087 )'
   eval ${projShortcut}_docker_up_description=\"'Up'\''ит docker-образ $_'${projShortcut}'DockerImageName'\"
   eval ${projShortcut}'_docker_up() { eval "$_funcParams2"
     _isInDocker && return 4
@@ -871,6 +871,10 @@ _initBwProjCmd() {
     _pushd "$_'${projShortcut}'Dir/docker"
       export _bwProjName="'$projName'"
       export _bwProjShortcut="'$projShortcut'"
+      export _hostUser="$(whoami)"
+      export _'$projShortcut'DockerHttp="$http"
+      export _'$projShortcut'DockerHttps="$https"
+      _debugVar _'$projShortcut'DockerHttp _'$projShortcut'DockerHttps
       _dockerCompose up -d --remove-orphans 2> >(tee "$stderrFileSpec"); local returnCode=$?
     _popd
 
@@ -879,7 +883,7 @@ _initBwProjCmd() {
     fi
 
     [[ $returnCode -eq 0 ]] || return $returnCode
-    _docker attach '${projShortcut}'
+    _docker attach "$_'$projShortcut'DockerContainerName"
 
     return $returnCode
   }'
