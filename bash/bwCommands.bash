@@ -4,6 +4,51 @@ _resetBash
 
 # =============================================================================
 
+_unsetBash() {
+  local verbosity="$1"
+  local fileSpec="${fileSpec:-${BASH_SOURCE[1]}}"
+  local unsetFileSpec; unsetFileSpec="$(_getUnsetFileSpecFor "$fileSpec")"
+  local -a unsetFileSpecs=()
+  local -a rmFileSpecs=()
+  if [[ -f $unsetFileSpec ]]; then
+    unsetFileSpecs+=( "$unsetFileSpec" )
+    rmFileSpecs+=( "$unsetFileSpec" )
+  fi
+  local funcName; for funcName in $(_getFuncNamesOfScriptToUnset "$fileSpec"); do
+    local completionCodeFileSpec
+    dstVarName=completionCodeFileSpec codeType=completion additionalSuffix='' eval "$_codeToPrepareCodeFileSpec"
+    if [[ -f $completionCodeFileSpec ]]; then
+      rmFileSpecs+=( "$completionCodeFileSpec" )
+    fi
+    local unsetFileSpec="${completionCodeFileSpec:0:$(( ${#completionCodeFileSpec} - ${#_codeBashExt} ))}$_unsetFileExt"
+    if [[ -f $unsetFileSpec ]]; then
+      unsetFileSpecs+=( "$unsetFileSpec" )
+      rmFileSpecs+=( "$unsetFileSpec" )
+    fi
+  done
+  for unsetFileSpec in "${unsetFileSpecs[@]}"; do
+    if [[ $verbosity == dry ]]; then
+      echo "${_ansiCmd}. \"$unsetFileSpec\"${_ansiReset}"
+    else
+      . "$unsetFileSpec"
+      if [[ $verbosity =~ ^(ok|all.*)$ ]]; then
+        echo "${_ansiOK}OK: ${_ansiCmd}. $unsetFileSpec${_ansiReset}"
+      fi
+    fi
+  done
+  if [[ ${#rmFileSpecs[@]} -gt 0 ]]; then
+    if [[ $verbosity == dry ]]; then
+      echo "${_ansiCmd}rm $(_quotedArgs "${rmFileSpecs[@]}")${_ansiReset}"
+    else
+      rm "${rmFileSpecs[@]}"
+      if [[ $verbosity =~ ^(ok|all.*)$ ]]; then
+        echo "${_ansiOK}OK: ${_ansiCmd}rm $(_quotedArgs "${rmFileSpecs[@]}")${_ansiReset}"
+      fi
+    fi
+  fi
+}
+# =============================================================================
+
 _codeToInitSubOPT='
   local -a sub_OPT_silent=( "${OPT_silent[@]}" )
   local -a sub_OPT_verbosity=()

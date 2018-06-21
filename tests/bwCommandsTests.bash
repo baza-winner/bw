@@ -8,14 +8,14 @@ _resetBash
 bwTests=(
   '
     --return "1"
-    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} вместо ${_ansiPrimaryLiteral}unexpected${_ansiErr} ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt install project p remove rm run set update version${_ansiReset}"
+    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} вместо ${_ansiPrimaryLiteral}unexpected${_ansiErr} ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt install project p project-info pi remove rm run set update version${_ansiReset}"
     --before "_substitute noStack true"
     --after "_restore noStack"
     "bw unexpected"
   '
   '
     --return "1"
-    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt install project p remove rm run set update version${_ansiReset}"
+    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt install project p project-info pi remove rm run set update version${_ansiReset}"
     --before "_substitute noStack true"
     --after "_restore noStack"
     "bw"
