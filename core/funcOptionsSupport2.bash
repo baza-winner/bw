@@ -159,17 +159,19 @@ _prepareHasItemConditionCode() {
   done
 }
 
+# _parentThrow DEPRECATED, use _throw instead
 _parentThrow() {
-  return $(_err --showStack 5 "${_ansiCmd}${__thisFuncCommand:-${FUNCNAME[2]}}${_ansiErr} $@")
+  return $(_err --showStack 4 "${_ansiCmd}${__thisFuncCommand:-${FUNCNAME[2]}}${_ansiErr} $@")
 }
 
+# _ownThrow DEPRECATED, use _throw instead
 _ownThrow() {
-  return $(_err --showStack 4 "${_ansiCmd}${__thisFuncCommand:-${FUNCNAME[1]}}${_ansiErr} $@")
+  return $(_err --showStack 3 "${_ansiCmd}${__thisFuncCommand:-${FUNCNAME[1]}}${_ansiErr} $@")
 }
 
 _throw() {
   local __errOrigin=$(( ${errOrigin:-0} + 1 ))
-  local stackOfs=$((__errOrigin + 3))
+  local stackOfs=$((__errOrigin + 2))
   [[ -n $errOriginName ]] \
     || originName=${FUNCNAME[$__errOrigin]}
   return $(_err --showStack $stackOfs "${_ansiCmd}$originName${_ansiErr} $@")

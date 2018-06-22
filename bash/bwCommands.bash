@@ -646,10 +646,21 @@ _showRunResult() {
 # =============================================================================
 
 _bwProjDefs=(
-  'mls' 'github.com:baza-winner/mls-pm.git'
-  'bgate' 'github.com:baza-winner/billing-gate.git'
-  'bcore' 'github.com:baza-winner/billingcore.git'
-  'crm' 'git@github.com:baza-winner/crm.git'
+  'mls' '
+    --gitOrigin github.com:baza-winner/mls-pm.git
+  '
+  'bgate' '
+    --gitOrigin github.com:baza-winner/billing-gate.git
+    --branch feature/docker
+    --http 8086
+    --https 8087
+  '
+  'bcore' '
+    --gitOrigin github.com:baza-winner/billingcore.git
+  '
+  'crm' '
+    --gitOrigin git@github.com:baza-winner/crm.git
+  '
 )
 
 _bw_project_bgate() {
@@ -667,66 +678,95 @@ _getBwProjShortcuts() {
   echo "${result[@]}"
 }
 
-_prepareBwProjDef() {
-  [[ -n $projShortcut ]] \
-    || return $(_err "${_ansiCmd}${FUNCNAME[0]}${_ansiErr} ожидает, что переменная ${_ansiOutline}projShortcut${_ansiErr} будет иметь непустое значение")
-  gitOrigin=
-  projName=
-  projTitle=
+_prepareBwProjVars() {
+  [[ -n $bwProjShortcut ]] \
+    || return $(_throw "ожидает, что переменная ${_ansiOutline}bwProjShortcut${_ansiErr} будет иметь непустое значение")
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
-    if [[ $projShortcut == ${_bwProjDefs[$i]} ]]; then
-      gitOrigin=${_bwProjDefs[$((i + 1))]}
-      projName=$(basename "$gitOrigin" .git)
+    if [[ $bwProjShortcut == ${_bwProjDefs[$i]} ]]; then
+      codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
       break
     fi
   done
-  if [[ -z $gitOrigin ]]; then
-    return $(_err "not found gitOrigin for projShortcut ${_ansiPrimaryLiteral}$projTitle")
-  else
-    projTitle="$projName ($projShortcut)"
-  fi
+  [[ -n $bwProjGitOrigin ]] \
+    || return $(_err "not found gitOrigin for bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle")
+}
+
+_codeToDeclareLocalBwProjVars='
+  local bwProjGitOrigin="" 
+  local bwProjDefaultHttp=""
+  local bwProjDefaultHttps="" 
+  local bwProjDefaultBranch="" 
+  local bwProjName=""
+  local bwProjTitle=""
+'
+_codeToCallPrepareBwProjVarsHelper='
+  bwProjShortcut="${_bwProjDefs[$i]}"
+  local codeToGetBwProjDef
+  _prepareBwProjVarsHelper ${_bwProjDefs[$((i + 1))]} || return $?
+  codeHolder=codeToGetBwProjDef eval "$_evalCode"
+  bwProjName=$(basename "$bwProjGitOrigin" .git)
+  bwProjTitle="$bwProjName ($bwProjShortcut)"
+'
+
+_tcpPortDiap='1024..65535'
+_prepareBwProjVarsHelperParams=(
+  '--gitOrigin='
+  '--http:'$_tcpPortDiap
+  '--https:'$_tcpPortDiap
+  '--branch='
+)
+_prepareBwProjVarsHelper() { eval "$_funcParams2"
+  codeToGetBwProjDef='
+    bwProjGitOrigin='$(_quotedArgs "$gitOrigin")'
+    bwProjDefaultHttp='$(_quotedArgs "$http")'
+    bwProjDefaultHttps='$(_quotedArgs "$https")'
+    bwProjDefaultBranch='$(_quotedArgs "$branch")'
+  '
 }
 
 _codeToPrepareDescriptionsOf_bw_project='
+  eval "$_codeToDeclareLocalBwProjVars"
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
-    local projShortcut="${_bwProjDefs[$i]}"
-    local gitOrigin=${_bwProjDefs[$((i + 1))]}
-    local projName=$(basename "$gitOrigin" .git)
-    eval local bw_project_projShortcut_${projShortcut}_description=\"Сокращение для проекта \${_ansiSecondaryLiteral}\$projName \${_ansiUrl}\$gitOrigin\${_ansiReset}\"
+    local bwProjShortcut="${_bwProjDefs[$i]}"
+    codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
+    eval local bw_project_bwProjShortcut_${bwProjShortcut}_description=\"Сокращение для проекта \${_ansiSecondaryLiteral}\$bwProjName \${_ansiUrl}\$bwProjGitOrigin\${_ansiReset}\"
   done
 '
 
 bw_projectParams=()
 bw_projectParams() {
   varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
-  local -a projShortcuts=()
+  local -a bwProjShortcuts=()
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
-    local projShortcut="${_bwProjDefs[$i]}"
-    if [[ ! $projShortcut =~ $_isValidVarNameRegExp ]]; then
-      return $(_err "projShortcut ${_ansiPrimaryLiteral}$projTitle${_ansiErr} $_mustBeValidVarName")
-    elif _hasItem "$projShortcut" "${projShortcuts[@]}"; then
-      return $(_err "Duplicate projShortcut ${_ansiPrimaryLiteral}$projTitle")
+    local bwProjShortcut="${_bwProjDefs[$i]}"
+    if [[ ! $bwProjShortcut =~ $_isValidVarNameRegExp ]]; then
+      return $(_err "bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle${_ansiErr} $_mustBeValidVarName")
+    elif _hasItem "$bwProjShortcut" "${bwProjShortcuts[@]}"; then
+      return $(_err "Duplicate bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle")
     else
-      projShortcuts+=( "$projShortcut" )
+      bwProjShortcuts+=( "$bwProjShortcut" )
     fi
   done
-  local projShortcutsAsString="${projShortcuts[@]}"
+  local bwProjShortcutsAsString="${bwProjShortcuts[@]}"
   verbosityDefault=allBrief silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
   bw_projectParams=(
     '!--uninstall/u'
     '!--force/f'
-    '--branch=develop'
+    '--branch='
     "${_verbosityParams[@]}"
-    "projShortcut:( $projShortcutsAsString )"
+    "bwProjShortcut:( $bwProjShortcutsAsString )"
     'projDir:?'
   )
   _saveToCache "${FUNCNAME[0]}"
 }
 
+bwProjGlobalDefaultBranch=develop
+bwProjGlobalDefaultHttp=8080
+bwProjGlobalDefaultHttps=8081
 bw_projectParamsOpt=(--canBeMixedOptionsAndArgs)
 _uninstall_description='Включить режим удаления'
 _force_description='Игнорировать факт предыдущей установки'
-bw_project_projShortcut_name='Сокращенное-имя-проекта'
+bw_project_bwProjShortcut_name='Сокращенное-имя-проекта'
 bw_project_projDir_name='Папка-проекта'
 bw_project_projDir_description='
   Папка, куда будет установлен проект
@@ -739,10 +779,12 @@ bw_projectShortcuts=( 'p' )
 bw_project() { eval "$_funcParams2"
   codeHolder=_codeToInitSubOPT eval "$_evalCode"
 
-  [[ -n $projShortcut ]] || return $(_err "Не указано ${_ansiOutline}$bw_project_projShortcut_description")
-  local gitOrigin projName projTitle; _prepareBwProjDef || return $?
+  [[ -n $bwProjShortcut ]] || return $(_err "Не указано ${_ansiOutline}$bw_project_bwProjShortcut_description")
+  
+  eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
+  [[ -n $branch ]] || branch=${bwProjDefaultBranch:-$bwProjGlobalDefaultBranch}
 
-  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projShortcut\.bash\"?\s*$"
+  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$bwProjShortcut\.bash\"?\s*$"
   local alreadyProjDir=
     ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1 || alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
   if [[ -n $alreadyProjDir ]]; then
@@ -750,9 +792,9 @@ bw_project() { eval "$_funcParams2"
       projDir="$alreadyProjDir"
     elif [[ $verbosity != dry && -z $force ]]; then
       if [[ $verbosity != none ]]; then
-        local cmd="${FUNCNAME[0]//_/ } $projShortcut"
+        local cmd="${FUNCNAME[0]//_/ } $bwProjShortcut"
         local msg=
-        msg+="Проект ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} уже установлен в ${_ansiFileSpec}$(_shortenFileSpec "$alreadyProjDir")${_ansiWarn}$_nl"
+        msg+="Проект ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} уже установлен в ${_ansiFileSpec}$(_shortenFileSpec "$alreadyProjDir")${_ansiWarn}$_nl"
         msg+="Перед повторной установкой его необходимо удалить командой$_nl"
         msg+="  ${_ansiCmd}$cmd -u${_ansiWarn}$_nl"
         msg+="или установить с опцией ${_ansiCmd}--force${_ansiWarn}:$_nl"
@@ -762,11 +804,11 @@ bw_project() { eval "$_funcParams2"
       return 4
     fi
   elif [[ -n $uninstall ]]; then
-    [[ $verbosity == none ]] || _err "Проект ${_ansiPrimaryLiteral}$projTitle${_ansiErr} не обнаружен"
+    [[ $verbosity == none ]] || _err "Проект ${_ansiPrimaryLiteral}$bwProjTitle${_ansiErr} не обнаружен"
     return 5
   fi
 
-  [[ -n $projDir ]] || projDir="$HOME/$(basename "$gitOrigin" .git)"
+  [[ -n $projDir ]] || projDir="$HOME/$bwProjName"
 
 
   local returnCode=0
@@ -783,7 +825,7 @@ bw_project() { eval "$_funcParams2"
       if [[ -z $uninstall ]]; then
         if [[ -d $projDir ]]; then
           local gitDirty
-          if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
+          if ! _inDir -v none "$projDir" _prepareGitDirty "$bwProjGitOrigin"; then
             if [[ -z $(ls -A "$projDir") ]]; then
               _rm "${sub_OPT[@]}" -d "$projDir" \
                 || { returnCode=$?; break; }
@@ -792,36 +834,36 @@ bw_project() { eval "$_funcParams2"
                 || { returnCode=$?; break; }
             fi
           else
-            _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}$projTitle"
+            _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle"
             _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
             _hasItem "$gitDirty" '?' '*' '+' '^' || _exec "${sub_OPT[@]}" git pull
             break
           fi
         fi
         _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; break; }
-        _exec "${sub_OPT[@]}" git clone git@$gitOrigin "$projDir" || { returnCode=$?; break; }
+        _exec "${sub_OPT[@]}" git clone git@$bwProjGitOrigin "$projDir" || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" cd "$projDir"
         _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
-        local funcName="_${FUNCNAME[0]}_$projShortcut"
+        local funcName="_${FUNCNAME[0]}_$bwProjShortcut"
         ! _funcExists $funcName || $funcName || { returnCode=$?; break; }
       else
         if [[ -d $projDir ]]; then
           local gitDirty=
-          if ! _inDir -v none "$projDir" _prepareGitDirty "$gitOrigin"; then
+          if ! _inDir -v none "$projDir" _prepareGitDirty "$bwProjGitOrigin"; then
             if [[ -z $(ls -A "$projDir") ]]; then
               _rm "${sub_OPT[@]}" -d "$projDir" \
                 || { returnCode=$?; break; }
             else
-              _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn}; оставлена для ручного удаления"
+              _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn}; оставлена для ручного удаления"
             fi
           elif _hasItem "$gitDirty" '?' '*' '+'; then
-            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} содержит изменения, проверьте ${_ansiCmd}git status" \
+            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} содержит изменения, проверьте ${_ansiCmd}git status" \
               || { returnCode=$?; break; }
           elif [[ $gitDirty == '^' ]]; then
-            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} содержит изменения, отсутствующие на сервере, проверьте ${_ansiCmd}git log --branches --not --remotes" \
+            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} содержит изменения, отсутствующие на сервере, проверьте ${_ansiCmd}git log --branches --not --remotes" \
               || { returnCode=$?; break; }
           elif  [[ $gitDirty == '$' ]]; then
-            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} stashed-изменения,проверьте ${_ansiCmd}git stash list" \
+            _err "Репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} stashed-изменения,проверьте ${_ansiCmd}git stash list" \
               || { returnCode=$?; break; }
           fi
           local needChangePwd=
@@ -835,19 +877,19 @@ bw_project() { eval "$_funcParams2"
       break
     done; [[ $returnCode -eq 0 ]] || break
 
-    local cmdFileSpec="$projDir/bin/${projShortcut}.bash"
+    local cmdFileSpec="$projDir/bin/${bwProjShortcut}.bash"
     local profileLine=". $(_quotedArgs "$cmdFileSpec")"
     _setAtBashProfile ${OPT_uninstall[@]} "$profileLine" "$profileLineRegExp"
     break
   done
 
-  folder="$projDir" name="$projTitle" _showProjectResult
+  folder="$projDir" name="$bwProjTitle" _showProjectResult
 
   if [[ $returnCode -eq 0 && -z $uninstall && $verbosity != dry ]]; then
     if [[ ! -f "$cmdFileSpec" ]]; then
       local msg=
-      msg+="Не найден файл ${_ansiFileSpec}bin/$projShortcut.bash${_ansiErr}$_nl"
-      msg+="Не удалось инициализировать команду ${_ansiCmd}$projShortcut"
+      msg+="Не найден файл ${_ansiFileSpec}bin/$bwProjShortcut.bash${_ansiErr}$_nl"
+      msg+="Не удалось инициализировать команду ${_ansiCmd}$bwProjShortcut"
       [[ $verbosity == none  ]] || _err "$msg"
       returnCode=1
     else
@@ -858,8 +900,8 @@ bw_project() { eval "$_funcParams2"
       for _fileSpec in "${__completions[@]}"; do
         _exec "${sub_OPT[@]}" . "$_fileSpec"
       done
-      [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$projShortcut${_ansiReset}"
-      _exec "${sub_OPT[@]}" --treatAsOK 3 $projShortcut -?
+      [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$bwProjShortcut${_ansiReset}"
+      _exec "${sub_OPT[@]}" --treatAsOK 3 $bwProjShortcut -?
     fi
   fi
 
@@ -883,67 +925,95 @@ _prepareGitDirty() { eval "$_funcParams2"
 
 _initBwProjCmd() {
   local fileSpec=$(_getSelfFileSpec 2)
-  local projShortcut=$(basename "$fileSpec" .bash)
-  local gitOrigin projName projTitle; _prepareBwProjDef || return $?
-  eval _${projShortcut}FileSpec="$fileSpec"
-  eval _${projShortcut}Dir="$(realpath "$(dirname "$fileSpec")/..")"
-  export _${projShortcut}DockerImageName="bazawinner/dev-${projShortcut}"
-  export _${projShortcut}DockerContainerName="${projShortcut}"
+  local bwProjShortcut=$(basename "$fileSpec" .bash)
+  eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
+  eval _${bwProjShortcut}FileSpec="$fileSpec"
+  eval _${bwProjShortcut}Dir="$(realpath "$(dirname "$fileSpec")/..")"
+  export _${bwProjShortcut}DockerImageName="bazawinner/dev-${bwProjShortcut}"
+  export _${bwProjShortcut}DockerContainerName="${bwProjShortcut}"
 
-  eval ${projShortcut}_description=\"'Базовая утилита проекта ${_ansiPrimaryLiteral}'$projName' ${_ansiUrl}'$gitOrigin'${_ansiReset}'\"
-  eval ${projShortcut}Params='()'
-  eval ${projShortcut}ParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
-  eval $projShortcut'() { eval "$_funcParams2"; }'
+  eval ${bwProjShortcut}_description=\"'Базовая утилита проекта ${_ansiPrimaryLiteral}'$bwProjName' ${_ansiUrl}'$bwProjGitOrigin'${_ansiReset}'\"
+  eval ${bwProjShortcut}Params='()'
+  eval ${bwProjShortcut}ParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
+  eval $bwProjShortcut'() { eval "$_funcParams2"; }'
 
-  eval ${projShortcut}_updateParams='()'
-  eval ${projShortcut}_update_description=\"'Обновить команду ${_ansiCmd}'${projShortcut}'${_ansiReset}'\"
-  eval ${projShortcut}_updateCondition=\"'! _isInDocker'\"
-  eval $projShortcut'_update() { eval "$_funcParams2"
-    . "$_bwFileSpec" -p -
-    . "$_'${projShortcut}'FileSpec"
-    '$projShortcut'_updateHelper
-  }'
-  eval $projShortcut'_updateHelper() {
-    local -a __completions=();
-    _pregen $(compgen -c '${projShortcut}')
+  eval ${bwProjShortcut}_updateParams='( "--howDeep/d:(pregen source max)" )'
+  eval ${bwProjShortcut}_update_howDeep_description=\"'Определяет "глубину" обновления'\"
+  eval ${bwProjShortcut}_update_howDeep_pregen_description=\"'только completion'\"
+  eval ${bwProjShortcut}_update_howDeep_source_description=\"'source и completion'\"
+  eval ${bwProjShortcut}_update_howDeep_max_description=\"'bw, source и completion'\"
+  eval ${bwProjShortcut}_update_description=\"'Обновляет команду ${_ansiCmd}'$bwProjShortcut'${_ansiReset}'\"
+  eval $bwProjShortcut'_update() { eval "$_funcParams2"
+    local sourceFileSpec
+    if _isInDocker; then
+      sourceFileSpec=~/proj/docker/bin/cmd.bash
+    else
+      sourceFileSpec="$_'$bwProjShortcut'FileSpec"
+    fi
+    if [[ -z $howDeep ]]; then
+      _debugVar sourceFileSpec BASH_SOURCE
+      if [[ $(basename "${BASH_SOURCE[1]}") == $(basename "$sourceFileSpec") ]]; then
+        howDeep=pregen
+      else
+        howDeep=source
+      fi
+    fi
+    _debugVar howDeep sourceFileSpec
+    if [[ $howDeep == max ]]; then
+      . "$_bwFileSpec" -p -
+    fi
+    if [[ $howDeep == max || $howDeep == source ]]; then
+      . "$sourceFileSpec"
+    fi
+    local -a __completions=()
+    _pregen $(compgen -c '$bwProjShortcut')
     for fileSpec in "${__completions[@]}"; do
       . "$fileSpec"
     done
   }'
 
-  eval ${projShortcut}_dockerParams='()'
-  eval ${projShortcut}_dockerParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
-  eval ${projShortcut}_docker_description=\"'Docker-операции'\"
-  eval ${projShortcut}_dockerCondition=\""! _isInDocker"\"
-  eval ${projShortcut}'_docker() { eval "$_funcParams2"; }'
+  eval ${bwProjShortcut}_dockerParams='()'
+  eval ${bwProjShortcut}_dockerParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
+  eval ${bwProjShortcut}_docker_description=\"'Docker-операции'\"
+  eval ${bwProjShortcut}_dockerCondition=\""! _isInDocker"\"
+  eval ${bwProjShortcut}'_docker() { eval "$_funcParams2"; }'
 
-  eval ${projShortcut}_docker_buildParams='()'
-  eval ${projShortcut}_docker_build_description=\"'Собирает docker-образ $_'${projShortcut}'DockerImageName'\"
-  eval ${projShortcut}'_docker_build() { eval "$_funcParams2"
+  local dockerImageTitle='docker-образ ${_ansiCmd}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
+  eval ${bwProjShortcut}_docker_buildParams='()'
+  eval ${bwProjShortcut}_docker_build_description=\"'Собирает '$dockerImageTitle\"
+  eval ${bwProjShortcut}'_docker_build() { eval "$_funcParams2"
     _isInDocker && return 4
-    docker build -t "$_'${projShortcut}'DockerImageName" $_'${projShortcut}'Dir/docker
+    docker build -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker
   }'
 
-  eval ${projShortcut}_docker_pushParams='()'
-  eval ${projShortcut}_docker_push_description=\"'Push'\''ит docker-образ $_'${projShortcut}'DockerImageName'\"
-  eval ${projShortcut}'_docker_push() { eval "$_funcParams2"
+  eval ${bwProjShortcut}_docker_pushParams='()'
+  eval ${bwProjShortcut}_docker_push_description=\"'Push'\''ит '$dockerImageTitle\"
+  eval ${bwProjShortcut}'_docker_push() { eval "$_funcParams2"
     _isInDocker && return 4
-    docker push "$_'${projShortcut}'DockerImageName"
+    docker push "$_'$bwProjShortcut'DockerImageName"
   }'
 
-  eval ${projShortcut}_docker_upParams='( --http=8086 --https=8087 )'
-  eval ${projShortcut}_docker_up_description=\"'Up'\''ит docker-образ $_'${projShortcut}'DockerImageName'\"
-  eval ${projShortcut}'_docker_up() { eval "$_funcParams2"
+  eval ${bwProjShortcut}_docker_upParams='( 
+    --http:'$_tcpPortDiap'=${bwProjDefaultHttp:-$bwProjGlobalDefaultHttp} 
+    --https:'$_tcpPortDiap'=${bwProjDefaultHttps:-$bwProjGlobalDefaultHttps} 
+  )'
+  eval ${bwProjShortcut}_docker_up_http_description=\"'http-порт по которому будет доступен контейнер'\"
+  eval ${bwProjShortcut}_docker_up_https_description=\"'https-порт по которому будет доступен контейнер'\"
+  eval ${bwProjShortcut}_docker_up_description=\"'Up'\''ит '$dockerImageTitle\"
+  eval ${bwProjShortcut}'_docker_up() { eval "$_funcParams2"
     _isInDocker && return 4
+
+    if [[ $https -eq $http ]]; then
+      return $(_throw "ожидает, что значение ${_ansiOutline}http${ansiReset} ${_ansiPrimaryLiteral}$http${_ansiReset} будет отличаться от значения ${_ansiOutline}https")
+    fi
 
     local stderrFileSpec="/tmp/docker-compose.stderr"
-    _pushd "$_'${projShortcut}'Dir/docker"
-      export _bwProjName="'$projName'"
-      export _bwProjShortcut="'$projShortcut'"
+    _pushd "$_'$bwProjShortcut'Dir/docker"
+      export _bwProjName="'$bwProjName'"
+      export _bwProjShortcut="'$bwProjShortcut'"
       export _hostUser="$(whoami)"
-      export _'$projShortcut'DockerHttp="$http"
-      export _'$projShortcut'DockerHttps="$https"
-      _debugVar _'$projShortcut'DockerHttp _'$projShortcut'DockerHttps
+      export _'$bwProjShortcut'DockerHttp="$http"
+      export _'$bwProjShortcut'DockerHttps="$https"
       _dockerCompose up -d --remove-orphans 2> >(tee "$stderrFileSpec"); local returnCode=$?
     _popd
 
@@ -952,105 +1022,173 @@ _initBwProjCmd() {
     fi
 
     [[ $returnCode -eq 0 ]] || return $returnCode
-    _docker attach "$_'$projShortcut'DockerContainerName"
+    _docker attach "$_'$bwProjShortcut'DockerContainerName"
 
     return $returnCode
   }'
 
-  eval ${projShortcut}_docker_down_description=\"'Down'\''ит docker-образ $_'${projShortcut}'DockerImageName'\"
-  eval ${projShortcut}_docker_downParams='()'
-  eval ${projShortcut}'_docker_down() { eval "$_funcParams2"
+  eval ${bwProjShortcut}_docker_down_description=\"'Down'\''ит '$dockerImageTitle\"
+  eval ${bwProjShortcut}_docker_downParams='()'
+  eval ${bwProjShortcut}'_docker_down() { eval "$_funcParams2"
     _isInDocker && return 4
-    _inDir "$_'${projShortcut}'Dir/docker" _dockerCompose down
+    _inDir "$_'$bwProjShortcut'Dir/docker" _dockerCompose down
   }'
 }
 
 # =============================================================================
 
 bw_projectInfoShortcuts=( 'pi' )
+bw_projectInfoParamsOpt=( --canBeMixedOptionsAndArgs )
 bw_projectInfoParams=()
 bw_projectInfoParams() {
   varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
-  local -a projShortcuts=()
+  local -a bwProjShortcuts=()
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
-    local projShortcut="${_bwProjDefs[$i]}"
-    if [[ ! $projShortcut =~ $_isValidVarNameRegExp ]]; then
-      return $(_err "projShortcut ${_ansiPrimaryLiteral}$projTitle${_ansiErr} $_mustBeValidVarName")
-    elif _hasItem "$projShortcut" "${projShortcuts[@]}"; then
-      return $(_err "Duplicate projShortcut ${_ansiPrimaryLiteral}$projTitle")
+    local bwProjShortcut="${_bwProjDefs[$i]}"
+    if [[ ! $bwProjShortcut =~ $_isValidVarNameRegExp ]]; then
+      return $(_err "bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle${_ansiErr} $_mustBeValidVarName")
+    elif _hasItem "$bwProjShortcut" "${bwProjShortcuts[@]}"; then
+      return $(_err "Duplicate bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle")
     else
-      projShortcuts+=( "$projShortcut" )
+      bwProjShortcuts+=( "$bwProjShortcut" )
     fi
   done
-  local projShortcutsAsString="${projShortcuts[@]}"
+  local bwProjShortcutsAsString="${bwProjShortcuts[@]}"
   bw_projectInfoParams=(
     '--all/a'
-    "projShortcut:?:( $projShortcutsAsString )"
+    '--def/d'
+    "bwProjShortcut:?:( $bwProjShortcutsAsString )"
   )
   _saveToCache "${FUNCNAME[0]}"
 }
 _codeToPrepareDescriptionsOf_bw_projectInfo='
+  eval "$_codeToDeclareLocalBwProjVars"
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
-    local projShortcut="${_bwProjDefs[$i]}"
-    local gitOrigin=${_bwProjDefs[$((i + 1))]}
-    local projName=$(basename "$gitOrigin" .git)
-    eval local bw_projectInfo_projShortcut_${projShortcut}_description=\"Сокращение для проекта \${_ansiSecondaryLiteral}\$projName \${_ansiUrl}\$gitOrigin\${_ansiReset}\"
+    codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
+    eval local bw_projectInfo_bwProjShortcut_${bwProjShortcut}_description=\"Сокращение для проекта \${_ansiSecondaryLiteral}\$bwProjName \${_ansiUrl}\$bwProjGitOrigin\${_ansiReset}\"
   done
 '
-bw_projectInfo_projShortcut_name="Сокращенное-имя-проекта"
-bw_projectInfo_projShortcut_description='
-  Если ${_ansiOutline}$bw_projectInfo_projShortcut_name${_ansiReset} не задано, то выводит информация обо всех ${_ansiOutline}обнаруженных${_ansiReset} проектах
+bw_projectInfo_bwProjShortcut_name="Сокращенное-имя-проекта"
+bw_projectInfo_bwProjShortcut_description='
+  Если ${_ansiOutline}$bw_projectInfo_bwProjShortcut_name${_ansiReset} не задано, то выводит информация обо всех ${_ansiOutline}обнаруженных${_ansiReset} проектах
   С опцией ${_ansiCmd}--all${_ansiReset} -- обо всех проектах
 '
 bw_projectInfo_all_description='
-  Выводит информацию обо всех проектах
+  Вывести информацию обо всех проектах
   Без опции ${_ansiCmd}--all${_ansiReset} -- обо всех ${_ansiOutline}обнаруженных${_ansiReset} проектах
+'
+bw_projectInfo_def_description='
+  Вывести ${_ansiOutline}определение${_ansiReset} проекта/проектов
 '
 bw_projectInfo_description="Выводит информацию о проекте/проектах"
 bw_projectInfo() { eval "$_funcParams2"
   local skipNonExistent=
-  if [[ -n $projShortcut ]]; then
-    local gitOrigin projName projTitle; _prepareBwProjDef || return $?
+  if [[ -n $def ]]; then
+    local -a duplicatePorts; _prepareDuplicatePorts
+  fi
+  if [[ -n $bwProjShortcut ]]; then
+    eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
     _bwProjectInfoHelper
   else
-    eval local -a enumValues="$__ENUM_projShortcut"
     [[ -n $all ]] || skipNonExistent=true
     local -a found=()
-    for projShortcut in "${enumValues[@]}"; do
-      local gitOrigin projName projTitle; _prepareBwProjDef || return $?
+    eval "$_codeToDeclareLocalBwProjVars"
+    local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+      local bwProjShortcut="${_bwProjDefs[$i]}"
+      codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
       _bwProjectInfoHelper; local returnCode=$?
       if [[ $returnCode -ne 5 ]]; then
-        found+=( "$projTitle" )
+        found+=( "$bwProjTitle" )
       fi
     done
-    if [[ ${#found[@]} -gt 0 ]]; then
-      _ok "Всего $(_getPluralWord ${#found[@]} обнаружен обнаружено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[@]}"
+    if [[ -n $def ]]; then
+      echo "Всего $(_getPluralWord ${#found[@]} определен определено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[@]}${_ansiReset}"
     else
-      _warn "Не обнаружено ни одного проекта"
+      if [[ ${#found[@]} -gt 0 ]]; then
+        _ok "Всего $(_getPluralWord ${#found[@]} обнаружен обнаружено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[@]}"
+      else
+        _warn "Не обнаружено ни одного проекта"
+      fi
     fi
   fi
 }
 
-_bwProjectInfoHelper() {
-  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$projShortcut\.bash\"?\s*$"
-  if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
-    local alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
-    if [[ ! -d $alreadyProjDir ]]; then
-      _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} не обнаружена"
-      return 7
-    else
-      if ! _inDir "$alreadyProjDir" _prepareGitDirty "$gitOrigin"; then
-        _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$projTitle${_ansiWarn}"
-        return 6
-      else
-        local gitBranchName=; _inDir "$alreadyProjDir" _prepareGitBranchName
-        _ok "Ветка ${_ansiSecondaryLiteral}$gitBranchName${_ansiOK} проекта ${_ansiPrimaryLiteral}$projTitle${_ansiOK} обнаружена в ${_ansiFileSpec}$alreadyProjDir"
-        return 0
-      fi
+_prepareDuplicatePorts() {
+  unset $(compgen -v __usedPort)
+  eval "$_codeToDeclareLocalBwProjVars"
+  local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+    local bwProjShortcut="${_bwProjDefs[$i]}"
+    codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
+    if [[ -n $bwProjDefaultHttp ]]; then
+      eval local __usedPort$bwProjDefaultHttp
+      eval __usedPort$bwProjDefaultHttp=\$\(\( __usedPort$bwProjDefaultHttp + 1 \)\)
     fi
+    if [[ -n $bwProjDefaultHttps ]]; then
+      eval local __usedPort$bwProjDefaultHttps
+      eval __usedPort$bwProjDefaultHttps=\$\(\( __usedPort$bwProjDefaultHttps + 1 \)\)
+    fi
+  done
+  duplicatePorts=()
+  local varName; for varName in $(compgen -v __usedPort); do
+    if [[ $varName -gt 1 ]]; then
+      duplicatePorts+=( ${varName:10})
+    fi
+  done
+}
+
+_bwProjectInfoHelper() {
+  if [[ -n $def ]]; then
+    echo "$bwProjShortcut:"
+    echo "  name: $bwProjName"
+    echo "  gitOrigin: ${_ansiUrl}"$(_quotedArgs "$bwProjGitOrigin")"${_ansiReset}"
+
+    echo -n "  branch: "
+    local branch=${bwProjDefaultBranch:-$bwProjGlobalDefaultBranch}
+    if [[ $branch == "$bwProjGlobalDefaultBranch" ]]; then
+      echo "$branch"
+    else
+      echo "${_ansiWarn}$branch${_ansiReset}"
+    fi
+
+    echo -n "  http: "
+    if [[ -z $bwProjDefaultHttp || $bwProjDefaultHttp -eq "$bwProjGlobalDefaultHttp" ]]; then
+      echo "${_ansiWarn}$bwProjGlobalDefaultHttp${_ansiReset}"
+    elif _hasItem "$bwProjDefaultHttp" "${duplicatePorts[@]}"; then
+      echo "${_ansiWarn}$bwProjDefaultHttp${_ansiReset}"
+    else
+      echo "$bwProjDefaultHttp"
+    fi
+
+    echo -n "  https: "
+    if [[ -z $bwProjDefaultHttps || $bwProjDefaultHttps -eq "$bwProjGlobalDefaultHttps" ]]; then
+      echo "${_ansiWarn}$bwProjGlobalDefaultHttps${_ansiReset}"
+    elif _hasItem "$bwProjDefaultHttps" "${duplicatePorts[@]}"; then
+      echo "${_ansiWarn}$bwProjDefaultHttps${_ansiReset}"
+    else
+      echo "$bwProjDefaultHttps"
+    fi
+
   else
-    [[ -n $skipNonExistent ]] || _warn "Проект ${_ansiPrimaryLiteral}$projTitle${_ansiWarn} не обнаружен"
-    return 5
+    local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$bwProjShortcut\.bash\"?\s*$"
+    if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
+      local alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
+      if [[ ! -d $alreadyProjDir ]]; then
+        _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} не обнаружена"
+        return 7
+      else
+        if ! _inDir "$alreadyProjDir" _prepareGitDirty "$bwProjGitOrigin"; then
+          _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn}"
+          return 6
+        else
+          local gitBranchName=; _inDir "$alreadyProjDir" _prepareGitBranchName
+          _ok "Ветка ${_ansiSecondaryLiteral}$gitBranchName${_ansiOK} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiOK} обнаружена в ${_ansiFileSpec}$alreadyProjDir"
+          return 0
+        fi
+      fi
+    else
+      [[ -n $skipNonExistent ]] || _warn "Проект ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} не обнаружен"
+      return 5
+    fi
   fi
 }
 

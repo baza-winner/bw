@@ -2435,7 +2435,7 @@ _parseFuncParams2TestFunc() { eval "$_codeToCallFuncParams2"
 
 _prepareCodeOfAutoHelp2Tests=(
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2447,7 +2447,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "_prepareCodeOfAutoHelp2TestFunc -h"
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
       ${_ansiHeader}Описание:${_ansiReset} Однострочное описание
@@ -2462,7 +2462,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
       ${_ansiHeader}Описание:${_ansiReset}
@@ -2480,7 +2480,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}] ${_ansiOutline}a${_ansiReset} ${_ansiOutline}c${_ansiReset} ${_ansiOutline}d${_ansiReset} ${_ansiOutline}\"Аргумент b\"${_ansiReset} ${_ansiOutline}АргументE${_ansiReset}
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2508,7 +2508,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}] ${_ansiOutline}a${_ansiReset} ${_ansiOutline}b${_ansiReset} [${_ansiOutline}c${_ansiReset} [${_ansiOutline}d${_ansiReset}...]]
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2534,7 +2534,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}] ${_ansiOutline}a${_ansiReset} ${_ansiOutline}b${_ansiReset} ${_ansiOutline}c${_ansiReset} ${_ansiOutline}d${_ansiReset}...
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2566,7 +2566,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}] ${_ansiOutline}testNames${_ansiReset}...
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2590,7 +2590,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опции${_ansiReset}]
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2691,7 +2691,7 @@ _prepareCodeOfAutoHelp2Tests=(
 
   # --isCommandWrapper
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}] ${_ansiOutline}Команда${_ansiReset}
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2734,7 +2734,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}] ${_ansiOutline}Цель${_ansiReset}
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2778,7 +2778,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc alpha${_ansiReset} [${_ansiOutline}Опции${_ansiReset}] ${_ansiOutline}arg${_ansiReset}
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_alpha_description${_ansiReset}
@@ -2807,7 +2807,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc_alpha${_ansiReset} [${_ansiOutline}Опции${_ansiReset}] ${_ansiOutline}arg${_ansiReset}
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_alpha_description${_ansiReset}
@@ -2838,7 +2838,7 @@ _prepareCodeOfAutoHelp2Tests=(
 
 # --canBeMoreParams
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опции${_ansiReset}] ${_ansiOutline}arg${_ansiReset} ${_ansiOutline}moreArg1${_ansiReset} ${_ansiOutline}\"Дополнительный аргумент\"${_ansiReset} ${_ansiOutline}moreArg3${_ansiReset}
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}
@@ -2863,7 +2863,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
   '
   '
-    --return "3"
+    --return 0
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опции${_ansiReset}] ${_ansiOutline}arg${_ansiReset} ${_ansiOutline}moreArg1${_ansiReset} [ ${_ansiOutline}\"Дополнительный аргумент\"${_ansiReset} [ ${_ansiOutline}moreArg1${_ansiReset} ] ] ...
       ${_ansiHeader}Описание:${_ansiReset} ${_ansiErr}Нет описания ${_ansiOutline}_prepareCodeOfAutoHelp2TestFunc_description${_ansiReset}

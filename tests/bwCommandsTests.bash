@@ -24,7 +24,6 @@ bwTests=(
 
 bw_removeTests=(
   '
-    --return "3"
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}bw remove${_ansiReset} [${_ansiOutline}Опции${_ansiReset}]
       ${_ansiHeader}Описание:${_ansiReset} удаляет bw.bash и все связанное с ним
@@ -63,7 +62,6 @@ bw_removeTests=(
 
 bw_updateTests=(
   '
-    --return "3"
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}bw update${_ansiReset} [${_ansiOutline}Опции${_ansiReset}]
       ${_ansiHeader}Описание:${_ansiReset} $bw_update_description

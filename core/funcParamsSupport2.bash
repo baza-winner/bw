@@ -4,7 +4,7 @@ _resetBash
 
 # =============================================================================
 
-_funcParams2='local codeFileSpec && _prepareCodeToParseFuncParams2 && local __consumedParams=0 && . "$codeFileSpec" && _parseFuncParams2 "$@" && { for ((; __consumedParams>0; __consumedParams--)); do shift; done; true; } || return $?'
+_funcParams2='local codeFileSpec && _prepareCodeToParseFuncParams2 && local __consumedParams=0 && . "$codeFileSpec" && _parseFuncParams2 "$@" && { for ((; __consumedParams>0; __consumedParams--)); do shift; done; true; } || { local __returnCode=$?; [[ $__returnCode -ne 3 ]] || __returnCode=0; return $__returnCode; }'
 
 _help_paramDef="!--help/?h"
 _help_description='Выводит справку'
@@ -267,7 +267,6 @@ _profileBegin
 
         code+=$_nl
         local indent=
-        # [[ $funcName == _prepareCodeOfAutoHelp2TestFunc_alpha ]] && _debugVar __hasWrapper funcName
         if [[ -n $__hasWrapper ]]; then
           if [[ $varKind == arg ]]; then
             code+="! _hasItem $__varName \${__thisInheritedOptVarNames[@]} || return \$(_ownThrow \"не ожидает аргумент \${_ansiOutline}$__varName\${_ansiErr} одноименный унаследованной опции\")$_nl"
@@ -1221,8 +1220,6 @@ _prepareCodeOfAutoHelp2() {
 
   dstVarName=__helpCodeFileSpec codeType=help additionalSuffix=$__additionalSuffix fileSpec= originalCodeDeep=2 eval "$_codeToPrepareCodeFileSpec"
 
-  # [[ $__thisFuncName == bw_update ]] && _debugVar __optVarNames
-
   [[ -n ${!__isCommandWrapperHolder} ]] \
     || [[ $__thisFuncName =~ [[:alnum:]]_[_[:alnum:]] ]] \
     || [[ ${#__inheritedOptVarNames[@]} -gt 0 ]] \
@@ -1236,7 +1233,6 @@ _prepareCodeOfAutoHelp2() {
   if [[ -n ${!holder} ]]; then
     codeHolder=$holder eval "$_evalCode" || return $?
   fi
-  # [[ $__thisFuncName == bw_update ]] && _debugVar --mark GEN __optVarNames needPregenHelp funcName __hasWrapper
 
   local __optionsDescription= __optionsTitle=; _prepareOptionsDescription
   local __usage='${_ansiCmd}$cmdName${_ansiReset}'
@@ -1670,11 +1666,14 @@ _prepareCodeForDescriptionOutput2() { eval "$_funcParams2"
   if [[ -z $alwaysMultiline && ! $description =~ "$_nl" ]]; then
     if [[ $quote == single ]]; then
       if [[ -n $descriptionPrefix && -n $description ]]; then
-        codeForDescriptionOutput='"'\'$descriptionPrefix' '$description\''"'
+        # codeForDescriptionOutput='"'\'$descriptionPrefix' '$description\''"'
+        codeForDescriptionOutput=$(_quotedArgs --strip "$descriptionPrefix $description")
       elif [[ -n $descriptionPrefix ]]; then
-        codeForDescriptionOutput='"'\'$descriptionPrefix''\''"'
+        # codeForDescriptionOutput='"'\'$descriptionPrefix''\''"'
+        codeForDescriptionOutput=$(_quotedArgs --strip "$descriptionPrefix")
       else
-        codeForDescriptionOutput='"'\'$description\''"'
+        # codeForDescriptionOutput='"'\'$description\''"'
+        codeForDescriptionOutput=$(_quotedArgs --strip "$description")
       fi
     else
       if [[ -n $descriptionPrefix && -n $description ]]; then
