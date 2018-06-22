@@ -27,8 +27,6 @@ _getPluralWord() { eval "$_funcParams2"
   echo $result
 }
 
-_substituteIdxSuffix=SubstitutedValueIdx
-_substituteValueSuffix=SubstitutedValueToRestore
 _substituteParamsOpt=(--canBeMoreParams)
 _substituteParams=( 'varName' )
 _substitute() { eval "$_funcParams2"

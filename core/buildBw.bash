@@ -13,14 +13,14 @@ _buildBwHelper() {
   local fileNamesToMainArchive="\
     $(_getFileListToBundle "*.bash" core) \
     $(_getFileListToBundle "*.bash" bash) \
-    $(_getFileListToBundle "*$_codeBashExt" $_generatedDir) \
-    $(_getFileListToBundle "*.completion.unset.bash" $_generatedDir) \
+    $(_getFileListToBundle "*$_codeBashExt" "$_generatedDir") \
+    $(_getFileListToBundle "*.completion.unset.bash" "$_generatedDir") \
     docker-compose.yml $(find docker -type f | grep -v .DS_Store) \
   "
   local fileNamesToTestsArchive="\
     $(_getFileListToBundle "*.bash" tests ) \
-    $(_getFileListToBundle "*$_codeBashExt" "tests" $_generatedDir) \
-    $(_getFileListToBundle "*.completion.unset.bash" "tests" $_generatedDir) \
+    $(_getFileListToBundle "*$_codeBashExt" "tests" "$_generatedDir") \
+    $(_getFileListToBundle "*.completion.unset.bash" "tests" "$_generatedDir") \
   "
   local needBuild
   local -r bwOldFileName="old.$_bwFileName"
@@ -76,7 +76,15 @@ _getFileListToBundle() { eval "$_funcParams2"
   else
     regexp="$dirForRegexp\/[^\/]+"
   fi
-  find "$_bwDir/$dirToFind" -type f -name "$fileMask" | grep -v generated/mls | grep -v ansiSupport\.bash | perl -ne "print $_ if s/^.*\/($regexp)\$/\$1/"
+  local excludeRegExp=
+  local bwProjShortcut; for bwProjShortcut in $(_getBwProjShortcuts); do
+    if [[ -n $excludeRegExp ]]; then
+      excludeRegExp+='|'
+    fi
+    excludeRegExp+="$bwProjShortcut"
+  done
+  excludeRegExp="generated/($excludeRegExp)"
+  find "$_bwDir/$dirToFind" -type f -name "$fileMask" | grep -v -E "$excludeRegExp" | perl -ne "print $_ if s/^.*\/($regexp)\$/\$1/"
 }
 
 # =============================================================================

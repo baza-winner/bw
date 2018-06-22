@@ -68,6 +68,8 @@ bw_updateTests=(
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}bw update${_ansiReset} [${_ansiOutline}Опции${_ansiReset}]
       ${_ansiHeader}Описание:${_ansiReset} $bw_update_description
       ${_ansiOutline}Опции${_ansiReset}
+          ${_ansiCmd}--remove${_ansiReset} или ${_ansiCmd}-r${_ansiReset}
+              $bw_update_remove_description
           ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
               Выводит справку
     "

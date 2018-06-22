@@ -73,7 +73,7 @@ bw() { eval "$_funcParams2"
 # =============================================================================
 
 bw_versionParams=()
-bw_version_description='выводит номер версии bw.bash'
+bw_version_description='Выводит номер версии bw.bash'
 bw_version() { eval "$_funcParams2"
   local suffix="$BW_SELF_UPDATE_SOURCE"
   [[ -z $suffix ]] || suffix="@$suffix"
@@ -82,8 +82,13 @@ bw_version() { eval "$_funcParams2"
 
 # =============================================================================
 
-bw_update_description="обновляет bw"
+bw_updateParams=( '--remove/r' )
+bw_update_remove_description="Удалить прегенеренные файлы перед обновлением"
+bw_update_description="Обновляет bw"
 bw_update() { eval "$_funcParams2"
+  if [[ -n $remove ]]; then
+    "$_bwFileSpec" rm -y
+  fi
   . "$_bwFileSpec"
   echo "Current version: $(bw_version)"
 }
@@ -267,7 +272,18 @@ bw_set() { eval "$_funcParams2"
 
 # =============================================================================
 
-_enumAnsi='(Reset Bold Dim Italic Underline Black Red Green Yellow Blue Magenta Cyan LightGray LightGrey DarkGray DarkGrey LightRed LightGreen LightYellow LightBlue LightMagenta LightCyan White)'
+
+_enumAnsi=
+_initEnumAnsi() {
+  _enumAnsi=
+  _enumAnsi+='('
+  local _ansi; for _ansi in $(compgen -v _ansi); do
+    _enumAnsi+=" ${_ansi:5}"
+  done
+  _enumAnsi+=' )'
+}
+_initEnumAnsi
+
 _enumSpace='(before after both none -)'
 _enumOnOff='(yes no on off -)'
 _ps_user_defaultAnsi='Green'
@@ -641,6 +657,14 @@ _bw_project_bgate() {
 }
 _bw_project_bcore() {
   _exec "${sub_OPT[@]}" git submodule update --init --recursive
+}
+
+_getBwProjShortcuts() {
+  local -a result=()
+  local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
+    result+=( "${_bwProjDefs[$i]}" )
+  done
+  echo "${result[@]}"
 }
 
 _prepareBwProjDef() {
