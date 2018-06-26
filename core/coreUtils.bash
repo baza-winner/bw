@@ -367,6 +367,28 @@ _todo() {
 #   test -n "$(find "$(dirname "$fileSpecTemplate")" -maxdepth 1 -name "$(basename  "$fileSpecTemplate")" -print -quit)"
 # }
 
+
+
+_getExternalIp() {
+  curl ipecho.net/plain 
+}      
+
+_getOwnIpList() {
+  local useSedVersion=
+  # https://stackoverflow.com/questions/13322485/how-to-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
+  if [[ -z $useSedVersion ]]; then
+    ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'
+  else
+    ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
+  fi
+}
+
+_getOwnIp() {
+  # https://stackoverflow.com/questions/38252963/how-can-i-debug-php-mounted-to-a-container-running-on-docker-beta-for-mac
+  ipconfig getifaddr en0
+}
+
+
 # =============================================================================
 
 _isInDocker() {

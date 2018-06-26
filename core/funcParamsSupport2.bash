@@ -1458,10 +1458,17 @@ _prepareParamDescription2() {
     if [[ ${!__varValtypeHolder} == int ]]; then
     _prepareIntValudDescription2
   elif [[ ${!__varValtypeHolder} == enum ]]; then
-    valueDescription='арианты ${_ansiOutline}значения${_ansiReset}:'
-    [[ -z $alwaysMultiline ]] \
-      && valueDescription=' в'$valueDescription \
-      || valueDescription=$__helpCodeLinePrefix'В'$valueDescription
+    
+    # valueDescription='арианты ${_ansiOutline}значения${_ansiReset}:'
+    # [[ -z $alwaysMultiline ]] \
+    #   && valueDescription=' в'$valueDescription \
+    #   || valueDescription=$__helpCodeLinePrefix'В'$valueDescription
+    valueDescription=
+    if [[ -z $alwaysMultiline ]]; then
+      valueDescription=\"$__helpCodeLineSuffix
+    fi
+    valueDescription+=$__helpCodeLinePrefix'Варианты ${_ansiOutline}значения${_ansiReset}:'
+
     if [[ -z $hasEnumValueDescription ]]; then
       valueDescription+=' ${_ansiSecondaryLiteral}$(_quotedArgs "${enumValues[@]}")${_ansiReset}"'
     else
