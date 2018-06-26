@@ -928,7 +928,7 @@ _initBwProjCmd() {
   local bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
   eval _${bwProjShortcut}FileSpec="$fileSpec"
-  eval _${bwProjShortcut}Dir="$(realpath "$(dirname "$fileSpec")/..")"
+  eval _${bwProjShortcut}Dir="$(dirname "$fileSpec")/.."
   export _${bwProjShortcut}DockerImageName="bazawinner/dev-${bwProjShortcut}"
   export _${bwProjShortcut}DockerContainerName="dev-${bwProjShortcut}"
 
