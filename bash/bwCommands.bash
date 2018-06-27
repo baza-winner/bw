@@ -1271,11 +1271,13 @@ _bwProjectInfoHelper() {
 
 bw_installParams=(
   "${_verbosityParams[@]}"
+  "--force/f"
   # '!--uninstall/u'
 )
 bw_installParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
 bw_install_cmd_name=Имя-приложения
 bw_install_description='устанавливает приложения'
+bw_install_force_description='устанавливает приложения, даже если оно уже установлено'
 bw_install() { eval "$_funcParams2"
 }
 
@@ -1332,7 +1334,11 @@ _bw_install_brewDarwin() {
 bw_install_gitParams=()
 bw_install_git_description='Устанавливает git'
 bw_install_git() { eval "$_funcParams2"
-  name=git codeHolder=_codeToInstallApp eval "$_evalCode"
+  if [[ -z $force ]] && which git >/dev/null 2>&1; then
+    [[ $verbosity =~ ^(ok|all)$ ]] && _ok "${_ansiCmd}git${_ansiOK} уже установлен"
+  else
+    name=git codeHolder=_codeToInstallApp eval "$_evalCode"
+  fi
 }
 _bw_install_gitLinux() {
   _exec "${sub_OPT[@]}" --sudo apt install -y --force-yes git || returnCode=$?
@@ -1340,10 +1346,65 @@ _bw_install_gitLinux() {
 
 # =============================================================================
 
+bw_install_githubKeygenParams=()
+bw_install_githubKeyGen_description='Устанавливает github-keygen (${_ansiUrl}https://github.com/dolmen/github-keygen${_ansiReset})'
+bw_install_githubKeygen() { eval "$_funcParams2"
+  if [[ -z $force && -f "$_bwDir/github-keygen" ]]; then
+    [[ $verbosity =~ ^(ok|all)$ ]] && _ok "${_ansiCmd}github-keygen${_ansiOK} уже установлен"
+  else
+    name=git codeHolder=_codeToInstallApp eval "$_evalCode"
+  fi
+}
+_bw_install_githubKeygenDarwin() {
+  _exec git clone https://github.com/dolmen/github-keygen.git "$_bwDir/github-keygen"
+}
+_bw_install_githubKeygenLinux() {
+  _bw_install_githubKeygenDarwin || return $?
+  _exec --sudo apt-get update
+  _exec --sudo apt-get install -y --force-yes xclip
+}
+
+bw_githubKeygenParams=( 'username' )
+bw_githubKeygen() { eval "$_funcParams2"
+  bw_install_githubKeygen
+  local stdoutFileSpec="/tmp/github-keygen.stdout"
+  "$_bwDir/github-keygen" "$username" | tee "$stdoutFileSpec"
+  if [[ $(tail -n 1 "$stdoutFileSpec") =~ ^Paste ]]; then
+    read -p "Press enter to continue" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
+    _osSpecific || return $?
+  fi
+  
+}
+_githubKeysUrl='https://github.com/settings/keys'
+_bw_githubKeygenDarwin() {
+  local appGoogleChrome="/Applications/Google Chrome.app"
+  if [[ -d "$appGoogleChrome" ]]; then
+    /usr/bin/open -a "$appGoogleChrome" "$_githubKeysUrl"
+  else
+    /usr/bin/open "$_githubKeysUrl"
+  fi
+}
+_bw_githubKeygenLinux() {
+  if which google-chrome >/dev/null 2>&1; then
+    google-chrome "$_githubKeysUrl"
+  else
+    xdg-open "$_githubKeysUrl"
+  fi
+}
+
+# =============================================================================
+
 bw_install_dockerParams=()
 bw_install_docker_description="Устанавливает DockerCE ${_ansiUrl}https://www.docker.com/community-edition${_ansiReset}"
 bw_install_docker() { eval "$_funcParams2"
-  name=Docker codeHolder=_codeToInstallApp eval "$_evalCode"
+  if [[ -z $force ]] || bw_install_dockerHelper; then
+    [[ $verbosity =~ ^(ok|all)$ ]] && _ok "${_ansiCmd}github-keygen${_ansiOK} уже установлен"
+  else
+    name=Docker codeHolder=_codeToInstallApp eval "$_evalCode"
+  fi
+}
+bw_install_dockerHelper() {
+  which docker >/dev/null 2>&1 && [[ $(docker --version | perl -e '$\=undef; $_=<STDIN>; printf("%d%04d", $1, $2) if m/(\dd+)/'\d) -ge 180003 ]]
 }
 _bw_install_dockerDarwin() {
   while true; do
