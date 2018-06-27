@@ -925,6 +925,14 @@ _prepareGitDirty() { eval "$_funcParams2"
 
 _loopbackAlias='10.254.254.254'
 
+_getDefaultXdebugRemoteHost() {
+  if [[ $OSTYPE =~ ^darwin ]]; then
+    echo host.docker.internal
+  else
+    echo "$_loopbackAlias"
+  fi
+}
+
 _initBwProjCmd() {
   local fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut=$(basename "$fileSpec" .bash)
@@ -1327,7 +1335,7 @@ bw_install_git() { eval "$_funcParams2"
   name=git codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_gitLinux() {
-  _exec "${sub_OPT[@]}" --sudo apt install -y git || returnCode=$?
+  _exec "${sub_OPT[@]}" --sudo apt install -y --force-yes git || returnCode=$?
 }
 
 # =============================================================================
