@@ -3,7 +3,7 @@
 
 # ==reset from
 
-export _bwVersion="0.0.168"
+export _bwVersion="0.0.169"
 
 export _bwGithubSource="https://raw.githubusercontent.com/baza-winner/bw"
 export _bwGithubSshUrl='git@github.com:baza-winner/bw.git'
