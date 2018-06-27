@@ -375,7 +375,7 @@ _getExternalIp() {
 
 _getOwnIpList() {
   # https://stackoverflow.com/questions/13322485/how-to-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
-  if which -s hostname ; then
+  if which hostname >/dev/null 2>&1; then
     hostname -I
   else
     local useSedVersion=
