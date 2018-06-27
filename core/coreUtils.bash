@@ -374,19 +374,32 @@ _getExternalIp() {
 }      
 
 _getOwnIpList() {
-  local useSedVersion=
   # https://stackoverflow.com/questions/13322485/how-to-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
-  if [[ -z $useSedVersion ]]; then
-    ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'
+  if which -s hostname ; then
+    hostname -I
   else
-    ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
+    local useSedVersion=
+    if [[ -z $useSedVersion ]]; then
+      ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1'
+    else
+      ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'
+    fi
   fi
 }
 
-_getOwnIp() {
+# _getOwnIp() {
   # https://stackoverflow.com/questions/38252963/how-can-i-debug-php-mounted-to-a-container-running-on-docker-beta-for-mac
-  ipconfig getifaddr en0
-}
+  # ipconfig getifaddr en0
+
+  # https://stackoverflow.com/questions/13322485/how-to-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x/13322667#13322667
+  # local ip myip line
+  # while IFS=$': \t' read -a line ;do
+  #   _debugVar line
+  #   [ -z "${line%inet}" ] && ip=${line[${#line[1]}>4?1:2]} && [ "${ip#127.0.0.1}" ] && myip=$_ip
+  # done< <(LANG=C /sbin/ifconfig)
+  # echo $myip
+  # printf ${1+-v} $1 "%s${_nl:0:$[${#1}>0?0:1]}" $myip
+# }
 
 
 # =============================================================================
