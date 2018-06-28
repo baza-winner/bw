@@ -1009,14 +1009,12 @@ _initBwProjCmd() {
   local dockerImageTitle='docker-образ ${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
   verbosityDefault=all silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
   eval ${bwProjShortcut}_docker_buildParams='( 
-    --pull 
     "${_verbosityParams[@]}" 
   )'
-  eval ${bwProjShortcut}_docker_build_pull_description=\"'Опция команды ${_ansiCmd}docker build${_ansiReset}: Always attempt to pull a newer version of the image'\"
   eval ${bwProjShortcut}_docker_build_description=\"'Собирает '$dockerImageTitle\"
   eval ${bwProjShortcut}'_docker_build() { eval "$_funcParams2"
     _isInDocker && return 4
-    if _docker "${OPT_verbosity[@]}" build "${OPT_pull[@]}" -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker; then
+    if _docker "${OPT_verbosity[@]}" build --pull -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker; then
       _docker inspect --format "{{json .Id}}" "$_'$bwProjShortcut'DockerImageName:latest" > "$_'$bwProjShortcut'DockerImageIdFileSpec"
       if (git update-index -q --refresh && git diff-index --name-only HEAD -- | grep "$_bwFileName" >/dev/null 2>&1); then
         local msg=
@@ -1059,10 +1057,13 @@ _initBwProjCmd() {
       if [[ -z $(_docker image ls "$_'$bwProjShortcut'DockerImageName":latest -q) ]]; then
         _docker -v all image pull "$_'$bwProjShortcut'DockerImageName:latest" || return $?
       fi
-      local tstImageIdFileSpec="/tmp/bgate.image.created"
+      local tstImageIdFileSpec="/tmp/bgate.image.id"
       _docker inspect --format "{{json .Id}}" "$_'$bwProjShortcut'DockerImageName:latest" > "$tstImageIdFileSpec"
       if [[ ! -f "$_'$bwProjShortcut'DockerImageIdFileSpec" ]] || ! _silent cmp "$tstImageIdFileSpec" "$_'$bwProjShortcut'DockerImageIdFileSpec"; then
-        '$bwProjShortcut'_docker_build -v all --pull || return $?
+        rm "$tstImageIdFileSpec"
+        '$bwProjShortcut'_docker_build -v all || return $?
+      else
+        rm "$tstImageIdFileSpec"
       fi
     fi
 
