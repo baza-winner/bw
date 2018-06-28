@@ -850,8 +850,8 @@ bw_project() { eval "$_funcParams2"
             rm -f "$cloneStderrFileSpec"
             local msg=
             msg+="Похоже, Вы не настроили ssh-ключи для доступа к ${_ansiPrimaryLiteral}git@$bwProjGitOrigin${_ansiWarn}"$_nl
-            msg+="Воспользуйтесь командой ${_ansiCmd}bw github-keygen ${_ansiOutline}Имя-пользователя-на-github${_ansiWarn}"$_nl
-            msg+=
+            msg+="Воспользуйтесь следующей командой:"$_nl
+            msg+="  ${_ansiCmd}bw github-keygen ${_ansiOutline}Имя-пользователя-на-github${_ansiWarn}"
             _warn "$msg"
             return 1
           else
@@ -1005,11 +1005,13 @@ _initBwProjCmd() {
   eval ${bwProjShortcut}'_docker() { eval "$_funcParams2"; }'
 
   local dockerImageTitle='docker-образ ${_ansiCmd}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
-  eval ${bwProjShortcut}_docker_buildParams='()'
+  eval ${bwProjShortcut}_docker_buildParams='( --pull --quiet/q )'
+  eval ${bwProjShortcut}_docker_build_pull_description=\"'Always attempt to pull a newer version of the image ${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName${_ansiReset}'\"
+  eval ${bwProjShortcut}_docker_build_quiet_description=\"'Suppress the build output and print image ID on success'\"
   eval ${bwProjShortcut}_docker_build_description=\"'Собирает '$dockerImageTitle\"
   eval ${bwProjShortcut}'_docker_build() { eval "$_funcParams2"
     _isInDocker && return 4
-    docker build -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker
+    docker build "${OPT_pull[@]}" "${OPT_quiet[@]}" -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker
   }'
 
   eval ${bwProjShortcut}_docker_pushParams='()'
@@ -1027,24 +1029,34 @@ _initBwProjCmd() {
     --https:'$_tcpPortDiap'=${bwProjDefaultHttps:-$bwProjGlobalDefaultHttps} 
     @--restart/r
     --force-recreate/f
+    --no-build/n
     "${'$bwProjShortcut'_docker_upParamsAddon[@]}"
   )'
   eval ${bwProjShortcut}_docker_up_http_description=\"'http-порт по которому будет доступен контейнер'\"
   eval ${bwProjShortcut}_docker_up_https_description=\"'https-порт по которому будет доступен контейнер'\"
   eval ${bwProjShortcut}_docker_up_restart_description=\"'Restart'\''ит (${_ansiCmd}docker-compose restart${_ansiReset}) указанные сервисы'\"
   eval ${bwProjShortcut}_docker_up_forceRecreate_description=\"'Up'\''ит указанные сервисы с опцией --force-recreate, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\"
+  eval ${bwProjShortcut}_docker_up_noBuild_description=\"'Don'\''t build an image, even if it'\''s missing'\"
   eval ${bwProjShortcut}_docker_up_description=\"'Up'\''ит '$dockerImageTitle\"
   eval ${bwProjShortcut}'_docker_up() { eval "$_funcParams2"
     _isInDocker && return 4
 
+    if [[ -z $noBuild ]]; then
+      _exec '$bwProjShortcut'_docker_build --pull --quiet; local returnCode=$?
+      if [[ $returnCode -ne 0 ]]; then
+        echo "${_ansiWarn}Попробуйте запустить с опцией ${_ansiCmd}--no-build"
+        return $returnCode
+      fi
+    fi
+
     if [[ $https -eq $http ]]; then
-      return $(_throw "ожидает, что значение ${_ansiOutline}http${ansiReset} ${_ansiPrimaryLiteral}$http${_ansiReset} будет отличаться от значения ${_ansiOutline}https")
+      return $(_throw "ожидает, что значение ${_ansiOutline}http ${_ansiPrimaryLiteral}$http${_ansiErr} будет отличаться от значения ${_ansiOutline}https")
     fi
 
     export _'$bwProjShortcut'DockerHttp="$http"
     export _'$bwProjShortcut'DockerHttps="$https"
 
-    if [[ -z $'$bwProjShortcut'Prompt ]]; then
+    if [[ -z $_'$bwProjShortcut'Prompt ]]; then
       local prompt; _preparePrompt --user '$bwProjShortcut' --userAnsi PrimaryLiteral --gitDirty -
       export _'$bwProjShortcut'Prompt="$prompt"
     fi
@@ -1089,11 +1101,12 @@ _initBwProjCmd() {
     {
       if [[ "${#restart[@]}" -eq 0 ]]; then
         [[ -z $forceRecreate ]] || OPT_forceRecreate=( --force-recreate )
-        _dockerCompose up -d "${OPT_forceRecreate[@]}" --remove-orphans
+        _dockerCompose -v all up -d "${OPT_forceRecreate[@]}" --remove-orphans
       else
-        _dockerCompose restart "${restart[@]}"
+        _dockerCompose -v all restart "${restart[@]}"
       fi
     } 2> >(tee "$stderrFileSpec"); returnCode=$?
+
     if [[ $returnCode -ne 0 ]] && grep -P -o '\''(?<=:)\d+(?= failed: port is already allocated)'\'' "$stderrFileSpec" >/dev/null; then
       _err "port is already allocated"
     fi
@@ -1324,15 +1337,20 @@ _osSpecific() {
   local funcName=${FUNCNAME[1]}
   local osSpecificFuncName=
   if [[ $OSTYPE =~ ^darwin ]]; then
-    local osSpecificFuncName="_${funcName}Darwin"
+    osSpecificFuncName="_${funcName}Darwin"
   elif [[ $OSTYPE =~ ^linux ]]; then
-    local osSpecificFuncName="_${funcName}Linux"
+    osSpecificFuncName="_${funcName}Linux"
   fi
-  if [[ -z $osSpecificFuncName ]] || ! _funcExists $osSpecificFuncName; then
-    _err "Неподдерживамая ОС ${_ansiPrimaryLiteral}$OSTYPE"
-    return 1
-  else
+  if [[ -n $osSpecificFuncName ]] && _funcExists $osSpecificFuncName; then
     $osSpecificFuncName
+  else
+    osSpecificFuncName="_${funcName}"
+    if [[ -n $osSpecificFuncName ]] && _funcExists $osSpecificFuncName; then
+      $osSpecificFuncName
+    else
+      _err "Неподдерживамая ОС ${_ansiPrimaryLiteral}$OSTYPE"
+      return 1
+    fi
   fi
 }
 
@@ -1345,7 +1363,7 @@ bw_install_brew() { eval "$_funcParams2"
   name=brew codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_brewCheck() {
-  _silent which brew
+  _which brew
 }
 _bw_install_brewDarwin() {
   _exec "${sub_OPT[@]}" /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
@@ -1363,7 +1381,7 @@ bw_install_git() { eval "$_funcParams2"
   name=git codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_gitCheck() {
-  _silent which git
+  _which git
 }
 _bw_install_gitDarwin() {
   while true; do
@@ -1381,27 +1399,58 @@ _bw_install_gitLinux() {
 bw_install_githubKeygenParams=()
 bw_install_githubKeyGen_description='Устанавливает github-keygen (${_ansiUrl}https://github.com/dolmen/github-keygen${_ansiReset})'
 bw_install_githubKeygen() { eval "$_funcParams2"
+  [[ ! $OSTYPE =~ ^linux  ]] || bw_install --silentIfAlreadyInstalled xclip || return $?
   name=github-keygen codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_githubKeygenCheck() {
   [[ -d "$_bwDir/github-keygen" ]]
 }
 _githubKeygenPastedMarkFileSpec='/tmp/github-keygen-pasted'
-_bw_install_githubKeygenDarwin() {
-  _exec git clone https://github.com/dolmen/github-keygen.git "$_bwDir/github-keygen"
-  perl -i.bak -pe '$_="$_        `touch \"'"$_githubKeygenPastedMarkFileSpec"'\"`; # patched by bw.bash\n" if /^\s*close \$clip;\s*$/' "$_bwDir/github-keygen/github-keygen"
+_githubKeygenFixFileSpec='/tmp/github-keygen-fix.bash'
+_bw_install_githubKeygen() {
+   while true; do
+    _exec git clone https://github.com/dolmen/github-keygen.git "$_bwDir/github-keygen" || { returnCode=$?; break; }
+    # patch github-keygen
+    perl -i.bak -pe '
+      $_="$_        `touch \"'"$_githubKeygenPastedMarkFileSpec"'\"`; # patched by bw.bash\n" if /^\s*close \$clip;\s*$/;
+      $_="        open(my \$fh, \">\", \"'"$_githubKeygenFixFileSpec"'\"); printf \$fh \"chmod u-x,og-wx %s\", SSH_CONFIG_FILE; close \$fh; # patched by bw.bash\n$_" if /^\s*die\s+sprintf\("%s:\s+bad\s+file\s+permissions/;
+    ' "$_bwDir/github-keygen/github-keygen" || { returnCode=$?; break; }
+    break
+  done 
 }
-_bw_install_githubKeygenLinux() {
-  _bw_install_githubKeygenDarwin || return $?
-  _exec --sudo apt-get update
-  _exec --sudo apt-get install -y --force-yes xclip
+
+# =============================================================================
+
+bw_install_xclipParams=()
+# bw_install_xclipCondition='[[ $OSTYPE =~ ^darwin ]]' # вынужден был закоменнтировать, потому что bw при сборке на macOS не включает xclip в список доступных вариантов bw_install, и потом на Linux xclip недоступен
+bw_install_xclip_description='Устанавливает xclip (нужен для работы ${_ansiCmd}bw github-keygen${_ansiReset})'
+bw_install_xclip() { eval "$_funcParams2"
+  name=xclip codeHolder=_codeToInstallApp eval "$_evalCode"
 }
+_bw_install_xclipCheck() {
+  _which xclip
+}
+_bw_install_xclipLinux() {
+  while true; do
+    _exec --sudo apt-get update || { returnCode=$?; break; }
+    _exec --sudo apt-get install -y --force-yes xclip || { returnCode=$?; break; }
+    break
+  done
+}
+
+# =============================================================================
 
 bw_githubKeygenParams=( 'username' )
 bw_githubKeygen() { eval "$_funcParams2"
   bw_install github-keygen --silentIfAlreadyInstalled || return $?
   _rm "$_githubKeygenPastedMarkFileSpec"
+  _rm "$_githubKeygenFixFileSpec"
   "$_bwDir/github-keygen/github-keygen" "$username" 
+  if [[ -f $_githubKeygenFixFileSpec ]]; then
+    . "$_githubKeygenFixFileSpec" || return $?
+    _rm "$_githubKeygenFixFileSpec"
+    "$_bwDir/github-keygen/github-keygen" "$username" 
+  fi
   if [[ -f $_githubKeygenPastedMarkFileSpec ]]; then
     _rm "$_githubKeygenPastedMarkFileSpec"
     read -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} to open browser${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
@@ -1418,7 +1467,7 @@ _bw_githubKeygenDarwin() {
   fi
 }
 _bw_githubKeygenLinux() {
-  if which google-chrome >/dev/null 2>&1; then
+  if _which google-chrome; then
     google-chrome "$_githubKeysUrl"
   else
     xdg-open "$_githubKeysUrl"
@@ -1433,7 +1482,7 @@ bw_install_docker() { eval "$_funcParams2"
   name=DockerCE codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_dockerCheck() {
-  which docker >/dev/null 2>&1 && [[ $(docker --version | perl -e '$\=undef; $_=<STDIN>; printf("%d%04d", $1, $2) if m/(\dd+)/'\d) -ge 180003 ]]
+  _which docker && [[ $(docker --version | perl -e '$\=undef; $_=<STDIN>; printf("%d%04d", $1, $2) if m/(\d+).(\d+)/') -ge 180003 ]]
 }
 _bw_install_dockerDarwin() {
   while true; do
@@ -1481,7 +1530,7 @@ bw_install_dockerCompose() { eval "$_funcParams2"
   name=docker-compose codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_dockerComposeCheck() {
-  which docker-compose >/dev/null 2>&1 
+  _which docker-compose
 }
 _bw_install_dockerComposeDarwin() {
   true
