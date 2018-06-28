@@ -384,13 +384,14 @@ _dockerComposeParams=(
 )
 _dockerComposeParamsOpt=(--canBeMoreParams --treatUnknownOptionAsArg)
 _dockerCompose() { eval "$_funcParams2"
-  if [[ $OSTYPE =~ ^darwin ]]; then
-    _exec ${OPT_verbosity[@]} ${OPT_silent[@]} docker-compose "$@"
-  elif [[ $OSTYPE =~ ^linux ]]; then
-    _exec ${OPT_verbosity[@]} ${OPT_silent[@]} --sudo docker-compose "$@"
-  else
-    _err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE"
+  bw_install docker-compose --silentIfAlreadyInstalled || return $?
+  local -a OPT=()
+  if [[ $OSTYPE =~ ^linux ]]; then
+    OPT+=( --sudo )
+  elif [[ ! $OSTYPE =~ ^darwin ]]; then
+    return $(_err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE")
   fi
+  _exec ${OPT_verbosity[@]} ${OPT_silent[@]} "${OPT[@]}" docker-compose "$@"
 }
 
 verbosityDefault=err silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
@@ -399,17 +400,13 @@ _dockerParams=(
 )
 _dockerParamsOpt=(--canBeMoreParams --treatUnknownOptionAsArg)
 _docker() { eval "$_funcParams2"
+  bw_install docker --silentIfAlreadyInstalled || return $?
   local -a OPT=()
-  if [[ $OSTYPE =~ ^darwin ]]; then
-    true
-    # _exec ${OPT_verbosity[@]} ${OPT_silent[@]} --treatAsOK 3 docker "$@"
-  elif [[ $OSTYPE =~ ^linux ]]; then
+  if [[ $OSTYPE =~ ^linux ]]; then
     OPT+=( --sudo )
-    # _exec ${OPT_verbosity[@]} ${OPT_silent[@]} --treatAsOK 3 --sudo docker "$@"
-  else
+  elif [[ ! $OSTYPE =~ ^darwin ]]; then
     return $(_err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE")
   fi
-  # --treatAsOK 3 --treatAsOK 130
   _exec ${OPT_verbosity[@]} ${OPT_silent[@]} "${OPT[@]}" docker "$@"; local returnCode=$?
   [[ $returnCode -eq 0 ]] || _debugVar returnCode
   return $returnCode

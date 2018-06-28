@@ -112,7 +112,7 @@ TODO
 
 или
 
-  curl -O localhost:8082/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8082 . bw.bash  'rm -rf .bw; . bw.bash bw bt'
+  curl -O localhost:8082/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8082 . bw.bash 'rm -rf .bw; . bw.bash bw bt'
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
 

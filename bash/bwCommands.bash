@@ -815,11 +815,13 @@ bw_project() { eval "$_funcParams2"
   while true; do
 
     if [[ -n $alreadyProjDir ]]; then
-      local cmdFileSpec="$alreadyProjDir/bin/cmd.bash"
+      local cmdFileSpec="$alreadyProjDir/bin/$bwProjShortcut.bash"
       if [[ -f "$cmdFileSpec" ]]; then
         fileSpec="$cmdFileSpec" _unsetBash ${sub_OPT_verbosity[1]}
       fi
     fi
+
+    bw_install git --silentIfAlreadyInstalled || { returnCode=$?; break; }
 
     while true; do
       if [[ -z $uninstall ]]; then
@@ -841,7 +843,24 @@ bw_project() { eval "$_funcParams2"
           fi
         fi
         _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; break; }
-        _exec "${sub_OPT[@]}" git clone git@$bwProjGitOrigin "$projDir" || { returnCode=$?; break; }
+        local cloneStderrFileSpec="/tmp/$bwProjShortcut.clone.stderr"
+        _exec "${sub_OPT[@]}" --cmdAsIs "git clone git@$bwProjGitOrigin \"$projDir\" 2> >(tee \"$cloneStderrFileSpec\" >&2)"; returnCode=$?
+        if [[ $returnCode -ne 0 ]]; then
+          if grep 'Permission denied (publickey)' "$cloneStderrFileSpec"; then
+            rm -f "$cloneStderrFileSpec"
+            local msg=
+            msg+="Похоже, Вы не настроили ssh-ключи для доступа к ${_ansiPrimaryLiteral}git@$bwProjGitOrigin${_ansiWarn}"$_nl
+            msg+="Воспользуйтесь командой ${_ansiCmd}bw github-keygen ${_ansiOutline}Имя-пользователя-на-github${_ansiWarn}"$_nl
+            msg+=
+            _warn "$msg"
+            return 1
+          else
+            rm -f "$cloneStderrFileSpec"
+            break
+          fi
+        else
+          rm -f "$cloneStderrFileSpec"
+        fi
         _exec "${sub_OPT[@]}" cd "$projDir"
         _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
         local funcName="_${FUNCNAME[0]}_$bwProjShortcut"
@@ -1272,7 +1291,7 @@ _bwProjectInfoHelper() {
 bw_installParams=(
   "${_verbosityParams[@]}"
   "--force/f"
-  # '!--uninstall/u'
+  "--silentIfAlreadyInstalled"
 )
 bw_installParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
 bw_install_cmd_name=Имя-приложения
@@ -1282,17 +1301,21 @@ bw_install() { eval "$_funcParams2"
 }
 
 _codeToInstallApp='
-  # uninstallTitle=Удаление
-  showResult=_showInstallResult codeHolder=_codeToInstallOrRunApp eval "$_evalCode"
+  local checkFuncName="_${FUNCNAME[0]}Check"
+  _funcExists $checkFuncName || return $(_throw "ожидает, что функция ${_ansiCmd}$checkFuncName${_ansiReset} будет определена")
+  if [[ -n $force ]] || ! $checkFuncName; then
+    echo "${_ansiWarn}Установка ${_ansiCmd}$name${_ansiReset} . . ."
+    showResult=_showInstallResult codeHolder=_codeToInstallOrRunApp eval "$_evalCode"
+  elif [[ -z $silentIfAlreadyInstalled ]]; then
+    _ok "${_ansiCmd}$name${_ansiOK} уже ${alreadyInstalled:-установлен}"
+  fi
 '
 _codeToRunApp='
-  # uninstallTitle=Останов
   showResult=_showRunResult codeHolder=_codeToInstallOrRunApp eval "$_evalCode"
 '
 _codeToInstallOrRunApp='
   codeHolder=_codeToInitSubOPT eval "$_evalCode"
   local returnCode=0
-  # [[ -z $uninstall ]] || return $(_err "$uninstallTitle ${_ansiPrimaryLiteral}name${_ansiErr} не поддерживается")
   _osSpecific || return $?
   $showResult
   return $returnCode
@@ -1317,10 +1340,13 @@ _osSpecific() {
 
 bw_install_brewParams=()
 bw_install_brew_description='Устанавливает Homebrew'
+bw_install_brewCondition='[[ $OSTYPE =~ ^darwin ]]'
 bw_install_brew() { eval "$_funcParams2"
-  name=git codeHolder=_codeToInstallApp eval "$_evalCode"
+  name=brew codeHolder=_codeToInstallApp eval "$_evalCode"
 }
-
+_bw_install_brewCheck() {
+  _silent which brew
+}
 _bw_install_brewDarwin() {
   _exec "${sub_OPT[@]}" /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 }
@@ -1334,11 +1360,17 @@ _bw_install_brewDarwin() {
 bw_install_gitParams=()
 bw_install_git_description='Устанавливает git'
 bw_install_git() { eval "$_funcParams2"
-  if [[ -z $force ]] && which git >/dev/null 2>&1; then
-    [[ $verbosity =~ ^(ok|all)$ ]] && _ok "${_ansiCmd}git${_ansiOK} уже установлен"
-  else
-    name=git codeHolder=_codeToInstallApp eval "$_evalCode"
-  fi
+  name=git codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_gitCheck() {
+  _silent which git
+}
+_bw_install_gitDarwin() {
+  while true; do
+    bw_install brew --silentIfAlreadyInstalled || { returnCode=$?; break; }
+    _exec brew install "${OPT_force[@]}" git || returnCode=$?
+    break
+  done
 }
 _bw_install_gitLinux() {
   _exec "${sub_OPT[@]}" --sudo apt install -y --force-yes git || returnCode=$?
@@ -1349,14 +1381,15 @@ _bw_install_gitLinux() {
 bw_install_githubKeygenParams=()
 bw_install_githubKeyGen_description='Устанавливает github-keygen (${_ansiUrl}https://github.com/dolmen/github-keygen${_ansiReset})'
 bw_install_githubKeygen() { eval "$_funcParams2"
-  if [[ -z $force && -f "$_bwDir/github-keygen" ]]; then
-    [[ $verbosity =~ ^(ok|all)$ ]] && _ok "${_ansiCmd}github-keygen${_ansiOK} уже установлен"
-  else
-    name=git codeHolder=_codeToInstallApp eval "$_evalCode"
-  fi
+  name=github-keygen codeHolder=_codeToInstallApp eval "$_evalCode"
 }
+_bw_install_githubKeygenCheck() {
+  [[ -d "$_bwDir/github-keygen" ]]
+}
+_githubKeygenPastedMarkFileSpec='/tmp/github-keygen-pasted'
 _bw_install_githubKeygenDarwin() {
   _exec git clone https://github.com/dolmen/github-keygen.git "$_bwDir/github-keygen"
+  perl -i.bak -pe '$_="$_        `touch \"'"$_githubKeygenPastedMarkFileSpec"'\"`; # patched by bw.bash\n" if /^\s*close \$clip;\s*$/' "$_bwDir/github-keygen/github-keygen"
 }
 _bw_install_githubKeygenLinux() {
   _bw_install_githubKeygenDarwin || return $?
@@ -1366,14 +1399,14 @@ _bw_install_githubKeygenLinux() {
 
 bw_githubKeygenParams=( 'username' )
 bw_githubKeygen() { eval "$_funcParams2"
-  bw_install_githubKeygen
-  local stdoutFileSpec="/tmp/github-keygen.stdout"
-  "$_bwDir/github-keygen" "$username" | tee "$stdoutFileSpec"
-  if [[ $(tail -n 1 "$stdoutFileSpec") =~ ^Paste ]]; then
-    read -p "Press enter to continue" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
+  bw_install github-keygen --silentIfAlreadyInstalled || return $?
+  _rm "$_githubKeygenPastedMarkFileSpec"
+  "$_bwDir/github-keygen/github-keygen" "$username" 
+  if [[ -f $_githubKeygenPastedMarkFileSpec ]]; then
+    _rm "$_githubKeygenPastedMarkFileSpec"
+    read -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} to open browser${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
     _osSpecific || return $?
   fi
-  
 }
 _githubKeysUrl='https://github.com/settings/keys'
 _bw_githubKeygenDarwin() {
@@ -1397,13 +1430,9 @@ _bw_githubKeygenLinux() {
 bw_install_dockerParams=()
 bw_install_docker_description="Устанавливает DockerCE ${_ansiUrl}https://www.docker.com/community-edition${_ansiReset}"
 bw_install_docker() { eval "$_funcParams2"
-  if [[ -z $force ]] || bw_install_dockerHelper; then
-    [[ $verbosity =~ ^(ok|all)$ ]] && _ok "${_ansiCmd}github-keygen${_ansiOK} уже установлен"
-  else
-    name=Docker codeHolder=_codeToInstallApp eval "$_evalCode"
-  fi
+  name=DockerCE codeHolder=_codeToInstallApp eval "$_evalCode"
 }
-bw_install_dockerHelper() {
+_bw_install_dockerCheck() {
   which docker >/dev/null 2>&1 && [[ $(docker --version | perl -e '$\=undef; $_=<STDIN>; printf("%d%04d", $1, $2) if m/(\dd+)/'\d) -ge 180003 ]]
 }
 _bw_install_dockerDarwin() {
@@ -1412,9 +1441,7 @@ _bw_install_dockerDarwin() {
     local -r applicationsPath='/Applications'
     local -r appDir="${applicationsPath}/${appName}.app"
     local -r dmgFileSpec=~/Downloads/Docker.dmg
-    if [[ -d $appDir && -z $force ]]; then
-      _warn "${_ansiCmd}$appName${_ansiWarn} уже установлен"
-    else
+    if [[ -n $force || ! -d $appDir ]]; then
       local -r sourceUrlOfDockerDmg='https://download.docker.com/mac/stable/Docker.dmg'
       _download -c etag -r 3 "$sourceUrlOfDockerDmg" "$dmgFileSpec" || retunCode=$?
       local -r volumePath="/Volumes/$(basename "$dmgFileSpec" .dmg)"
@@ -1425,6 +1452,8 @@ _bw_install_dockerDarwin() {
         _exec -v err cp -R "${volumePath}/${appName}.app" "$applicationsPath" || { returnCode=$?; break; }
         _exec -v none hdiutil detach "$volumePath"
       fi
+    elif [[ -z $silentIfAlreadyInstalled ]]; then
+      _ok "${_ansiCmd}$appName${_ansiOK} уже установлен"
     fi
     break
   done
@@ -1438,6 +1467,27 @@ _bw_install_dockerLinux() {
     _exec "${sub_OPT[@]}" --sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo apt-get update || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo apt-get install -y docker-ce || { returnCode=$?; break; }
+    _bw_install_dockerComposeLinux || { returnCode=$?; break; }
+    break
+  done
+}
+
+# =============================================================================
+
+bw_install_dockerComposeParams=()
+bw_install_dockerCompose_description="Устанавливает docker-compose"
+bw_install_dockerCompose() { eval "$_funcParams2"
+  bw_install docker --silentIfAlreadyInstalled || return $?
+  name=docker-compose codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_dockerComposeCheck() {
+  which docker-compose >/dev/null 2>&1 
+}
+_bw_install_dockerComposeDarwin() {
+  true
+}
+_bw_install_dockerComposeLinux() {
+  while true; do
     # https://docs.docker.com/compose/install/#install-compose
     _exec "${sub_OPT[@]}" --sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo chmod +x /usr/local/bin/docker-compose || { returnCode=$?; break; }

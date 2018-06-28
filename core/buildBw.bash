@@ -54,7 +54,7 @@ _buildBwHelper() {
   fi
   if \
     (git update-index -q --refresh && git diff-index --name-only HEAD -- | grep "$_bwFileName" >/dev/null 2>&1) && \
-    ! ( git diff "$_bwFileName" | grep '^+_bwVersion=' >/dev/null 2>&1)
+    ! ( git diff "$_bwFileName" | grep -E '^\+export\s+_bwVersion=' >/dev/null 2>&1)
   then
     _warn "${_ansiFileSpec}$_bwFileName${_ansiWarn} изменен. Необходимо изменить номер версии ${_ansiOutline}_bwVersion${_ansiWarn}"
   fi
