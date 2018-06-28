@@ -844,8 +844,7 @@ bw_project() { eval "$_funcParams2"
         fi
         _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; break; }
         local cloneStderrFileSpec="/tmp/$bwProjShortcut.clone.stderr"
-        _exec "${sub_OPT[@]}" --cmdAsIs "git clone git@$bwProjGitOrigin \"$projDir\" 2> >(tee \"$cloneStderrFileSpec\" >&2)"; returnCode=$?
-        if [[ $returnCode -ne 0 ]]; then
+        if ! git ls-remote -t "git@$bwProjGitOrigin" no-ref >"$cloneStderrFileSpec" 2>&1; then
           if grep 'Permission denied (publickey)' "$cloneStderrFileSpec"; then
             rm -f "$cloneStderrFileSpec"
             local msg=
@@ -855,13 +854,13 @@ bw_project() { eval "$_funcParams2"
             _warn "$msg"
             return 1
           else
+            cat "$cloneStderrFileSpec"
             rm -f "$cloneStderrFileSpec"
             break
           fi
-        else
-          rm -f "$cloneStderrFileSpec"
         fi
-        _exec "${sub_OPT[@]}" cd "$projDir"
+        _exec "${sub_OPT[@]}" --cmdAsIs "git clone git@$bwProjGitOrigin \"$projDir\"" || { returnCode=$?; break; }
+        _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
         local funcName="_${FUNCNAME[0]}_$bwProjShortcut"
         ! _funcExists $funcName || $funcName || { returnCode=$?; break; }
@@ -1052,6 +1051,8 @@ _initBwProjCmd() {
   eval ${bwProjShortcut}_docker_up_description=\"'Up'\''ит '$dockerImageTitle\"
   eval ${bwProjShortcut}'_docker_up() { eval "$_funcParams2"
     _isInDocker && return 4
+    
+    bw_install --silentIfAlreadyInstalled docker || return $?
 
     if [[ -z $noCheck ]]; then
       if [[ -z $(_docker image ls "$_'$bwProjShortcut'DockerImageName":latest -q) ]]; then
