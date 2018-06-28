@@ -851,7 +851,7 @@ bw_project() { eval "$_funcParams2"
             local msg=
             msg+="Похоже, Вы не настроили ssh-ключи для доступа к ${_ansiPrimaryLiteral}git@$bwProjGitOrigin${_ansiWarn}"$_nl
             msg+="Воспользуйтесь следующей командой:"$_nl
-            msg+="  ${_ansiCmd}bw github-keygen ${_ansiOutline}Имя-пользователя-на-github${_ansiWarn}"
+            msg+="    ${_ansiCmd}bw github-keygen ${_ansiOutline}Имя-пользователя-на-github${_ansiWarn}"
             _warn "$msg"
             return 1
           else
@@ -958,7 +958,9 @@ _initBwProjCmd() {
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
   eval _${bwProjShortcut}FileSpec="$fileSpec"
   eval _${bwProjShortcut}Dir="$(dirname "$fileSpec")/.."
+  local bwProjShortcutDirHolder="_${bwProjShortcut}Dir"
   export _${bwProjShortcut}DockerImageName="bazawinner/dev-${bwProjShortcut}"
+  export _${bwProjShortcut}DockerImageIdFileSpec="${!bwProjShortcutDirHolder}/docker/dev-${bwProjShortcut}.id"
   export _${bwProjShortcut}DockerContainerName="dev-${bwProjShortcut}"
 
   eval ${bwProjShortcut}_description=\"'Базовая утилита проекта ${_ansiPrimaryLiteral}'$bwProjName' ${_ansiUrl}'$bwProjGitOrigin'${_ansiReset}'\"
@@ -1004,14 +1006,26 @@ _initBwProjCmd() {
   eval ${bwProjShortcut}_dockerCondition=\""! _isInDocker"\"
   eval ${bwProjShortcut}'_docker() { eval "$_funcParams2"; }'
 
-  local dockerImageTitle='docker-образ ${_ansiCmd}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
-  eval ${bwProjShortcut}_docker_buildParams='( --pull --quiet/q )'
-  eval ${bwProjShortcut}_docker_build_pull_description=\"'Always attempt to pull a newer version of the image ${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName${_ansiReset}'\"
-  eval ${bwProjShortcut}_docker_build_quiet_description=\"'Suppress the build output and print image ID on success'\"
+  local dockerImageTitle='docker-образ ${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
+  verbosityDefault=all silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
+  eval ${bwProjShortcut}_docker_buildParams='( 
+    --pull 
+    "${_verbosityParams[@]}" 
+  )'
+  eval ${bwProjShortcut}_docker_build_pull_description=\"'Опция команды ${_ansiCmd}docker build${_ansiReset}: Always attempt to pull a newer version of the image'\"
   eval ${bwProjShortcut}_docker_build_description=\"'Собирает '$dockerImageTitle\"
   eval ${bwProjShortcut}'_docker_build() { eval "$_funcParams2"
     _isInDocker && return 4
-    docker build "${OPT_pull[@]}" "${OPT_quiet[@]}" -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker
+    if _docker "${OPT_verbosity[@]}" build "${OPT_pull[@]}" -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker; then
+      _docker inspect --format "{{json .Id}}" "$_'$bwProjShortcut'DockerImageName:latest" > "$_'$bwProjShortcut'DockerImageIdFileSpec"
+      if (git update-index -q --refresh && git diff-index --name-only HEAD -- | grep "$_bwFileName" >/dev/null 2>&1); then
+        local msg=
+        msg+="Обновлен '$dockerImageTitle'${_ansiWarn}"$_nl
+        msg+="${_ansiWarn}Не забудьте поместить его в docker-репозиторий командой"$_nl
+        msg+="    ${_ansiCmd}'$bwProjShortcut' docker push${_ansiReset}"
+        _warn "$msg"
+      fi
+    fi
   }'
 
   eval ${bwProjShortcut}_docker_pushParams='()'
@@ -1029,23 +1043,26 @@ _initBwProjCmd() {
     --https:'$_tcpPortDiap'=${bwProjDefaultHttps:-$bwProjGlobalDefaultHttps} 
     @--restart/r
     --force-recreate/f
-    --no-build/n
+    --no-check/n
     "${'$bwProjShortcut'_docker_upParamsAddon[@]}"
   )'
   eval ${bwProjShortcut}_docker_up_http_description=\"'http-порт по которому будет доступен контейнер'\"
   eval ${bwProjShortcut}_docker_up_https_description=\"'https-порт по которому будет доступен контейнер'\"
   eval ${bwProjShortcut}_docker_up_restart_description=\"'Restart'\''ит (${_ansiCmd}docker-compose restart${_ansiReset}) указанные сервисы'\"
-  eval ${bwProjShortcut}_docker_up_forceRecreate_description=\"'Up'\''ит указанные сервисы с опцией --force-recreate, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\"
-  eval ${bwProjShortcut}_docker_up_noBuild_description=\"'Don'\''t build an image, even if it'\''s missing'\"
+  eval ${bwProjShortcut}_docker_up_forceRecreate_description=\"'Up'\''ит указанные сервисы с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\"
+  eval ${bwProjShortcut}_docker_up_noCheck_description=\"'Не проверять актуальность образа ${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName'${_ansiReset}\"
   eval ${bwProjShortcut}_docker_up_description=\"'Up'\''ит '$dockerImageTitle\"
   eval ${bwProjShortcut}'_docker_up() { eval "$_funcParams2"
     _isInDocker && return 4
 
-    if [[ -z $noBuild ]]; then
-      _exec '$bwProjShortcut'_docker_build --pull --quiet; local returnCode=$?
-      if [[ $returnCode -ne 0 ]]; then
-        echo "${_ansiWarn}Попробуйте запустить с опцией ${_ansiCmd}--no-build"
-        return $returnCode
+    if [[ -z $noCheck ]]; then
+      if [[ -z $(_docker image ls "$_'$bwProjShortcut'DockerImageName":latest -q) ]]; then
+        _docker -v all image pull "$_'$bwProjShortcut'DockerImageName:latest" || return $?
+      fi
+      local tstImageIdFileSpec="/tmp/bgate.image.created"
+      _docker inspect --format "{{json .Id}}" "$_'$bwProjShortcut'DockerImageName:latest" > "$tstImageIdFileSpec"
+      if [[ ! -f "$_'$bwProjShortcut'DockerImageIdFileSpec" ]] || ! _silent cmp "$tstImageIdFileSpec" "$_'$bwProjShortcut'DockerImageIdFileSpec"; then
+        '$bwProjShortcut'_docker_build -v all --pull || return $?
       fi
     fi
 
@@ -1119,9 +1136,6 @@ _initBwProjCmd() {
     done
     echo "${containerNames[@]}"
   }'
-  # eval ${bwProjShortcut}_docker_bashParamsOpt='( 
-  #   --additionalDependencies "'$(_getSelfFileSpec)'"
-  # )'
   eval ${bwProjShortcut}_docker_bashParams='( 
     '\''containerName:( $(_'$bwProjShortcut'_dockerContainerNames) )='\'\$_${bwProjShortcut}DockerContainerName'
   )'
