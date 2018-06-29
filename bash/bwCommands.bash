@@ -951,7 +951,10 @@ _getDefaultXdebugRemoteHost() {
   fi
 }
 
-_initBwProjCmd() {
+_initBwProjCmdParams=(
+  '--no-http'
+)
+_initBwProjCmd() { eval "$_funcParams2"
   local fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
@@ -1051,7 +1054,7 @@ _initBwProjCmd() {
   eval ${bwProjShortcut}_docker_up_description=\"'Up'\''ит '$dockerImageTitle\"
   eval ${bwProjShortcut}'_docker_up() { eval "$_funcParams2"
     _isInDocker && return 4
-    
+
     bw_install --silentIfAlreadyInstalled docker || return $?
 
     if [[ -z $noCheck ]]; then
@@ -1118,11 +1121,32 @@ _initBwProjCmd() {
 
     local stderrFileSpec="/tmp/docker-compose.stderr"
     {
+      local needUseHttpTemplate=
       if [[ "${#restart[@]}" -eq 0 ]]; then
+        needUseHttpTemplate=true
+      else
+        local serviceNameToRestart; for serviceNameToRestart in "${restart[@]}"; do
+          if [[ $serviceNameToRestart =~ nginx ]]; then
+            needUseHttpTemplate=true
+            break
+          fi
+        done
+      fi
+      if [[ -n $needUseHttpTemplate ]]; then
+        local httpConfFileSpec="$_'$bwProjShortcut'Dir/docker/nginx/conf.d/http.conf"
+        local msg=$_nl
+        msg+="# ВНИМАНИЕ!!!"$_nl
+        msg+="#   Этот файл создан автоматически из \"$httpConfFileSpec.template\""$_nl
+        msg+="#   Поэтому изменения нужно вносить именно туда"
+        echo "$msg" > "$httpConfFileSpec"
+        _dockerHttp="$http" _dockerHttps="$https" perl -pe "s/\\\${([^}]+)}/\$ENV{\$1}/ge" "$httpConfFileSpec.template" >> "$httpConfFileSpec"
+      fi
+
+      if [[ "${#restart[@]}" -gt 0 ]]; then
+        _dockerCompose -v all restart "${restart[@]}"
+      else
         [[ -z $forceRecreate ]] || OPT_forceRecreate=( --force-recreate )
         _dockerCompose -v all up -d "${OPT_forceRecreate[@]}" --remove-orphans
-      else
-        _dockerCompose -v all restart "${restart[@]}"
       fi
     } 2> >(tee "$stderrFileSpec"); returnCode=$?
 
