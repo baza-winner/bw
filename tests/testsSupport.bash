@@ -20,6 +20,8 @@ bw_bashTestsHelper() {
   local -a fileNamesToProcess=()
   local -a funcsWithTests=();
 
+  export _bwdevDockerHttp="${_bwdevDockerHttp:-8998}"
+
   for _fileSpec in "$testsDirSpec/testsSupport.bash"; do
     fileNamesToProcess+=( $(basename "$_fileSpec") )
     funcNamesToPregen+=( $(_getFuncNamesOfScriptToUnset "$_fileSpec") )

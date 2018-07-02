@@ -154,6 +154,11 @@ _hasItem() {
   return $returnCode
 }
 
+_joinBy() { # https://stackoverflow.com/questions/1527049/join-elements-of-an-array
+  local IFS="$1" 
+  shift 
+  echo "$*"
+}
 # _hasSuffix() {
 #   _profileBegin
 #   local testItem="$1"; shift
@@ -409,4 +414,3 @@ _isInDocker() {
 }
 
 # =============================================================================
-

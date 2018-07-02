@@ -2433,7 +2433,95 @@ _parseFuncParams2TestFunc() { eval "$_codeToCallFuncParams2"
 
 # =============================================================================
 
+# _prepareCodeOfAutoHelp2TestFunc_description='$(_prepareCodeOfAutoHelp2TestFunc_descriptionHelper)'
+
 _prepareCodeOfAutoHelp2Tests=(
+  '
+    --return 0
+    --stdout "
+    ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
+    ${_ansiHeader}Описание:${_ansiReset} some
+    ${_ansiOutline}Опция${_ansiReset}
+      ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
+        $_help_description
+    ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
+    ${_ansiHeader}Описание:${_ansiReset} thing
+    ${_ansiOutline}Опция${_ansiReset}
+      ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
+        $_help_description
+    "
+    --stdoutParaWithIndent "0"
+    "true \
+      && eval \"_prepareCodeOfAutoHelp2TestFunc_descriptionHelper() { echo \\\$_prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar; } \" \
+      && _prepareCodeOfAutoHelp2TestFunc_description='\''\$(_prepareCodeOfAutoHelp2TestFunc_descriptionHelper)'\'' \
+      && _prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar=some \
+      && _prepareCodeOfAutoHelp2TestFunc -h \
+      && _prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar=thing \
+      && _prepareCodeOfAutoHelp2TestFunc -h \
+    "
+  '
+  '
+    --return 0
+    --stdout "
+    ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
+    ${_ansiHeader}Описание:${_ansiReset}
+      ${_ansiCmd}some${_ansiReset}
+    ${_ansiOutline}Опция${_ansiReset}
+      ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
+        $_help_description
+    ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
+    ${_ansiHeader}Описание:${_ansiReset}
+      ${_ansiCmd}thing${_ansiReset}
+    ${_ansiOutline}Опция${_ansiReset}
+      ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
+        $_help_description
+    "
+    --stdoutParaWithIndent "0"
+    "true \
+      && eval \"_prepareCodeOfAutoHelp2TestFunc_descriptionHelper() { echo \\\$_prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar; } \" \
+      && _prepareCodeOfAutoHelp2TestFunc_description='\''
+      ${_ansiCmd}\$(_prepareCodeOfAutoHelp2TestFunc_descriptionHelper)${_ansiReset}
+      '\'' \
+      && _prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar=some \
+      && _prepareCodeOfAutoHelp2TestFunc -h \
+      && _prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar=thing \
+      && _prepareCodeOfAutoHelp2TestFunc -h \
+    "
+  '
+  '
+    --return 0
+    --stdout "
+    ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
+    ${_ansiHeader}Описание:${_ansiReset}
+      first line
+      ${_ansiCmd}some${_ansiReset}
+      last line
+    ${_ansiOutline}Опция${_ansiReset}
+      ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
+        $_help_description
+    ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiReset} [${_ansiOutline}Опция${_ansiReset}]
+    ${_ansiHeader}Описание:${_ansiReset}
+      first line
+      ${_ansiCmd}thing${_ansiReset}
+      last line
+    ${_ansiOutline}Опция${_ansiReset}
+      ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
+        $_help_description
+    "
+    --stdoutParaWithIndent "0"
+    "true \
+      && eval \"_prepareCodeOfAutoHelp2TestFunc_descriptionHelper() { echo \\\$_prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar; } \" \
+      && _prepareCodeOfAutoHelp2TestFunc_description='\''
+      first line
+      ${_ansiCmd}\$(_prepareCodeOfAutoHelp2TestFunc_descriptionHelper)${_ansiReset}
+      last line
+      '\'' \
+      && _prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar=some \
+      && _prepareCodeOfAutoHelp2TestFunc -h \
+      && _prepareCodeOfAutoHelp2TestFunc_descriptionHelperVar=thing \
+      && _prepareCodeOfAutoHelp2TestFunc -h \
+    "
+  '
   '
     --return 0
     --stdout "
@@ -2498,7 +2586,7 @@ _prepareCodeOfAutoHelp2Tests=(
     "
     --stdoutParaWithIndent "0"
     --before "local _prepareCodeOfAutoHelp2TestFunc_b_name=\"Аргумент b\""
-    --before "local _prepareCodeOfAutoHelp2TestFunc_c_description=\"Однострочное \\\"описание\\\" аргумента\""
+    --before "local _prepareCodeOfAutoHelp2TestFunc_c_description='\''Однострочное \"описание\" аргумента'\''"
     --before "local _prepareCodeOfAutoHelp2TestFunc_d_description=\"Многострочное\${_nl}\\\"описание\\\"\${_nl}аргумента\""
     --before "local _prepareCodeOfAutoHelp2TestFunc_e_name=\"АргументE\""
     --before "local _prepareCodeOfAutoHelp2TestFunc_e_description=\"Однострочное \\\"описание\\\" аргумента\""
@@ -2507,6 +2595,7 @@ _prepareCodeOfAutoHelp2Tests=(
       && _prepareCodeOfAutoHelp2TestFunc -h \
     "
   '
+    # --before "_debugVar _prepareCodeOfAutoHelp2TestFunc_c_description"
   '
     --return 0
     --stdout "

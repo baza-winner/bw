@@ -1,146 +1,159 @@
-# bw
+# Описание
 
-Общая bash-инфраструктура [проектов baza-winner](https://github.com/baza-winner)
+bw -- общая bash-инфраструктура [проектов baza-winner](https://github.com/baza-winner)
 
-## Установка
+# Использование
 
-### macOS и Ubuntu
+[Установка команды bw](https://github.com/baza-winner/bw/wiki/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B-bw)
 
-  curl -o ~/bw.bash -L sob.ru/bw && . ~/bw.bash
+# Разработка
 
-или
+## Настройка окружения
 
-	curl -o ~/bw.bash -L goo.gl/uh4fBy && . ~/bw.bash
+1. [Установить команду bw](https://github.com/baza-winner/bw/wiki)
 
-или
+2. Развернуть рабочее место проекта bwdev
 
-  curl -o ~/bw.bash -L https://raw.githubusercontent.com/baza-winner/bw/master/bw.bash && . ~/bw.bash
+```
+bw project bwdev
+```
 
-[sob.ru/bw](https://sob.ru/bw) и (goo.gl/uh4fBy)[https://goo.gl/uh4fBy] - это редиректы на (https://raw.githubusercontent.com/baza-winner/bw/master/bw.bash)[https://raw.githubusercontent.com/baza-winner/bw/master/bw.bash]
+## Сборка
 
-### Для Windows 10
+### Только сборка
 
-То же, что для macOS и Ubuntu, но требуется предварительно [включить подсистему Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
+```
+bwdev build -m justBuild
+```
 
-## Использование
+### Cборка после тестирования
 
-TODO
+```
+bwdev build
+```
 
-## Разработка
+### Сборка после полного тестирования
 
-### Тестирование и cборка
+Некоторые тесты (такие как тесты для `_spinner`) при обычном тестировании не запускаются из-за частого ложно отрицательного срабатывания. 
 
-  . bw.bash -p - bw rm -y && . bw.bash bw bt
+```
+bwdev build -m testAll
+```
 
-или
+### Просмотр изменений после сборки
 
-  BW_PREGEN_ONLY=- . bw.bash bw rm -y && . bw.bash bw bt
+```
+diff tgz/Имя-файла Имя-файла
+```
 
-См. также [BW_PREGEN_ONLY](#bw_pregen_only)
+### Извлечение содержимого архива
 
+#### из bw.bash
 
-#### Полное тестирование
+```
+_mkDir -t tgz && _getBwTar bw.bash | tar xf - -C tgz && _getBwTar bw.bash tests | tar xf - -C tgz
+```
 
-  BW_TEST_ALL=true . bw.bash bw bt
+#### из old.bw.bash
 
-Некоторые тесты (такие как тесты для `_spinner`) при обычном тестировании не запускаются из-за частого ложно отрицательного срабатывания. Чтобы их запустить, используйте `BW_TEST_ALL=true`
+```
+_mkDir -t tgz && _getBwTar old.bw.bash | tar xf - -C tgz && _getBwTar old.bw.bash tests | tar xf - -C tgz
+```
 
-#### Больше отладочной информации
+## Тестирование
 
-  BW_VERBOSE=true . bw.bash -p - bw rm -y; BW_VERBOSE=true  . bw.bash bw bt
+```
+bwdev test
+bwdev test _rm
+bwdev test _rm 0..1
+bwdev test _rm 0..1 _mvFile 1
+```
 
-См. также [BW_VERBOSE](#bw_verbose)
+### Без прегенерации
 
-#### Профилирование кода
-
-  . bw.bash -p _profileInit && BW_PROFILE=true bw bt; _profileResult
-
-  . bw.bash -p _profileInit && BW_PROFILE=true _funcToProfile; _profileResult
-
-См. также [BW_PROFILE](#bw_profile)
-ВНИМАНИЕ! Для работы под MacOS профайлер требует установки coreutils (`brew install coreutils`): основан на вызове `$_gdate +%s%3N`
-
-#### Извлечение содержимого архива
-
-	_mkDir -t tgz && _getBwTar old.bw.bash | tar xf - -C tgz && _getBwTar old.bw.bash tests | tar xf - -C tgz
-
-#### Просмотр изменений после сборки
-
-	diff tgz/Имя-файла Имя-файла
+```
+bwdev test -n 
+bwdev test -n _rm
+bwdev test -n _rm 0..1
+bwdev test -n _rm 0..1 _mvFile 1
+```
 
 ### Цикл разработки функции
 
-  . bw.bash -p - bw bt Имя-Функции
+```
+bwdev -n test Имя-Функции
+```
+
+## Профилирование кода
+
+```
+bwdev profile 'bw bt _rm 0'
+bwdev profile bw bt _rm 0
+```
+
+## Установка для отладки в той же системе
+
+```
+curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && . bw.bash -u localhost:${_bwdevDockerHttp:-8998} bw bt
+```
 
 или
 
-  BW_PREGEN_ONLY=- . bw.bash bw bt Имя-Функции
-
-Пример:
-
-  . bw.bash -p - bw bt _prepareCodeToParseFuncParams2 _parseFuncParams2 _prepareCodeOfAutoHelp2
-
-См. также [BW_PREGEN_ONLY](#bw_pregen_only)
-
-### Сборка для отладки (минуя тесты)
-
-  . bw.bash -p - _buildBw
-
-или
-
-  BW_PREGEN_ONLY=- . bw.bash _buildBw
-
-См. также [BW_PREGEN_ONLY](#bw_pregen_only)
-
-### Установка для отладки в той же системе
-
-  curl -O localhost:8082/bw.bash && . bw.bash -u localhost:8082 bw bt
-
-или
-
-  curl -O localhost:8082/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8082 . bw.bash bw bt
+```
+curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:${_bwdevDockerHttp:-8998} . bw.bash bw bt
+```
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
 
-#### Проверка корректности удаления bw
+## Установка для отладки в гостевой системе под Parallels
 
-	 BW_VERBOSE=true . bw.bash -p - 'bw rm -y && . bw.bash bw bt && bw rm -y'; compgen -v
-
-### Отладка самобновления
-
-  curl -O localhost:8082/bw.bash && . bw.bash -u localhost:8082 'rm -rf .bw; . bw.bash bw bt'
+```
+curl -o ~/bw.bash -L 10.211.55.2:${_bwdevDockerHttp:-8998}/bw.bash && . ~/bw.bash -u 10.211.55.2:${_bwdevDockerHttp:-8998} bw bt
+```
 
 или
 
-  curl -O localhost:8082/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8082 . bw.bash 'rm -rf .bw; . bw.bash bw bt'
+```
+curl -o ~/10.211.55.2:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=10.211.55.2:${_bwdevDockerHttp:-8998} . ~/bw.bash bw bt
+```
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
 
-### Установка для отладки в гостевой системе под Parallels
+## Проверка корректности удаления bw
 
-  curl -o ~/bw.bash -L 10.211.55.2:8082/bw.bash && . ~/bw.bash -u 10.211.55.2:8082 bw bt
+```
+BW_VERBOSE=true . bw.bash -p - 'bw rm -y && . bw.bash bw bt && bw rm -y'; compgen -v
+```
+
+## Отладка самобновления
+
+```
+curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && . bw.bash -u localhost:${_bwdevDockerHttp:-8998} 'rm -rf .bw; . bw.bash bw bt'
+```
 
 или
 
-  curl -o ~/10.211.55.2:8082/bw.bash && BW_SELF_UPDATE_SOURCE=10.211.55.2:8082 . ~/bw.bash bw bt
+```
+curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:${_bwdevDockerHttp:-8998} . bw.bash 'rm -rf .bw; . bw.bash bw bt'
+```
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
 
-### Переменные среды и опции
+## Переменные среды и опции
 
-#### BW_PREGEN_ONLY
+### BW_PREGEN_ONLY
 
 `BW_PREGEN_ONLY` (опция `-p`) ограничивает прегенерацию вспомогательного кода (codeToParseOptions, codeToParseFuncParams, autoHelp, completion) и приводит к тому, что прегенерация происходит только для заданных функций (например, `BW_PREGEN_ONLY=bw\ bw_install` или `-p "bw bw_install"`). Значение `-` отменяет прегенерацию (но оставляет ранее сгенеренные файлы нетронутыми). К генерации вспомогательного кода для всех функций и формированию списка completion-функций заново (только в режиме разработки) приводит только пустое значение `BW_PREGEN_ONLY` (достаточно просто не упоминать `BW_PREGEN_ONLY` при вызове `. bw.bash`)
 
-#### BW_SELF_UPDATE_SOURCE
+### BW_SELF_UPDATE_SOURCE
 
 `BW_SELF_UPDATE_SOURCE` (опция `-u`) задает источник самообновления. По умолчанию `https://raw.githubusercontent.com/baza-winner/bw/master`.
 Значение `-` форсирует использование значения по умолчанию (необходимо, если bw.bash был установлен с иным источником самообновления, и надо переключить уже установленный bw.bash на источник по умолчанию, эта задача решается командой `. bw.bash -u -`)
 
-#### BW_VERBOSE
+### BW_VERBOSE
 
-`BW_VERBOSE` задает "говорливый" режим выполнения bw.bash. Выводит отладочную информацию
+`BW_VERBOSE` задает "говорливый" режим выполнения `bw.bash`. Выводит отладочную информацию
 
-#### BW_PROFILE
+### BW_PROFILE
 
-`BW_PROFILE=true` включает отработку _profileBegin/_profileEnd. Без этого _profileBegin/_profileEnd игнорируются
+`BW_PROFILE=true` включает обработку `_profileBegin`/`_profileEnd`. Без этого `_profileBegin`/`_profileEnd` игнорируются

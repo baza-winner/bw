@@ -28,11 +28,14 @@ _getPluralWord() { eval "$_funcParams2"
 }
 
 _substituteParamsOpt=(--canBeMoreParams)
-_substituteParams=( 'varName' )
+_substituteParams=( '--silent/s' 'varName' )
 _substitute() { eval "$_funcParams2"
   local typeOfVar; eval "$_codeToPrepareTypeOfVar"
   if [[ $typeOfVar == 'none' ]]; then
-    return $(_err "could not resolve type of ${_ansiOutline}$varName${_ansiErr}, first declare it with initial value")
+    if [[ -z $silent ]]; then
+      _throw "could not resolve type of ${_ansiOutline}$varName${_ansiErr}, first declare it with initial value"
+    fi
+    return 1
   else
     local idxVarName="${_substitutePrefix}${varName}${_substituteIdxSuffix}"
     if [[ -z ${!idxVarName} ]]; then

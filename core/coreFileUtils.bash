@@ -420,3 +420,64 @@ _which() { eval "$_funcParams2"
 }
 
 # =============================================================================
+
+_mkFileFromTemplateParams=(
+  '--no-notice/n'
+  '--commentPrefix/p=#'
+  '--templateFileSpec/t="$fileSpec.template"'
+  '@--varNames/v'
+  'fileSpec'
+)
+_mkFileFromTemplate() { 
+  local -a __substitutedVarNames=()
+  local __varName; for __varName in noNotice commentPrefix templateFileSpec varNames fileSpec; do
+    if _substitute -s "$__varName"; then
+      __substitutedVarNames+=( "$__varName" )
+    fi
+  done
+
+  eval "$_funcParams2"
+  if [[ -n $noNotice ]]; then
+    _rm "$fileSpec"
+  else
+    local __msg=$_nl
+    __msg+="$commentPrefix ВНИМАНИЕ!!!"$_nl
+    __msg+="$commentPrefix    Этот файл создан автоматически из \"$templateFileSpec\""$_nl
+    __msg+="$commentPrefix    Поэтому изменения нужно вносить именно туда"
+    echo "$__msg" > "$fileSpec"
+  fi
+
+  local __regexp=$(_joinBy '|' "${varNames[@]}")
+  local __regexp="s/\\\${(${__regexp:-[^\}]+})}/\$ENV{\$1}/ge"
+
+  local __fileSpec="$fileSpec"
+  local __templateFileSpec="$templateFileSpec"
+
+  local __varName; for __varName in "${__substitutedVarNames[@]}"; do
+    _restore "$__varName"
+  done
+  perl -pe "$__regexp" "$__templateFileSpec" >> "$__fileSpec"
+}
+
+# =============================================================================
+
+_realpathParams=( 
+  '--varName/v=' 
+   'path' 
+)
+_realpath() { eval "$_funcParams2"
+  if [[ ! -f "$_bwDir/core/realpath" ]]; then
+    gcc -o "$_bwDir/core/realpath" "$_bwDir/core/realpath.c"
+  fi
+  local result; result=$(realpath "$path"); local returnCode=$?
+  if [[ $returnCode -ne 0 ]]; then
+    return $returnCode
+  elif [[ -z $varName ]]; then
+    echo "$result"
+  else
+    printf -v "$varName" '%s' "$result"
+  fi
+}
+
+# =============================================================================
+

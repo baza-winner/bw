@@ -10,18 +10,25 @@ _buildBw() { eval "$_funcParams2"
   _inDir "$_bwDir" _buildBwHelper
 }
 _buildBwHelper() {
+  local excludeRegExp='_bwCreateServerHttpsCrtKey'
+  local bwProjShortcut; for bwProjShortcut in $(_getBwProjShortcuts); do
+    if [[ -n $excludeRegExp ]]; then
+      excludeRegExp+='|'
+    fi
+    excludeRegExp+="$bwProjShortcut"
+  done
+  excludeRegExp="generated/($excludeRegExp)"
   local fileNamesToMainArchive="\
-    $(_getFileListToBundle "*.bash" core) \
-    $(_getFileListToBundle "*.bash" bash) \
-    $(_getFileListToBundle "*$_codeBashExt" "$_generatedDir") \
-    $(_getFileListToBundle "*.completion.unset.bash" "$_generatedDir") \
-    docker-compose.yml $(find docker -type f | grep -v .DS_Store) \
+    $(find core bash -name "*.bash") \
+    $(find "$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash" | grep -v -E "$excludeRegExp") \
+    $(find docker -type f | grep -v .DS_Store) \
+    https/server.crt https/server.key https/rootCA.pem \
   "
   local fileNamesToTestsArchive="\
-    $(_getFileListToBundle "*.bash" tests ) \
-    $(_getFileListToBundle "*$_codeBashExt" "tests" "$_generatedDir") \
-    $(_getFileListToBundle "*.completion.unset.bash" "tests" "$_generatedDir") \
+    $(find tests -name "*.bash" -maxdepth 1) \
+    $(find "tests/$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash") \
   "
+
   local needBuild
   local -r bwOldFileName="old.$_bwFileName"
   (git show "HEAD:$_bwFileName" > "$bwOldFileName") || return $(_err "Не удалось извлечь ${_ansiFileSpec}$_bwFileName${_ansiErr} в ${_ansiFileSpec}$bwOldFileName")
@@ -58,33 +65,6 @@ _buildBwHelper() {
   then
     _warn "${_ansiFileSpec}$_bwFileName${_ansiWarn} изменен. Необходимо изменить номер версии ${_ansiOutline}_bwVersion${_ansiWarn}"
   fi
-}
-_getFileListToBundleParamsOpt=(--canBeMoreParams)
-_getFileListToBundleParams=( '--deep/d' 'fileMask' 'dirName' )
-_getFileListToBundle() { eval "$_funcParams2"
-  local dirToFind="$dirName"
-  local dirForRegexp="$dirName"
-  while [[ $# -gt 0 ]]; do
-    [[ -n $1 ]] || continue
-    dirToFind+="/$1"
-    dirForRegexp+="\/$1"
-    shift
-  done
-  local regexp
-  if [[ -n $deep ]]; then
-    regexp="$dirForRegexp\/.+"
-  else
-    regexp="$dirForRegexp\/[^\/]+"
-  fi
-  local excludeRegExp=
-  local bwProjShortcut; for bwProjShortcut in $(_getBwProjShortcuts); do
-    if [[ -n $excludeRegExp ]]; then
-      excludeRegExp+='|'
-    fi
-    excludeRegExp+="$bwProjShortcut"
-  done
-  excludeRegExp="generated/($excludeRegExp)"
-  find "$_bwDir/$dirToFind" -type f -name "$fileMask" | grep -v -E "$excludeRegExp" | perl -ne "print $_ if s/^.*\/($regexp)\$/\$1/"
 }
 
 # =============================================================================

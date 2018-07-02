@@ -2,6 +2,7 @@
 *.sublime-workspace
 generated/
 core/ansiSupport.bash
+core/realpath
 old.bw.bash
 tgz/
 tmp/
@@ -9,3 +10,4 @@ tmp2/
 red/
 libRedRT*
 github-keygen
+README.html

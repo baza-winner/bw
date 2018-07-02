@@ -1551,7 +1551,6 @@ _prepareParamDescription2() {
 }
 
 _prepareDescriptionOutput2() {
-  local quote=
   local description=
   if [[ -n ${!descriptionHolder} || -n $descriptionPrefix ]]; then
     [[ -z ${!descriptionHolder} ]] || description+="${!descriptionHolder}"
@@ -1560,7 +1559,6 @@ _prepareDescriptionOutput2() {
     [[ $descriptionOf != - ]] \
       && description+='${_ansiErr} '"$descriptionOf"
     description+='${_ansiReset}'
-    quote='--quote double'
   fi
   __descriptionOutput=
   local __returnCode=0
@@ -1578,7 +1576,7 @@ _prepareDescriptionOutput2() {
       descriptionPrefix=
     fi
 
-    _prepareCodeForDescriptionOutput2 $quote $alwaysMultiline $indentBase $upperFirstOfPrefixWhenMultiline $__indentLevel "$description" "$descriptionPrefix"; local __returnCode=$?;
+    _prepareCodeForDescriptionOutput2 $alwaysMultiline $indentBase $upperFirstOfPrefixWhenMultiline $__indentLevel "$description" "$descriptionPrefix"; local __returnCode=$?;
     if [[ $__returnCode -eq 0 ]]; then
       if [[ -z $alwaysMultiline ]]; then
         __descriptionOutput+=$_helpCodeLineSuffix
@@ -1588,6 +1586,7 @@ _prepareDescriptionOutput2() {
     elif [[ $__returnCode -eq 2 ]]; then
       if [[ -n $codeForDescriptionOutput ]]; then
         __descriptionOutput=" $codeForDescriptionOutput"$_helpCodeLineSuffix
+        # [[ $descriptionHolder == _prepareCodeOfAutoHelp2TestFunc_c_description ]] && _debugVar __descriptionOutput
         alwaysMultiline=--alwaysMultiline
       fi
       __returnCode=0
@@ -1661,7 +1660,6 @@ _prepareCodeForDescriptionOutput2Params=(
   '--alwaysMultiline'
   '--indentBase:1..=4'
   '--upperFirstOfPrefixWhenMultiline'
-  '--quote:(double single)=single'
   'indentLevel:0..'
   'description:?'
   'descriptionPrefix:?'
@@ -1671,25 +1669,14 @@ _prepareCodeForDescriptionOutput2() { eval "$_funcParams2"
     || return $(_ownThrow "ожидает ${_ansiOutline}descriptionPrefix${_ansiErr} (${_ansiPrimaryLiteral}${!descriptionPrefix}${_ansiErr}) без перевода строки")
   [[ -n $description || -n $descriptionPrefix ]] || return 0
   if [[ -z $alwaysMultiline && ! $description =~ "$_nl" ]]; then
-    if [[ $quote == single ]]; then
-      if [[ -n $descriptionPrefix && -n $description ]]; then
-        # codeForDescriptionOutput='"'\'$descriptionPrefix' '$description\''"'
-        codeForDescriptionOutput=$(_quotedArgs --strip "$descriptionPrefix $description")
-      elif [[ -n $descriptionPrefix ]]; then
-        # codeForDescriptionOutput='"'\'$descriptionPrefix''\''"'
-        codeForDescriptionOutput=$(_quotedArgs --strip "$descriptionPrefix")
-      else
-        # codeForDescriptionOutput='"'\'$description\''"'
-        codeForDescriptionOutput=$(_quotedArgs --strip "$description")
-      fi
+    description="${description//\"/\\\"}"
+    descriptionPrefix="${descriptionPrefix//\"/\\\"}"
+    if [[ -n $descriptionPrefix && -n $description ]]; then
+      codeForDescriptionOutput="$descriptionPrefix $description"
+    elif [[ -n $descriptionPrefix ]]; then
+      codeForDescriptionOutput="$descriptionPrefix"
     else
-      if [[ -n $descriptionPrefix && -n $description ]]; then
-        codeForDescriptionOutput="$descriptionPrefix $description"
-      elif [[ -n $descriptionPrefix ]]; then
-        codeForDescriptionOutput="$descriptionPrefix"
-      else
-        codeForDescriptionOutput="$description"
-      fi
+      codeForDescriptionOutput="$description"
     fi
     return 2
   fi
@@ -1719,25 +1706,14 @@ _prepareCodeForDescriptionOutput2() { eval "$_funcParams2"
     $_=<>;
     s/^(?:[ ]*\n)*(\s*)/initFirstIndent($1)/e;
     s/\s+$//;
-    $exitCode=0;'
-  [[ -z $alwaysMultiline ]] && perlCode+='
-    if ( !/\n/ ) {
-      s/^/ /;
-      $exitCode=2;
-    } else {'
-  perlCode+='
-      s/\\/\\\\/g;
-      s/"/\\"/g;
-      s/\n(\s*)/";@{[replaceTo($1)]}/g;
-      s/^/@{[replaceTo()]}/;
-      s/$/";/;'
-  [[ -z $alwaysMultiline ]] && perlCode+='
-    }'
-  perlCode+='
+    s/\\/\\\\/g;
+    s/"/\\"/g;
+    s/\n(\s*)/"@{[replaceTo($1)]}/g;
+    s/^/@{[replaceTo()]}/;
+    s/$/"/;
     print;
-    exit($exitCode);
   '
-  codeForDescriptionOutput=$(echo "${description}" | perl -C -e "$perlCode")
+  codeForDescriptionOutput=$(echo "$description" | perl -C -e "$perlCode")
 }
 
 # =============================================================================

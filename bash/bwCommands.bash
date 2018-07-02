@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# shellcheck disable=SC2154,SC1090,SC2016
+true
+
 # =============================================================================
 
 _resetBash
@@ -49,31 +54,30 @@ _unsetBash() {
 }
 # =============================================================================
 
-_codeToInitSubOPT='
+export _codeToInitSubOPT='
   local -a sub_OPT_silent=( "${OPT_silent[@]}" )
   local -a sub_OPT_verbosity=()
-  [[ $verbosity =~ ^(none|dry|all)$ ]] \
-    && local -a sub_OPT_verbosity=( "${OPT_verbosity[@]}" ) \
-    || local -a sub_OPT_verbosity=( --verbosity err )
+  if [[ $verbosity =~ ^(none|dry|all)$ ]]; then
+    sub_OPT_verbosity=( "${OPT_verbosity[@]}" )
+  else
+    sub_OPT_verbosity=( --verbosity err )
+  fi
   local -a sub_OPT=( "${sub_OPT_silent[@]}" "${sub_OPT_verbosity[@]}" )
 '
 verbosityDefault=allBrief silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
 
 # =============================================================================
 
-bwParams=(
-  # "${_verbosityParams[@]}"
-)
-bwParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
-bw_cmd_name=Команда
-bw_description='Базовая утилита проектов baza-winner'
+export bwParams=()
+export bwParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
+export bw_description='Базовая утилита проектов baza-winner'
 bw() { eval "$_funcParams2"
 }
 
 # =============================================================================
 
-bw_versionParams=()
-bw_version_description='Выводит номер версии bw.bash'
+export bw_versionParams=()
+export bw_version_description='Выводит номер версии bw.bash'
 bw_version() { eval "$_funcParams2"
   local suffix="$BW_SELF_UPDATE_SOURCE"
   [[ -z $suffix ]] || suffix="@$suffix"
@@ -82,9 +86,9 @@ bw_version() { eval "$_funcParams2"
 
 # =============================================================================
 
-bw_updateParams=( '--remove/r' )
-bw_update_remove_description="Удалить прегенеренные файлы перед обновлением"
-bw_update_description="Обновляет bw"
+export bw_updateParams=( '--remove/r' )
+export bw_update_remove_description="Удалить прегенеренные файлы перед обновлением"
+export bw_update_description="Обновляет bw"
 bw_update() { eval "$_funcParams2"
   if [[ -n $remove ]]; then
     "$_bwFileSpec" rm -y
@@ -95,16 +99,16 @@ bw_update() { eval "$_funcParams2"
 
 # =============================================================================
 
-bw_removeParams=(
+export bw_removeParams=(
   --yes/y --completely/c
   "${_verbosityParams[@]}"
 )
-bw_remove_yes_description='подтверждает удаление'
-bw_remove_completely_description='удаляет не только все связанное с $_bwFileName, но и сам bw.bash'
-bw_remove_silent_description='подавляет сообщение об успешном удалении'
-bw_removeShortcuts=( 'rm' )
-bw_remove_description="удаляет $_bwFileName и все связанное с ним"
-bw_removeCondition='[[ -z $_isBwDevelopInherited ]]'
+export bw_remove_yes_description='подтверждает удаление'
+export bw_remove_completely_description='удаляет не только все связанное с $_bwFileName, но и сам bw.bash'
+export bw_remove_silent_description='подавляет сообщение об успешном удалении'
+export bw_removeShortcuts=( 'rm' )
+export bw_remove_description="удаляет $_bwFileName и все связанное с ним"
+export bw_removeCondition='[[ -z $_isBwDevelopInherited ]]'
 bw_remove() { eval "$_funcParams2"
   if [[ -z $yes ]]; then
     _warn "Чтобы произвести удаление, запустите эту команду с опцией ${_ansiCmd}--yes${_ansiWarn} или ${_ansiCmd}-y"
@@ -118,8 +122,8 @@ bw_remove() { eval "$_funcParams2"
 
     local dirSpec; for dirSpec in "$_bwDir/tests/$_generatedDir" "$_bwDir/$_generatedDir" ; do
       [[ -d $dirSpec ]] || continue
-      for _fileSpec in "$dirSpec/"*$_unsetFileExt; do
-        if _hasItem $(basename "$_fileSpec" "$_unsetFileExt") "${_bw_removeRequiredFiles[@]}"; then
+      for _fileSpec in "$dirSpec/"*"$_unsetFileExt"; do
+        if _hasItem "$(basename "$_fileSpec" "$_unsetFileExt")" "${_bw_removeRequiredFiles[@]}"; then
           _mvFile "${sub_OPT[@]}" "$_fileSpec" "/tmp/$(basename "$_fileSpec")"
         else
           codeHolder=_codeSource eval "$_evalCode"
@@ -154,36 +158,37 @@ bw_remove() { eval "$_funcParams2"
       fi
     fi
 
-    local -a varNamesToUnset=( $( compgen -v | perl -ne "print if /^(_specialVars|$_specialVars)\$/" ) )
+    # local -a varNamesToUnset=( $( compgen -v | perl -ne "print if /^(_specialVars|$_specialVars)\$/" ) )
+    local -a varNamesToUnset; mapfile -t varNamesToUnset < <(compgen -v | perl -ne "print if /^(_specialVars|$_specialVars)\$/")
     if [[ $verbosity == dry ]]; then
       for _fileSpec in "${_bw_removeRequiredFiles[@]}"; do
         _fileSpec="/tmp/$_fileSpec$_unsetFileExt"
         echo "${_ansiCmd}. \"$_fileSpec\"${_ansiReset}"
         codeHolder=_codeSource eval "$_evalCode"
       done
-      echo "${_ansiCmd}unset ${varNamesToUnset[@]}${_ansiReset}"
+      echo "${_ansiCmd}unset ${varNamesToUnset[*]}${_ansiReset}"
     else
       for _fileSpec in "${_bw_removeRequiredFiles[@]}"; do
         _fileSpec="/tmp/$_fileSpec$_unsetFileExt"
         codeHolder=_codeSource eval "$_evalCode"
       done
-      unset ${varNamesToUnset[@]}
+      unset "${varNamesToUnset[@]}"
     fi
   fi
 }
 
 # =============================================================================
 
-_testPlurals='тест теста тестов'
-_funcPlurals='функция функции функций'
+export _testPlurals='тест теста тестов'
+export _funcPlurals='функция функции функций'
 
-bw_bashTests_list_description='
+export bw_bashTests_list_description='
   Выводит список bash-функций, для которых существуют тесты,
   с указанием количества тестов для каждой функции
 '
-bw_bashTests_noTiming_description='Отключает замер времени работы тестов'
-bw_bashTests_args_name=Аргумент
-bw_bashTests_args_description='!
+export bw_bashTests_noTiming_description='Отключает замер времени работы тестов'
+export bw_bashTests_args_name=Аргумент
+export bw_bashTests_args_description='!
   ${_ansiOutline}Значение${_ansiReset} - ${_ansiOutline}Имя-Функции${_ansiReset} или ${_ansiOutline}Диапазон-Номеров${_ansiReset}
   ${_ansiOutline}Имя-Функции${_ansiReset} -- имя функции, для которой надо прогнать тест
   ${_ansiOutline}Диапазон-Номеров${_ansiReset} -- диапазон номеров тестов, которые нужно прогнать
@@ -198,11 +203,11 @@ bw_bashTests_args_description='!
   Если ${_ansiOutline}Диапазон-Номеров${_ansiReset} не задан, то прогоняет все тесты для функции ${_ansiOutline}Имя-Функции${_ansiReset}
   Если список ${_ansiOutline}Аргументов${_ansiReset} пуст, то прогоняет все существующие тесты
 '
-bw_bashTestsShortcuts=( 'bt' )
-bw_bashTestsParams=( '--noTiming' '--list' '@..args' )
-bw_bashTestsParamsOpt=( --canBeMixedOptionsAndArgs )
-bw_bashTestsSuppressInheritedOptionVarNames=( 'verbosity' 'silent' )
-bw_bashTests_description='запускает тесты bash-функций'
+export bw_bashTestsShortcuts=( 'bt' )
+export bw_bashTestsParams=( '--noTiming' '--list' '@..args' )
+export bw_bashTestsParamsOpt=( --canBeMixedOptionsAndArgs )
+export bw_bashTestsSuppressInheritedOptionVarNames=( 'verbosity' 'silent' )
+export bw_bashTests_description='запускает тесты bash-функций'
 bw_bashTests() {
   eval "$_funcParams2"
   local testsDirSpec="$_bwDir/tests"
@@ -210,12 +215,14 @@ bw_bashTests() {
     local testsSupportFileSpec="$testsDirSpec/testsSupport.bash"
     # if [[ ! -f $testsSupportFileSpec || $_bwFileSpec -nt $testsSupportFileSpec ]]; then
     _getBwTar "$_bwFileSpec" tests | tar xf - -C "$_bwDir" \
-      || return $(_err "Не удалось извлечь архив tests из ${_ansiFileSpec}$_bwFileSpec${_ansiErr} в ${_ansiFileSpec}$testsDirSpec")
+      || { _err "Не удалось извлечь архив tests из ${_ansiFileSpec}$_bwFileSpec${_ansiErr} в ${_ansiFileSpec}$testsDirSpec"; return $?; }
     # fi
     _fileSpec="$testsSupportFileSpec" codeHolder=_codeSource eval "$_evalCode"
   fi
   _runInBackground bw_bashTestsHelper
 }
+
+# shellcheck disable=SC2034
 bw_bashTestsComplete() {
   if [[ $__varName == args ]]; then
     local -a funcsWithTests=(); _prepareFuncWithTests
@@ -232,15 +239,18 @@ _prepareFuncWithTests() {
   done
   local -a allFuncsWithTests=()
   _prepareAllFuncWithTests
-  local funcTestFor; for funcTestFor in ${allFuncsWithTests[@]}; do
+  local funcTestFor; for funcTestFor in "${allFuncsWithTests[@]}"; do
     local conditionHolder="${funcTestFor}TestsCondition"
     [[ -z ${!conditionHolder} ]] || eval "${!conditionHolder}" || continue
     funcsWithTests+=( "$funcTestFor" )
   done
 }
 _prepareAllFuncWithTests() {
-  [[ -n $_isBwDevelop ]] && _rmCache \
-    || varName=allFuncsWithTests codeHolder=_codeToUseCache eval "$_evalCode"
+  if [[ -n $_isBwDevelop ]]; then
+    _rmCache
+  else
+    varName=allFuncsWithTests codeHolder=_codeToUseCache eval "$_evalCode"
+  fi
   _prepareAllFuncWithTestsHelper
   _saveToCache allFuncsWithTests
 }
@@ -261,12 +271,12 @@ _prepareAllFuncWithTestsHelper() {
 
 # =============================================================================
 
-bw_setParams=(
+export bw_setParams=(
   '!--uninstall/u'
 )
-bw_setParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
-bw_set_cmd_name=Имя-настройки
-bw_set_description='включает/отключает настройку'
+export bw_setParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
+export bw_set_cmd_name=Имя-настройки
+export bw_set_description='включает/отключает настройку'
 bw_set() { eval "$_funcParams2"
 }
 
@@ -286,18 +296,19 @@ _initEnumAnsi
 
 _enumSpace='(before after both none -)'
 _enumOnOff='(yes no on off -)'
-_ps_user_defaultAnsi='Green'
-_ps_ptcd_defaultAnsi='White'
-_ps_cd_defaultAnsi='White'
+export _ps_user_defaultAnsi='Green'
+export _ps_ptcd_defaultAnsi='White'
+export _ps_cd_defaultAnsi='White'
 
 _preparePromptParams=()
 _preparePromptParams() {
   varName=_preparePromptParams codeHolder=_codeToUseCache eval "$_evalCode"
-  local _psItems=( $( compgen -v | perl -ne "print if s/^_ps_([^_]+)\$/\$1/" ) )
-  local _preparePromptParams_itemsDefaults=( user ptcd git error separator )
-  local _preparePromptParams_itemsEnum=( ${_preparePromptParams_itemsDefaults[@]} )
-  local _preparePromptParamsAddon=()
-  local _psItem; for _psItem in ${_psItems[@]}; do
+  # local -a _psItems=( $( compgen -v | perl -ne "print if s/^_ps_([^_]+)\$/\$1/" ) )
+  local -a _psItems; mapfile -t _psItems < <( compgen -v | perl -ne "print if s/^_ps_([^_]+)\$/\$1/" )
+  local -a _preparePromptParams_itemsDefaults=( user ptcd git error separator )
+  local -a _preparePromptParams_itemsEnum=( "${_preparePromptParams_itemsDefaults[@]}" )
+  local -a _preparePromptParamsAddon=()
+  local _psItem; for _psItem in "${_psItems[@]}"; do
     local defaultAnsiHolder="_ps_${_psItem}_defaultAnsi"
     local defaultValueHolder="_ps_${_psItem}"
     local defaultAnsi="Reset"
@@ -305,17 +316,17 @@ _preparePromptParams() {
       defaultAnsi="${!defaultAnsiHolder}"
     fi
     _preparePromptParamsAddon+=(
-      "--${_psItem}=$(_quotedArgs --strip ${!defaultValueHolder})"
+      "--${_psItem}=$(_quotedArgs --strip "${!defaultValueHolder}")"
       "--${_psItem}Space:${_enumSpace}=after"
       "@1..--${_psItem}Ansi:${_enumAnsi}=( $defaultAnsi )"
     )
-    if ! _hasItem ${_psItem} "${_preparePromptParams_itemsEnum[@]}"; then
-      _preparePromptParams_itemsEnum+=( ${_psItem} )
+    if ! _hasItem "$_psItem" "${_preparePromptParams_itemsEnum[@]}"; then
+      _preparePromptParams_itemsEnum+=( "$_psItem" )
     fi
   done
 
   _preparePromptParams=(
-    "@1..--items:( $( echo ${_preparePromptParams_itemsEnum[@]} ) )=( $( echo ${_preparePromptParams_itemsDefaults[@]} ) )"
+    "@1..--items:( ${_preparePromptParams_itemsEnum[*]} )=( ${_preparePromptParams_itemsDefaults[*]} )"
 
     "${_preparePromptParamsAddon[@]}"
 
@@ -361,30 +372,32 @@ _preparePromptParams() {
   )
   _saveToCache '_preparePromptParams'
 }
+
+# shellcheck disable=SC2034
 _preparePrompt() {
   eval "$_funcParams2"
-  local userAnsiAsString=
-  local optVarName; for optVarName in ${__optVarNames[@]}; do
+  # local userAnsiAsString=
+  local optVarName; for optVarName in "${__optVarNames[@]}"; do
     if [[ ${optVarName:$(( ${#optVarName} - 4 ))} == Ansi  ]]; then
       local item=${optVarName:0:$(( ${#optVarName} - 4 ))}
       dstVarName=ansiSrc srcVarName=${item}Ansi eval "$_codeToInitLocalCopyOfArray"
       local ansiAsStringHolder=${item}AnsiAsString
-      local $ansiAsStringHolder=
-      local ansi; for ansi in ${ansiSrc[@]}; do
+      eval local "$ansiAsStringHolder"=
+      local ansi; for ansi in "${ansiSrc[@]}"; do
         local ansiHolder="_ansi${ansi}"
-        eval $ansiAsStringHolder+=\"\${!ansiHolder}\"
+        eval "$ansiAsStringHolder"+=\"\$\{!ansiHolder\}\"
       done
-      local ansiAsString=${!ansiAsStringHolder}
+      # local ansiAsString="${!ansiAsStringHolder}"
     fi
   done
 
   prompt=
   local -a groups=(error git)
   local -a realItems=()
-  local item; for item in ${items[@]}; do
-    local group; for group in ${groups[@]}; do
-      if [[ ${!group} != off && ${!group} != - && $item == $group ]]; then
-        eval local $group=true
+  local item; for item in "${items[@]}"; do
+    local group; for group in "${groups[@]}"; do
+      if [[ ${!group} != off && ${!group} != - && $item == "$group" ]]; then
+        eval local "$group"=true
       fi
     done
     if [[ $item == error ]]; then
@@ -392,26 +405,26 @@ _preparePrompt() {
     elif [[ $item == git ]]; then
       realItems+=( gitPrefix gitBranch gitDirty gitSuffix )
     else
-      realItems+=( $item )
+      realItems+=( "$item" )
     fi
   done
-  local group; for group in ${groups[@]}; do
+  local group; for group in "${groups[@]}"; do
     if [[ ${!group} == true ]]; then
       prompt+='`_psPrepare_'$group'`'
     fi
   done
-  local item; for item in ${realItems[@]}; do
+  local item; for item in "${realItems[@]}"; do
     if ! [[ ${!item} == - || ${!item} == off || ${!item} == no ]]; then
       local spaceHolder="${item}Space"
-      local foundGroup= group; for group in ${groups[@]}; do
-        if [[ ${item:0:${#group}} == $group ]]; then
+      local foundGroup='' group; for group in "${groups[@]}"; do
+        if [[ ${item:0:${#group}} == "$group" ]]; then
           foundGroup=$group
           break
         fi
       done
       local psFuncName="_ps_$item"
       local promptItem=
-      if _funcExists $psFuncName; then
+      if _funcExists "$psFuncName"; then
         if [[ -z $foundGroup || ${!foundGroup} == true ]]; then
           promptItem='`'$psFuncName' '${!spaceHolder}'`'
         fi
@@ -443,24 +456,22 @@ _preparePrompt() {
 
 # =============================================================================
 
-bw_set_promptParams=()
+export bw_set_promptParams=()
 bw_set_promptParams() {
   _preparePromptParams
-  bw_set_promptParams=(
-    "${_preparePromptParams[@]}"
-  )
+  bw_set_promptParams=( "${_preparePromptParams[@]}" )
 }
-bw_set_prompt_description='Настраивает prompt'
+export bw_set_prompt_description='Настраивает prompt'
 bw_set_prompt() { eval "$_funcParams2"
   local -a supportModules=( git ansi ps )
   local supportFileNameSuffix='Support.bash'
   local newFileSpec="$_profileFileSpec.new"
 
   if [[ -n $uninstall ]]; then
-    local dstVarName=PS1
-    local srcVarName=OLD_PS1
+    # local dstVarName=PS1
+    # local srcVarName=OLD_PS1
     local -a fileNames=()
-    local moduleName; for moduleName in ${supportModules[@]}; do
+    local moduleName; for moduleName in "${supportModules[@]}"; do
       fileNames+=( "${moduleName}${supportFileNameSuffix}")
     done
     local -a fileSpecs=()
@@ -476,18 +487,18 @@ bw_set_prompt() { eval "$_funcParams2"
     fi
   else
 
-    local -a subOPT=(); local optVarName; for optVarName in ${__OPTVarNames[@]}; do
+    local -a subOPT=(); local optVarName; for optVarName in "${__OPTVarNames[@]}"; do
       [[ $optVarName != OPT_uninstall && $optVarName != OPT_help ]] || continue
       dstVarName=OPT srcVarName=$optVarName eval "$_codeToInitLocalCopyOfArray"
-      subOPT+=( ${OPT[@]} )
+      subOPT+=( "${OPT[@]}" )
     done
     local prompt; _preparePrompt "${subOPT[@]}" || return $?
-    local profileLine="export PS1="\'"$prompt"\'
-    local moduleName; for moduleName in ${supportModules[@]}; do
+    local profileLine="export PS1=\\'$prompt\\'"
+    local moduleName; for moduleName in "${supportModules[@]}"; do
       profileLine+="; . ~/${moduleName}${supportFileNameSuffix}"
     done
 
-    local moduleName; for moduleName in ${supportModules[@]}; do
+    local moduleName; for moduleName in "${supportModules[@]}"; do
       local fileName="${moduleName}${supportFileNameSuffix}"
       local srcFileSpec="$_bwDir/core/$fileName"
       local dstFileSpec="$HOME/$fileName"
@@ -515,7 +526,7 @@ bw_set_prompt() { eval "$_funcParams2"
   fi
 }
 
-_codeToPrepareDescriptionsOf_bw_set_prompt='
+export _codeToPrepareDescriptionsOf_bw_set_prompt='
   local bw_set_prompt_items_description="Задает состав и порядок элементов bash-prompt"
   local _psItems=( $( compgen -v | perl -ne "print if s/^_ps_([^_]+)\$/\$1/" ) )
   local howToTurnOff="Любое из значений ${_ansiSecondaryLiteral}off no -${_ansiReset} \"выключает\" элемент"
@@ -577,8 +588,8 @@ _codeToPrepareDescriptionsOf_bw_set_prompt='
 
 # =============================================================================
 
-bw_set_viParams=()
-bw_set_vi_description='Включает vi-режим для readline'
+export bw_set_viParams=()
+export bw_set_vi_description='Включает vi-режим для readline'
 bw_set_vi() { eval "$_funcParams2"
   local -a opts
   if [[ -n $uninstall ]]; then
@@ -590,8 +601,8 @@ bw_set_vi() { eval "$_funcParams2"
     opts=(
       --editing-mode vi
       --show-mode-in-prompt on
-      --vi-cmd-mode-string "\1${_ansiDarkGray}\2CMD \1${_ansiReset}\2"
-      --vi-ins-mode-string "\1${_ansiMagenta}${_ansiBold}\2INS \1${_ansiReset}\2"
+      --vi-cmd-mode-string "\\1${_ansiDarkGray}\\2CMD \\1${_ansiReset}\\2"
+      --vi-ins-mode-string "\\1${_ansiMagenta}${_ansiBold}\\2INS \\1${_ansiReset}\\2"
     )
   fi
   _inputrcSetProps "${opts[@]}"
@@ -609,17 +620,21 @@ _showResult() {
       fi
       msg+="$title"
       msg+="${_ansiOK} "
-      [[ -z $uninstall ]] \
-        && msg+="$didInstall" \
-        || msg+="$didUninstall"
+      if [[ -z $uninstall ]]; then
+        msg+="$didInstall"
+      else
+        msg+="$didUninstall"
+      fi
       _ok "$msg"
     fi
   else
     if [[ $verbosity =~ ^(err|all.*)$ ]]; then
       msg="Не удалось "
-      [[ -z $uninstall ]] \
-        && msg+="$toInstall" \
-        || msg+="$toUninstall"
+      if [[ -z $uninstall ]]; then
+        msg+="$toInstall"
+      else
+        msg+="$toUninstall"
+      fi
       if [[ -n $titlePrefix ]]; then
         msg+=" ${_ansiErr}$(_lowerFirst "$titlePrefix")"
       fi
@@ -636,18 +651,25 @@ _showProjectResult() {
 }
 
 _showInstallResult() {
-  titlePrefix= didInstall="установлен" didUninstall="удален" toInstall="установить" toUninstall="полностью удалить" _showResult
+  titlePrefix='' didInstall="установлен" didUninstall="удален" toInstall="установить" toUninstall="полностью удалить" _showResult
 }
 
 _showRunResult() {
-  titlePrefix= didInstall="запущен" didUninstall="остановлен" toInstall="запустить" toUninstall="остановить" _showResult
+  titlePrefix='' didInstall="запущен" didUninstall="остановлен" toInstall="запустить" toUninstall="остановить" _showResult
 }
 
 # =============================================================================
 
 _bwProjDefs=(
-  'mls' '
-    --gitOrigin github.com:baza-winner/mls-pm.git
+  # 'mls' '
+  #   --gitOrigin github.com:baza-winner/mls-pm.git
+  # '
+  'bwdev' '
+    --gitOrigin github.com:baza-winner/bw.git
+    --branch master
+    --http 8998
+    --https 8999
+    --no-docker-build
   '
   'bgate' '
     --gitOrigin github.com:baza-winner/billing-gate.git
@@ -655,12 +677,12 @@ _bwProjDefs=(
     --http 8086
     --https 8087
   '
-  'bcore' '
-    --gitOrigin github.com:baza-winner/billingcore.git
-  '
-  'crm' '
-    --gitOrigin git@github.com:baza-winner/crm.git
-  '
+  # 'bcore' '
+  #   --gitOrigin github.com:baza-winner/billingcore.git
+  # '
+  # 'crm' '
+  #   --gitOrigin git@github.com:baza-winner/crm.git
+  # '
 )
 
 _bw_project_bgate() {
@@ -680,26 +702,18 @@ _getBwProjShortcuts() {
 
 _prepareBwProjVars() {
   [[ -n $bwProjShortcut ]] \
-    || return $(_throw "ожидает, что переменная ${_ansiOutline}bwProjShortcut${_ansiErr} будет иметь непустое значение")
+    || { _throw "ожидает, что переменная ${_ansiOutline}bwProjShortcut${_ansiErr} будет иметь непустое значение"; return $?; }
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
-    if [[ $bwProjShortcut == ${_bwProjDefs[$i]} ]]; then
+    if [[ $bwProjShortcut == "${_bwProjDefs[$i]}" ]]; then
       codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
       break
     fi
   done
   [[ -n $bwProjGitOrigin ]] \
-    || return $(_err "not found gitOrigin for bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle")
+    || { _throw "not found gitOrigin for bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle"; return $?; }
 }
 
-_codeToDeclareLocalBwProjVars='
-  local bwProjGitOrigin="" 
-  local bwProjDefaultHttp=""
-  local bwProjDefaultHttps="" 
-  local bwProjDefaultBranch="" 
-  local bwProjName=""
-  local bwProjTitle=""
-'
-_codeToCallPrepareBwProjVarsHelper='
+export _codeToCallPrepareBwProjVarsHelper='
   bwProjShortcut="${_bwProjDefs[$i]}"
   local codeToGetBwProjDef
   _prepareBwProjVarsHelper ${_bwProjDefs[$((i + 1))]} || return $?
@@ -708,23 +722,36 @@ _codeToCallPrepareBwProjVarsHelper='
   bwProjTitle="$bwProjName ($bwProjShortcut)"
 '
 
-_tcpPortDiap='1024..65535'
-_prepareBwProjVarsHelperParams=(
+export _tcpPortDiap='1024..65535'
+export _prepareBwProjVarsHelperParams=(
   '--gitOrigin='
-  '--http:'$_tcpPortDiap
-  '--https:'$_tcpPortDiap
+  "--http:$_tcpPortDiap"
+  "--https:$_tcpPortDiap"
   '--branch='
+  '--no-docker-build'
 )
+export _codeToDeclareLocalBwProjVars='
+  local bwProjName=""
+  local bwProjTitle=""
+  local bwProjGitOrigin="" 
+  local bwProjDefaultHttp=""
+  local bwProjDefaultHttps="" 
+  local bwProjDefaultBranch="" 
+  local bwProjNoDockerBuild=""
+'
+
+# shellcheck disable=SC2034
 _prepareBwProjVarsHelper() { eval "$_funcParams2"
   codeToGetBwProjDef='
     bwProjGitOrigin='$(_quotedArgs "$gitOrigin")'
     bwProjDefaultHttp='$(_quotedArgs "$http")'
     bwProjDefaultHttps='$(_quotedArgs "$https")'
     bwProjDefaultBranch='$(_quotedArgs "$branch")'
+    bwProjNoDockerBuild='$(_quotedArgs "$noDockerBuild")'
   '
 }
 
-_codeToPrepareDescriptionsOf_bw_project='
+export _codeToPrepareDescriptionsOf_bw_project='
   eval "$_codeToDeclareLocalBwProjVars"
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
     local bwProjShortcut="${_bwProjDefs[$i]}"
@@ -733,23 +760,23 @@ _codeToPrepareDescriptionsOf_bw_project='
   done
 '
 
-bw_projectParams=()
+export bw_projectParams=()
 bw_projectParams() {
   varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
   local -a bwProjShortcuts=()
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
     local bwProjShortcut="${_bwProjDefs[$i]}"
     if [[ ! $bwProjShortcut =~ $_isValidVarNameRegExp ]]; then
-      return $(_err "bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle${_ansiErr} $_mustBeValidVarName")
+      _throw "bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle${_ansiErr} $_mustBeValidVarName"; return $?
     elif _hasItem "$bwProjShortcut" "${bwProjShortcuts[@]}"; then
-      return $(_err "Duplicate bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle")
+      _throw "Duplicate bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle"; return $?
     else
       bwProjShortcuts+=( "$bwProjShortcut" )
     fi
   done
-  local bwProjShortcutsAsString="${bwProjShortcuts[@]}"
+  local bwProjShortcutsAsString="${bwProjShortcuts[*]}"
   verbosityDefault=allBrief silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
-  bw_projectParams=(
+  export bw_projectParams=(
     '!--uninstall/u'
     '!--force/f'
     '--branch='
@@ -760,33 +787,33 @@ bw_projectParams() {
   _saveToCache "${FUNCNAME[0]}"
 }
 
-bwProjGlobalDefaultBranch=develop
-bwProjGlobalDefaultHttp=8080
-bwProjGlobalDefaultHttps=8081
-bw_projectParamsOpt=(--canBeMixedOptionsAndArgs)
-_uninstall_description='Включить режим удаления'
-_force_description='Игнорировать факт предыдущей установки'
-bw_project_bwProjShortcut_name='Сокращенное-имя-проекта'
-bw_project_projDir_name='Папка-проекта'
-bw_project_projDir_description='
+export bwProjGlobalDefaultBranch=develop
+# bwProjGlobalDefaultHttp=8080
+# bwProjGlobalDefaultHttps=8081
+export bw_projectParamsOpt=(--canBeMixedOptionsAndArgs)
+export _uninstall_description='Включить режим удаления'
+export _force_description='Игнорировать факт предыдущей установки'
+export bw_project_bwProjShortcut_name='Сокращенное-имя-проекта'
+export bw_project_projDir_name='Папка-проекта'
+export bw_project_projDir_description='
   Папка, куда будет установлен проект
   По умолчанию, в качестве папки проекта используется ${_ansiCmd}~/${_ansiOutline}Полное-имя-проекта${_ansiReset}
   ${_ansiOutline}Полное-имя-проекта${_ansiReset} - имя проекта на github'\''е
 '
-bw_project_branch_description='Ветка, на которую следует переключиться после установки проекта'
-bw_project_description='Разворачивает/удаляет проект'
-bw_projectShortcuts=( 'p' )
+export bw_project_branch_description='Ветка, на которую следует переключиться после установки проекта'
+export bw_project_description='Разворачивает/удаляет проект'
+export bw_projectShortcuts=( 'p' )
 bw_project() { eval "$_funcParams2"
   codeHolder=_codeToInitSubOPT eval "$_evalCode"
 
-  [[ -n $bwProjShortcut ]] || return $(_err "Не указано ${_ansiOutline}$bw_project_bwProjShortcut_description")
+  # [[ -n $bwProjShortcut ]] || return $(_err "Не указано ${_ansiOutline}$bw_project_bwProjShortcut_description")
   
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
   [[ -n $branch ]] || branch=${bwProjDefaultBranch:-$bwProjGlobalDefaultBranch}
 
-  local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$bwProjShortcut\.bash\"?\s*$"
+  local profileLineRegExp="^\\s*\\.\\s+\"?(.+?)\\/bin\\/$bwProjShortcut\\.bash\"?\\s*$"
   local alreadyProjDir=
-    ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1 || alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
+    ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1 || alreadyProjDir=$(perl -ne "print \$1 if /$profileLineRegExp/" "$_profileFileSpec" | tail -n 1)
   if [[ -n $alreadyProjDir ]]; then
     if [[ -n $uninstall ]]; then
       projDir="$alreadyProjDir"
@@ -817,7 +844,7 @@ bw_project() { eval "$_funcParams2"
     if [[ -n $alreadyProjDir ]]; then
       local cmdFileSpec="$alreadyProjDir/bin/$bwProjShortcut.bash"
       if [[ -f "$cmdFileSpec" ]]; then
-        fileSpec="$cmdFileSpec" _unsetBash ${sub_OPT_verbosity[1]}
+        fileSpec="$cmdFileSpec" _unsetBash "${sub_OPT_verbosity[1]}"
       fi
     fi
 
@@ -863,7 +890,7 @@ bw_project() { eval "$_funcParams2"
         _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
         local funcName="_${FUNCNAME[0]}_$bwProjShortcut"
-        ! _funcExists $funcName || $funcName || { returnCode=$?; break; }
+        ! _funcExists "$funcName" || $funcName || { returnCode=$?; break; }
       else
         if [[ -d $projDir ]]; then
           local gitDirty=
@@ -888,7 +915,7 @@ bw_project() { eval "$_funcParams2"
           [[ $(cd "$projDir" && pwd) != $(pwd) ]] || needChangePwd=true
           _exec "${sub_OPT[@]}" rm -rf "$projDir" \
             || { returnCode=$?; break; }
-          [[ -z $needChangePwd ]] || _exec "${sub_OPT[@]}" cd $HOME \
+          [[ -z $needChangePwd ]] || _exec "${sub_OPT[@]}" cd "$HOME" \
             || { returnCode=$?; break; }
           fi
       fi
@@ -896,8 +923,8 @@ bw_project() { eval "$_funcParams2"
     done; [[ $returnCode -eq 0 ]] || break
 
     local cmdFileSpec="$projDir/bin/${bwProjShortcut}.bash"
-    local profileLine=". $(_quotedArgs "$cmdFileSpec")"
-    _setAtBashProfile ${OPT_uninstall[@]} "$profileLine" "$profileLineRegExp"
+    local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec")"
+    _setAtBashProfile "${OPT_uninstall[@]}" "$profileLine" "$profileLineRegExp"
     break
   done
 
@@ -913,25 +940,26 @@ bw_project() { eval "$_funcParams2"
     else
       _exec "${sub_OPT[@]}" . "$cmdFileSpec"
       local -a __completions=();
-      local -a funcNames=( $(_getFuncNamesOfScriptToUnset "$cmdFileSpec") )
+      # local -a funcNames=( $(_getFuncNamesOfScriptToUnset "$cmdFileSpec") )
+      local -a funcNames; mapfile -t funcNames < <( _getFuncNamesOfScriptToUnset "$cmdFileSpec" )
       _exec "${sub_OPT[@]}" _pregen "${funcNames[@]}"
       for _fileSpec in "${__completions[@]}"; do
         _exec "${sub_OPT[@]}" . "$_fileSpec"
       done
       [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$bwProjShortcut${_ansiReset}"
-      _exec "${sub_OPT[@]}" --treatAsOK 3 $bwProjShortcut -?
+      _exec "${sub_OPT[@]}" --treatAsOK 3 "$bwProjShortcut" -?
     fi
   fi
 
   return $returnCode
 }
 
-_prepareGitDirtyParams=( 'originSuffix' )
+export _prepareGitDirtyParams=( 'originSuffix' )
 _prepareGitDirty() { eval "$_funcParams2"
   local returnCode=0
   gitDirty=
-  local gitOrigin=$(_gitOrigin)
-  if [[ ${#gitOrigin} -ge ${#originSuffix} && $originSuffix == ${gitOrigin:$(( ${#gitOrigin} - ${#originSuffix} ))} ]]; then
+  local gitOrigin; gitOrigin=$(_gitOrigin)
+  if [[ ${#gitOrigin} -ge ${#originSuffix} && $originSuffix == "${gitOrigin:$(( ${#gitOrigin} - ${#originSuffix} ))}" ]]; then
     gitDirty=$(_gitDirty)
   else
     returnCode=1
@@ -951,36 +979,34 @@ _getDefaultXdebugRemoteHost() {
   fi
 }
 
-_initBwProjCmdParams=(
-  '--no-http'
-)
+# shellcheck disable=SC2034
 _initBwProjCmd() { eval "$_funcParams2"
-  local fileSpec=$(_getSelfFileSpec 2)
-  local bwProjShortcut=$(basename "$fileSpec" .bash)
+  local fileSpec; fileSpec=$(_getSelfFileSpec 2)
+  local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
-  eval _${bwProjShortcut}FileSpec="$fileSpec"
-  eval _${bwProjShortcut}Dir="$(dirname "$fileSpec")/.."
+  eval "_$bwProjShortcut"'FileSpec="$fileSpec"'
   local bwProjShortcutDirHolder="_${bwProjShortcut}Dir"
-  export _${bwProjShortcut}DockerImageName="bazawinner/dev-${bwProjShortcut}"
-  export _${bwProjShortcut}DockerImageIdFileSpec="${!bwProjShortcutDirHolder}/docker/dev-${bwProjShortcut}.id"
-  export _${bwProjShortcut}DockerContainerName="dev-${bwProjShortcut}"
+  _realpath -v "$bwProjShortcutDirHolder" "$(dirname "$fileSpec")/.."
+  eval export "_$bwProjShortcut"'DockerImageName="bazawinner/dev-$bwProjShortcut"'
+  eval export "_$bwProjShortcut"'DockerImageIdFileSpec="${!bwProjShortcutDirHolder}/docker/dev-$bwProjShortcut.id"'
+  eval export "_$bwProjShortcut"'DockerContainerName="dev-$bwProjShortcut"'
 
-  eval ${bwProjShortcut}_description=\"'Базовая утилита проекта ${_ansiPrimaryLiteral}'$bwProjName' ${_ansiUrl}'$bwProjGitOrigin'${_ansiReset}'\"
-  eval ${bwProjShortcut}Params='()'
-  eval ${bwProjShortcut}ParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
-  eval $bwProjShortcut'() { eval "$_funcParams2"; }'
+  eval "$bwProjShortcut"'_description='\''Базовая утилита проекта ${_ansiPrimaryLiteral}'"$bwProjName"' ${_ansiUrl}$bwProjGitOrigin${_ansiReset}'\'
+  eval "$bwProjShortcut"'Params=()'
+  eval "$bwProjShortcut"'ParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)'
+  eval "$bwProjShortcut()"' { eval "$_funcParams2"; }'
 
-  eval ${bwProjShortcut}_updateParams='( "--howDeep/d:(pregen source)" )'
-  eval ${bwProjShortcut}_update_howDeep_description=\"'Определяет "глубину" обновления'\"
-  eval ${bwProjShortcut}_update_howDeep_pregen_description=\"'только completion'\"
-  eval ${bwProjShortcut}_update_howDeep_source_description=\"'source и completion'\"
-  eval ${bwProjShortcut}_update_description=\"'Обновляет команду ${_ansiCmd}'$bwProjShortcut'${_ansiReset}'\"
-  eval $bwProjShortcut'_update() { eval "$_funcParams2"
+  eval "$bwProjShortcut"'_updateParams=( "--howDeep/d:(pregen source)" )'
+  eval "$bwProjShortcut"'_update_howDeep_description='\''Определяет "глубину" обновления'\'
+  eval "$bwProjShortcut"'_update_howDeep_pregen_description='\''только completion'\'
+  eval "$bwProjShortcut"'_update_howDeep_source_description='\''source и completion'\'
+  eval "$bwProjShortcut"'_update_description='\''Обновляет команду ${_ansiCmd}'"$bwProjShortcut"'${_ansiReset}'\'
+  eval "$bwProjShortcut"'_update() { eval "$_funcParams2"
     local sourceFileSpec
     if _isInDocker; then
       sourceFileSpec=~/proj/docker/bin/cmd.bash
     else
-      sourceFileSpec="$_'$bwProjShortcut'FileSpec"
+      sourceFileSpec="$_'"$bwProjShortcut"'FileSpec"
     fi
     if [[ -z $howDeep ]]; then
       local sourceFileName=$(basename "$sourceFileSpec")
@@ -993,214 +1019,313 @@ _initBwProjCmd() { eval "$_funcParams2"
     if [[ $howDeep == source ]]; then
       . "$_bwFileSpec" -p -
       . "$sourceFileSpec"
-      rm -f "$_bwDir/generated/"'$bwProjShortcut'*
+      rm -f "$_bwDir/generated/"'"$bwProjShortcut"'*
     fi
     local -a __completions=()
-    _pregen $(compgen -c '$bwProjShortcut')
+    _pregen $(compgen -c '"$bwProjShortcut"')
     for fileSpec in "${__completions[@]}"; do
       . "$fileSpec"
     done
   }'
 
-  eval ${bwProjShortcut}_dockerParams='()'
-  eval ${bwProjShortcut}_dockerParamsOpt='(--canBeMixedOptionsAndArgs --isCommandWrapper)'
-  eval ${bwProjShortcut}_docker_description=\"'Docker-операции'\"
-  eval ${bwProjShortcut}_dockerCondition=\""! _isInDocker"\"
-  eval ${bwProjShortcut}'_docker() { eval "$_funcParams2"; }'
+  eval "$bwProjShortcut"'_dockerParams=()'
+  eval "$bwProjShortcut"'_dockerParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)'
+  eval "$bwProjShortcut"'_docker_description='\''docker-операции'\'
+  eval "$bwProjShortcut"'_dockerCondition='\''! _isInDocker'\'
+  eval "$bwProjShortcut"'_docker() { eval "$_funcParams2"; }'
 
-  local dockerImageTitle='docker-образ ${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
-  verbosityDefault=all silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
-  eval ${bwProjShortcut}_docker_buildParams='( 
-    "${_verbosityParams[@]}" 
-  )'
-  eval ${bwProjShortcut}_docker_build_description=\"'Собирает '$dockerImageTitle\"
-  eval ${bwProjShortcut}'_docker_build() { eval "$_funcParams2"
-    _isInDocker && return 4
-    if _docker "${OPT_verbosity[@]}" build --pull -t "$_'$bwProjShortcut'DockerImageName" $_'$bwProjShortcut'Dir/docker; then
-      _docker inspect --format "{{json .Id}}" "$_'$bwProjShortcut'DockerImageName:latest" > "$_'$bwProjShortcut'DockerImageIdFileSpec"
-      if (git update-index -q --refresh && git diff-index --name-only HEAD -- | grep "$_bwFileName" >/dev/null 2>&1); then
-        local msg=
-        msg+="Обновлен '$dockerImageTitle'${_ansiWarn}"$_nl
-        msg+="${_ansiWarn}Не забудьте поместить его в docker-репозиторий командой"$_nl
-        msg+="    ${_ansiCmd}'$bwProjShortcut' docker push${_ansiReset}"
-        _warn "$msg"
+  local codeToPrepareOPTForDockerUp=
+  local -a dockerUpParams=()
+  if [[ -n $bwProjNoDockerBuild ]]; then
+    unset "$bwProjShortcut"_docker_buildParams "$bwProjShortcut"_docker_build_description
+    unset -f "$bwProjShortcut"_docker_build
+    unset "$bwProjShortcut"_docker_pushParams "$bwProjShortcut"_docker_push_description
+    unset -f "$bwProjShortcut"'_docker_push'
+    unset "$bwProjShortcut"_docker_up_noCheck_description
+  else
+    dockerUpParams+=( '--no-check/n' )
+    local dockerImageTitle='${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
+    eval "$bwProjShortcut"'_docker_up_noCheck_description='\''Не проверять актуальность docker-образа '\''"$dockerImageTitle"'
+    codeToPrepareOPTForDockerUp='
+      OPT+=( 
+        --dockerImageName "$_'$bwProjShortcut'DockerImageName"
+        --dockerImageIdFileSpec "$_'$bwProjShortcut'DockerImageIdFileSpec"
+        --bwProjName "'"$bwProjName"'"
+      )
+    '
+    eval "$bwProjShortcut"'_docker_buildParams=()'
+    eval "$bwProjShortcut"'_docker_build_description='\''Собирает docker-образ '\''"$dockerImageTitle"'
+    eval "$bwProjShortcut"'_docker_build() { eval "$_funcParams2"
+      _isInDocker && return 4
+      if _docker -v all build --pull -t "$_'"$bwProjShortcut"'DockerImageName" $_'"$bwProjShortcut"'Dir/docker; then
+        _docker inspect --format "{{json .Id}}" "$_'"$bwProjShortcut"'DockerImageName:latest" > "$_'"$bwProjShortcut"'DockerImageIdFileSpec"
+        if (git update-index -q --refresh && git diff-index --name-only HEAD -- | grep "$_bwFileName" >/dev/null 2>&1); then
+          local msg=
+          msg+="Обновлен docker-образ '"$dockerImageTitle"'${_ansiWarn}"$_nl
+          msg+="${_ansiWarn}Не забудьте поместить его в docker-репозиторий командой"$_nl
+          msg+="    ${_ansiCmd}'"$bwProjShortcut"' docker push${_ansiReset}"
+          _warn "$msg"
+        fi
       fi
-    fi
-  }'
+    }'
 
-  eval ${bwProjShortcut}_docker_pushParams='()'
-  eval ${bwProjShortcut}_docker_push_description=\"'Push'\''ит '$dockerImageTitle\"
-  eval ${bwProjShortcut}'_docker_push() { eval "$_funcParams2"
-    _isInDocker && return 4
-    docker push "$_'$bwProjShortcut'DockerImageName"
-  }'
+    eval "$bwProjShortcut"'_docker_pushParams=()'
+    eval "$bwProjShortcut"'_docker_push_description='\''Push-ит docker-образ '\''"$dockerImageTitle"'
+    eval "$bwProjShortcut"'_docker_push() { eval "$_funcParams2"
+      _isInDocker && return 4
+      docker push "$_'"$bwProjShortcut"'DockerImageName"
+    }'
+  fi
 
-  eval ${bwProjShortcut}_docker_upParamsOpt='(
-    --additionalDependencies "$_'$bwProjShortcut'Dir/bin/'$bwProjShortcut'.bash"
+  if [[ -n $bwProjDefaultHttp ]]; then
+    codeToPrepareOPTForDockerUp+='
+      OPT+=( ${OPT_http[@]} )
+    '
+  fi
+  if [[ -n $bwProjDefaultHttps ]]; then
+    codeToPrepareOPTForDockerUp+='
+      OPT+=( ${OPT_https[@]} )
+    '
+  fi
+
+  if [[ -z $bwProjDefaultHttp ]]; then
+    unset "$bwProjShortcut"_docker_up_http_description
+  else
+    dockerUpParams+=( "--http:$_tcpPortDiap=$bwProjDefaultHttp" )
+    eval "$bwProjShortcut"'_docker_up_http_description='\''http-порт по которому будет доступен контейнер'\'
+  fi
+  if [[ -z $bwProjDefaultHttps ]]; then
+    unset "$bwProjShortcut"_docker_up_https_description
+  else
+    dockerUpParams+=( "--https:$_tcpPortDiap=$bwProjDefaultHttps" )
+    eval "$bwProjShortcut"'_docker_up_https_description='\''https-порт по которому будет доступен контейнер'\'
+  fi
+
+  eval "$bwProjShortcut"'_docker_upParamsOpt=(
+    --additionalDependencies "$_'"$bwProjShortcut"'Dir/bin/'"$bwProjShortcut"'.bash"
   )'
-  eval ${bwProjShortcut}_docker_upParams='( 
-    --http:'$_tcpPortDiap'=${bwProjDefaultHttp:-$bwProjGlobalDefaultHttp} 
-    --https:'$_tcpPortDiap'=${bwProjDefaultHttps:-$bwProjGlobalDefaultHttps} 
-    @--restart/r
+
+  local dockerComposeFileSpec="$_${bwProjShortcut}Dir/docker/docker-compose.yml"
+
+  eval "$bwProjShortcut"'_docker_upParams=( 
+    "${dockerUpParams[@]}"
+    '\''@--restart/r:( $(_'"$bwProjShortcut"'_dockerServiceNames) )'\''
     --force-recreate/f
-    --no-check/n
-    "${'$bwProjShortcut'_docker_upParamsAddon[@]}"
+    "${'"$bwProjShortcut"'_docker_upParamsAddon[@]}"
   )'
-  eval ${bwProjShortcut}_docker_up_http_description=\"'http-порт по которому будет доступен контейнер'\"
-  eval ${bwProjShortcut}_docker_up_https_description=\"'https-порт по которому будет доступен контейнер'\"
-  eval ${bwProjShortcut}_docker_up_restart_description=\"'Restart'\''ит (${_ansiCmd}docker-compose restart${_ansiReset}) указанные сервисы'\"
-  eval ${bwProjShortcut}_docker_up_forceRecreate_description=\"'Up'\''ит указанные сервисы с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\"
-  eval ${bwProjShortcut}_docker_up_noCheck_description=\"'Не проверять актуальность образа ${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName'${_ansiReset}\"
-  eval ${bwProjShortcut}_docker_up_description=\"'Up'\''ит '$dockerImageTitle\"
-  eval ${bwProjShortcut}'_docker_up() { eval "$_funcParams2"
+  eval "$bwProjShortcut"'_docker_up_restart_description='\''Останавливает и поднимает указанные сервисы'\'
+  eval "$bwProjShortcut"'_docker_up_forceRecreate_description='\''Поднимает ${_ansiPrimaryLiteral}$(_'"$bwProjShortcut"'_dockerContainerNames)${_ansiReset} с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\'
+  eval "$bwProjShortcut"'_docker_up_description='\''Поднимает (up) ${_ansiPrimaryLiteral}$(_'"$bwProjShortcut"'_dockerContainerNames)${_ansiReset}'\'
+  eval "$bwProjShortcut"'_docker_up() { eval "$_funcParams2"
     _isInDocker && return 4
 
-    bw_install --silentIfAlreadyInstalled docker || return $?
+    local -a OPT=( 
+      "${OPT_noCheck[@]}" 
+      "${OPT_forceRecreate[@]}" 
+      "${OPT_restart[@]}" 
+      --dockerContainerName "$_'"$bwProjShortcut"'DockerContainerName"
+      --bwProjShortcut "'"$bwProjShortcut"'"
+    )
 
-    if [[ -z $noCheck ]]; then
-      if [[ -z $(_docker image ls "$_'$bwProjShortcut'DockerImageName":latest -q) ]]; then
-        _docker -v all image pull "$_'$bwProjShortcut'DockerImageName:latest" || return $?
-      fi
-      local tstImageIdFileSpec="/tmp/bgate.image.id"
-      _docker inspect --format "{{json .Id}}" "$_'$bwProjShortcut'DockerImageName:latest" > "$tstImageIdFileSpec"
-      if [[ ! -f "$_'$bwProjShortcut'DockerImageIdFileSpec" ]] || ! _silent cmp "$tstImageIdFileSpec" "$_'$bwProjShortcut'DockerImageIdFileSpec"; then
-        rm "$tstImageIdFileSpec"
-        '$bwProjShortcut'_docker_build -v all || return $?
-      else
-        rm "$tstImageIdFileSpec"
-      fi
-    fi
+    '"$codeToPrepareOPTForDockerUp"'
 
-    if [[ $https -eq $http ]]; then
-      return $(_throw "ожидает, что значение ${_ansiOutline}http ${_ansiPrimaryLiteral}$http${_ansiErr} будет отличаться от значения ${_ansiOutline}https")
-    fi
-
-    export _'$bwProjShortcut'DockerHttp="$http"
-    export _'$bwProjShortcut'DockerHttps="$https"
-
-    if [[ -z $_'$bwProjShortcut'Prompt ]]; then
-      local prompt; _preparePrompt --user '$bwProjShortcut' --userAnsi PrimaryLiteral --gitDirty -
-      export _'$bwProjShortcut'Prompt="$prompt"
-    fi
-
-    local returnCode=0
-
-    _inDir "$_'$bwProjShortcut'Dir/docker" '$bwProjShortcut'_docker_upHelper
-
-    return $returnCode
+    _docker_up "${OPT[@]}" "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
   }'
-  eval ${bwProjShortcut}'_docker_upHelper() { 
-    local dockerComposeEnvFileSpec=".env"
-    {
-      echo "# file generated by '$bwProjShortcut'_docker_up"
-      echo "_'$bwProjShortcut'DockerHttp=$_'$bwProjShortcut'DockerHttp"
-      echo "_'$bwProjShortcut'DockerHttps=$_'$bwProjShortcut'DockerHttps"
-      echo "_'$bwProjShortcut'DockerContainerName=$_'$bwProjShortcut'DockerContainerName"
-      echo "_'$bwProjShortcut'DockerImageName=$_'$bwProjShortcut'DockerImageName"
-    } > "$dockerComposeEnvFileSpec"
 
-    local dockerContainerEnvFileSpec="main.env"
+  eval "_$bwProjShortcut"'_dockerContainerNames() {
+    _dockerComposeContainerNames "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+  }'
+  eval "_$bwProjShortcut"'_dockerServiceNames() {
+   _dockerComposeServiceNames "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+  }'
+  eval "$bwProjShortcut"'_docker_bashParams=( 
+    '\''containerName:( $(_'"$bwProjShortcut"'_dockerContainerNames) )='\''"$_'"$bwProjShortcut"'DockerContainerName"
+  )'
+  eval "$bwProjShortcut"'_docker_bash_description='\''Запускает bash в docker-контейнере'\'
+  eval "$bwProjShortcut"'_docker_bash_containerName_name='\''Имя-контейнера'\'
+  eval "$bwProjShortcut"'_docker_bash() { eval "$_funcParams2"
+    _docker_bash "$containerName"
+  }'
+
+  eval "$bwProjShortcut"'_docker_down_description='\''Останавливает (${_ansiCmd}docker-compose down${_ansiReset}) следующие контейнеры: ${_ansiPrimaryLiteral}$(_'"$bwProjShortcut"'_dockerContainerNames)${_ansiReset}'\'
+  eval "$bwProjShortcut"'_docker_downParams=()'
+  eval "$bwProjShortcut"'_docker_down() { eval "$_funcParams2"
+    _docker_down "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+  }'
+}
+
+export _docker_upParams=(
+  '--force-recreate/f'
+  '--http='
+  '--https='
+  '--dockerImageName='
+  '--dockerImageIdFileSpec='
+  '--dockerContainerName='
+  '--bwProjShortcut='
+  '--bwProjName='
+  '@--restart'
+  '--noCheck'
+  'dockerComposeFileSpec'
+)
+_docker_up() { eval "$_funcParams2"
+
+  if [[ -n $https && -n $http && $https -eq $http ]]; then
+    errOrigin=1 _throw "ожидает, что значение ${_ansiOutline}http ${_ansiPrimaryLiteral}$http${_ansiErr} будет отличаться от значения ${_ansiOutline}https"
+    return $?
+  fi
+
+  local dockerDir; dockerDir=$(dirname "$dockerComposeFileSpec")
+
+  bw_install --silentIfAlreadyInstalled docker || return $?
+
+  if [[ -n $dockerImageName && -z $noCheck ]]; then
+    if [[ -z $(_docker image ls "$dockerImageName:latest" -q) ]]; then
+      _docker -v all image pull "$dockerImageName:latest" || return $?
+    fi
+    local tstImageIdFileSpec="/tmp/$bwProjShortcut.image.id"
+    _docker inspect --format "{{json .Id}}" "$dockerImageName:latest" > "$tstImageIdFileSpec"
+    if [[ ! -f "$dockerImageIdFileSpec" ]] || ! _silent cmp "$tstImageIdFileSpec" "$dockerImageIdFileSpec"; then
+      rm "$tstImageIdFileSpec"
+      "${bwProjShortcut}_docker_build" || return $?
+    else
+      rm "$tstImageIdFileSpec"
+    fi
+  fi
+
+  local dockerComposeEnvFileSpec="$dockerDir/.env"
+  {
+    echo "# file generated by $bwProjShortcut_docker_up"
+    echo "_bwDir=$_bwDir"
+    echo "_bwFileSpec=$_bwFileSpec"
+    echo "_${bwProjShortcut}DockerContainerName=$dockerContainerName"
+    if [[ -n $http ]]; then
+      echo "_${bwProjShortcut}DockerHttp=$http"
+    fi
+    if [[ -n $https ]]; then
+      echo "_${bwProjShortcut}DockerHttps=$https"
+    fi
+    if [[ -n $dockerImageName ]]; then
+      echo "_${bwProjShortcut}DockerImageName=$dockerImageName"
+    fi
+  } > "$dockerComposeEnvFileSpec"
+
+  if [[ -n $dockerImageName ]]; then
+    local promptHolder="_${bwProjShortcut}Prompt"
+    if [[ -z ${!promptHolder} ]]; then
+      local prompt; _preparePrompt --user '$bwProjShortcut' --userAnsi PrimaryLiteral --gitDirty -
+      eval export "$promptHolder"'="$prompt"'
+    fi
+    local dockerContainerEnvFileSpec="$dockerDir/main.env"
     { 
       echo "# file generated by '$bwProjShortcut'_docker_up"
       echo "_isBwDevelopInherited=$_isBwDevelop"
       echo "BW_SELF_UPDATE_SOURCE=$BW_SELF_UPDATE_SOURCE"
-      echo "_bwProjName='$bwProjName'"
-      echo "_bwProjShortcut='$bwProjShortcut'"
+      echo "_bwProjName=$bwProjName"
+      echo "_bwProjShortcut=$bwProjShortcut"
       echo "_hostUser=$(whoami)"
-      echo "_dockerHttp=$http"
-      echo "_dockerHttps=$https"
-      echo "_prompt=$_'$bwProjShortcut'Prompt"
+      if [[ -n $http ]]; then
+        echo "_dockerHttp=$http"
+      fi
+      if [[ -n $https ]]; then
+        echo "_dockerHttps=$https"
+      fi
+      echo "_prompt=${!promptHolder}"
 
-      local addonFuncName=_'$bwProjShortcut'_docker_upAddon
-      if _funcExists $addonFuncName; then 
+      local addonFuncName="_${bwProjShortcut}_docker_upAddon"
+      if _funcExists "$addonFuncName"; then 
         $addonFuncName
-      else
-        _debugVar addonFuncName
       fi
     } > "$dockerContainerEnvFileSpec"
+  fi
 
-    local stderrFileSpec="/tmp/docker-compose.stderr"
-    {
-      local needUseHttpTemplate=
-      if [[ "${#restart[@]}" -eq 0 ]]; then
-        needUseHttpTemplate=true
-      else
-        local serviceNameToRestart; for serviceNameToRestart in "${restart[@]}"; do
-          if [[ $serviceNameToRestart =~ nginx ]]; then
-            needUseHttpTemplate=true
-            break
-          fi
-        done
-      fi
-      if [[ -n $needUseHttpTemplate ]]; then
-        local httpConfFileSpec="$_'$bwProjShortcut'Dir/docker/nginx/conf.d/http.conf"
-        local msg=$_nl
-        msg+="# ВНИМАНИЕ!!!"$_nl
-        msg+="#   Этот файл создан автоматически из \"$httpConfFileSpec.template\""$_nl
-        msg+="#   Поэтому изменения нужно вносить именно туда"
-        echo "$msg" > "$httpConfFileSpec"
-        _dockerHttp="$http" _dockerHttps="$https" perl -pe "s/\\\${([^}]+)}/\$ENV{\$1}/ge" "$httpConfFileSpec.template" >> "$httpConfFileSpec"
-      fi
-
-      if [[ "${#restart[@]}" -gt 0 ]]; then
-        _dockerCompose -v all restart "${restart[@]}"
-      else
-        [[ -z $forceRecreate ]] || OPT_forceRecreate=( --force-recreate )
-        _dockerCompose -v all up -d "${OPT_forceRecreate[@]}" --remove-orphans
-      fi
-    } 2> >(tee "$stderrFileSpec"); returnCode=$?
-
-    if [[ $returnCode -ne 0 ]] && grep -P -o '\''(?<=:)\d+(?= failed: port is already allocated)'\'' "$stderrFileSpec" >/dev/null; then
-      _err "port is already allocated"
+  if [[ -n $http || -n $https ]]; then
+    local needUseHttpHttpsTemplate=
+    if [[ "${#restart[@]}" -eq 0 ]]; then
+      needUseHttpHttpsTemplate=true
+    else
+      local serviceNameToRestart; for serviceNameToRestart in "${restart[@]}"; do
+        if [[ $serviceNameToRestart =~ nginx ]]; then
+          needUseHttpHttpsTemplate=true
+          break
+        fi
+      done
     fi
-  }'
+    local nginxConfDir="$dockerDir/nginx/conf.d"
+    if [[ -n $needUseHttpHttpsTemplate ]]; then
+      if [[ -n $http ]]; then
+        _dockerHttp="$http" _dockerHttps="$https" _mkFileFromTemplate "$nginxConfDir/http.conf"
+      fi
+      if [[ -n $https ]]; then
+        _dockerHttp="$http" _dockerHttps="$https" _mkFileFromTemplate "$nginxConfDir/https.conf"
+      fi
+    fi
+  fi
+  if [[ -n $http ]]; then
+    eval export "_${bwProjShortcut}DockerHttp"'="$http"'
+  fi
+  if [[ -n $https ]]; then
+    eval export "_${bwProjShortcut}DockerHttps"'="$https"'
+  fi
 
-  eval '_'$bwProjShortcut'_dockerContainerNames() {
-    local -a containerNames=()
-    local containerNameHolder; for containerNameHolder in $(cat "$_'$bwProjShortcut'Dir/docker/docker-compose.yml" | perl -ne "print if s/^\s*container_name:\s*(.+?)\s*/\$1/"); do
-      eval containerNames+=\( $containerNameHolder \)
-    done
-    echo "${containerNames[@]}"
-  }'
-  eval ${bwProjShortcut}_docker_bashParams='( 
-    '\''containerName:( $(_'$bwProjShortcut'_dockerContainerNames) )='\'\$_${bwProjShortcut}DockerContainerName'
-  )'
-  eval ${bwProjShortcut}'_docker_bash_description='\"'Запускает bash в Docker-контейнере'\"
-  eval ${bwProjShortcut}'_docker_bash_containerName_name='\"'Имя-контейнера'\"
-  eval ${bwProjShortcut}'_docker_bash() { eval "$_funcParams2"
-    _docker exec -it "$containerName" bash
-  }'
+  if [[ "${#restart[@]}" -gt 0 ]]; then
+    _dockerCompose -v all -f "$dockerComposeFileSpec" stop "${restart[@]}"
+  fi
 
+  local stderrFileSpec="/tmp/docker-compose.stderr"
+  {
+    [[ -z $forceRecreate ]] || OPT_forceRecreate=( --force-recreate )
+    _dockerCompose -v all -f "$dockerComposeFileSpec" up -d "${OPT_forceRecreate[@]}" --remove-orphans
+  } 2> >(tee "$stderrFileSpec"); local returnCode=$?
 
-  eval ${bwProjShortcut}_docker_down_description=\"'Down'\''ит '$dockerImageTitle\"
-  eval ${bwProjShortcut}_docker_downParams='()'
-  eval ${bwProjShortcut}'_docker_down() { eval "$_funcParams2"
-    _isInDocker && return 4
-    _inDir "$_'$bwProjShortcut'Dir/docker" _dockerCompose down
-  }'
+  if [[ $returnCode -ne 0 ]] && grep -P -o '(?<=:)\d+(?= failed: port is already allocated)' "$stderrFileSpec" >/dev/null; then
+    _err "port is already allocated"
+  fi
+  return $returnCode
+}
 
+export _docker_downParams=( 'dockerComposeFileSpec' )
+_docker_down() { eval "$_funcParams2"
+  _dockerCompose -f "$dockerComposeFileSpec" down --remove-orphans
+}
 
+export _docker_bashParams=( 'containerName' )
+_docker_bash() { eval "$_funcParams2"
+  _docker exec -it "$containerName" bash
+}
+
+export _dockerComposeContainerNamesParams=( 'dockerComposeFileSpec' )
+_dockerComposeContainerNames() { eval "$_funcParams2"
+  local -a result=()
+  local nameHolder; for nameHolder in $(perl -ne 'print if s/^\s*container_name:\s*(.+?)\s*/$1/' "$dockerComposeFileSpec"); do
+    eval result+=\( "$nameHolder" \)
+  done
+  echo "${result[@]}"
+}
+
+export _dockerComposeServiceNamesParams=( 'dockerComposeFileSpec' )
+_dockerComposeServiceNames() { eval "$_funcParams2"
+  perl -ne 'print if s/^\s\s(\w[\w\d]*):\s*$/$1\n/' "$dockerComposeFileSpec"
 }
 
 # =============================================================================
 
-bw_projectInfoShortcuts=( 'pi' )
-bw_projectInfoParamsOpt=( --canBeMixedOptionsAndArgs )
-bw_projectInfoParams=()
+export bw_projectInfoShortcuts=( 'pi' )
+export bw_projectInfoParamsOpt=( --canBeMixedOptionsAndArgs )
+export bw_projectInfoParams=()
 bw_projectInfoParams() {
   varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
   local -a bwProjShortcuts=()
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
     local bwProjShortcut="${_bwProjDefs[$i]}"
     if [[ ! $bwProjShortcut =~ $_isValidVarNameRegExp ]]; then
-      return $(_err "bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle${_ansiErr} $_mustBeValidVarName")
+      _throw "bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle${_ansiErr} $_mustBeValidVarName"; return $?
     elif _hasItem "$bwProjShortcut" "${bwProjShortcuts[@]}"; then
-      return $(_err "Duplicate bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle")
+      _throw "Duplicate bwProjShortcut ${_ansiPrimaryLiteral}$bwProjTitle"; return $?
     else
       bwProjShortcuts+=( "$bwProjShortcut" )
     fi
   done
-  local bwProjShortcutsAsString="${bwProjShortcuts[@]}"
+  local bwProjShortcutsAsString="${bwProjShortcuts[*]}"
   bw_projectInfoParams=(
     '--all/a'
     '--def/d'
@@ -1208,26 +1333,26 @@ bw_projectInfoParams() {
   )
   _saveToCache "${FUNCNAME[0]}"
 }
-_codeToPrepareDescriptionsOf_bw_projectInfo='
+export _codeToPrepareDescriptionsOf_bw_projectInfo='
   eval "$_codeToDeclareLocalBwProjVars"
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
     codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
     eval local bw_projectInfo_bwProjShortcut_${bwProjShortcut}_description=\"Сокращение для проекта \${_ansiSecondaryLiteral}\$bwProjName \${_ansiUrl}\$bwProjGitOrigin\${_ansiReset}\"
   done
 '
-bw_projectInfo_bwProjShortcut_name="Сокращенное-имя-проекта"
-bw_projectInfo_bwProjShortcut_description='
+export bw_projectInfo_bwProjShortcut_name='Сокращенное-имя-проекта'
+export bw_projectInfo_bwProjShortcut_description='
   Если ${_ansiOutline}$bw_projectInfo_bwProjShortcut_name${_ansiReset} не задано, то выводит информация обо всех ${_ansiOutline}обнаруженных${_ansiReset} проектах
   С опцией ${_ansiCmd}--all${_ansiReset} -- обо всех проектах
 '
-bw_projectInfo_all_description='
+export bw_projectInfo_all_description='
   Вывести информацию обо всех проектах
   Без опции ${_ansiCmd}--all${_ansiReset} -- обо всех ${_ansiOutline}обнаруженных${_ansiReset} проектах
 '
-bw_projectInfo_def_description='
+export bw_projectInfo_def_description='
   Вывести ${_ansiOutline}определение${_ansiReset} проекта/проектов
 '
-bw_projectInfo_description="Выводит информацию о проекте/проектах"
+export bw_projectInfo_description='Выводит информацию о проекте/проектах'
 bw_projectInfo() { eval "$_funcParams2"
   local skipNonExistent=
   if [[ -n $def ]]; then
@@ -1249,10 +1374,10 @@ bw_projectInfo() { eval "$_funcParams2"
       fi
     done
     if [[ -n $def ]]; then
-      echo "Всего $(_getPluralWord ${#found[@]} определен определено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[@]}${_ansiReset}"
+      echo "Всего $(_getPluralWord ${#found[@]} определен определено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[*]}${_ansiReset}"
     else
       if [[ ${#found[@]} -gt 0 ]]; then
-        _ok "Всего $(_getPluralWord ${#found[@]} обнаружен обнаружено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[@]}"
+        _ok "Всего $(_getPluralWord ${#found[@]} обнаружен обнаружено) ${#found[@]} $(_getPluralWord ${#found[@]} проект проекта проектов): ${_ansiSecondaryLiteral}${found[*]}"
       else
         _warn "Не обнаружено ни одного проекта"
       fi
@@ -1261,24 +1386,28 @@ bw_projectInfo() { eval "$_funcParams2"
 }
 
 _prepareDuplicatePorts() {
-  unset $(compgen -v __usedPort)
+  # unset $(compgen -v __usedPort)
+  local -a varNames; mapfile -t varNames < <(compgen -v __usedPort)
+  unset "${varNames[@]}"
+
   eval "$_codeToDeclareLocalBwProjVars"
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
     local bwProjShortcut="${_bwProjDefs[$i]}"
     codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
     if [[ -n $bwProjDefaultHttp ]]; then
-      eval local __usedPort$bwProjDefaultHttp
-      eval __usedPort$bwProjDefaultHttp=\$\(\( __usedPort$bwProjDefaultHttp + 1 \)\)
+      eval local "__usedPort$bwProjDefaultHttp"
+      eval "__usedPort$bwProjDefaultHttp"'=$(( __usedPort$bwProjDefaultHttp + 1 ))'
     fi
     if [[ -n $bwProjDefaultHttps ]]; then
-      eval local __usedPort$bwProjDefaultHttps
-      eval __usedPort$bwProjDefaultHttps=\$\(\( __usedPort$bwProjDefaultHttps + 1 \)\)
+      eval local "__usedPort$bwProjDefaultHttps"
+      eval "__usedPort$bwProjDefaultHttps"'=$(( __usedPort$bwProjDefaultHttps + 1 ))'
     fi
   done
   duplicatePorts=()
-  local varName; for varName in $(compgen -v __usedPort); do
+  local prefix=__usedPort
+  local varName; for varName in $(compgen -v $prefix); do
     if [[ $varName -gt 1 ]]; then
-      duplicatePorts+=( ${varName:10})
+      duplicatePorts+=( "${varName:${#prefix}}" )
     fi
   done
 }
@@ -1287,7 +1416,7 @@ _bwProjectInfoHelper() {
   if [[ -n $def ]]; then
     echo "$bwProjShortcut:"
     echo "  name: $bwProjName"
-    echo "  gitOrigin: ${_ansiUrl}"$(_quotedArgs "$bwProjGitOrigin")"${_ansiReset}"
+    echo "  gitOrigin: ${_ansiUrl}$(_quotedArgs "$bwProjGitOrigin")${_ansiReset}"
 
     echo -n "  branch: "
     local branch=${bwProjDefaultBranch:-$bwProjGlobalDefaultBranch}
@@ -1316,9 +1445,9 @@ _bwProjectInfoHelper() {
     fi
 
   else
-    local profileLineRegExp="^\s*\.\s+\"?(.+?)\/bin\/$bwProjShortcut\.bash\"?\s*$"
+    local profileLineRegExp='^\s*\.\s+\"?(.+?)\/bin\/'"$bwProjShortcut"'\.bash\"?\s*$'
     if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
-      local alreadyProjDir=$(cat "$_profileFileSpec" | perl -ne "print \$1 if /$profileLineRegExp/" | tail -n 1)
+      local alreadyProjDir; alreadyProjDir=$(perl -ne "print \$1 if /$profileLineRegExp/" "$_profileFileSpec" | tail -n 1)
       if [[ ! -d $alreadyProjDir ]]; then
         _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} не обнаружена"
         return 7
@@ -1341,21 +1470,24 @@ _bwProjectInfoHelper() {
 
 # =============================================================================
 
-bw_installParams=(
+export bw_installParams=(
   "${_verbosityParams[@]}"
   "--force/f"
   "--silentIfAlreadyInstalled"
 )
-bw_installParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
-bw_install_cmd_name=Имя-приложения
-bw_install_description='устанавливает приложения'
-bw_install_force_description='устанавливает приложения, даже если оно уже установлено'
+export bw_installParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
+export bw_install_cmd_name=Имя-приложения
+export bw_install_description='устанавливает приложения'
+export bw_install_force_description='устанавливает приложения, даже если оно уже установлено'
 bw_install() { eval "$_funcParams2"
 }
 
-_codeToInstallApp='
+export _codeToInstallApp='
   local checkFuncName="_${FUNCNAME[0]}Check"
-  _funcExists $checkFuncName || return $(_throw "ожидает, что функция ${_ansiCmd}$checkFuncName${_ansiReset} будет определена")
+  if ! _funcExists $checkFuncName; then
+    _throw "ожидает, что функция ${_ansiCmd}$checkFuncName${_ansiReset} будет определена"
+    return $?
+  fi
   if [[ -n $force ]] || ! $checkFuncName; then
     echo "${_ansiWarn}Установка ${_ansiCmd}$name${_ansiReset} . . ."
     showResult=_showInstallResult codeHolder=_codeToInstallOrRunApp eval "$_evalCode"
@@ -1363,10 +1495,10 @@ _codeToInstallApp='
     _ok "${_ansiCmd}$name${_ansiOK} уже ${alreadyInstalled:-установлен}"
   fi
 '
-_codeToRunApp='
+export _codeToRunApp='
   showResult=_showRunResult codeHolder=_codeToInstallOrRunApp eval "$_evalCode"
 '
-_codeToInstallOrRunApp='
+export _codeToInstallOrRunApp='
   codeHolder=_codeToInitSubOPT eval "$_evalCode"
   local returnCode=0
   _osSpecific || return $?
@@ -1381,14 +1513,14 @@ _osSpecific() {
   elif [[ $OSTYPE =~ ^linux ]]; then
     osSpecificFuncName="_${funcName}Linux"
   fi
-  if [[ -n $osSpecificFuncName ]] && _funcExists $osSpecificFuncName; then
+  if [[ -n $osSpecificFuncName ]] && _funcExists "$osSpecificFuncName"; then
     $osSpecificFuncName
   else
     osSpecificFuncName="_${funcName}"
-    if [[ -n $osSpecificFuncName ]] && _funcExists $osSpecificFuncName; then
+    if [[ -n $osSpecificFuncName ]] && _funcExists "$osSpecificFuncName"; then
       $osSpecificFuncName
     else
-      _err "Неподдерживамая ОС ${_ansiPrimaryLiteral}$OSTYPE"
+      _throw "Неподдерживамая ОС ${_ansiPrimaryLiteral}$OSTYPE"
       return 1
     fi
   fi
@@ -1396,9 +1528,9 @@ _osSpecific() {
 
 # =============================================================================
 
-bw_install_brewParams=()
-bw_install_brew_description='Устанавливает Homebrew'
-bw_install_brewCondition='[[ $OSTYPE =~ ^darwin ]]'
+export bw_install_brewParams=()
+export bw_install_brew_description='Устанавливает Homebrew'
+export bw_install_brewCondition='[[ $OSTYPE =~ ^darwin ]]'
 bw_install_brew() { eval "$_funcParams2"
   name=brew codeHolder=_codeToInstallApp eval "$_evalCode"
 }
@@ -1411,12 +1543,28 @@ _bw_install_brewDarwin() {
 
 # =============================================================================
 
+export bw_install_gdateParams=()
+export bw_install_gdate_description='Устанавливает gdate'
+export bw_install_gdateCondition='[[ $OSTYPE =~ ^darwin ]]'
+bw_install_gdate() { eval "$_funcParams2"
+  name=gdate codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_gdateCheck() {
+  _which gdate
+}
+_bw_install_gdateDarwin() {
+  bw_install --silentIfAlreadyInstalled brew
+  _exec "${sub_OPT[@]}" brew install coreutils
+}
+
+# =============================================================================
+
 # Install Bash version 4 on MacOS X: https://gist.github.com/samnang/1759336
 
 # =============================================================================
 
-bw_install_gitParams=()
-bw_install_git_description='Устанавливает git'
+export bw_install_gitParams=()
+export bw_install_git_description='Устанавливает git'
 bw_install_git() { eval "$_funcParams2"
   name=git codeHolder=_codeToInstallApp eval "$_evalCode"
 }
@@ -1436,8 +1584,8 @@ _bw_install_gitLinux() {
 
 # =============================================================================
 
-bw_install_githubKeygenParams=()
-bw_install_githubKeyGen_description='Устанавливает github-keygen (${_ansiUrl}https://github.com/dolmen/github-keygen${_ansiReset})'
+export bw_install_githubKeygenParams=()
+export bw_install_githubKeyGen_description='Устанавливает github-keygen (${_ansiUrl}https://github.com/dolmen/github-keygen${_ansiReset})'
 bw_install_githubKeygen() { eval "$_funcParams2"
   [[ ! $OSTYPE =~ ^linux  ]] || bw_install --silentIfAlreadyInstalled xclip || return $?
   name=github-keygen codeHolder=_codeToInstallApp eval "$_evalCode"
@@ -1461,9 +1609,9 @@ _bw_install_githubKeygen() {
 
 # =============================================================================
 
-bw_install_xclipParams=()
+export bw_install_xclipParams=()
 # bw_install_xclipCondition='[[ $OSTYPE =~ ^darwin ]]' # вынужден был закоменнтировать, потому что bw при сборке на macOS не включает xclip в список доступных вариантов bw_install, и потом на Linux xclip недоступен
-bw_install_xclip_description='Устанавливает xclip (нужен для работы ${_ansiCmd}bw github-keygen${_ansiReset})'
+export bw_install_xclip_description='Устанавливает xclip (нужен для работы ${_ansiCmd}bw github-keygen${_ansiReset})'
 bw_install_xclip() { eval "$_funcParams2"
   name=xclip codeHolder=_codeToInstallApp eval "$_evalCode"
 }
@@ -1480,7 +1628,7 @@ _bw_install_xclipLinux() {
 
 # =============================================================================
 
-bw_githubKeygenParams=( 'username' )
+export bw_githubKeygenParams=( 'username' )
 bw_githubKeygen() { eval "$_funcParams2"
   bw_install github-keygen --silentIfAlreadyInstalled || return $?
   _rm "$_githubKeygenPastedMarkFileSpec"
@@ -1493,11 +1641,12 @@ bw_githubKeygen() { eval "$_funcParams2"
   fi
   if [[ -f $_githubKeygenPastedMarkFileSpec ]]; then
     _rm "$_githubKeygenPastedMarkFileSpec"
-    read -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} to open browser${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
+    read -r -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} to open browser${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
     _osSpecific || return $?
   fi
 }
-_githubKeysUrl='https://github.com/settings/keys'
+# _githubKeysUrl='https://github.com/settings/keys'
+_githubKeysUrl='https://github.com/baza-winner/bw/wiki/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-ssh-%D0%BA%D0%BB%D1%8E%D1%87%D0%B0-%D0%B4%D0%BB%D1%8F-%D0%B4%D0%BE%D1%81%D1%82%D1%83%D0%BF%D0%B0-%D0%BA-github@...'
 _bw_githubKeygenDarwin() {
   local appGoogleChrome="/Applications/Google Chrome.app"
   if [[ -d "$appGoogleChrome" ]]; then
@@ -1516,14 +1665,15 @@ _bw_githubKeygenLinux() {
 
 # =============================================================================
 
-bw_install_dockerParams=()
-bw_install_docker_description="Устанавливает DockerCE ${_ansiUrl}https://www.docker.com/community-edition${_ansiReset}"
+export bw_install_dockerParams=()
+export bw_install_docker_description='Устанавливает DockerCE ${_ansiUrl}https://www.docker.com/community-edition${_ansiReset}'
 bw_install_docker() { eval "$_funcParams2"
   name=DockerCE codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_dockerCheck() {
   _which docker && [[ $(docker --version | perl -e '$\=undef; $_=<STDIN>; printf("%d%04d", $1, $2) if m/(\d+).(\d+)/') -ge 180003 ]]
 }
+# shellcheck disable=SC2034
 _bw_install_dockerDarwin() {
   while true; do
     local -r appName=Docker
@@ -1563,8 +1713,8 @@ _bw_install_dockerLinux() {
 
 # =============================================================================
 
-bw_install_dockerComposeParams=()
-bw_install_dockerCompose_description="Устанавливает docker-compose"
+export bw_install_dockerComposeParams=()
+export bw_install_dockerCompose_description="Устанавливает docker-compose"
 bw_install_dockerCompose() { eval "$_funcParams2"
   bw_install docker --silentIfAlreadyInstalled || return $?
   name=docker-compose codeHolder=_codeToInstallApp eval "$_evalCode"
@@ -1578,7 +1728,7 @@ _bw_install_dockerComposeDarwin() {
 _bw_install_dockerComposeLinux() {
   while true; do
     # https://docs.docker.com/compose/install/#install-compose
-    _exec "${sub_OPT[@]}" --sudo curl -L https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" --sudo curl -L "https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo chmod +x /usr/local/bin/docker-compose || { returnCode=$?; break; }
     break
   done
@@ -1586,19 +1736,19 @@ _bw_install_dockerComposeLinux() {
 
 # =============================================================================
 
-bw_runParams=(
+export bw_runParams=(
   "${_verbosityParams[@]}"
 )
-bw_runParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
-bw_run_cmd_name=Имя-приложения
-bw_run_description='запускает приложение'
+export bw_runParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
+export bw_run_cmd_name=Имя-приложения
+export bw_run_description='запускает приложение'
 bw_run() { eval "$_funcParams2"
 }
 
 # =============================================================================
 
-bw_run_dockerParams=()
-bw_run_docker_description="Запускает Docker"
+export bw_run_dockerParams=()
+export bw_run_docker_description="Запускает Docker"
 bw_run_docker() { eval "$_funcParams2"
   name=Docker codeHolder=_codeToRunApp eval "$_evalCode"
 }
@@ -1626,11 +1776,11 @@ _bw_run_dockerDarwinHelper() {
 
 # =============================================================================
 
-_redDir="$_bwDir/red"
-_redForMacUrl="https://static.red-lang.org/dl/mac/red-063"
-_redForMacFileSpec="$_redDir/red_063_for_mac"
-_redForLinuxUrl="https://static.red-lang.org/dl/linux/red-063"
-_redForLinuxFileSpec="$_redDir/red_063_for_linux"
+export _redDir="$_bwDir/red"
+export _redForMacUrl="https://static.red-lang.org/dl/mac/red-063"
+export _redForMacFileSpec="$_redDir/red_063_for_mac"
+export _redForLinuxUrl="https://static.red-lang.org/dl/linux/red-063"
+export _redForLinuxFileSpec="$_redDir/red_063_for_linux"
 red() {
   local returnCode=0
   _osSpecific || return $?
@@ -1641,17 +1791,17 @@ red() {
 }
 _redDarwin() {
   while true; do
-    _download -s $_redForMacUrl $_redForMacFileSpec || { returnCode=$?; break; }
-    chmod u+x $_redForMacFileSpec || { returnCode=99; break; }
-    $_redForMacFileSpec "$@" || { returnCode=$?; break; }
+    _download -s "$_redForMacUrl" "$_redForMacFileSpec" || { returnCode=$?; break; }
+    chmod u+x "$_redForMacFileSpec" || { returnCode=99; break; }
+    "$_redForMacFileSpec" "$@" || { returnCode=$?; break; }
     break
   done
 }
 _redLinux() {
   while true; do
-    _download -s $_redForLinuxUrl $_redForLinuxFileSpec || { returnCode=$?; break; }
-    chmod u+x $_redForLinuxFileSpec || { returnCode=99; break; }
-    $_redForLinuxFileSpec "$@" || { returnCode=$?; break; }
+    _download -s "$_redForLinuxUrl" "$_redForLinuxFileSpec" || { returnCode=$?; break; }
+    chmod u+x "$_redForLinuxFileSpec" || { returnCode=99; break; }
+    "$_redForLinuxFileSpec" "$@" || { returnCode=$?; break; }
     break
   done
 }

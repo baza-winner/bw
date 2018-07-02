@@ -45,73 +45,73 @@ _downloadTests=(
   #   "_download -?"
   # '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     "--inTmpDir"
-    "_exist -n bw.bash && _download localhost:8082/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
+    "_exist -n bw.bash && _download localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
-      ${_ansiCmd}curl -o bw.bash.download -L localhost:8082/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
+      ${_ansiCmd}curl -o bw.bash.download -L localhost:$_bwdevDockerHttp/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
       ${_ansiCmd}mv bw.bash.download bw.bash${_ansiReset}
       ${_ansiCmd}mv bw.bash.download.header bw.bash.header${_ansiReset}
     "
     "--inTmpDir"
-    "_exist -n bw.bash && _download -v dry localhost:8082/bw.bash bw.bash && _exist -n bw.bash"
+    "_exist -n bw.bash && _download -v dry localhost:$_bwdevDockerHttp/bw.bash bw.bash && _exist -n bw.bash"
   '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     "--inTmpDir"
-    "_exist -n bw.bash && _download -v none localhost:8082/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
+    "_exist -n bw.bash && _download -v none localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     "--inTmpDir"
-    "_exist -n bw.bash && _download -v err localhost:8082/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
+    "_exist -n bw.bash && _download -v err localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
-      ${_ansiOK}OK: ${_ansiCmd}curl -o bw.bash.download -L localhost:8082/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
+      ${_ansiOK}OK: ${_ansiCmd}curl -o bw.bash.download -L localhost:$_bwdevDockerHttp/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
       ${_ansiOK}OK: ${_ansiCmd}mv bw.bash.download bw.bash${_ansiReset}
       ${_ansiOK}OK: ${_ansiCmd}mv bw.bash.download.header bw.bash.header${_ansiReset}
     "
     "--inTmpDir"
-    "_exist -n bw.bash && _download -v ok localhost:8082/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
+    "_exist -n bw.bash && _download -v ok localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
-      ${_ansiOK}OK: ${_ansiCmd}curl -o bw.bash.download -L localhost:8082/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
+      ${_ansiOK}OK: ${_ansiCmd}curl -o bw.bash.download -L localhost:$_bwdevDockerHttp/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
       ${_ansiOK}OK: ${_ansiCmd}mv bw.bash.download bw.bash${_ansiReset}
       ${_ansiOK}OK: ${_ansiCmd}mv bw.bash.download.header bw.bash.header${_ansiReset}
     "
     "--inTmpDir"
-    "_exist -n bw.bash && _download -v allBrief localhost:8082/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
+    "_exist -n bw.bash && _download -v allBrief localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
-      ${_ansiCmd}curl -o bw.bash.download -L localhost:8082/bw.bash -s --dump-header bw.bash.download.header${_ansiReset} . . .
-      ${_ansiOK}OK: ${_ansiCmd}curl -o bw.bash.download -L localhost:8082/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
+      ${_ansiCmd}curl -o bw.bash.download -L localhost:$_bwdevDockerHttp/bw.bash -s --dump-header bw.bash.download.header${_ansiReset} . . .
+      ${_ansiOK}OK: ${_ansiCmd}curl -o bw.bash.download -L localhost:$_bwdevDockerHttp/bw.bash -s --dump-header bw.bash.download.header${_ansiReset}
       ${_ansiOK}OK: ${_ansiCmd}mv bw.bash.download bw.bash${_ansiReset}
       ${_ansiOK}OK: ${_ansiCmd}mv bw.bash.download.header bw.bash.header${_ansiReset}
     "
     "--inTmpDir"
-    "_exist -n bw.bash && _download -v all localhost:8082/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
+    "_exist -n bw.bash && _download -v all localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "_inDir \"$_bwDir\" _dockerCompose up -d"
+    --before "_inDir \"$_bwDir/docker\" _dockerCompose up -d"
     "--inTmpDir"
-    "_download localhost:8082/bw.bash bw.bash && _download -c etag localhost:8082/bw.bash bw.bash"
+    "_download localhost:$_bwdevDockerHttp/bw.bash bw.bash && _download -c etag localhost:$_bwdevDockerHttp/bw.bash bw.bash"
   '
 )
 
@@ -873,6 +873,29 @@ _mvFileTests=(
     --stderr "${_ansiErr}ERR: Файл ${_ansiFileSpec}some.file${_ansiErr} не существует${_ansiReset}"
     "--inTmpDir"
     "_mvFile -v all some.file thing.file"
+  '
+)
+
+# =============================================================================
+
+_mkFileFromTemplateTests=(
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo some_var_value:some_var2_value:some_var3_value > some.eta"
+    --inTmpDir
+    "SOME_VAR=some_var_value SOME_VAR2=some_var2_value SOME_VAR3=some_var3_value _mkFileFromTemplate -n some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo '\''\${SOME_VAR}:some_var2_value:\${SOME_VAR3}'\'' > some.eta"
+    --inTmpDir
+    "SOME_VAR=some_var_value SOME_VAR2=some_var2_value SOME_VAR3=some_var3_value _mkFileFromTemplate -n -v SOME_VAR2 some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo '\''some_var_value:\${SOME_VAR2}:some_var3_value'\'' > some.eta"
+    --inTmpDir
+    "SOME_VAR=some_var_value SOME_VAR2=some_var2_value SOME_VAR3=some_var3_value _mkFileFromTemplate -n -v SOME_VAR -v SOME_VAR3 some && diff some some.eta"
   '
 )
 
