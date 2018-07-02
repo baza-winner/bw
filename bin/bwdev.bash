@@ -28,6 +28,9 @@ export bwdev_buildParams=(
   '--moreDebugInfo/d'
   "${_verbosityParams[@]}"
 )
+export bwdev_build_mode_testAll_description='Сборка после полного тестирования'
+export bwdev_build_mode_buildAfterTest_description='Сборка после тестирования'
+export bwdev_build_mode_justBuild_description='Сборка без тестирования'
 export bwdev_build_description='Тестирует и собирает bw.bash'
 export bwdev_build_justBuild_description='Только собирает bw.bash'
 export bwdev_build_moreDebugInfo_description='Больше отладочной информации'

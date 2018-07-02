@@ -673,7 +673,7 @@ _bwProjDefs=(
   '
   'bgate' '
     --gitOrigin github.com:baza-winner/billing-gate.git
-    --branch feature/docker
+    --branch develop
     --http 8086
     --https 8087
   '
