@@ -671,12 +671,31 @@ _bwProjDefs=(
     --https 8999
     --no-docker-build
   '
+  'dubu' '
+    --gitOrigin github.com:baza-winner/dev-ubuntu.git
+    --branch feature/docker
+    --docker-image-name bazawinner/dev-ubuntu
+    --http 8996
+    --https 8997
+  '
   'bgate' '
     --gitOrigin github.com:baza-winner/billing-gate.git
     --branch develop
     --http 8086
     --https 8087
   '
+  'crm' '
+    --gitOrigin github.com:baza-winner/crm.git
+    --branch feature/docker
+  '
+      # --http 8086
+    # --https 8087
+  # 'wcraw' '
+  #   --gitOrigin github.com:baza-winner/billing-gate.git
+  #   --branch feature/docker
+  #   --http 8086
+  #   --https 8087
+  # '
   # 'bcore' '
   #   --gitOrigin github.com:baza-winner/billingcore.git
   # '
@@ -728,6 +747,7 @@ export _prepareBwProjVarsHelperParams=(
   "--http:$_tcpPortDiap"
   "--https:$_tcpPortDiap"
   '--branch='
+  '--docker-image-name='
   '--no-docker-build'
 )
 export _codeToDeclareLocalBwProjVars='
@@ -737,17 +757,19 @@ export _codeToDeclareLocalBwProjVars='
   local bwProjDefaultHttp=""
   local bwProjDefaultHttps="" 
   local bwProjDefaultBranch="" 
+  local bwProjDockerImageName="" 
   local bwProjNoDockerBuild=""
 '
 
 # shellcheck disable=SC2034
 _prepareBwProjVarsHelper() { eval "$_funcParams2"
   codeToGetBwProjDef='
-    bwProjGitOrigin='$(_quotedArgs "$gitOrigin")'
-    bwProjDefaultHttp='$(_quotedArgs "$http")'
-    bwProjDefaultHttps='$(_quotedArgs "$https")'
-    bwProjDefaultBranch='$(_quotedArgs "$branch")'
-    bwProjNoDockerBuild='$(_quotedArgs "$noDockerBuild")'
+    bwProjGitOrigin="'"$gitOrigin"'"
+    bwProjDefaultHttp='"$http"'
+    bwProjDefaultHttps='"$https"'
+    bwProjDefaultBranch="'"$branch"'"
+    bwProjDockerImageName="'"$dockerImageName"'"
+    bwProjNoDockerBuild="'"$noDockerBuild"'"
   '
 }
 
@@ -922,23 +944,27 @@ bw_project() { eval "$_funcParams2"
       break
     done; [[ $returnCode -eq 0 ]] || break
 
-    local cmdFileSpec="$projDir/bin/${bwProjShortcut}.bash"
-    local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec")"
-    _setAtBashProfile "${OPT_uninstall[@]}" "$profileLine" "$profileLineRegExp"
     break
   done
 
   folder="$projDir" name="$bwProjTitle" _showProjectResult
 
   if [[ $returnCode -eq 0 && -z $uninstall && $verbosity != dry ]]; then
+    local cmdFileSpec="$projDir/bin/${bwProjShortcut}.bash"
     if [[ ! -f "$cmdFileSpec" ]]; then
       local msg=
       msg+="Не найден файл ${_ansiFileSpec}bin/$bwProjShortcut.bash${_ansiErr}$_nl"
       msg+="Не удалось инициализировать команду ${_ansiCmd}$bwProjShortcut"
       [[ $verbosity == none  ]] || _err "$msg"
       returnCode=1
+    elif ! _exec "${sub_OPT[@]}" . "$cmdFileSpec"; then
+      local msg=
+      msg+="Не удалось инициализировать команду ${_ansiCmd}$bwProjShortcut"
+      [[ $verbosity == none  ]] || _err "$msg"
+      returnCode=1
     else
-      _exec "${sub_OPT[@]}" . "$cmdFileSpec"
+      local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec")"
+      _setAtBashProfile "${OPT_uninstall[@]}" "$profileLine" "$profileLineRegExp"
       local -a __completions=();
       # local -a funcNames=( $(_getFuncNamesOfScriptToUnset "$cmdFileSpec") )
       local -a funcNames; mapfile -t funcNames < <( _getFuncNamesOfScriptToUnset "$cmdFileSpec" )
@@ -987,7 +1013,7 @@ _initBwProjCmd() { eval "$_funcParams2"
   eval "_$bwProjShortcut"'FileSpec="$fileSpec"'
   local bwProjShortcutDirHolder="_${bwProjShortcut}Dir"
   _realpath -v "$bwProjShortcutDirHolder" "$(dirname "$fileSpec")/.."
-  eval export "_$bwProjShortcut"'DockerImageName="bazawinner/dev-$bwProjShortcut"'
+  eval export "_$bwProjShortcut"'DockerImageName="${bwProjDockerImageName:-bazawinner/dev-$bwProjShortcut}"'
   eval export "_$bwProjShortcut"'DockerImageIdFileSpec="${!bwProjShortcutDirHolder}/docker/dev-$bwProjShortcut.id"'
   eval export "_$bwProjShortcut"'DockerContainerName="dev-$bwProjShortcut"'
 
@@ -1050,7 +1076,6 @@ _initBwProjCmd() { eval "$_funcParams2"
       OPT+=( 
         --dockerImageName "$_'$bwProjShortcut'DockerImageName"
         --dockerImageIdFileSpec "$_'$bwProjShortcut'DockerImageIdFileSpec"
-        --bwProjName "'"$bwProjName"'"
       )
     '
     eval "$bwProjShortcut"'_docker_buildParams=()'
@@ -1125,6 +1150,7 @@ _initBwProjCmd() { eval "$_funcParams2"
       "${OPT_restart[@]}" 
       --dockerContainerName "$_'"$bwProjShortcut"'DockerContainerName"
       --bwProjShortcut "'"$bwProjShortcut"'"
+      --bwProjName "'"$bwProjName"'"
     )
 
     '"$codeToPrepareOPTForDockerUp"'
@@ -1239,24 +1265,41 @@ _docker_up() { eval "$_funcParams2"
   fi
 
   if [[ -n $http || -n $https ]]; then
-    local needUseHttpHttpsTemplate=
+    local needProcessNginxConfTemplate=
     if [[ "${#restart[@]}" -eq 0 ]]; then
-      needUseHttpHttpsTemplate=true
+      needProcessNginxConfTemplate=true
     else
       local serviceNameToRestart; for serviceNameToRestart in "${restart[@]}"; do
         if [[ $serviceNameToRestart =~ nginx ]]; then
-          needUseHttpHttpsTemplate=true
+          needProcessNginxConfTemplate=true
           break
         fi
       done
     fi
-    local nginxConfDir="$dockerDir/nginx/conf.d"
-    if [[ -n $needUseHttpHttpsTemplate ]]; then
-      if [[ -n $http ]]; then
-        _dockerHttp="$http" _dockerHttps="$https" _mkFileFromTemplate "$nginxConfDir/http.conf"
+    local nginxDir="$dockerDir/nginx"
+    if [[ -n $needProcessNginxConfTemplate ]]; then
+      if [[ -f "$nginxDir/.gitignore" ]]; then
+        grep -v -E '\.conf$' "$nginxDir/.gitignore" > "$nginxDir/.gitignore.new"
+      elif [[ -f "$nginxDir/.gitignore.new" ]]; then
+        rm "$nginxDir/.gitignore.new"
       fi
-      if [[ -n $https ]]; then
-        _dockerHttp="$http" _dockerHttps="$https" _mkFileFromTemplate "$nginxConfDir/https.conf"
+      local templateExt='.template'
+      local -a templateFileSpecs; mapfile -t templateFileSpecs < <(find "$nginxDir" -name "*$templateExt" 2>/dev/null)
+      local templateFileSpec; for templateFileSpec in "${templateFileSpecs[@]}"; do
+        fileSpec=${templateFileSpec:0:$(( ${#templateFileSpec} - ${#templateExt} ))}
+        local relativeFileSpec="${fileSpec:$(( ${#nginxDir} + 1 ))}"
+        if \
+          http="$http" \
+          https="$https" \
+          projName="$bwProjName" \
+          projShortcut="$bwProjShortcut" \
+          _mkFileFromTemplate "$fileSpec"
+        then
+          echo "$relativeFileSpec" >> "$nginxDir/.gitignore.new"
+        fi
+      done
+      if [[ -f "$nginxDir/.gitignore.new" ]]; then
+        mv "$nginxDir/.gitignore.new" "$nginxDir/.gitignore"
       fi
     fi
   fi

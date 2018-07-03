@@ -23,6 +23,8 @@ _buildBwHelper() {
     $(find "$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash" | grep -v -E "$excludeRegExp") \
     $(find docker -type f | grep -v .DS_Store) \
     https/server.crt https/server.key https/rootCA.pem \
+    git-completion/git-completion.bash \
+    git-flow-completion/git-flow-completion.bash \
   "
   local fileNamesToTestsArchive="\
     $(find tests -name "*.bash" -maxdepth 1) \

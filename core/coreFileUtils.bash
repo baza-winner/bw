@@ -422,9 +422,14 @@ _which() { eval "$_funcParams2"
 # =============================================================================
 
 _mkFileFromTemplateParams=(
-  '--no-notice/n'
-  '--commentPrefix/p=#'
+  '--noNotice/n'
+  '--commentPreLine='
+  '--commentPostLine='
+  '--commentPrefix='
+  '--commentSuffix='
   '--templateFileSpec/t="$fileSpec.template"'
+  '--noShowErrorIfNoTemplate'
+  '--returnCodeIfNoTemplate:0..=1'
   '@--varNames/v'
   'fileSpec'
 )
@@ -437,26 +442,52 @@ _mkFileFromTemplate() {
   done
 
   eval "$_funcParams2"
-  if [[ -n $noNotice ]]; then
-    _rm "$fileSpec"
+
+  if [[ -f "$templateFileSpec" ]]; then
+    if [[ -n $noNotice ]]; then
+      _rm "$fileSpec"
+    else
+      local fileExt="${fileSpec##*.}"
+      if [[ $fileExt == conf || $fileExit == bash ]]; then
+        commentPreLine=''
+        commentPostLine=''
+        commentPrefix='# '
+        commentSuffix=''
+      elif [[ ( $fileExt == html || $fileExit == htm ) ]]; then
+        commentPreLine='<!-- '
+        commentPostLine='-->'
+        commentPrefix=''
+        commentSuffix=''
+      fi
+      local __msg=$_nl
+      if [[ -n $commentPreLine ]]; then
+        __msg+="${commentPreLine}"$_nl
+      fi
+      __msg+="${commentPrefix}ВНИМАНИЕ!!!${commentSuffix}"$_nl
+      __msg+="${commentPrefix}    Этот файл создан автоматически из \"$templateFileSpec\"${commentSuffix}"$_nl
+      __msg+="${commentPrefix}    Поэтому изменения нужно вносить именно туда${commentSuffix}"$_nl
+      if [[ -n $commentPostLine ]]; then
+        __msg+="${commentPostLine}"$_nl
+      fi
+      echo "$__msg" > "$fileSpec"
+    fi
+
+    local __regexp=$(_joinBy '|' "${varNames[@]}")
+    local __regexp="s/\\\${(${__regexp:-[^\}]+})}/\$ENV{\$1}/ge"
+
+    local __fileSpec="$fileSpec"
+    local __templateFileSpec="$templateFileSpec"
+
+    local __varName; for __varName in "${__substitutedVarNames[@]}"; do
+      _restore "$__varName"
+    done
+    perl -pe "$__regexp" "$__templateFileSpec" >> "$__fileSpec"
   else
-    local __msg=$_nl
-    __msg+="$commentPrefix ВНИМАНИЕ!!!"$_nl
-    __msg+="$commentPrefix    Этот файл создан автоматически из \"$templateFileSpec\""$_nl
-    __msg+="$commentPrefix    Поэтому изменения нужно вносить именно туда"
-    echo "$__msg" > "$fileSpec"
+    if [[ -z $noShowErrorIfNoTemplate ]]; then
+      _throw "could not find template ${_ansiFileSpec}$templateFileSpec"
+    fi
+    return $returnCodeIfNoTemplate
   fi
-
-  local __regexp=$(_joinBy '|' "${varNames[@]}")
-  local __regexp="s/\\\${(${__regexp:-[^\}]+})}/\$ENV{\$1}/ge"
-
-  local __fileSpec="$fileSpec"
-  local __templateFileSpec="$templateFileSpec"
-
-  local __varName; for __varName in "${__substitutedVarNames[@]}"; do
-    _restore "$__varName"
-  done
-  perl -pe "$__regexp" "$__templateFileSpec" >> "$__fileSpec"
 }
 
 # =============================================================================
