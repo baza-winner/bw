@@ -21,7 +21,7 @@ _buildBwHelper() {
   local fileNamesToMainArchive="\
     $(find core bash -name "*.bash") \
     $(find "$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash" | grep -v -E "$excludeRegExp") \
-    $(find docker -type f | grep -v .DS_Store) \
+    $(find docker -type f ! -name *.log ! -name .DS_Store) \
     https/server.crt https/server.key https/rootCA.pem \
     git-completion/git-completion.bash \
     git-flow-completion/git-flow-completion.bash \
