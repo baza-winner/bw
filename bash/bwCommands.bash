@@ -673,10 +673,17 @@ _bwProjDefs=(
   '
   'dubu' '
     --gitOrigin github.com:baza-winner/dev-ubuntu.git
-    --branch feature/docker
+    --branch master
     --docker-image-name bazawinner/dev-ubuntu
     --http 8996
     --https 8997
+  '
+  'dnvm' '
+    --gitOrigin github.com:baza-winner/dev-nvm.git
+    --branch master
+    --docker-image-name bazawinner/dev-nvm
+    --http 8994
+    --https 8995
   '
   'bgate' '
     --gitOrigin github.com:baza-winner/billing-gate.git
@@ -688,8 +695,6 @@ _bwProjDefs=(
     --gitOrigin github.com:baza-winner/crm.git
     --branch feature/docker
   '
-      # --http 8086
-    # --https 8087
   # 'wcraw' '
   #   --gitOrigin github.com:baza-winner/billing-gate.git
   #   --branch feature/docker
@@ -709,6 +714,9 @@ _bw_project_bgate() {
 }
 _bw_project_bcore() {
   _exec "${sub_OPT[@]}" git submodule update --init --recursive
+}
+_bw_project_dnvm() {
+  _exec "${sub_OPT[@]}" git submodule update --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
 }
 
 _getBwProjShortcuts() {
@@ -1006,7 +1014,7 @@ _getDefaultXdebugRemoteHost() {
 }
 
 # shellcheck disable=SC2034
-_initBwProjCmd() { eval "$_funcParams2"
+_initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
@@ -1278,10 +1286,12 @@ _docker_up() { eval "$_funcParams2"
     fi
     local nginxDir="$dockerDir/nginx"
     if [[ -n $needProcessNginxConfTemplate ]]; then
+      local separatorLine='# !!! you SHOULD put all custom rules above this line; all lines below will be autocleaned'
       if [[ -f "$nginxDir/.gitignore" ]]; then
-        grep -v -E '\.conf$' "$nginxDir/.gitignore" > "$nginxDir/.gitignore.new"
+        awk "!a;/$separatorLine/{a=1}" "$nginxDir/.gitignore" > "$nginxDir/.gitignore.new"
+        # grep -v -E '\.conf$' "$nginxDir/.gitignore" > "$nginxDir/.gitignore.new"
       elif [[ -f "$nginxDir/.gitignore.new" ]]; then
-        rm "$nginxDir/.gitignore.new"
+        echo "$separatorLine" > "$nginxDir/.gitignore.new"
       fi
       local templateExt='.template'
       local -a templateFileSpecs; mapfile -t templateFileSpecs < <(find "$nginxDir" -name "*$templateExt" 2>/dev/null)
