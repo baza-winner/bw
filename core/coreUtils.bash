@@ -229,7 +229,9 @@ _quotedArgs() {
 }
 
 _upperFirst() {
-  echo "$*" | perl -C -pe 's/^(.)/\U$1/'
+  local string="$*"
+  echo $(tr '[:lower:]' '[:upper:]' <<< ${string:0:1})${string:1}
+  # echo "$*" | perl -C -pe 's/^(.)/\U$1/'
 }
 
 _lowerFirst() {

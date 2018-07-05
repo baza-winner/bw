@@ -701,6 +701,7 @@ _bwProjDefs=(
     --branch develop
     --http 8086
     --https 8087
+    --upstream 6783
     --docker-compose "$_bwDir/docker/docker-compose.nginx.yml"
     --docker-compose "$_bwDir/docker/docker-compose.main.yml"
   '
@@ -709,6 +710,7 @@ _bwProjDefs=(
     --branch feature/docker
     --http 8088
     --https 8089
+    --upstream 3000
     --docker-compose "$_bwDir/docker/docker-compose.nginx.yml"
     --docker-compose "$_bwDir/docker/docker-compose.main.yml"
   '
@@ -772,6 +774,7 @@ export _prepareBwProjVarsHelperParams=(
   '--gitOrigin='
   "--http:$_tcpPortDiap"
   "--https:$_tcpPortDiap"
+  "--upstream:$_tcpPortDiap"
   '--branch='
   '--docker-image-name='
   '--no-docker-build'
@@ -783,6 +786,7 @@ export _codeToDeclareLocalBwProjVars='
   local bwProjGitOrigin="" 
   local bwProjDefaultHttp=""
   local bwProjDefaultHttps="" 
+  local bwProjDefaultUpstream=""
   local bwProjDefaultBranch="" 
   local bwProjDockerImageName="" 
   local bwProjNoDockerBuild=""
@@ -795,6 +799,7 @@ _prepareBwProjVarsHelper() { eval "$_funcParams2"
     bwProjGitOrigin="'"$gitOrigin"'"
     bwProjDefaultHttp='"$http"'
     bwProjDefaultHttps='"$https"'
+    bwProjDefaultUpstream="'"$upstream"'"
     bwProjDefaultBranch="'"$branch"'"
     bwProjDockerImageName="'"$dockerImageName"'"
     bwProjNoDockerBuild="'"$noDockerBuild"'"
@@ -1117,38 +1122,9 @@ _initBwProjCmd() {
     }'
   fi
 
-  if [[ -z $bwProjDefaultHttp ]]; then
-    unset "$bwProjShortcut"_docker_up_http_description 
-    unset "$bwProjShortcut"_selfTest_http_description
-  else
-    local paramDef="--http:$_tcpPortDiap=$bwProjDefaultHttp"
-    local description='http-порт по которому будет доступен контейнер'
-    local code='
-      OPT+=( ${OPT_http[@]} )
-    '
-    dockerUpParams+=( "$paramDef" )
-    selfTestParams+=( "$paramDef" )
-    eval "$bwProjShortcut"'_docker_up_http_description='\'"$description"\'
-    eval "$bwProjShortcut"'_selfTest_http_description='\'"$description"\'
-    codeToPrepareOPTForDockerUp+="$code"
-    codeToPrepareOPTForSelfTest+="$code"
-  fi
-  if [[ -z $bwProjDefaultHttps ]]; then
-    unset "$bwProjShortcut"_docker_up_https_description
-    unset "$bwProjShortcut"_selfTest_https_description
-  else
-    local paramDef="--https:$_tcpPortDiap=$bwProjDefaultHttps"
-    local description='https-порт по которому будет доступен контейнер'
-    local code='
-      OPT+=( ${OPT_https[@]} )
-    '
-    dockerUpParams+=( "$paramDef" )
-    selfTestParams+=( "$paramDef" )
-    eval "$bwProjShortcut"'_docker_up_https_description='\'"$description"\'
-    eval "$bwProjShortcut"'_selfTest_https_description='\'"$description"\'
-    codeToPrepareOPTForDockerUp+="$code"
-    codeToPrepareOPTForSelfTest+="$code"
-  fi
+  _prepareVarsForDefaultPort http
+  _prepareVarsForDefaultPort https
+  _prepareVarsForDefaultPort upstream 'для сервиса ${_ansiPrimaryLiteral}nginx${_ansiReset}'
 
   eval "$bwProjShortcut"'_selfTestParamsOpt=(
     --additionalDependencies "$_'"$bwProjShortcut"'Dir/bin/'"$bwProjShortcut"'.bash"
@@ -1216,7 +1192,33 @@ _initBwProjCmd() {
   eval "$bwProjShortcut"'_docker_shell() { eval "$_funcParams2"
     _docker_shell "$containerName" "$_'"$bwProjShortcut"'DockerContainerName" "$shell"
   }'
+}
 
+_prepareVarsForDefaultPortParams=(
+  'portName'
+  'descriptionSuffix:?'
+)
+_prepareVarsForDefaultPort() { eval "$_funcParams2"
+  local defaultHolder="bwProjDefault$(_upperFirst "$portName")"
+  if [[ -z ${!defaultHolder} ]]; then
+    unset "${bwProjShortcut}_docker_up_${portName}_description"
+    unset "${bwProjShortcut}_selfTest_${portName}_description"
+  else
+    local paramDef="--$portName:$_tcpPortDiap=${!defaultHolder}"
+    local description="$portName-порт по которому будет доступен контейнер" 
+    if [[ -n $descriptionSuffix ]]; then
+      description+=" $descriptionSuffix"
+    fi
+    local code='
+      OPT+=( ${OPT_'"$portName"'[@]} )
+    '
+    dockerUpParams+=( "$paramDef" )
+    selfTestParams+=( "$paramDef" )
+    eval "${bwProjShortcut}_docker_up_${portName}_description"=\'"$description"\'
+    eval "${bwProjShortcut}_selfTest_${portName}_description"=\'"$description"\'
+    codeToPrepareOPTForDockerUp+="$code"
+    codeToPrepareOPTForSelfTest+="$code"
+  fi
 }
 
 _getDefaultShellOfDockerContainer() {
@@ -1243,13 +1245,13 @@ _cmd_update() { eval "$_funcParams2"
     if [[ $mode != full ]]; then
       OPT=( -p - )
     fi
-    . "$_bwFileSpec" "${OPT[@]}"
-    . "${!sourceFileSpecHolder}"
+    . "$_bwFileSpec" "${OPT[@]}" || return $?
+    . "${!sourceFileSpecHolder}" || return $?
     rm -f "$_bwDir/generated/$bwProjShortcut"*
   fi
   local -a __completions=()
   local -a funcNamesToPregen; mapfile -t funcNamesToPregen < <(compgen -c "$bwProjShortcut")
-  _pregen "${funcNamesToPregen[@]}"
+  _pregen "${funcNamesToPregen[@]}" || return $?
   for fileSpec in "${__completions[@]}"; do
     . "$fileSpec"
   done
@@ -1294,6 +1296,7 @@ _docker_down() { eval "$_funcParams2"
 export _cmd_selfTestParams=(
   '--http='
   '--https='
+  '--upstream='
   '--dockerImageName='
   'bwProjShortcut'
   'bwProjDir'
@@ -1301,7 +1304,7 @@ export _cmd_selfTestParams=(
 _cmd_selfTest() { eval "$_funcParams2"
   local returnCode=0
   while true; do
-    _exec -v all "$bwProjShortcut" docker up -f "${OPT_http[@]}" "${OPT_https[@]}" || { returnCode=$?; break; }
+    _exec -v all "$bwProjShortcut" docker up -f "${OPT_http[@]}" "${OPT_https[@]}" "${OPT_upstream[@]}" || { returnCode=$?; break; }
     local tstFileSpec="/tmp/$bwProjShortcut.selfTest"
     if [[ -n $http ]]; then
       _exec -v err curl -s "http://localhost:${http}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
@@ -1338,6 +1341,7 @@ export _docker_upParams=(
   '--force-recreate/f'
   '--http='
   '--https='
+  '--upstream='
   '--dockerImageName='
   '--dockerImageIdFileSpec='
   '--dockerContainerName='
@@ -1387,6 +1391,7 @@ _docker_up() { eval "$_funcParams2"
     echo "_${bwProjShortcut}DockerContainerName=$dockerContainerName"
     [[ -z $http ]] || echo "_${bwProjShortcut}DockerHttp=$http"
     [[ -z $https ]] || echo "_${bwProjShortcut}DockerHttps=$https"
+    [[ -z $upstream ]] || echo "_${bwProjShortcut}DockerUpstream=$upstream"
     [[ -z $dockerImageName ]] || echo "_${bwProjShortcut}DockerImageName=$dockerImageName"
   } > "$dockerComposeEnvFileSpec"
 
@@ -1404,12 +1409,9 @@ _docker_up() { eval "$_funcParams2"
       echo "_bwProjName=$bwProjName"
       echo "_bwProjShortcut=$bwProjShortcut"
       echo "_hostUser=$(whoami)"
-      if [[ -n $http ]]; then
-        echo "_dockerHttp=$http"
-      fi
-      if [[ -n $https ]]; then
-        echo "_dockerHttps=$https"
-      fi
+      [[ -z $http ]] || echo "_dockerHttp=$http"
+      [[ -z $https ]] || echo "_dockerHttps=$https"
+      [[ -z $upstream ]] || echo "_dockerUpstream=$upstream"
       echo "_prompt=${!promptHolder}"
 
       local addonFuncName="_${bwProjShortcut}_docker_upAddon"
@@ -1447,6 +1449,7 @@ _docker_up() { eval "$_funcParams2"
         if \
           http="$http" \
           https="$https" \
+          upstream="$upstream" \
           projName="$bwProjName" \
           projShortcut="$bwProjShortcut" \
           _mkFileFromTemplate "$fileSpec"
@@ -1459,12 +1462,9 @@ _docker_up() { eval "$_funcParams2"
       fi
     fi
   fi
-  if [[ -n $http ]]; then
-    eval export "_${bwProjShortcut}DockerHttp"'="$http"'
-  fi
-  if [[ -n $https ]]; then
-    eval export "_${bwProjShortcut}DockerHttps"'="$https"'
-  fi
+  [[ -z $http ]] || eval export "_${bwProjShortcut}DockerHttp"'="$http"'
+  [[ -z $https ]] || eval export "_${bwProjShortcut}DockerHttps"'="$https"'
+  [[ -z $upstream ]] || eval export "_${bwProjShortcut}DockerUpstream"'="$upstream"'
 
   local -a OPT=()
   local dockerComposeFileSpec; for dockerComposeFileSpec in "${dockerComposeFileSpecs[@]}"; do
