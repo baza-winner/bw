@@ -1459,10 +1459,6 @@ _prepareParamDescription2() {
     _prepareIntValudDescription2
   elif [[ ${!__varValtypeHolder} == enum ]]; then
     
-    # valueDescription='арианты ${_ansiOutline}значения${_ansiReset}:'
-    # [[ -z $alwaysMultiline ]] \
-    #   && valueDescription=' в'$valueDescription \
-    #   || valueDescription=$__helpCodeLinePrefix'В'$valueDescription
     valueDescription=
     if [[ -z $alwaysMultiline ]]; then
       valueDescription=\"$__helpCodeLineSuffix
@@ -1476,7 +1472,6 @@ _prepareParamDescription2() {
       local __i; for (( __i=0; __i < ${#enumValues[@]}; __i++ )); do
         local enumValue="${enumValues[$__i]}"
         valueDescription+="$_nl$(_indent $((2 * $__indentLevel)) )"'_indent '$(( $__indentLevel * 4 + 2 ))'; echo "${_ansiPrimaryLiteral}"'\'$(_quotedArgs "$enumValue")\''"${_ansiReset}'
-        # __indentLevel=3; eval "$_codeToPrepareHelpLinePrefixTemplate"
         __indentLevel=$(( __indentLevel + 1 )); eval "$_codeToPrepareHelpLinePrefixTemplate"
         alwaysMultiline=
         local __descriptionOutput=
@@ -1485,7 +1480,6 @@ _prepareParamDescription2() {
           descriptionOf='значения опции' \
         _prepareDescriptionOutput2
         valueDescription+="$__descriptionOutput"
-        # __indentLevel=2; eval "$_codeToPrepareHelpLinePrefixTemplate"
         __indentLevel=$(( __indentLevel - 1 )); eval "$_codeToPrepareHelpLinePrefixTemplate"
       done
     fi
@@ -1586,7 +1580,6 @@ _prepareDescriptionOutput2() {
     elif [[ $__returnCode -eq 2 ]]; then
       if [[ -n $codeForDescriptionOutput ]]; then
         __descriptionOutput=" $codeForDescriptionOutput"$_helpCodeLineSuffix
-        # [[ $descriptionHolder == _prepareCodeOfAutoHelp2TestFunc_c_description ]] && _debugVar __descriptionOutput
         alwaysMultiline=--alwaysMultiline
       fi
       __returnCode=0

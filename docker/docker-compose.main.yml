@@ -1,0 +1,10 @@
+version: '2'
+services:
+  main:
+    volumes:
+      - ${_bwDir}:/home/dev/.bw
+      - ${_bwFileSpec}:/home/dev/bw.bash
+      - ..:/home/dev/proj
+    stdin_open: true
+    env_file:
+      - main.env

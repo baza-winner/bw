@@ -674,6 +674,7 @@ _bwProjDefs=(
     --http 8998
     --https 8999
     --no-docker-build
+    --docker-compose "$_bwDir/docker/docker-compose.nginx.yml"
   '
   'dubu' '
     --gitOrigin github.com:baza-winner/dev-ubuntu.git
@@ -681,6 +682,8 @@ _bwProjDefs=(
     --docker-image-name bazawinner/dev-ubuntu
     --http 8996
     --https 8997
+    --docker-compose "$_bwDir/docker/docker-compose.nginx.yml"
+    --docker-compose "$_bwDir/docker/docker-compose.main.yml"
   '
   'dnvm' '
     --gitOrigin github.com:baza-winner/dev-nvm.git
@@ -747,7 +750,8 @@ _prepareBwProjVars() {
 export _codeToCallPrepareBwProjVarsHelper='
   bwProjShortcut="${_bwProjDefs[$i]}"
   local codeToGetBwProjDef
-  _prepareBwProjVarsHelper ${_bwProjDefs[$((i + 1))]} || return $?
+  eval local -a params=\( ${_bwProjDefs[$((i + 1))]} \)
+  _prepareBwProjVarsHelper "${params[@]}" || return $?
   codeHolder=codeToGetBwProjDef eval "$_evalCode"
   bwProjName=$(basename "$bwProjGitOrigin" .git)
   bwProjTitle="$bwProjName ($bwProjShortcut)"
@@ -761,6 +765,7 @@ export _prepareBwProjVarsHelperParams=(
   '--branch='
   '--docker-image-name='
   '--no-docker-build'
+  '@--docker-compose'
 )
 export _codeToDeclareLocalBwProjVars='
   local bwProjName=""
@@ -771,6 +776,7 @@ export _codeToDeclareLocalBwProjVars='
   local bwProjDefaultBranch="" 
   local bwProjDockerImageName="" 
   local bwProjNoDockerBuild=""
+  local -a bwProjDockerCompose=()
 '
 
 # shellcheck disable=SC2034
@@ -782,6 +788,7 @@ _prepareBwProjVarsHelper() { eval "$_funcParams2"
     bwProjDefaultBranch="'"$branch"'"
     bwProjDockerImageName="'"$dockerImageName"'"
     bwProjNoDockerBuild="'"$noDockerBuild"'"
+    bwProjDockerCompose=( '$(_quotedArgs "${dockerCompose[@]}")' )
   '
 }
 
@@ -971,14 +978,15 @@ bw_project() { eval "$_funcParams2"
       [[ $verbosity == none  ]] || _err "$msg"
       returnCode=1
     else
-      local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec")"
+      "$bwProjShortcut" update -m completionOnly
+      local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec"); $bwProjShortcut update -m completionOnly"
       _setAtBashProfile "${OPT_uninstall[@]}" "$profileLine" "$profileLineRegExp"
-      local -a __completions=();
-      local -a funcNames; mapfile -t funcNames < <( _getFuncNamesOfScriptToUnset "$cmdFileSpec" )
-      _exec "${sub_OPT[@]}" _pregen "${funcNames[@]}"
-      for _fileSpec in "${__completions[@]}"; do
-        _exec "${sub_OPT[@]}" . "$_fileSpec"
-      done
+      # local -a __completions=();
+      # local -a funcNames; mapfile -t funcNames < <( _getFuncNamesOfScriptToUnset "$cmdFileSpec" )
+      # _exec "${sub_OPT[@]}" _pregen "${funcNames[@]}"
+      # for _fileSpec in "${__completions[@]}"; do
+      #   _exec "${sub_OPT[@]}" . "$_fileSpec"
+      # done
       [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$bwProjShortcut${_ansiReset}"
       _exec "${sub_OPT[@]}" --treatAsOK 3 "$bwProjShortcut" -?
     fi
@@ -1012,7 +1020,13 @@ _getDefaultXdebugRemoteHost() {
   fi
 }
 
-export _bwDevDockerEntryPointFileSpec='/home/dev/proj/docker/entrypoint.bash'
+export _bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/entrypoint.bash"
+export _bwDevDockerBwFileSpec="/home/dev/bw.bash"
+export _bwDevDockerBwDir="/home/dev/.bw"
+export _bwDevDockerProjDir="/home/dev/proj"
+export _bwSslFileSpecPrefix="$_bwDir/docker/nginx/ssl/server."
+export _bwNginxConfDir="$_bwDir/docker/nginx/conf.bw"
+# export _bwDevDockerHttpsFileSpecPrefix="/etc/ssl/server."
 
 # shellcheck disable=SC2034
 _initBwProjCmd() {
@@ -1029,13 +1043,16 @@ _initBwProjCmd() {
   eval "$bwProjShortcut"'_description='\''Базовая утилита проекта ${_ansiPrimaryLiteral}'"$bwProjName"' ${_ansiUrl}$bwProjGitOrigin${_ansiReset}'\'
   eval "$bwProjShortcut"'Params=()'
   eval "$bwProjShortcut"'ParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)'
-  eval "$bwProjShortcut()"' { eval "$_funcParams2"; }'
+  eval "$bwProjShortcut()"' { eval "$_funcParams2" 
+  }'
 
-  eval "$bwProjShortcut"'_updateParams=( "--source/s" )'
-  eval "$bwProjShortcut"'_update_source_description='\''Перечитать исходные файлы перед обновлением completion-определения'\'
-  eval "$bwProjShortcut"'_update_description='\''Обновляет completion-определение для команды ${_ansiCmd}'"$bwProjShortcut"'${_ansiReset}'\'
+  eval "$bwProjShortcut"'_updateParams=( "--mode/m:(completionOnly sourceWithoutPregen full)=full" )'
+  eval "$bwProjShortcut"'_update_mode_completionOnly_description='\''Только обновить completion-определения'\'
+  eval "$bwProjShortcut"'_update_mode_sourceWithoutPregen_description='\''Перечитать исходные файлы (без прегенерации) перед обновлением completion-определения'\'
+  eval "$bwProjShortcut"'_update_mode_full_description='\''Перечитать исходные файлы перед обновлением completion-определения'\'
+  eval "$bwProjShortcut"'_update_description='\''Обновляет команду ${_ansiCmd}'"$bwProjShortcut"'${_ansiReset}'\'
   eval "$bwProjShortcut"'_update() { eval "$_funcParams2"
-    _cmd_update "${OPT_source[@]}" "'"$bwProjShortcut"'"
+    _cmd_update "${OPT_mode[@]}" "'"$bwProjShortcut"'"
   }'
 
   eval "$bwProjShortcut"'_dockerParams=()'
@@ -1132,7 +1149,13 @@ _initBwProjCmd() {
 
     '"$codeToPrepareOPTForDockerUp"'
 
-    _docker_up "${OPT[@]}" "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+    _docker_up "${OPT[@]}" '$(_quotedArgs "${bwProjDockerCompose[@]}")' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+  }'
+
+  eval "$bwProjShortcut"'_docker_down_description='\''Останавливает (${_ansiCmd}docker-compose down${_ansiReset}) следующие контейнеры: ${_ansiPrimaryLiteral}$(_'"$bwProjShortcut"'_dockerContainerNames)${_ansiReset}'\'
+  eval "$bwProjShortcut"'_docker_downParams=()'
+  eval "$bwProjShortcut"'_docker_down() { eval "$_funcParams2"
+    _docker_down '$(_quotedArgs "${bwProjDockerCompose[@]}")' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
   }'
 
   eval "_$bwProjShortcut"'_dockerContainerNames() {
@@ -1141,23 +1164,30 @@ _initBwProjCmd() {
   eval "_$bwProjShortcut"'_dockerServiceNames() {
    _dockerComposeServiceNames "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
   }'
-  eval "$bwProjShortcut"'_docker_bashParams=( 
+  eval "$bwProjShortcut"'_docker_shellParams=( 
     '\''containerName:( $(_'"$bwProjShortcut"'_dockerContainerNames) )='\''"$_'"$bwProjShortcut"'DockerContainerName"
+    '\''shell=$(_getDefaultShellOfDockerContainer "$containerName")'\''
   )'
-  eval "$bwProjShortcut"'_docker_bash_description='\''Запускает bash в docker-контейнере'\'
-  eval "$bwProjShortcut"'_docker_bash_containerName_name='\''Имя-контейнера'\'
-  eval "$bwProjShortcut"'_docker_bash() { eval "$_funcParams2"
-    _docker_bash "$containerName"
+  eval "$bwProjShortcut"'_docker_shell_description='\''Запускает bash в docker-контейнере'\'
+  eval "$bwProjShortcut"'_docker_shell_containerName_name='\''Имя-контейнера'\'
+  eval "$bwProjShortcut"'_docker_shell() { eval "$_funcParams2"
+    _docker_shell "$containerName" "$_'"$bwProjShortcut"'DockerContainerName" "$shell"
   }'
 
-  eval "$bwProjShortcut"'_docker_down_description='\''Останавливает (${_ansiCmd}docker-compose down${_ansiReset}) следующие контейнеры: ${_ansiPrimaryLiteral}$(_'"$bwProjShortcut"'_dockerContainerNames)${_ansiReset}'\'
-  eval "$bwProjShortcut"'_docker_downParams=()'
-  eval "$bwProjShortcut"'_docker_down() { eval "$_funcParams2"
-    _docker_down "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
-  }'
 }
 
-_cmd_updateParams=( 'bwProjShortcut' )
+_getDefaultShellOfDockerContainer() {
+  if [[ $1 =~ nginx$ ]]; then
+    echo '/bin/sh'
+  else
+    echo '/bin/bash'
+  fi
+}
+
+_cmd_updateParams=( 
+  '--mode/m:(completionOnly sourceWithoutPregen full)=full'
+  'bwProjShortcut' 
+)
 _cmd_update() { eval "$_funcParams2"
   local sourceFileSpec
   if _isInDocker; then
@@ -1165,14 +1195,18 @@ _cmd_update() { eval "$_funcParams2"
   else
     sourceFileSpecHolder="_${bwProjShortcut}FileSpec"
   fi
-  local sourceFileName=$(basename "${!sourceFileSpecHolder}")
-  if [[ -n $source || ( $(basename "${BASH_SOURCE[2]}") != "$sourceFileName" && $(basename "${BASH_SOURCE[4]}") != "$sourceFileName" ) ]]; then
-    . "$_bwFileSpec" -p -
+  if [[ $mode != completionOnly ]]; then
+    local -a OPT=()
+    if [[ $mode != full ]]; then
+      OPT=( -p - )
+    fi
+    . "$_bwFileSpec" "${OPT[@]}"
     . "${!sourceFileSpecHolder}"
     rm -f "$_bwDir/generated/$bwProjShortcut"*
   fi
   local -a __completions=()
-  _pregen $(compgen -c '"$bwProjShortcut"')
+  local -a funcNamesToPregen; mapfile -t funcNamesToPregen < <(compgen -c "$bwProjShortcut")
+  _pregen "${funcNamesToPregen[@]}"
   for fileSpec in "${__completions[@]}"; do
     . "$fileSpec"
   done
@@ -1198,6 +1232,22 @@ _docker_build() { eval "$_funcParams2"
   fi
 }
 
+export _docker_downParams=( 
+  '@1..dockerComposeFileSpecs'
+)
+_docker_down() { eval "$_funcParams2"
+  local dockerDir; dockerDir=$(dirname "${dockerComposeFileSpecs[ $(( ${#dockerComposeFileSpecs[@]} - 1 )) ]}")
+  local -a OPT=()
+  local dockerComposeFileSpec; for dockerComposeFileSpec in "${dockerComposeFileSpecs[@]}"; do
+    if [[ $(dirname "$dockerComposeFileSpec") != "$dockerDir" ]]; then
+      local srcFileSpec="$dockerComposeFileSpec"
+      dockerComposeFileSpec="$dockerDir/$(basename "$dockerComposeFileSpec")"
+    fi
+    OPT+=( -f "$dockerComposeFileSpec" )
+  done
+  _dockerCompose "${OPT[@]}" down --remove-orphans
+}
+
 export _docker_upParams=(
   '--force-recreate/f'
   '--http='
@@ -1209,7 +1259,7 @@ export _docker_upParams=(
   '--bwProjName='
   '@--restart'
   '--noCheck'
-  'dockerComposeFileSpec'
+  '@1..dockerComposeFileSpecs'
 )
 _docker_up() { eval "$_funcParams2"
 
@@ -1218,7 +1268,7 @@ _docker_up() { eval "$_funcParams2"
     return $?
   fi
 
-  local dockerDir; dockerDir=$(dirname "$dockerComposeFileSpec")
+  local dockerDir; dockerDir=$(dirname "${dockerComposeFileSpecs[ $(( ${#dockerComposeFileSpecs[@]} - 1 )) ]}")
 
   bw_install --silentIfAlreadyInstalled docker || return $?
 
@@ -1239,18 +1289,21 @@ _docker_up() { eval "$_funcParams2"
   local dockerComposeEnvFileSpec="$dockerDir/.env"
   {
     echo "# file generated by $bwProjShortcut_docker_up"
-    echo "_bwDir=$_bwDir"
-    echo "_bwFileSpec=$_bwFileSpec"
+    local varName; for varName in \
+      _bwDir \
+      _bwDevDockerBwDir \
+      _bwFileSpec \
+      _bwDevDockerBwFileSpec \
+      _bwDevDockerProjDir \
+    ; do
+      # _bwDevDockerEntryPointRelativeFileSpec \
+      # _bwDevDockerEntryPointFileSpec \
+      echo "$varName=${!varName}"
+    done
     echo "_${bwProjShortcut}DockerContainerName=$dockerContainerName"
-    if [[ -n $http ]]; then
-      echo "_${bwProjShortcut}DockerHttp=$http"
-    fi
-    if [[ -n $https ]]; then
-      echo "_${bwProjShortcut}DockerHttps=$https"
-    fi
-    if [[ -n $dockerImageName ]]; then
-      echo "_${bwProjShortcut}DockerImageName=$dockerImageName"
-    fi
+    [[ -z $http ]] || echo "_${bwProjShortcut}DockerHttp=$http"
+    [[ -z $https ]] || echo "_${bwProjShortcut}DockerHttps=$https"
+    [[ -z $dockerImageName ]] || echo "_${bwProjShortcut}DockerImageName=$dockerImageName"
   } > "$dockerComposeEnvFileSpec"
 
   if [[ -n $dockerImageName ]]; then
@@ -1329,14 +1382,24 @@ _docker_up() { eval "$_funcParams2"
     eval export "_${bwProjShortcut}DockerHttps"'="$https"'
   fi
 
+  local -a OPT=()
+  local dockerComposeFileSpec; for dockerComposeFileSpec in "${dockerComposeFileSpecs[@]}"; do
+    if [[ $(dirname "$dockerComposeFileSpec") != "$dockerDir" ]]; then
+      local srcFileSpec="$dockerComposeFileSpec"
+      dockerComposeFileSpec="$dockerDir/$(basename "$dockerComposeFileSpec")"
+      cp "$srcFileSpec" "$dockerComposeFileSpec"
+    fi
+    OPT+=( -f "$dockerComposeFileSpec" )
+  done
+
   if [[ "${#restart[@]}" -gt 0 ]]; then
-    _dockerCompose -v all -f "$dockerComposeFileSpec" stop "${restart[@]}"
+    _dockerCompose -v all "${OPT[@]}" stop "${restart[@]}"
   fi
 
   local stderrFileSpec="/tmp/docker-compose.stderr"
   {
     [[ -z $forceRecreate ]] || OPT_forceRecreate=( --force-recreate )
-    _dockerCompose -v all -f "$dockerComposeFileSpec" up -d "${OPT_forceRecreate[@]}" --remove-orphans
+    _dockerCompose -v all "${OPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans
   } 2> >(tee "$stderrFileSpec"); local returnCode=$?
 
   if [[ $returnCode -ne 0 ]] && grep -P -o '(?<=:)\d+(?= failed: port is already allocated)' "$stderrFileSpec" >/dev/null; then
@@ -1345,14 +1408,18 @@ _docker_up() { eval "$_funcParams2"
   return $returnCode
 }
 
-export _docker_downParams=( 'dockerComposeFileSpec' )
-_docker_down() { eval "$_funcParams2"
-  _dockerCompose -f "$dockerComposeFileSpec" down --remove-orphans
-}
-
-export _docker_bashParams=( 'containerName' )
-_docker_bash() { eval "$_funcParams2"
-  _docker exec -u dev -it "$containerName" /bin/bash --init-file "$_bwDevDockerEntryPointFileSpec"
+export _docker_shellParams=( 
+  'containerName' 
+  'mainContainerName' 
+  'shell'
+)
+_docker_shell() { eval "$_funcParams2"
+  if [[ $containerName == "$mainContainerName" && $shell == /bin/bash ]]; then
+    _docker exec -it "$containerName" "$shell" --init-file "$_bwDevDockerEntryPointFileSpec"
+  else
+    local shellHolder="${containerName//-/_}Shell"
+    _docker exec -it "$containerName" "$shell"
+  fi
 }
 
 export _dockerComposeContainerNamesParams=( 'dockerComposeFileSpec' )

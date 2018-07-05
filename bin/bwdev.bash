@@ -5,32 +5,32 @@ _resetBash
 
 # =============================================================================
 
-bwdev_buildParams=(
-  '--justBuild/j'
-  '--verbose/v'
-)
-bwdev_build_description='Тестирует и собирает bw.bash'
-bwdev_build_justBuild_description='Только собирает bw.bash'
-bwdev_build_verbose_description='Больше отладочной информации'
-bwdev_build() { eval "$_funcParams2"
-  local BW_VERBOSE=$verbose 
-  local bwBashFileSpec="$_bwdevDir/bw.bash"
-  if [[ -n $justBuild ]]; then
-    _exec -v all --cmdAsIs '. "'"$bwBashFileSpec"'" _buildBw'
-  else
-    _exec -v all --cmdAsIs '. "'"$bwBashFileSpec"'" -p - bw rm -y && . "'"$bwBashFileSpec"'" bw bt'
-  fi
-}
+# bwdev_buildParams=(
+#   '--justBuild/j'
+#   '--verbose/v'
+# )
+# bwdev_build_description='Тестирует и собирает bw.bash'
+# bwdev_build_justBuild_description='Только собирает bw.bash'
+# bwdev_build_verbose_description='Больше отладочной информации'
+# bwdev_build() { eval "$_funcParams2"
+#   local BW_VERBOSE=$verbose 
+#   local bwBashFileSpec="$_bwdevDir/bw.bash"
+#   if [[ -n $justBuild ]]; then
+#     _exec -v all --cmdAsIs '. "'"$bwBashFileSpec"'" _buildBw'
+#   else
+#     _exec -v all --cmdAsIs '. "'"$bwBashFileSpec"'" -p - bw rm -y && . "'"$bwBashFileSpec"'" bw bt'
+#   fi
+# }
 
 verbosityDefault=none silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
 export bwdev_buildParams=(
-  '--mode/m:(testAll buildAfterTest justBuild)=buildAfterTest'
-  '--moreDebugInfo/d'
+  '--deep/d:(testAll buildAfterTest justBuild)=buildAfterTest'
+  '--moreDebugInfo/i'
   "${_verbosityParams[@]}"
 )
-export bwdev_build_mode_testAll_description='Сборка после полного тестирования'
-export bwdev_build_mode_buildAfterTest_description='Сборка после тестирования'
-export bwdev_build_mode_justBuild_description='Сборка без тестирования'
+export bwdev_build_deep_testAll_description='Сборка после полного тестирования'
+export bwdev_build_deep_buildAfterTest_description='Сборка после тестирования'
+export bwdev_build_deep_justBuild_description='Сборка без тестирования'
 export bwdev_build_description='Тестирует и собирает bw.bash'
 export bwdev_build_justBuild_description='Только собирает bw.bash'
 export bwdev_build_moreDebugInfo_description='Больше отладочной информации'
@@ -38,7 +38,7 @@ bwdev_build() { eval "$_funcParams2"
   local BW_VERBOSE="$moreDebugInfo"
   local bwBashFileSpec="$_bwdevDir/bw.bash"
   local -a OPT=( "${OPT_verbosity[@]}" "${OPT_silent[@]}" )
-  if [[ $mode == justBuild ]]; then
+  if [[ $deep == justBuild ]]; then
     _exec "${OPT[@]}" --cmdAsIs '. "'"$bwBashFileSpec"'" _buildBw'
   else
     if [[ -n $testAll ]]; then
