@@ -193,9 +193,18 @@ _setAtBashProfile() { eval "$_funcParams2"
     if [[ -n $perlCode ]]; then
       local newFileSpec="$_profileFileSpec.new"
       _exec "${OPT_verbosity[@]}" --cmdAsIs "cat $(_quotedArgs "$_profileFileSpec") | perl -ne $(_quotedArgs --quote:dollarSign "$perlCode") > $(_quotedArgs "$_profileFileSpec.new")"
+      _backupProfileFile
       _mvFile "${OPT_verbosity[@]}" "${OPT_silent[@]}" "$_profileFileSpec.new" "$_profileFileSpec"
     fi
   fi
+}
+
+_backupProfileFile() {
+  local num=0
+  while [[ -f "$_profileFileSpec.bak$num" ]]; do
+    num=$(( num + 1 ))
+  done
+  cp "$_profileFileSpec" "$_profileFileSpec.bak$num"
 }
 
 # =============================================================================

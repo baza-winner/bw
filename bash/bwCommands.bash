@@ -487,6 +487,7 @@ bw_set_prompt() { eval "$_funcParams2"
     [[ -z $OLD_PS1 ]] || PS1="$OLD_PS1"
     if grep -E "^(export )?(OLD_)?PS1=" "$_profileFileSpec" >/dev/null 2>&1; then
       grep -v -E "^(export )?(OLD_)?PS1=" "$_profileFileSpec" >"$newFileSpec"
+      _backupProfileFile
       mv "$newFileSpec" "$_profileFileSpec"
     fi
   else
@@ -524,6 +525,7 @@ bw_set_prompt() { eval "$_funcParams2"
       grep -v -E "^(export )?${reOld}PS1=" "$_profileFileSpec" >"$newFileSpec"
       [[ -z $profileLineOld ]] || echo "$profileLineOld" >>"$newFileSpec"
       echo "$profileLine" >>"$newFileSpec"
+      _backupProfileFile
       mv "$newFileSpec" "$_profileFileSpec"
       export PS1="$prompt"
     fi
@@ -1034,7 +1036,6 @@ export _bwDevDockerBwDir="/home/dev/.bw"
 export _bwDevDockerProjDir="/home/dev/proj"
 export _bwSslFileSpecPrefix="$_bwDir/ssl/server."
 export _bwNginxConfDir="$_bwDir/docker/nginx/conf.bw"
-# export _bwDevDockerHttpsFileSpecPrefix="/etc/ssl/server."
 
 # shellcheck disable=SC2034
 _initBwProjCmd() {
@@ -1042,10 +1043,10 @@ _initBwProjCmd() {
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
   eval "_$bwProjShortcut"'FileSpec="$fileSpec"'
-  local bwProjShortcutDirHolder="_${bwProjShortcut}Dir"
-  _realpath -v "$bwProjShortcutDirHolder" "$(dirname "$fileSpec")/.."
+  local bwProjDirHolder="_${bwProjShortcut}Dir"
+  _realpath -v "$bwProjDirHolder" "$(dirname "$fileSpec")/.."
   eval export "_$bwProjShortcut"'DockerImageName="${bwProjDockerImageName:-bazawinner/dev-$bwProjShortcut}"'
-  eval export "_$bwProjShortcut"'DockerImageIdFileSpec="${!bwProjShortcutDirHolder}/docker/dev-$bwProjShortcut.id"'
+  eval export "_$bwProjShortcut"'DockerImageIdFileSpec="${!bwProjDirHolder}/docker/dev-$bwProjShortcut.id"'
   eval export "_$bwProjShortcut"'DockerContainerName="dev-$bwProjShortcut"'
 
   eval "$bwProjShortcut"'_description='\''Базовая утилита проекта ${_ansiPrimaryLiteral}'"$bwProjName"' ${_ansiUrl}$bwProjGitOrigin${_ansiReset}'\'
@@ -1069,8 +1070,12 @@ _initBwProjCmd() {
   eval "$bwProjShortcut"'_dockerCondition='\''! _isInDocker'\'
   eval "$bwProjShortcut"'_docker() { eval "$_funcParams2"; }'
 
-  local codeToPrepareOPTForDockerUp=
+  local codeToPrepareOPTForDockerUp=''
   local -a dockerUpParams=()
+
+  local codeToPrepareOPTForSelfTest=''
+  local -a selfTestParams=()
+
   if [[ -n $bwProjNoDockerBuild ]]; then
     unset "$bwProjShortcut"_docker_buildParams "$bwProjShortcut"_docker_build_description
     unset -f "$bwProjShortcut"_docker_build
@@ -1081,22 +1086,28 @@ _initBwProjCmd() {
     dockerUpParams+=( '--no-check/n' )
     local dockerImageTitle='${_ansiPrimaryLiteral}$_'$bwProjShortcut'DockerImageName${_ansiReset}'
     eval "$bwProjShortcut"'_docker_up_noCheck_description='\''Не проверять актуальность docker-образа '\''"$dockerImageTitle"'
-    codeToPrepareOPTForDockerUp='
+    codeToPrepareOPTForDockerUp+='
       OPT+=( 
         --dockerImageName "$_'$bwProjShortcut'DockerImageName"
         --dockerImageIdFileSpec "$_'$bwProjShortcut'DockerImageIdFileSpec"
       )
     '
+    codeToPrepareOPTForSelfTest+='
+      OPT+=( 
+        --dockerImageName "$_'$bwProjShortcut'DockerImageName"
+      )
+    '
     eval "$bwProjShortcut"'_docker_buildParams=()'
     eval "$bwProjShortcut"'_docker_build_description='\''Собирает docker-образ '\''"$dockerImageTitle"'
     eval "$bwProjShortcut"'_docker_build() { eval "$_funcParams2"
-      _docker_build \
-        "'"$bwProjShortcut"'" \
-        "$_'"$bwProjShortcut"'Dir" \
-        "$_'"$bwProjShortcut"'DockerImageName" \
-        "$_'"$bwProjShortcut"'DockerImageIdFileSpec" \
-        "'"$dockerImageTitle"'" \
-      ;
+      local -a params=(
+        "'"$bwProjShortcut"'"
+        "$_'"$bwProjShortcut"'Dir"
+        "$_'"$bwProjShortcut"'DockerImageName"
+        "$_'"$bwProjShortcut"'DockerImageIdFileSpec"
+        "'"$dockerImageTitle"'"
+      )
+      _docker_build "${params[@]}"
     }'
 
     eval "$bwProjShortcut"'_docker_pushParams=()'
@@ -1106,35 +1117,59 @@ _initBwProjCmd() {
     }'
   fi
 
-  if [[ -n $bwProjDefaultHttp ]]; then
-    codeToPrepareOPTForDockerUp+='
+  if [[ -z $bwProjDefaultHttp ]]; then
+    unset "$bwProjShortcut"_docker_up_http_description 
+    unset "$bwProjShortcut"_selfTest_http_description
+  else
+    local paramDef="--http:$_tcpPortDiap=$bwProjDefaultHttp"
+    local description='http-порт по которому будет доступен контейнер'
+    local code='
       OPT+=( ${OPT_http[@]} )
     '
-  fi
-  if [[ -n $bwProjDefaultHttps ]]; then
-    codeToPrepareOPTForDockerUp+='
-      OPT+=( ${OPT_https[@]} )
-    '
-  fi
-
-  if [[ -z $bwProjDefaultHttp ]]; then
-    unset "$bwProjShortcut"_docker_up_http_description
-  else
-    dockerUpParams+=( "--http:$_tcpPortDiap=$bwProjDefaultHttp" )
-    eval "$bwProjShortcut"'_docker_up_http_description='\''http-порт по которому будет доступен контейнер'\'
+    dockerUpParams+=( "$paramDef" )
+    selfTestParams+=( "$paramDef" )
+    eval "$bwProjShortcut"'_docker_up_http_description='\'"$description"\'
+    eval "$bwProjShortcut"'_selfTest_http_description='\'"$description"\'
+    codeToPrepareOPTForDockerUp+="$code"
+    codeToPrepareOPTForSelfTest+="$code"
   fi
   if [[ -z $bwProjDefaultHttps ]]; then
     unset "$bwProjShortcut"_docker_up_https_description
+    unset "$bwProjShortcut"_selfTest_https_description
   else
-    dockerUpParams+=( "--https:$_tcpPortDiap=$bwProjDefaultHttps" )
-    eval "$bwProjShortcut"'_docker_up_https_description='\''https-порт по которому будет доступен контейнер'\'
+    local paramDef="--https:$_tcpPortDiap=$bwProjDefaultHttps"
+    local description='https-порт по которому будет доступен контейнер'
+    local code='
+      OPT+=( ${OPT_https[@]} )
+    '
+    dockerUpParams+=( "$paramDef" )
+    selfTestParams+=( "$paramDef" )
+    eval "$bwProjShortcut"'_docker_up_https_description='\'"$description"\'
+    eval "$bwProjShortcut"'_selfTest_https_description='\'"$description"\'
+    codeToPrepareOPTForDockerUp+="$code"
+    codeToPrepareOPTForSelfTest+="$code"
   fi
+
+  eval "$bwProjShortcut"'_selfTestParamsOpt=(
+    --additionalDependencies "$_'"$bwProjShortcut"'Dir/bin/'"$bwProjShortcut"'.bash"
+  )'
+  eval "$bwProjShortcut"'_selfTestParams=( 
+    "${selfTestParams[@]}"
+  )'
+  eval "$bwProjShortcut"'_selfTestCondition='\''! _isInDocker'\'
+  eval "$bwProjShortcut"'_selfTestShortcuts=( st )'
+  eval "$bwProjShortcut"'_selfTest_description='\''Самопроверка'\'
+  eval "$bwProjShortcut"'_selfTest() { eval "$_funcParams2"
+    local -a OPT=()
+    '"$codeToPrepareOPTForSelfTest"'
+    _cmd_selfTest "${OPT[@]}" "'"$bwProjShortcut"'" "'"${!bwProjDirHolder}"'"
+  }'
+
+  local dockerComposeFileSpec="$_${bwProjShortcut}Dir/docker/docker-compose.yml"
 
   eval "$bwProjShortcut"'_docker_upParamsOpt=(
     --additionalDependencies "$_'"$bwProjShortcut"'Dir/bin/'"$bwProjShortcut"'.bash"
   )'
-
-  local dockerComposeFileSpec="$_${bwProjShortcut}Dir/docker/docker-compose.yml"
 
   eval "$bwProjShortcut"'_docker_upParams=( 
     "${dockerUpParams[@]}"
@@ -1157,13 +1192,13 @@ _initBwProjCmd() {
 
     '"$codeToPrepareOPTForDockerUp"'
 
-    _docker_up "${OPT[@]}" '$(_quotedArgs "${bwProjDockerCompose[@]}")' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+    _docker_up "${OPT[@]}" '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
   }'
 
   eval "$bwProjShortcut"'_docker_down_description='\''Останавливает (${_ansiCmd}docker-compose down${_ansiReset}) следующие контейнеры: ${_ansiPrimaryLiteral}$(_'"$bwProjShortcut"'_dockerContainerNames)${_ansiReset}'\'
   eval "$bwProjShortcut"'_docker_downParams=()'
   eval "$bwProjShortcut"'_docker_down() { eval "$_funcParams2"
-    _docker_down '$(_quotedArgs "${bwProjDockerCompose[@]}")' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+    _docker_down '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
   }'
 
   eval "_$bwProjShortcut"'_dockerContainerNames() {
@@ -1192,12 +1227,12 @@ _getDefaultShellOfDockerContainer() {
   fi
 }
 
-_cmd_updateParams=( 
+export _cmd_updateParams=( 
   '--mode/m:(completionOnly sourceWithoutPregen full)=full'
   'bwProjShortcut' 
 )
 _cmd_update() { eval "$_funcParams2"
-  local sourceFileSpec
+  local sourceFileSpecHolder
   if _isInDocker; then
     sourceFileSpecHolder='_bwDevDockerEntryPointFileSpec'
   else
@@ -1220,7 +1255,7 @@ _cmd_update() { eval "$_funcParams2"
   done
 }
 
-_docker_buildParams=( 
+export _docker_buildParams=( 
   'bwProjShortcut' 
   'bwProjDir' 
   'dockerImageName'
@@ -1232,9 +1267,9 @@ _docker_build() { eval "$_funcParams2"
     _docker inspect --format "{{json .Id}}" "$dockerImageName:latest" > "$dockerImageIdFileSpec"
     if (git update-index -q --refresh && git diff-index --name-only HEAD -- | grep "$_bwFileName" >/dev/null 2>&1); then
       local msg=
-      msg+="Обновлен docker-образ '"$dockerImageTitle"'${_ansiWarn}"$_nl
+      msg+="Обновлен docker-образ $dockerImageTitle${_ansiWarn}"$_nl
       msg+="${_ansiWarn}Не забудьте поместить его в docker-репозиторий командой"$_nl
-      msg+="    ${_ansiCmd}'"$bwProjShortcut"' docker push${_ansiReset}"
+      msg+="    ${_ansiCmd}$bwProjShortcut docker push${_ansiReset}"
       _warn "$msg"
     fi
   fi
@@ -1254,6 +1289,49 @@ _docker_down() { eval "$_funcParams2"
     OPT+=( -f "$dockerComposeFileSpec" )
   done
   _dockerCompose "${OPT[@]}" down --remove-orphans
+}
+
+export _cmd_selfTestParams=(
+  '--http='
+  '--https='
+  '--dockerImageName='
+  'bwProjShortcut'
+  'bwProjDir'
+)
+_cmd_selfTest() { eval "$_funcParams2"
+  local returnCode=0
+  while true; do
+    _exec -v all "$bwProjShortcut" docker up -f "${OPT_http[@]}" "${OPT_https[@]}" || { returnCode=$?; break; }
+    local tstFileSpec="/tmp/$bwProjShortcut.selfTest"
+    if [[ -n $http ]]; then
+      _exec -v err curl -s "http://localhost:${http}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
+      _exec -v all diff "$tstFileSpec" "$bwProjDir/docker/nginx/whoami/index.html" || { returnCode=$?; break; }
+      rm "$tstFileSpec"
+    fi
+    if [[ -n $https ]]; then
+      _exec -v err curl -s "https://localhost:${https}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
+      _exec -v all diff "$tstFileSpec" "$bwProjDir/docker/nginx/whoami/index.html" || { returnCode=$?; break; }
+      rm "$tstFileSpec"
+    fi
+    local funcName="_${bwProjShortcut}_selfTestAddOn"
+    if _funcExists "$funcName"; then
+      "$funcName"  || { returnCode=$?; break; }    
+    fi
+    if [[ -n $dockerImageName ]]; then
+      _exec -v all $bwProjShortcut docker shell || { returnCode=$?; break; }    
+    fi
+    if [[ -n $http || -n $https ]]; then
+      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Чтобы выйти из docker-контейнера, выполните команду ${_ansiCmd}exit 0${_ansiReset}"
+      _exec -v all $bwProjShortcut docker shell "dev-${bwProjShortcut}-nginx" || { returnCode=$?; break; }    
+    fi
+    break
+  done
+  if [[ $returnCode -eq 0 ]]; then
+    _ok "self-test complete"
+  else
+    _err "self-test failed"
+  fi
+  return $returnCode
 }
 
 export _docker_upParams=(
@@ -1304,8 +1382,6 @@ _docker_up() { eval "$_funcParams2"
       _bwDevDockerBwFileSpec \
       _bwDevDockerProjDir \
     ; do
-      # _bwDevDockerEntryPointRelativeFileSpec \
-      # _bwDevDockerEntryPointFileSpec \
       echo "$varName=${!varName}"
     done
     echo "_${bwProjShortcut}DockerContainerName=$dockerContainerName"
@@ -1425,7 +1501,6 @@ _docker_shell() { eval "$_funcParams2"
   if [[ $containerName == "$mainContainerName" && $shell == /bin/bash ]]; then
     _docker exec -it "$containerName" "$shell" --init-file "$_bwDevDockerEntryPointFileSpec"
   else
-    local shellHolder="${containerName//-/_}Shell"
     _docker exec -it "$containerName" "$shell"
   fi
 }
