@@ -68,6 +68,8 @@ bw_updateTests=(
       ${_ansiOutline}Опции${_ansiReset}
           ${_ansiCmd}--remove${_ansiReset} или ${_ansiCmd}-r${_ansiReset}
               $bw_update_remove_description
+          ${_ansiCmd}--no-pregen${_ansiReset} или ${_ansiCmd}-n${_ansiReset}
+              $bw_update_noPregen_description
           ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
               Выводит справку
     "

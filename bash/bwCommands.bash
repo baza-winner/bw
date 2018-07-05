@@ -691,16 +691,24 @@ _bwProjDefs=(
     --docker-image-name bazawinner/dev-nvm
     --http 8994
     --https 8995
+    --docker-compose "$_bwDir/docker/docker-compose.nginx.yml"
+    --docker-compose "$_bwDir/docker/docker-compose.main.yml"
   '
   'bgate' '
     --gitOrigin github.com:baza-winner/billing-gate.git
     --branch develop
     --http 8086
     --https 8087
+    --docker-compose "$_bwDir/docker/docker-compose.nginx.yml"
+    --docker-compose "$_bwDir/docker/docker-compose.main.yml"
   '
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
     --branch feature/docker
+    --http 8088
+    --https 8089
+    --docker-compose "$_bwDir/docker/docker-compose.nginx.yml"
+    --docker-compose "$_bwDir/docker/docker-compose.main.yml"
   '
   # 'wcraw' '
   #   --gitOrigin github.com:baza-winner/billing-gate.git
@@ -1024,7 +1032,7 @@ export _bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/entrypoint.bash"
 export _bwDevDockerBwFileSpec="/home/dev/bw.bash"
 export _bwDevDockerBwDir="/home/dev/.bw"
 export _bwDevDockerProjDir="/home/dev/proj"
-export _bwSslFileSpecPrefix="$_bwDir/docker/nginx/ssl/server."
+export _bwSslFileSpecPrefix="$_bwDir/ssl/server."
 export _bwNginxConfDir="$_bwDir/docker/nginx/conf.bw"
 # export _bwDevDockerHttpsFileSpecPrefix="/etc/ssl/server."
 
