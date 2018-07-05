@@ -19,7 +19,7 @@ _buildBwHelper() {
   done
   excludeRegExp="generated/($excludeRegExp)"
   local fileNamesToMainArchive="\
-    $(find core bash -name "*.bash") \
+    $(find core bash -name "*.bash" -or -name "*.c") \
     $(find "$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash" | grep -v -E "$excludeRegExp") \
     $(find docker -type f ! -name *.log ! -name .DS_Store) \
     ssl/server.crt ssl/server.key ssl/rootCA.pem \

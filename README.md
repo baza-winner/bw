@@ -24,7 +24,7 @@ bw project bwdev
 ### Только сборка
 
 ```
-bwdev build -m justBuild
+bwdev build only
 ```
 
 ### Cборка после тестирования
@@ -38,7 +38,7 @@ bwdev build
 Некоторые тесты (такие как тесты для `_spinner`) при обычном тестировании не запускаются из-за частого ложно отрицательного срабатывания. 
 
 ```
-bwdev build -m testAll
+bwdev build afterAllTests
 ```
 
 ### Просмотр изменений после сборки

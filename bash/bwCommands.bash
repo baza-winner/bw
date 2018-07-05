@@ -993,8 +993,8 @@ bw_project() { eval "$_funcParams2"
       [[ $verbosity == none  ]] || _err "$msg"
       returnCode=1
     else
-      "$bwProjShortcut" update -m completionOnly
-      local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec"); $bwProjShortcut update -m completionOnly"
+      "$bwProjShortcut" update completionOnly
+      local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec"); $bwProjShortcut update completionOnly"
       _setAtBashProfile "${OPT_uninstall[@]}" "$profileLine" "$profileLineRegExp"
       # local -a __completions=();
       # local -a funcNames; mapfile -t funcNames < <( _getFuncNamesOfScriptToUnset "$cmdFileSpec" )
@@ -1060,13 +1060,15 @@ _initBwProjCmd() {
   eval "$bwProjShortcut()"' { eval "$_funcParams2" 
   }'
 
-  eval "$bwProjShortcut"'_updateParams=( "--mode/m:(completionOnly sourceWithoutPregen full)=full" )'
+  eval "$bwProjShortcut"'_updateParams=( 
+    "mode:(completionOnly sourceWithoutPregen pregenSourced)=pregenSourced" 
+  )'
   eval "$bwProjShortcut"'_update_mode_completionOnly_description='\''Только обновить completion-определения'\'
   eval "$bwProjShortcut"'_update_mode_sourceWithoutPregen_description='\''Перечитать исходные файлы (без прегенерации) перед обновлением completion-определения'\'
   eval "$bwProjShortcut"'_update_mode_full_description='\''Перечитать исходные файлы перед обновлением completion-определения'\'
   eval "$bwProjShortcut"'_update_description='\''Обновляет команду ${_ansiCmd}'"$bwProjShortcut"'${_ansiReset}'\'
   eval "$bwProjShortcut"'_update() { eval "$_funcParams2"
-    _cmd_update "${OPT_mode[@]}" "'"$bwProjShortcut"'"
+    _cmd_update "$mode" "'"$bwProjShortcut"'"
   }'
 
   eval "$bwProjShortcut"'_dockerParams=()'
@@ -1230,7 +1232,7 @@ _getDefaultShellOfDockerContainer() {
 }
 
 export _cmd_updateParams=( 
-  '--mode/m:(completionOnly sourceWithoutPregen full)=full'
+  'mode:(completionOnly sourceWithoutPregen pregenSourced)'
   'bwProjShortcut' 
 )
 _cmd_update() { eval "$_funcParams2"
@@ -1242,7 +1244,7 @@ _cmd_update() { eval "$_funcParams2"
   fi
   if [[ $mode != completionOnly ]]; then
     local -a OPT=()
-    if [[ $mode != full ]]; then
+    if [[ $mode != pregenSourced ]]; then
       OPT=( -p - )
     fi
     . "$_bwFileSpec" "${OPT[@]}" || return $?
