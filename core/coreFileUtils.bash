@@ -500,7 +500,7 @@ _realpath() { eval "$_funcParams2"
   if [[ ! -f "$_bwDir/core/realpath" ]]; then
     gcc -o "$_bwDir/core/realpath" "$_bwDir/core/realpath.c"
   fi
-  local result; result=$(realpath "$path"); local returnCode=$?
+  local result; result=$("$_bwDir/core/realpath" "$path"); local returnCode=$?
   if [[ $returnCode -ne 0 ]]; then
     return $returnCode
   elif [[ -z $varName ]]; then
