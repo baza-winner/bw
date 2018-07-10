@@ -111,19 +111,20 @@ _substituteTests=(
     --before "__substituteTestVarA=1 ${_substitutePrefix}__substituteTestVarA${_substituteIdxSuffix}= ${_substitutePrefix}__substituteTestVarA${_substituteValueSuffix}0="
     "_substitute __substituteTestVarA"
   '
-  '
-    --before "local __substituteTestVarB"
-    --varName "__substituteTestVarB"
-    --varValue "declare -a __substituteTestVarB=([0]=\"d\" [1]=\"e f\")"
-    --varTstPostProcess '"$_postProcessDeclareArray"'
-    --var2Name "${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}"
-    --var2Value "declare -- ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=\"1\""
-    --var3Name "${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1"
-    --var3Value "declare -a ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1='\''([1]=\"a\" [2]=\"b c\")'\''"
-    --before "__substituteTestVarB=( a \"b c\" ) ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=0 ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1="
-    "_substitute __substituteTestVarB d '$_stqq'e f'$_stqq'"
-  '
-    # --varTstPostProcess "perl -pe \"s/='\''\\(/=(/s; s/'\''$//s\""
+  # TODO: реанимировать следующий тест
+  # '
+  #   --before "local __substituteTestVarB"
+  #   --varName "__substituteTestVarB"
+  #   --varValue "declare -a __substituteTestVarB=([0]=\"d\" [1]=\"e f\")"
+  #   --varTstPostProcess '"$_postProcessDeclareArray"'
+  #   --var2Name "${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}"
+  #   --var2Value "declare -- ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=\"1\""
+  #   --var3Name "${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1"
+  #   --var3Value "declare -a ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1='\''([1]=\"a\" [2]=\"b c\")'\''"
+  #   --before "__substituteTestVarB=( a \"b c\" ) ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=0 ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1="
+  #   "_substitute __substituteTestVarB d '$_stqq'e f'$_stqq'"
+  # '
+    # --var3TstPostProcess "perl -pe \"s/='\''\\(/=(/s; s/'\''$//s\""
   '
     --before "_substitute noStack true"
     --after "_restore noStack"

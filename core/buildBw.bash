@@ -18,10 +18,22 @@ _buildBwHelper() {
     excludeRegExp+="$bwProjShortcut"
   done
   excludeRegExp="generated/($excludeRegExp)"
+  local -a OPT_docker=(
+    -type f 
+    ! -name '*.log'
+    ! -name .DS_Store 
+    ! -name .gitignore 
+    ! -name docker-compose.yml 
+    ! -name '*.env'
+    ! -path '*nginx/whoami*' 
+    ! -path '*nginx/conf.d*' 
+    ! -path '*nginx/main.conf' 
+    ! -path '*nginx/nginx.conf'
+  )
   local fileNamesToMainArchive="\
-    $(find core bash -name "*.bash" -or -name "*.c") \
+    $(find core bash -name '*.bash' -or -name '*.c' -or -name '*.awk') \
     $(find "$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash" | grep -v -E "$excludeRegExp") \
-    $(find docker -type f ! -name *.log ! -name .DS_Store) \
+    $(find docker -type f ! -name *.log ! -name .DS_Store ! -name .gitignore ! -name docker-compose.yml ! -name *.env ! -path '*nginx/whoami*' ! -path '*nginx/whoami*' ! -path '*nginx/main.conf' ! -path '*nginx/nginx.conf') \
     ssl/server.crt ssl/server.key ssl/rootCA.pem \
     git-completion/git-completion.bash \
     git-flow-completion/git-flow-completion.bash \

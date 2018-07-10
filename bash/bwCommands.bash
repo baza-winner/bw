@@ -125,13 +125,19 @@ bw_remove() { eval "$_funcParams2"
     codeHolder=_codeToInitSubOPT eval "$_evalCode"
 
     if [[ -z $_isBwDevelop ]]; then
-      _profileUnless "${sub_OPT[@]}" -u ". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
+      local exactLine='. ~/bw.bash'
+      # local matchRegexp='^[ \t]*\.[ \t]+\"?(.+?)\/bw\.bash'
+      [[ $verbosity == dry ]] || _setAtBashProfile -u "$exactLine" "$_bwMatchRegexp"
+      # _profileUnless "${sub_OPT[@]}" -u ". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
     fi
+
+    local -a requiredFiles; mapfile -t requiredFiles < <(find "$_bwDir/core" -name '*.bash' -exec basename {} .bash \;)
+    requiredFiles+=( bw )
 
     local dirSpec; for dirSpec in "$_bwDir/tests/$_generatedDir" "$_bwDir/$_generatedDir" ; do
       [[ -d $dirSpec ]] || continue
       for _fileSpec in "$dirSpec/"*"$_unsetFileExt"; do
-        if _hasItem "$(basename "$_fileSpec" "$_unsetFileExt")" "${_bw_removeRequiredFiles[@]}"; then
+        if _hasItem "$(basename "$_fileSpec" "$_unsetFileExt")" "${requiredFiles[@]}"; then
           _mvFile "${sub_OPT[@]}" "$_fileSpec" "/tmp/$(basename "$_fileSpec")"
         else
           codeHolder=_codeSource eval "$_evalCode"
@@ -148,13 +154,10 @@ bw_remove() { eval "$_funcParams2"
       _rm "${sub_OPT[@]}" -pd "$_bwDir/tmp"
     fi
 
-    local dirSpec; for dirSpec in "$_bwDir/tests/$_generatedDir" "$_bwDir/$_generatedDir" ; do
-      _rm "${sub_OPT[@]}" -d "$dirSpec"
-    done
-
+    local msg=''
     if [[ $verbosity =~ ^(ok|all.*)$ ]]; then
       if [[ -n $_isBwDevelop ]]; then
-        echo "${_ansiWarn}Удалены команда ${_ansiCmd}bw${_ansiWarn} и все прегенеренные вспомогательные файлы. Все основные ${_ansiFileSpec}*.bash${_ansiWarn}-файлы оставлены нетронутыми${_ansiReset}"
+        msg+="${_ansiWarn}Удалены команда ${_ansiCmd}bw${_ansiWarn} и все прегенеренные вспомогательные файлы. Все основные ${_ansiFileSpec}*.bash${_ansiWarn}-файлы оставлены нетронутыми${_ansiReset}"
       else
         local suffix;
         if [[ -z $completely ]]; then
@@ -162,26 +165,35 @@ bw_remove() { eval "$_funcParams2"
         else
           suffix=", включая ${_ansiFileSpec}$_bwFileSpec${_ansiWarn}"
         fi
-        echo "${_ansiWarn}Удалены команда ${_ansiCmd}bw${_ansiWarn} и все связанное с ней (содержимое директории ${_ansiFileSpec}$_bwDir${_ansiWarn})$suffix${_ansiReset}"
+        msg+="${_ansiWarn}Удалены команда ${_ansiCmd}bw${_ansiWarn} и все связанное с ней (содержимое директории ${_ansiFileSpec}$_bwDir${_ansiWarn})$suffix${_ansiReset}"
       fi
     fi
 
+    local dirSpec; for dirSpec in "$_bwDir/tests/$_generatedDir" "$_bwDir/$_generatedDir" ; do
+      if [[ $verbosity == dry ]]; then
+        echo "${_ansiCmd}rm -rf \"$dirSpec\"${_ansiReset}"
+      else
+        rm -rf "$dirSpec"
+      fi
+    done
+
     # local -a varNamesToUnset=( $( compgen -v | perl -ne "print if /^(_specialVars|$_specialVars)\$/" ) )
     local -a varNamesToUnset; mapfile -t varNamesToUnset < <(compgen -v | perl -ne "print if /^(_specialVars|$_specialVars)\$/")
-    if [[ $verbosity == dry ]]; then
-      for _fileSpec in "${_bw_removeRequiredFiles[@]}"; do
-        _fileSpec="/tmp/$_fileSpec$_unsetFileExt"
+    for _fileSpec in "${requiredFiles[@]}"; do
+      _fileSpec="/tmp/$_fileSpec$_unsetFileExt"
+      if [[ $verbosity == dry ]]; then
         echo "${_ansiCmd}. \"$_fileSpec\"${_ansiReset}"
+      else
         codeHolder=_codeSource eval "$_evalCode"
-      done
+      fi
+    done
+    if [[ $verbosity == dry ]]; then
       echo "${_ansiCmd}unset ${varNamesToUnset[*]}${_ansiReset}"
     else
-      for _fileSpec in "${_bw_removeRequiredFiles[@]}"; do
-        _fileSpec="/tmp/$_fileSpec$_unsetFileExt"
-        codeHolder=_codeSource eval "$_evalCode"
-      done
       unset "${varNamesToUnset[@]}"
     fi
+
+    echo "$msg"
   fi
 }
 
@@ -476,7 +488,7 @@ bw_set_prompt() { eval "$_funcParams2"
   if [[ -n $uninstall ]]; then
     local -a fileNames=()
     local moduleName; for moduleName in "${supportModules[@]}"; do
-      fileNames+=( "${moduleName}${supportFileNameSuffix}")
+      fileNames+=( "${moduleName}${supportFileNameSuffix}" )
     done
     local -a fileSpecs=()
     local fileName; for fileName in "${fileNames[@]}"; do
@@ -485,11 +497,14 @@ bw_set_prompt() { eval "$_funcParams2"
     done
     [[ ${#fileSpecs[@]} -eq 0 ]] || rm "${fileSpecs[@]}"
     [[ -z $OLD_PS1 ]] || PS1="$OLD_PS1"
-    if grep -E "^(export )?(OLD_)?PS1=" "$_profileFileSpec" >/dev/null 2>&1; then
-      grep -v -E "^(export )?(OLD_)?PS1=" "$_profileFileSpec" >"$newFileSpec"
-      _backupProfileFile
-      mv "$newFileSpec" "$_profileFileSpec"
-    fi
+    _exportVarAtBashProfile --uninstall OLD_PS1
+    _exportVarAtBashProfile --uninstall PS1
+
+    # if grep -E "^(export )?(OLD_)?PS1=" "$_profileFileSpec" >/dev/null 2>&1; then
+    #   grep -v -E "^(export )?(OLD_)?PS1=" "$_profileFileSpec" >"$newFileSpec"
+    #   _backupBashProfileFile
+    #   mv "$newFileSpec" "$_profileFileSpec"
+    # fi
   else
 
     local -a subOPT=(); local optVarName; for optVarName in "${__OPTVarNames[@]}"; do
@@ -498,37 +513,44 @@ bw_set_prompt() { eval "$_funcParams2"
       subOPT+=( "${OPT[@]}" )
     done
     local prompt; _preparePrompt "${subOPT[@]}" || return $?
-    local profileLine="export PS1=\\'$prompt\\'"
-    local moduleName; for moduleName in "${supportModules[@]}"; do
-      profileLine+="; . ~/${moduleName}${supportFileNameSuffix}"
-    done
+    # local exactLine="export PS1=\\'$prompt\\'"
+    # local moduleName; for moduleName in "${supportModules[@]}"; do
+    #   exactLine+="; . ~/${moduleName}${supportFileNameSuffix}"
+    # done
 
-    local moduleName; for moduleName in "${supportModules[@]}"; do
-      local fileName="${moduleName}${supportFileNameSuffix}"
-      local srcFileSpec="$_bwDir/core/$fileName"
-      local dstFileSpec="$HOME/$fileName"
-      if [[ -f "$srcFileSpec" ]]; then
-        cp "$srcFileSpec" "$dstFileSpec"
-      else
-        echo '[[ $(type -t _resetBash) != function ]] || _resetBash' >"$dstFileSpec"
-        _getFileChunk "$_bwFileSpec" "# ==${moduleName} start" "# ==${moduleName} end" >>"$dstFileSpec"
-      fi
-    done
-    if ! grep -x "$profileLine" "$_profileFileSpec" >/dev/null 2>&1; then
-      local reOld=
-      local profileLineOld=
-      if [[ -z $OLD_PS1 ]]; then
-        export OLD_PS1="$PS1"
-        profileLineOld="export OLD_PS1=\"$PS1\""
-        reOld='(OLD_)?'
-      fi
-      grep -v -E "^(export )?${reOld}PS1=" "$_profileFileSpec" >"$newFileSpec"
-      [[ -z $profileLineOld ]] || echo "$profileLineOld" >>"$newFileSpec"
-      echo "$profileLine" >>"$newFileSpec"
-      _backupProfileFile
-      mv "$newFileSpec" "$_profileFileSpec"
-      export PS1="$prompt"
+    # local moduleName; for moduleName in "${supportModules[@]}"; do
+    #   local fileName="${moduleName}${supportFileNameSuffix}"
+    #   local srcFileSpec="$_bwDir/core/$fileName"
+    #   local dstFileSpec="$HOME/$fileName"
+    #   if [[ -f "$srcFileSpec" ]]; then
+    #     cp "$srcFileSpec" "$dstFileSpec"
+    #   else
+    #     echo '[[ $(type -t _resetBash) != function ]] || _resetBash' >"$dstFileSpec"
+    #     _getFileChunk "$_bwFileSpec" "# ==${moduleName} start" "# ==${moduleName} end" >>"$dstFileSpec"
+    #   fi
+    # done
+    if _hasExportVarAtBashProfile -n OLD_PS1; then
+      export OLD_PS1="$PS1"
+      _exportVarAtBashProfile OLD_PS1
     fi
+    export PS1="$prompt"
+    _exportVarAtBashProfile PS1
+    # if ! grep -x "$exactLine" "$_profileFileSpec" >/dev/null 2>&1; then
+    #   local reOld=
+    #   local profileLineOld=
+    #   if [[ -z $OLD_PS1 ]]; then
+    #     export OLD_PS1="$PS1"
+    #     profileLineOld="export OLD_PS1=\"$PS1\""
+    #     reOld='(OLD_)?'
+    #   fi
+    #   grep -v -E "^(export )?${reOld}PS1=" "$_profileFileSpec" >"$newFileSpec"
+    #   [[ -z $profileLineOld ]] || echo "$profileLineOld" >>"$newFileSpec"
+    #   echo "$exactLine" >>"$newFileSpec"
+    #   _backupBashProfileFile
+    #   mv "$newFileSpec" "$_profileFileSpec"
+
+    #   export PS1="$prompt"
+    # fi
   fi
 }
 
@@ -707,7 +729,7 @@ _bwProjDefs=(
   '
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch feature/docker
+    --branch develop
     --http 8088
     --https 8089
     --upstream 3000
@@ -766,7 +788,11 @@ export _codeToCallPrepareBwProjVarsHelper='
   _prepareBwProjVarsHelper "${params[@]}" || return $?
   codeHolder=codeToGetBwProjDef eval "$_evalCode"
   bwProjName=$(basename "$bwProjGitOrigin" .git)
-  bwProjTitle="$bwProjName ($bwProjShortcut)"
+  if [[ $bwProjName == "$bwProjShortcut" ]]; then
+    bwProjTitle="$bwProjName"
+  else
+    bwProjTitle="$bwProjName ($bwProjShortcut)"
+  fi
 '
 
 export _tcpPortDiap='1024..65535'
@@ -863,9 +889,7 @@ bw_project() { eval "$_funcParams2"
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
   [[ -n $branch ]] || branch=${bwProjDefaultBranch:-$bwProjGlobalDefaultBranch}
 
-  local profileLineRegExp="^\\s*\\.\\s+\"?(.+?)\\/bin\\/$bwProjShortcut\\.bash\"?\\s*$"
-  local alreadyProjDir=
-    ! grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1 || alreadyProjDir=$(perl -ne "print \$1 if /$profileLineRegExp/" "$_profileFileSpec" | tail -n 1)
+  local alreadyProjDir='';  _getAlreadyProjDir "$bwProjShortcut" --varName alreadyProjDir
   if [[ -n $alreadyProjDir ]]; then
     if [[ -n $uninstall ]]; then
       projDir="$alreadyProjDir"
@@ -977,31 +1001,32 @@ bw_project() { eval "$_funcParams2"
 
   folder="$projDir" name="$bwProjTitle" _showProjectResult
 
-  if [[ $returnCode -eq 0 && -z $uninstall && $verbosity != dry ]]; then
+  if [[ $returnCode -eq 0 && $verbosity != dry ]]; then
     local cmdFileSpec="$projDir/bin/${bwProjShortcut}.bash"
-    if [[ ! -f "$cmdFileSpec" ]]; then
-      local msg=
-      msg+="Не найден файл ${_ansiFileSpec}bin/$bwProjShortcut.bash${_ansiErr}$_nl"
-      msg+="Не удалось инициализировать команду ${_ansiCmd}$bwProjShortcut"
-      [[ $verbosity == none  ]] || _err "$msg"
-      returnCode=1
-    elif ! _exec "${sub_OPT[@]}" . "$cmdFileSpec"; then
-      local msg=
-      msg+="Не удалось инициализировать команду ${_ansiCmd}$bwProjShortcut"
-      [[ $verbosity == none  ]] || _err "$msg"
-      returnCode=1
+    local exactLine; exactLine=". $(_quotedArgs $(_shortenFileSpec "$cmdFileSpec")); $bwProjShortcut update completionOnly"
+    # local matchRegxp="^[[:space:]]*\\.\\s+\"?(.+?)\\/bin\\/$bwProjShortcut\\.bash"
+    # local matchRegxp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~].+)\/bin\/'"$bwProjShortcut"'\.bash'
+    local matchRegxp="$_sourceMatchRegexp"'bin\/'"$bwProjShortcut"'\.bash'
+    if [[ -n $uninstall ]]; then
+        _setAtBashProfile -u "$exactLine" "$matchRegxp"
     else
-      "$bwProjShortcut" update completionOnly
-      local profileLine; profileLine=". $(_quotedArgs "$cmdFileSpec"); $bwProjShortcut update completionOnly"
-      _setAtBashProfile "${OPT_uninstall[@]}" "$profileLine" "$profileLineRegExp"
-      # local -a __completions=();
-      # local -a funcNames; mapfile -t funcNames < <( _getFuncNamesOfScriptToUnset "$cmdFileSpec" )
-      # _exec "${sub_OPT[@]}" _pregen "${funcNames[@]}"
-      # for _fileSpec in "${__completions[@]}"; do
-      #   _exec "${sub_OPT[@]}" . "$_fileSpec"
-      # done
-      [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$bwProjShortcut${_ansiReset}"
-      _exec "${sub_OPT[@]}" --treatAsOK 3 "$bwProjShortcut" -?
+      if [[ ! -f "$cmdFileSpec" ]]; then
+        local msg=
+        msg+="Не найден файл ${_ansiFileSpec}bin/$bwProjShortcut.bash${_ansiErr}$_nl"
+        msg+="Не удалось инициализировать команду ${_ansiCmd}$bwProjShortcut"
+        [[ $verbosity == none  ]] || _err "$msg"
+        returnCode=1
+      elif ! _exec "${sub_OPT[@]}" . "$cmdFileSpec"; then
+        local msg=
+        msg+="Не удалось инициализировать команду ${_ansiCmd}$bwProjShortcut"
+        [[ $verbosity == none  ]] || _err "$msg"
+        returnCode=1
+      else
+        _setAtBashProfile "${OPT_uninstall[@]}" "$exactLine" "$matchRegxp"
+        "$bwProjShortcut" update completionOnly
+        [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$bwProjShortcut${_ansiReset}"
+        _exec "${sub_OPT[@]}" --treatAsOK 3 "$bwProjShortcut" -?
+      fi
     fi
   fi
 
@@ -1168,7 +1193,7 @@ _initBwProjCmd() {
 
     '"$codeToPrepareOPTForDockerUp"'
 
-    _docker_up "${OPT[@]}" '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+    _inDir "$_'"$bwProjShortcut"'Dir/docker" _docker_up "${OPT[@]}" '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
   }'
 
   eval "$bwProjShortcut"'_docker_down_description='\''Останавливает (${_ansiCmd}docker-compose down${_ansiReset}) следующие контейнеры: ${_ansiPrimaryLiteral}$(_'"$bwProjShortcut"'_dockerContainerNames)${_ansiReset}'\'
@@ -1380,6 +1405,8 @@ _docker_up() { eval "$_funcParams2"
   {
     echo "# file generated by $bwProjShortcut_docker_up"
     local varName; for varName in \
+      _bwNginxConfDir \
+      _bwSslFileSpecPrefix \
       _bwDir \
       _bwDevDockerBwDir \
       _bwFileSpec \
@@ -1656,9 +1683,9 @@ _bwProjectInfoHelper() {
     fi
 
   else
-    local profileLineRegExp='^\s*\.\s+\"?(.+?)\/bin\/'"$bwProjShortcut"'\.bash\"?\s*$'
-    if grep -E "$profileLineRegExp" "$_profileFileSpec" >/dev/null 2>&1; then
-      local alreadyProjDir; alreadyProjDir=$(perl -ne "print \$1 if /$profileLineRegExp/" "$_profileFileSpec" | tail -n 1)
+    local matchRegxp='^\s*\.\s+\"?(.+?)\/bin\/'"$bwProjShortcut"'\.bash\"?\s*$'
+    if grep -E "$matchRegxp" "$_profileFileSpec" >/dev/null 2>&1; then
+      local alreadyProjDir; alreadyProjDir=$(perl -ne "print \$1 if /$matchRegxp/" "$_profileFileSpec" | tail -n 1)
       if [[ ! -d $alreadyProjDir ]]; then
         _warn "Папка ${_ansiFileSpec}$alreadyProjDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} не обнаружена"
         return 7

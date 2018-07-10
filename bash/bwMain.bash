@@ -18,23 +18,31 @@ _selfUpdate() { eval "$_funcParams2"
 }
 
 # _codeOfSelfUpdateSource='${BW_SELF_UPDATE_SOURCE:-$_bwGithubSource/master}'
-_defaultBwUpdateSource="$_bwGithubSource/master"
-_bwMainParamsOpt=(--canBeMoreParams)
-_bwMainParams=(
+export _defaultBwUpdateSource="$_bwGithubSource/master"
+export _bwMainParamsOpt=(--canBeMoreParams)
+export _bwMainParams=(
   '--pregenOnly/p:?=$BW_PREGEN_ONLY'
   '--force/f'
+  '--noSelfUpdate/n'
   '--selfUpdateSource/u=${BW_SELF_UPDATE_SOURCE:-'"$_defaultBwUpdateSource"'}'
 )
-_bwMain_pregenOnly_description="Ограничивает прегенерацию только указанными функциями, значение ${_ansiPrimaryLiteral}-${_ansiReset} имеет смысл \"отключить прегенерацию\""
-_bwMain_force_description="Форсирует прегенерацию, независимо от значения ${_ansiOutline}_isBwDevelop${_ansiReset}"
-_bwMain_selfUpdateSource_description="Устанавливает URL источника обновления"
+export _bwMain_pregenOnly_description='Ограничивает прегенерацию только указанными функциями, значение ${_ansiPrimaryLiteral}-${_ansiReset} имеет смысл "отключить прегенерацию"'
+export _bwMain_force_description='Форсирует прегенерацию, независимо от значения ${_ansiOutline}_isBwDevelop${_ansiReset}'
+export _bwMain_noSelfUpdate_description='Блокирует самобновления из источника обновления'
+export _bwMain_selfUpdateSource_description='Устанавливает URL источника обновления'
+export _sourceMatchRegexp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~]+)\/'
+export _bwMatchRegexp="$_sourceMatchRegexp"'bw\.bash'
 _bwMain() { eval "$_funcParams2"
   _profileBegin
   local returnCode=0
   while true; do
     [[ ! $selfUpdateSource =~ ^- ]] || selfUpdateSource="$_bwGithubSource/master"
 
-    if [[ -z $_isBwDevelop && -z $_isBwDevelopInherited ]] ; then
+    if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]] ; then
+      _inDir "$_bwDir" _prepareGitBranchName \
+        || { returnCode=$?; break; }
+      selfUpdateSource="$gitBranchName"
+    elif [[ -z $noSelfUpdate ]]; then
       _inDir --treatAsOK 3 --preserveReturnCode "$_bwDir" _selfUpdate "$selfUpdateSource"; local returnCode=$?
       if [[ $returnCode -eq 3 ]]; then
         . "$_bwFileSpec" "$@"; local returnCode=$?
@@ -46,10 +54,6 @@ _bwMain() { eval "$_funcParams2"
       elif [[ $returnCode -ne 0 ]]; then
         break
       fi
-    else
-      _inDir "$_bwDir" _prepareGitBranchName \
-        || { returnCode=$?; break; }
-      selfUpdateSource="$gitBranchName"
     fi
 
     if [[ ! $pregenOnly =~ ^- && ( -n $_isBwDevelop || -n $OPT_force ) ]]; then
@@ -68,11 +72,13 @@ _bwMain() { eval "$_funcParams2"
 
     _exportVarAtBashProfile BW_SELF_UPDATE_SOURCE
 
-    local profileLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
+    local exactLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
     if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]]; then
-      profileLine+=" -p -"
+      exactLine+=" -p -"
     fi
-    _setAtBashProfile "$profileLine" "^\s*\.\s+\"?(.+?)\/bw\.bash\"?"
+    # local matchRegexp="^[[:space:]]*\\.[[:space:]]+\"?(.+?)\\/bw\\.bash"
+    # local matchRegexp='^[[ \t]]*\.[[ \t]]+"?[ a-zA-Z0-9\/~].+\/bin\/bw.bash'
+    _setAtBashProfile "$exactLine" "$_bwMatchRegexp"
 
     _cmdToExecute=( "$@" )
     break

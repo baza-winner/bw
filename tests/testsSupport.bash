@@ -40,7 +40,7 @@ bw_bashTestsHelper() {
       [[ ! $arg =~ $_isValidVarNameRegExp ]] || funcsTestFor+=( "$arg" )
     done
     funcsTestFor=( $(_getUniqArray "${funcsTestFor[@]}") )
-    for funcTestFor in ${funcsTestFor[@]}; do
+    for funcTestFor in "${funcsTestFor[@]}"; do
       for _fileSpec in "$testsDirSpec/"*Tests.bash; do
         local fileNameToProcess=$(basename "$_fileSpec")
         ! _hasItem "$fileNameToProcess" "${fileNamesToProcess[@]}" || continue
@@ -289,11 +289,14 @@ _runBashTestWrapper() {
 
 _stdStreams=( 'stdout' 'stderr' )
 _runBashTestOptionsMaxVarNumber=3
+_runBashTestOptionsMaxFileNumber=3
 _runBashTestParams=()
 _runBashTestParams() {
   varName="${FUNCNAME[0]}" codeHolder=_codeToUseCache eval "$_evalCode"
   _runBashTestParams=(
-    '@--before/b=' '@--immediatly/i=' '@--after/a='
+    '@--before/b=' 
+    '@--immediatly/i=' 
+    '@--after/a='
     '--return/r=0'
   )
   local -a tstEntities=()
@@ -301,25 +304,65 @@ _runBashTestParams() {
     _runBashTestParams+=( "--$stdStream:?=" )
     tstEntities+=( $stdStream )
   done
-  local varPrefix i=0; while [[ i -lt _runBashTestOptionsMaxVarNumber ]]; do
-    i=$(( i + 1 ))
+  local i; for ((i=1; i<=_runBashTestOptionsMaxVarNumber; i++)); do
     varPrefix=var
     [[ $i -gt 1 ]] && varPrefix+="$i"
-    _runBashTestParams+=( "--${varPrefix}Name=" "--${varPrefix}Value=" )
+    _runBashTestParams+=( 
+      "--${varPrefix}Name=" 
+      "--${varPrefix}Value=" 
+    )
     tstEntities+=( $varPrefix )
   done
   local -r fileSpecBase="/tmp/$(basename "${BASH_SOURCE[0]}")"
   local tstEntity; for tstEntity in ${tstEntities[@]}; do
     _runBashTestParams+=( "--${tstEntity}TstFileSpec=$fileSpecBase.${tstEntity}" )
-    for param in 'Eval:1..:?' 'DiffOptions=' 'EchoOptions=' 'ParaWithIndent:0..' 'ParaWithIndentBase:1..=4'; do
-      _runBashTestParams+=( "--${tstEntity}${param}" )
+    local -a paramSuffixes=(
+      'Eval:1..:?' 
+      'DiffOptions=' 
+      'EchoOptions=' 
+      'ParaWithIndent:0..' 
+      'ParaWithIndentBase:1..=4'
+    )
+    local paramSuffix; for paramSuffix in "${paramSuffixes[@]}"; do
+      _runBashTestParams+=( "--${tstEntity}${paramSuffix}" )
     done
-    _runBashTestParams+=( "@--${tstEntity}EtaPreProcess" )
-    _runBashTestParams+=( "@--${tstEntity}TstPostProcess" )
+    local -a paramSuffixes=(
+      'EtaPreProcess'
+      'TstPostProcess'
+    )
+    local paramSuffix; for paramSuffix in "${paramSuffixes[@]}"; do
+      _runBashTestParams+=( "@--${tstEntity}${paramSuffix}" )
+    done
   done
-  _runBashTestParams+=( --catOptions "")
-  _runBashTestParams+=( "--inTmpDir")
-  _runBashTestParams+=( "testCmd" "testName" "testNum:0..=0")
+
+  local -a fileEntities=()
+  local i; for ((i=1; i<=_runBashTestOptionsMaxFileNumber; i++)); do
+    varPrefix=file
+    [[ $i -gt 1 ]] && varPrefix+="$i"
+    fileEntities+=( $varPrefix )
+  done
+  local fileEntity; for fileEntity in ${fileEntities[@]}; do
+    _runBashTestParams+=( 
+      '--'"${fileEntity}"'Spec=' 
+      '--'"${fileEntity}"'Eta=$'"$fileEntity"'Spec.eta'
+      '--'"${fileEntity}"'Diff="/tmp/$(basename "$'"$fileEntity"'Spec").diff"'
+      '--'"${fileEntity}"'DiffOptions='
+    )
+  done
+
+  # _runBashTestParams+=( --catOptions "" )
+  # _runBashTestParams+=( '--catOptions' )
+  # _runBashTestParams+=( '--inTmpDir' )
+  _runBashTestParams+=( 
+    '--catOptions'
+    '--inTmpDir'
+    '--noErrorStack'
+    '@--fileExist'
+    '@--fileNotExist'
+    'testCmd' 
+    'testName' 
+    'testNum:0..=0'
+  )
   _saveToCache "${FUNCNAME[0]}"
 }
 
@@ -331,16 +374,26 @@ _runBashTest() { eval "$_funcParams2"
     local ${stdStream}Name="$stdStream"
     tstEntities+=( "$stdStream" )
   done
-  local i; for ((i=0; i<$_runBashTestOptionsMaxVarNumber; i++)); do
-    local varPrefix=var; [[ $i -gt 0 ]] && varPrefix+="$i"
+  local i; for ((i=1; i<=$_runBashTestOptionsMaxVarNumber; i++)); do
+    local varPrefix=var; [[ $i -eq 1 ]] || varPrefix+="$i"
+    tstEntities+=( "$varPrefix" )
     local varNameHolder="${varPrefix}Name"
     local varValueHolder="${varPrefix}Value"
     [[ -z ${!varValueHolder} ]] || [[ -n ${!varNameHolder} ]] \
       || return $(_err --showStack 2 "${_ansiCmd}${FUNCNAME[0]}${_ansiErr} ожидает, что опция ${_ansiCmd}--$varValueHolder${_ansiErr} будет задана вместе с опцией ${_ansiCmd}--$varNameHolder")
   done
 
+  local -a fileEntities=()
+  local i; for ((i=1; i<=$_runBashTestOptionsMaxFileNumber; i++)); do
+    local varPrefix=file; [[ $i -eq 1 ]] || varPrefix+="$i"
+    local varNameHolder="${varPrefix}Spec"
+    if [[ -n ${!varNameHolder} ]]; then
+      fileEntities+=( "$varPrefix" )
+    fi
+  done
+
   local hasDifference returnDiffers
-  local tstEntity; for tstEntity in "${tstEntities[@]}"; do
+  local tstEntity; for tstEntity in "${tstEntities[@]}" "${fileEntities[@]}"; do
     local ${tstEntity}Differs=
   done
   local returnTst
@@ -367,6 +420,7 @@ _runBashTest() { eval "$_funcParams2"
       echo -e "${_ansiOutline}return${_ansiErr} is expected to be ${_ansiOK}$return${_ansiErr}, but got ${_ansiWarn}$returnTst${_ansiReset}" >&2
     local tstEntity; for tstEntity in ${tstEntities[@]}; do
       local differsHolder="${tstEntity}Differs"
+      # _debugVar $differsHolder
       if [[ -n ${!differsHolder} ]]; then
         local diffOptionsHolder="${tstEntity}DiffOptions"
         local diffOptions; [[ -n ${!diffOptionsHolder} ]] && diffOptions="${!diffOptionsHolder} "
@@ -374,6 +428,22 @@ _runBashTest() { eval "$_funcParams2"
         local tstFileSpecHolder="${tstEntity}TstFileSpec"
         echo -e "${_ansiOutline}${!nameHolder}${_ansiReset} (${_ansiCmd}diff $diffOptions${!tstFileSpecHolder} ${!tstFileSpecHolder}.eta${_ansiReset}):" >&2
         cat $catOptions "${!tstFileSpecHolder}.diff" >&2
+      fi
+    done
+    # _debugVar fileEntities
+    local fileEntity; for fileEntity in ${fileEntities[@]}; do
+      local differsHolder="${fileEntity}Differs"
+      if [[ -n ${!differsHolder} ]]; then
+      # _debugVar $differsHolder
+        local diffOptionsHolder="${fileEntity}DiffOptions"
+        local diffOptions; [[ -n ${!diffOptionsHolder} ]] && diffOptions="${!diffOptionsHolder} "
+        local nameHolder="${fileEntity}Spec"
+        local tstFileSpecHolder="${fileEntity}Spec"
+        local etaFileSpecHolder="${fileEntity}Eta"
+        local diffFileSpecHolder="${fileEntity}Diff"
+        # _debugVar $diffFileSpecHolder
+        echo -e "${_ansiOutline}$nameHolder ${_ansiFileSpec}${!nameHolder}${_ansiReset} (${_ansiCmd}diff $diffOptions${!tstFileSpecHolder} ${!etaFileSpecHolder}${_ansiReset}):" >&2
+        cat $catOptions "${!diffFileSpecHolder}" >&2
       fi
     done
     return 2
@@ -396,11 +466,15 @@ _runBashTestHelper() {
   _rm "$stdoutTstFileSpec" "$stderrTstFileSpec"
   _profileInitTransfer
   ( profileTmpFileSpec="$_profileTmpFileSpec"
+    _isTesting=true
+    if [[ -n $noErrorStack ]]; then
+      noStack=true
+    fi
     eval "$testCmd" 1>"$stdoutTstFileSpec" 2>"$stderrTstFileSpec";
     local returnTst=$?
 
-    local i; for ((i=0; i<_runBashTestOptionsMaxVarNumber; i++)); do
-      local varPrefix=var; [[ $i -gt 0 ]] && varPrefix+="$i"
+    local i; for ((i=1; i<=_runBashTestOptionsMaxVarNumber; i++)); do
+      local varPrefix=var; [[ $i -eq 1 ]] || varPrefix+="$i"
       local varNameHolder="${varPrefix}Name"
       if [[ -n ${!varNameHolder} ]]; then
         local varTstFileSpecHolder="${varPrefix}TstFileSpec"
@@ -412,10 +486,10 @@ _runBashTestHelper() {
     local stdStream; for stdStream in ${_stdStreams[@]}; do
       tstEntities+=( $stdStream )
     done
-    local varPrefix i=0; while [[ i -lt _runBashTestOptionsMaxVarNumber ]]; do
-      i=$(( i + 1 ))
-      varPrefix=var
-      [[ $i -gt 1 ]] && varPrefix+="$i"
+    # local varPrefix i=0; while [[ i -lt _runBashTestOptionsMaxVarNumber ]]; do
+      # i=$(( i + 1 ))
+    local i; for ((i=1; i<=_runBashTestOptionsMaxVarNumber; i++)); do
+      varPrefix=var; [[ $i -eq 1 ]] || varPrefix+="$i"
       tstEntities+=( $varPrefix )
     done
     local tstEntity; for tstEntity in ${tstEntities[@]}; do
@@ -437,10 +511,21 @@ _runBashTestHelper() {
   ); returnTst=$?
   _profileGetTransfer
 
-  local i; for ((i=0; i<_runBashTestOptionsMaxVarNumber; i++)); do
-    local varPrefix=var; [[ $i -gt 0 ]] && varPrefix+="$i"
+  local -a tstEntities=()
+  local stdStream; for stdStream in ${_stdStreams[@]}; do
+    tstEntities+=( $stdStream )
+  done
+  local i; for ((i=1; i<=_runBashTestOptionsMaxVarNumber; i++)); do
+    local varPrefix=var; [[ $i -eq 1 ]] || varPrefix+="$i"
     local varNameHolder="${varPrefix}Name"
     [[ -z ${!varNameHolder} ]] || tstEntities+=( $varPrefix )
+  done
+
+  local -a fileEntities=()
+  local i; for ((i=1; i<=_runBashTestOptionsMaxFileNumber; i++)); do
+    local varPrefix=file; [[ $i -eq 1 ]] || varPrefix+="$i"
+    local varNameHolder="${varPrefix}Spec"
+    [[ -z ${!varNameHolder} ]] || fileEntities+=( $varPrefix )
   done
 
   local item; for item in "${immediatly[@]}"; do
@@ -451,6 +536,7 @@ _runBashTestHelper() {
     returnDiffers=true
     hasDifference=true
   fi
+  # _debugVar tstEntities
   local tstEntity; for tstEntity in "${tstEntities[@]}"; do
     local valueHolder="${tstEntity}Value"
     local evalHolder="${tstEntity}Eval"
@@ -485,6 +571,29 @@ _runBashTestHelper() {
       eval ${tstEntity}Differs=true
       hasDifference=true
     fi
+  done
+
+  local fileEntity; for fileEntity in "${fileEntities[@]}"; do
+    local diffOptionsHolder="${fileEntity}DiffOptions"
+    local tstFileSpecHolder="${fileEntity}Spec"
+    local etaFileSpecHolder="${fileEntity}Eta"
+    local diffFileSpecHolder="${fileEntity}Diff"
+    # _debugVar $tstFileSpecHolder $etaFileSpecHolder $diffFileSpecHolder
+    # $(diff -a ${!diffOptionsHolder} "${!tstFileSpecHolder}" "${!etaFileSpecHolder}" >"${!diffFileSpecHolder}" 2>&1)
+    diff -a ${!diffOptionsHolder} "${!tstFileSpecHolder}" "${!etaFileSpecHolder}" >"${!diffFileSpecHolder}" 2>&1
+    if [[ $? -ne 0 ]]; then
+      eval ${fileEntity}Differs=true
+      hasDifference=true
+    fi
+  done
+  # _debugVar hasDifference fileDiffers file2Differs
+
+  local fileSpec; for fileSpec in "${fileExist[@]}"; do
+    _exist -v err "$fileSpec" || hasDifference=true
+  done
+
+  local fileSpec; for fileSpec in "${fileNotExist[@]}"; do
+    _exist -v err -n "$fileSpec" || hasDifference=true
   done
 
   local item; for item in "${after[@]}"; do

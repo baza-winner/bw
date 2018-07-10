@@ -47,6 +47,16 @@ bwdev build afterAllTests
 diff tgz/Имя-файла Имя-файла
 ```
 
+### Просмотр содержимого архива
+
+#### main
+
+_getBwTar bw.bash | tar t
+
+#### tests
+
+_getBwTar bw.bash tests | tar t
+
 ### Извлечение содержимого архива
 
 #### из bw.bash
@@ -109,7 +119,7 @@ curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=loc
 ## Установка для отладки в гостевой системе под Parallels
 
 ```
-curl -o ~/bw.bash -L 10.211.55.2:${_bwdevDockerHttp:-8998}/bw.bash && . ~/bw.bash -u 10.211.55.2:${_bwdevDockerHttp:-8998} bw bt
+curl -o ~/bw.bash -L 10.211.55.2:8998/bw.bash && . ~/bw.bash -u 10.211.55.2:8998 bw bt
 ```
 
 или

@@ -34,7 +34,7 @@ ${_ansiPrimaryLiteral}$_hostUser${_ansiOK}, Вы вошли в Docker-конте
 ${_ansiWarn}Подсказка: Чтобы выйти из Docker-container'а, выполните команду ${_ansiCmd}q
 ${_ansiReset}В Docker-контейнере доступна команда ${_ansiCmd}$_bwProjShortcut${_ansiReset}"
 
-  "$_bwProjShortcut" update -m completionOnly
+  "$_bwProjShortcut" update completionOnly
   "$_bwProjShortcut" -?
 fi
 
