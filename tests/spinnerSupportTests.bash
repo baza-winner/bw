@@ -7,7 +7,7 @@ _resetBash
 
 _spinnerTestFuncParams=( 'testNum:0..2' )
 _spinnerTestFunc() { eval "$_funcParams"
-  _fileSpec="$_bwDir/core/spinnerSupport.bash" codeHolder=_codeSource eval "$_evalCode"
+  fileSpec="$_bwDir/core/spinnerSupport.bash" codeHolder=_codeSource eval "$_evalCode"
   if [[ $testNum -eq 0 ]]; then
     _spinner '-t:Sleep обработан за' Sleep sleep 1 & 2>/dev/null
     local spinnerPid=$!

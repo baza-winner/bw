@@ -6,10 +6,12 @@ _resetBash
 
 _buildBwParams=()
 _buildBw() { eval "$_funcParams2"
+  # [[ -n $BW_DRILL ]] && echo "_buildBw after _funcParams2 _bwDir: $_bwDir"
   [[ -n $_isBwDevelop ]] || return $(_err "Команда ${_ansiCmd}${FUNCNAME[0]}${_ansiErr} доступна только в режиме _isBwDevelop")
   _inDir "$_bwDir" _buildBwHelper
 }
 _buildBwHelper() {
+  # [[ -n $BW_DRILL ]] && echo "_buildBwHelper _bwDir: $_bwDir"
   local excludeRegExp='_bwCreateServerHttpsCrtKey'
   local bwProjShortcut; for bwProjShortcut in $(_getBwProjShortcuts); do
     if [[ -n $excludeRegExp ]]; then
@@ -39,7 +41,7 @@ _buildBwHelper() {
     git-flow-completion/git-flow-completion.bash \
   "
   local fileNamesToTestsArchive="\
-    $(find tests -name "*.bash" -maxdepth 1) \
+    $(find tests -maxdepth 1 -name "*.bash") \
     $(find "tests/$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash") \
   "
 
@@ -75,10 +77,22 @@ _buildBwHelper() {
   fi
   if \
     (git update-index -q --refresh && git diff-index --name-only HEAD -- | grep "$_bwFileName" >/dev/null 2>&1) && \
-    ! ( git diff "$_bwFileName" | grep -E '^\+export\s+_bwVersion=' >/dev/null 2>&1)
+    ! ( git diff "$_bwFileName" | grep -E '^\+_(export\s+)?bwVersion=' >/dev/null 2>&1)
   then
     _warn "${_ansiFileSpec}$_bwFileName${_ansiWarn} изменен. Необходимо изменить номер версии ${_ansiOutline}_bwVersion${_ansiWarn}"
   fi
+}
+
+# =============================================================================
+
+_addBwTar() {
+  local fileSpec="$1"; shift
+  local archiveName="$1"; shift
+  { 
+    echo "# ==$archiveName start"
+    COPYFILE_DISABLE=1 tar cf - "$@" | gzip | base64 --break=80
+    echo "# ==$archiveName end" 
+  } >> "$fileSpec"
 }
 
 # =============================================================================

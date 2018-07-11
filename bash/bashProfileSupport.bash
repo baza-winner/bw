@@ -23,12 +23,13 @@ fi
 _profileFileSpec="$HOME/$_profileFileName"
 
 # =============================================================================
-export _exportVarAtBashProfileParamsOpt=(
+_exportVarAtBashProfileParamsOpt=(
   --canBeMixedOptionsAndArgs
 )
 # shellcheck disable=SC2016
-export _exportVarAtBashProfileParams=(
+_exportVarAtBashProfileParams=(
   '--profileFileSpec=$_profileFileSpec'
+  '--singleQuote/q'
   '--noBackup'
   '--uninstall/u'
   'varName'
@@ -45,18 +46,21 @@ _exportVarAtBashProfile() { eval "$_funcParams2"
   _setAtBashProfile "${OPT[@]}" "$exactLine" "$matchRegexp"
 }
 _exportVarAtBashProfileHelper() {
-  exactLine="export $varName=$(_quotedArgs "${!varName}") # by bw.bash"
-  # matchRegexp="^[[:space:]]*(export[[:space:]]+)?$varName="
-  # matchRegexp="^[ \t]*(export[ \t]+)?$varName="
+  if [[ -n $singleQuote ]]; then
+    exactLine="export $varName='${!varName}' # by bw.bash"
+  else
+    exactLine="export $varName=$(_quotedArgs "${!varName}") # by bw.bash"
+  fi
   matchRegexp="^[ \t]*(export[ \t]+)?$varName=.* #[ \t]*by[ \t]+bw.bash[ \t]*$"
 }
 
 # shellcheck disable=SC2016
-export _hasExportVarAtBashProfileParamsOpt=(
+_hasExportVarAtBashProfileParamsOpt=(
   --canBeMixedOptionsAndArgs
 )
-export _hasExportVarAtBashProfileParams=(
+_hasExportVarAtBashProfileParams=(
   '--profileFileSpec=$_profileFileSpec'
+  '--singleQuote/q'
   '--differ/d'
   '--no/n'
   'varName'
@@ -73,10 +77,10 @@ _hasExportVarAtBashProfile() { eval "$_funcParams2"
   _hasAtBashProfile "${OPT[@]}" "$exactLine" "$matchRegexp"
 }
 
-export _hasAtBashProfileParamsOpt=(
+_hasAtBashProfileParamsOpt=(
   --canBeMixedOptionsAndArgs
 )
-export _hasAtBashProfileParams=(
+_hasAtBashProfileParams=(
   '--profileFileSpec=$_profileFileSpec'
   '--differ/d'
   '--no/n'
@@ -101,11 +105,11 @@ _hasAtBashProfile() { eval "$_funcParams2"
   return $returnCode
 }
 
-export _setAtBashProfileParamsOpt=(
+_setAtBashProfileParamsOpt=(
   --canBeMixedOptionsAndArgs
 )
 # shellcheck disable=SC2016
-export _setAtBashProfileParams=(
+_setAtBashProfileParams=(
   '--profileFileSpec=$_profileFileSpec'
   '--noBackup'
   '--uninstall/u'
@@ -139,10 +143,10 @@ _setAtBashProfile() { eval "$_funcParams2"
   fi
 }
 
-export _getAlreadyProjDirParamsOpt=(
+_getAlreadyProjDirParamsOpt=(
   '--canBeMixedOptionsAndArgs'
 )
-export _getAlreadyProjDirParams=( 
+_getAlreadyProjDirParams=( 
   '--profileFileSpec=$_profileFileSpec'
   '--varName='
   'bwProjShortcut' 
@@ -156,11 +160,7 @@ _getAlreadyProjDir() { eval "$_funcParams2"
   fi
 }
 _getAlreadyProjDirHelper() {
-  # local sedCode='s/^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~]+)\/bin\/'"${bwProjShortcut?}"'\.bash''.*$/\1/p'
-  # _debugVar sedCode
   local sedCode='s/'"$_sourceMatchRegexp"'bin\/'"${bwProjShortcut?}"'\.bash''.*$/\1/p'
-  # _debugVar sedCode
-  # local sedCode='s/^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~].+)\/bin\/'"${bwProjShortcut?}"'\.bash''.*$/\1/p'
   sed -n -E -e "$sedCode" "${profileFileSpec?}" | tail -n 1
 }
 
@@ -177,14 +177,8 @@ _setAtBashProfileHelper() {
   awk "${OPT[@]}" "${profileFileSpec?}"
 }
 
-_prepareAwkFileSpecParams=( 'infix:?' )
-_prepareAwkFileSpec() { eval "$_funcParams2"
-  [[ -z $infix ]] || infix=".$infix"
-  awkFileSpec="$(dirname "${BASH_SOURCE[1]}")/${FUNCNAME[1]}$infix.awk"
-}
-
 # shellcheck disable=SC2016
-export _backupBashProfileFileParams=(
+_backupBashProfileFileParams=(
   'profileFileSpec=$_profileFileSpec'
 )
 _backupBashProfileFile() { eval "$_funcParams2"

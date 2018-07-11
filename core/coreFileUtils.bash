@@ -212,7 +212,7 @@ _inDirParams=(
   '@--treatAsOK:0..'
   '--preserveReturnCode'
   'dirSpec'
-  'inDirCommnand'
+  'inDirCommand'
 )
 _inDirParamsOpt=(--canBeMoreParams)
 _inDir() { eval "$_funcParams2"
@@ -226,7 +226,7 @@ _inDir() { eval "$_funcParams2"
   if [[ $returnCode -eq 0 ]]; then
     _pushd ${OPT_subVerbosity[@]} "$dirSpec"; returnCode=$?
     if [[ $returnCode -eq 0 ]]; then
-      _exec ${OPT_verbosity[@]} ${OPT_silent[@]} ${OPT_treatAsOK[@]} ${OPT_preserveReturnCode[@]} "$inDirCommnand" "$@"; local returnCode=$?
+      _exec ${OPT_verbosity[@]} ${OPT_silent[@]} ${OPT_treatAsOK[@]} ${OPT_preserveReturnCode[@]} "$inDirCommand" "$@"; local returnCode=$?
       _popd ${OPT_subVerbosity[@]}
       [[ -z $tmp || -n $noCleanOnFail ]] || _rm ${OPT_subVerbosity[@]} -pd "$dirSpec"
     fi
@@ -408,7 +408,7 @@ _docker() { eval "$_funcParams2"
     return $(_err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE")
   fi
   _exec ${OPT_verbosity[@]} ${OPT_silent[@]} "${OPT[@]}" docker "$@"; local returnCode=$?
-  [[ $returnCode -eq 0 ]] || _debugVar returnCode
+  # [[ $returnCode -eq 0 ]] || _debugVar returnCode
   return $returnCode
 }
 
@@ -497,10 +497,10 @@ _realpathParams=(
    'path' 
 )
 _realpath() { eval "$_funcParams2"
-  if [[ ! -f "$_bwDir/core/realpath" ]]; then
-    gcc -o "$_bwDir/core/realpath" "$_bwDir/core/realpath.c"
+  if [[ ! -f "$_bwDir/core/realpath.$OSTYPE" ]]; then
+    gcc -o "$_bwDir/core/realpath.$OSTYPE" "$_bwDir/core/realpath.c"
   fi
-  local result; result=$("$_bwDir/core/realpath" "$path"); local returnCode=$?
+  local result; result=$("$_bwDir/core/realpath.$OSTYPE" "$path"); local returnCode=$?
   if [[ $returnCode -ne 0 ]]; then
     return $returnCode
   elif [[ -z $varName ]]; then

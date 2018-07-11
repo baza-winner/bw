@@ -18,32 +18,58 @@ _selfUpdate() { eval "$_funcParams2"
 }
 
 # _codeOfSelfUpdateSource='${BW_SELF_UPDATE_SOURCE:-$_bwGithubSource/master}'
-export _defaultBwUpdateSource="$_bwGithubSource/master"
-export _bwMainParamsOpt=(--canBeMoreParams)
-export _bwMainParams=(
+_defaultBwUpdateSource="$_bwGithubSource/master"
+_bwMainParamsOpt=(--canBeMoreParams)
+_bwMainParams=(
   '--pregenOnly/p:?=$BW_PREGEN_ONLY'
   '--force/f'
   '--noSelfUpdate/n'
   '--selfUpdateSource/u=${BW_SELF_UPDATE_SOURCE:-'"$_defaultBwUpdateSource"'}'
 )
-export _bwMain_pregenOnly_description='Ограничивает прегенерацию только указанными функциями, значение ${_ansiPrimaryLiteral}-${_ansiReset} имеет смысл "отключить прегенерацию"'
-export _bwMain_force_description='Форсирует прегенерацию, независимо от значения ${_ansiOutline}_isBwDevelop${_ansiReset}'
-export _bwMain_noSelfUpdate_description='Блокирует самобновления из источника обновления'
-export _bwMain_selfUpdateSource_description='Устанавливает URL источника обновления'
-export _sourceMatchRegexp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~]+)\/'
-export _bwMatchRegexp="$_sourceMatchRegexp"'bw\.bash'
+_bwMain_pregenOnly_description='Ограничивает прегенерацию только указанными функциями, значение ${_ansiPrimaryLiteral}-${_ansiReset} имеет смысл "отключить прегенерацию"'
+_bwMain_force_description='Форсирует прегенерацию, независимо от значения ${_ansiOutline}_isBwDevelop${_ansiReset}'
+_bwMain_noSelfUpdate_description='Блокирует самобновления из источника обновления'
+_bwMain_selfUpdateSource_description='Устанавливает URL источника обновления'
+_sourceMatchRegexp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~]+)\/'
+_bwMatchRegexp="$_sourceMatchRegexp"'bw\.bash'
 _bwMain() { eval "$_funcParams2"
   _profileBegin
+
   local returnCode=0
   while true; do
+
+    # if [[ \
+    #     ( -z $_isBwDevelop && -z $_isBwDevelopInherited) \
+    #     && ( ! -f "$_bwDir/$_bwFileName" || $_bwFileSpec -nt "$_bwDir/$_bwFileName" ) \
+    #  ]]; then
+    #   _assureDir "$_bwDir" || { returnCode=$?; break; }
+    #   # shellcheck disable=SC2119,SC2046
+    #   _getBwTar | tar xf - -C "$_bwDir" || { returnCode=$?; _err "Не удалось извлечь архив в ${_ansiFileSpec}$_bwDir"; break; }
+    #   cp "$_bwFileSpec" "$_bwDir/$_bwFileName" || { returnCode=?; _err "Не удалось скопировать ${_ansiFileSpec}$_bwFileSpec${_ansiReset} в ${_ansiFileSpec}$_bwDir/$_bwFileName${_ansiReset}"}
+    #   _bwInstalled=true
+    # fi
+
+    # local -a fileSpecsToSource=()
+    #   fileSpecsToSource+=( "$_bwDir/core/core.bash" )
+    #   [[ -z $_isBwDevelop ]] || fileSpecsToSource+=( "$_bwDir/tests/testsSupport.bash" )
+    #   local -a bashFileSpecs; mapfile -t bashFileSpecs < <(find "$_bwDir/bash" -name '*.bash' )
+    #   fileSpecsToSource+=( "${bashFileSpecs[@]}" )
+    #   local -a completionFileSpecs; mapfile -t completionFileSpecs < <(find "$_bwDir/generated" -name "*.completion$_codeBashExt" )
+    #   fileSpecsToSource+=( "${completionFileSpecs[@]}" )
+    # for fileSpec in  "${fileSpecsToSource[@]}"; do
+    #   codeHolder=_codeSource eval "$_evalCode" || { returnCode=$?; break 2; }
+    # done
+
     [[ ! $selfUpdateSource =~ ^- ]] || selfUpdateSource="$_bwGithubSource/master"
 
     if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]] ; then
       _inDir "$_bwDir" _prepareGitBranchName \
         || { returnCode=$?; break; }
       selfUpdateSource="$gitBranchName"
+      _export_BW_SELF_UPDATE_SOURCE
     elif [[ -z $noSelfUpdate ]]; then
       _inDir --treatAsOK 3 --preserveReturnCode "$_bwDir" _selfUpdate "$selfUpdateSource"; local returnCode=$?
+      _export_BW_SELF_UPDATE_SOURCE
       if [[ $returnCode -eq 3 ]]; then
         . "$_bwFileSpec" "$@"; local returnCode=$?
         [[ $returnCode -eq 0 ]] && _ok "${_ansiFileSpec}$_bwFileName${_ansiOK} обновлен до версии ${_ansiPrimaryLiteral}$(bw_version)"
@@ -57,20 +83,21 @@ _bwMain() { eval "$_funcParams2"
     fi
 
     if [[ ! $pregenOnly =~ ^- && ( -n $_isBwDevelop || -n $OPT_force ) ]]; then
+      local -a __completions=()
+      local generatedCompletionsFileSpec="/tmp/bw.generated.completions.bash"
+      _rm "$_generatedCompletionsFileSpec" || { returnCode=$?; break; }
       _spinner \
         -t "${_ansiOK}OK: ${_ansiCmd}$_bwFileSpec${_ansiReset} обработан за" \
         "${_ansiHeader}Прегенерация${_ansiReset}" \
         _bwMainHelper \
         || { returnCode=$?; break; }
+      # shellcheck disable=SC1090
+      [[ ! -f $generatedCompletionsFileSpec ]] || . "$generatedCompletionsFileSpec"
+      local fileSpec; for fileSpec in "${_completions[@]}"; do
+      # shellcheck disable=SC1090
+        . "$fileSpec"
+      done
     fi
-
-    if [[ $selfUpdateSource == $_defaultBwUpdateSource ]]; then
-      export BW_SELF_UPDATE_SOURCE=
-    else
-      export BW_SELF_UPDATE_SOURCE="$selfUpdateSource"
-    fi
-
-    _exportVarAtBashProfile BW_SELF_UPDATE_SOURCE
 
     local exactLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
     if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]]; then
@@ -80,11 +107,23 @@ _bwMain() { eval "$_funcParams2"
     # local matchRegexp='^[[ \t]]*\.[[ \t]]+"?[ a-zA-Z0-9\/~].+\/bin\/bw.bash'
     _setAtBashProfile "$exactLine" "$_bwMatchRegexp"
 
-    _cmdToExecute=( "$@" )
+    # _cmdToExecute=( "$@" )
     break
   done
   _profileEnd
-  return $returnCode
+  if [[ $returnCode -ne 0 ]]; then
+    return $returnCode
+  elif [[ $# -gt 0 ]]; then
+    eval "$@"
+  fi
+}
+_export_BW_SELF_UPDATE_SOURCE() {
+  if [[ $selfUpdateSource == $_defaultBwUpdateSource ]]; then
+    export BW_SELF_UPDATE_SOURCE=
+  else
+    export BW_SELF_UPDATE_SOURCE="$selfUpdateSource"
+  fi
+  _exportVarAtBashProfile BW_SELF_UPDATE_SOURCE
 }
 
 _prepareGitBranchName() {
@@ -95,7 +134,7 @@ _bwMainHelper() {
   _profileBegin
   local -a __completions=();
   _pregen ${pregenOnly:-$(declare -F | perl -pe "s/^declare -f //")} \
-    && echo "_completions=( $(_quotedArgs "${__completions[@]}") )" > "$_generatedCompletionsFileSpec"
+    && echo "__completions=( $(_quotedArgs "${__completions[@]}") )" > "$generatedCompletionsFileSpec"
   _profileEnd
 }
 

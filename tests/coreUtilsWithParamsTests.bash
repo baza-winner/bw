@@ -126,8 +126,7 @@ _substituteTests=(
   # '
     # --var3TstPostProcess "perl -pe \"s/='\''\\(/=(/s; s/'\''$//s\""
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_substitute${_ansiErr} could not resolve type of ${_ansiOutline}__substituteTestVarC${_ansiErr}, first declare it with initial value${_ansiReset}"
     --before "unset __substituteTestVarC"

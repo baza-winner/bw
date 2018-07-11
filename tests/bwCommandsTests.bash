@@ -9,15 +9,13 @@ bwTests=(
   '
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} вместо ${_ansiPrimaryLiteral}unexpected${_ansiErr} ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt github-keygen install project p project-info pi remove rm run set update version${_ansiReset}"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     "bw unexpected"
   '
   '
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt github-keygen install project p project-info pi remove rm run set update version${_ansiReset}"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     "bw"
   '
 )
@@ -26,12 +24,12 @@ bw_removeTests=(
   '
     --stdout "
       ${_ansiHeader}Использование:${_ansiReset} ${_ansiCmd}bw remove${_ansiReset} [${_ansiOutline}Опции${_ansiReset}]
-      ${_ansiHeader}Описание:${_ansiReset} удаляет bw.bash и все связанное с ним
+      ${_ansiHeader}Описание:${_ansiReset} $bw_remove_description
       ${_ansiOutline}Опции${_ansiReset}
           ${_ansiCmd}--yes${_ansiReset} или ${_ansiCmd}-y${_ansiReset}
-              подтверждает удаление
+              $bw_remove_yes_description
           ${_ansiCmd}--completely${_ansiReset} или ${_ansiCmd}-c${_ansiReset}
-              удаляет не только все связанное с bw.bash, но и сам bw.bash
+              $bw_remove_completely_description
           ${_ansiCmd}--verbosity${_ansiReset} ${_ansiOutline}значение${_ansiReset} или ${_ansiCmd}-v${_ansiReset} ${_ansiOutline}значение${_ansiReset}
               Варианты ${_ansiOutline}значения${_ansiReset}:
                 ${_ansiPrimaryLiteral}dry${_ansiReset} режим \"dry run\"
@@ -42,7 +40,6 @@ bw_removeTests=(
                 ${_ansiPrimaryLiteral}all${_ansiReset} полный вывод
               ${_ansiOutline}Значение${_ansiReset} по умолчанию: ${_ansiPrimaryLiteral}allBrief${_ansiReset}
           ${_ansiCmd}--silent${_ansiReset} ${_ansiOutline}значение${_ansiReset} или ${_ansiCmd}-s${_ansiReset} ${_ansiOutline}значение${_ansiReset}
-              подавляет сообщение об успешном удалении
               Варианты ${_ansiOutline}значения${_ansiReset}:
                 ${_ansiPrimaryLiteral}yes${_ansiReset} не подавлять вывод вспомогательных команд
                 ${_ansiPrimaryLiteral}ok${_ansiReset} подавлять вывод вспомогательных команд в случае отсутствия ошибок
@@ -54,8 +51,7 @@ bw_removeTests=(
     "
     --stdoutParaWithIndent 0
     --stdoutParaWithIndentBase 2
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     "bw remove -?"
   '
 )
@@ -69,14 +65,13 @@ bw_updateTests=(
           ${_ansiCmd}--remove${_ansiReset} или ${_ansiCmd}-r${_ansiReset}
               $bw_update_remove_description
           ${_ansiCmd}--no-pregen${_ansiReset} или ${_ansiCmd}-n${_ansiReset}
-              $bw_update_noPregen_description
+              $_noPregen_description
           ${_ansiCmd}--help${_ansiReset} или ${_ansiCmd}-?${_ansiReset} или ${_ansiCmd}-h${_ansiReset}
               Выводит справку
     "
     --stdoutParaWithIndent 0
     --stdoutParaWithIndentBase 2
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     "bw update -?"
   '
 )
@@ -112,8 +107,7 @@ bw_bashTestTests=(
   '
   '
     --return "1"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stdout "
       ${_ansiOK}OK: _test 0${_ansiReset}: ${_ansiCmd}_ok test success${_ansiReset}
       ${_ansiOK}OK: _test2 1${_ansiReset}: ${_ansiCmd}_ok test2 success${_ansiReset}
@@ -182,15 +176,13 @@ _test2Tests=(
 #   '
 #     --return "1"
 #     --stderr "${_ansiErr}ERR: ${_ansiCmd}bw install${_ansiErr} вместо ${_ansiPrimaryLiteral}unexpected${_ansiErr} ожидает одну из следующих команд: ${_ansiSecondaryLiteral}docker${_ansiReset}"
-#     --before "_substitute noStack true"
-#     --after "_restore noStack"
+#     --noErrorStack
 #     "bw install unexpected"
 #   '
 #   '
 #     --return "1"
 #     --stderr "${_ansiErr}ERR: ${_ansiCmd}bw install${_ansiErr} в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}docker${_ansiReset}"
-#     --before "_substitute noStack true"
-#     --after "_restore noStack"
+#     --noErrorStack
 #     "bw install"
 #   '
 # )

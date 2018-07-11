@@ -5,8 +5,6 @@ _resetBash
 
 # =============================================================================
 
-_bs=$'\b'
-
 _spinnerShowPid=
 _spinnerProcessPid=
 _spinnerParamsOpt=( --canBeMoreParams )
@@ -64,6 +62,7 @@ _spinner() { eval "$_funcParams2"
   return $returnCode
 }
 
+_bs=$'\b'
 _spinnerSleepTime=0.1
 _showSpinner() { # https://unix.stackexchange.com/questions/11498/how-to-trap-a-suspend-a-resume-from-a-bash-script
   local title; [[ $1 == '-' ]] || title="$1 . . . "

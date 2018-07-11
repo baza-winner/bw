@@ -1,13 +1,13 @@
 
 # =============================================================================
 
-[[ $(type -t _resetBash) != function  ]] || _resetBash
+_resetBash
 
 # =============================================================================
 
 # http://ezprompt.net/
-export _psCaughtErrorCodeFileSpec='/tmp/bw.ps.errorCode'
-export _psGitBranchCodeFileSpec='/tmp/bw.ps.gitBranch'
+_psCaughtErrorCodeFileSpec='/tmp/bw.ps.errorCode'
+_psGitBranchCodeFileSpec='/tmp/bw.ps.gitBranch'
 
 _psPrepare_error() {
   local errorCode=$?
@@ -77,24 +77,24 @@ _psIf_git() {
   fi
 }
 
-export _psColorSegmentBeginPrefix='\['
-export _psColorSegmentBeginSuffix='\]'
-export _psColorSegmentEnd='\[\e[m\]'
-export _ps_user='\u'
+_psColorSegmentBeginPrefix='\['
+_psColorSegmentBeginSuffix='\]'
+_psColorSegmentEnd='\[\e[0m\]'
+_ps_user='\u'
 # export _ps_user_description='Имя пользователя'
-export _ps_host='\h'
-export _psFullQualifiedDomainName='\H'
-export _ps_fqdn="$_psFullQualifiedDomainName"
-export _ps_fqdn_description='FullQualifiedDomainName'
-export _ps_shell='\s'
-export _ps_shellVersion='\v'
-export _ps_shellRelease='\V'
-export _psPathToCurrentDirectory='\w'
-export _ps_ptcd="$_psPathToCurrentDirectory"
-export _ps_ptcd_description="PathToCurrentDirectory"
-export _psCurrentDirectory='\W'
-export _ps_cd="$_psCurrentDirectory"
-export _ps_cd_description="CurrentDirectory"
+_ps_host='\h'
+_psFullQualifiedDomainName='\H'
+_ps_fqdn="$_psFullQualifiedDomainName"
+_ps_fqdn_description='FullQualifiedDomainName'
+_ps_shell='\s'
+_ps_shellVersion='\v'
+_ps_shellRelease='\V'
+_psPathToCurrentDirectory='\w'
+_ps_ptcd="$_psPathToCurrentDirectory"
+_ps_ptcd_description="PathToCurrentDirectory"
+_psCurrentDirectory='\W'
+_ps_cd="$_psCurrentDirectory"
+_ps_cd_description="CurrentDirectory"
 
 # =============================================================================
 

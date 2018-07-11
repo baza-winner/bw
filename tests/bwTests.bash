@@ -24,29 +24,25 @@ _testCodeToEval2='
 '
 _evalCodeTests=(
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiOutline}_evalCode${_ansiErr} expects ${_ansiOutline}codeHolder${_ansiErr} to be specified${_ansiReset}"
     "_evalCodeTestFunc"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiOutline}_evalCode${_ansiErr} expects ${_ansiOutline}_nonExistent${_ansiErr} to be defined${_ansiReset}"
     "_evalCodeTestFunc _nonExistent"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: some error${_ansiReset}"
     "_evalCodeTestFunc _testCodeToEval"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiOutline}someVar${_ansiReset}: ${_ansiPrimaryLiteral}someValue${_ansiReset}"
     "_evalCodeTestFunc _testCodeToEval2 '$_stq'_debugVar --clean someVar'$_stq'"
   '

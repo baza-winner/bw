@@ -9,8 +9,7 @@ _runBashTestTests=(
   '
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_runBashTest${_ansiErr} ожидает, что опция ${_ansiCmd}--varValue${_ansiErr} будет задана вместе с опцией ${_ansiCmd}--varName${_ansiReset}"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     "_runBashTest \
       --varValue 1 \
       \"echo me my\" \
@@ -20,8 +19,7 @@ _runBashTestTests=(
       # '$_stqq'echo me'$_stqq' \
   '
     --return "0"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stdout "
       before
       immediatly

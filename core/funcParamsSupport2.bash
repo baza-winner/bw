@@ -4,7 +4,69 @@ _resetBash
 
 # =============================================================================
 
-_funcParams2='local codeFileSpec && _prepareCodeToParseFuncParams2 && local __consumedParams=0 && . "$codeFileSpec" && _parseFuncParams2 "$@" && { for ((; __consumedParams>0; __consumedParams--)); do shift; done; true; } || { local __returnCode=$?; [[ $__returnCode -ne 3 ]] || __returnCode=0; return $__returnCode; }'
+# shellcheck disable=SC2016
+_codeToInitLocalCopyOfScalar='
+  local $dstVarName="${!srcVarName}"
+'
+# shellcheck disable=SC2016
+_codeToInitLocalCopyOfArray='
+  eval local -a $dstVarName=\( \"\${$srcVarName[@]}\" \)
+'
+
+# shellcheck disable=SC2016
+_codeToInitLocalCopyOfScalarWithCheck='
+  if [[ -z ${!srcVarName+x} ]]; then
+    local $dstVarName=
+  else
+    local typeSignature=$(declare -p $srcVarName 2>/dev/null)
+    if [[ $typeSignature =~ ^declare[[:space:]]-a ]]; then
+      return $(_ownThrow "ожидает, что ${_ansiOutline}$srcVarName${_ansiErr} будет скаляром, а не массивом")
+    else
+      eval "$_codeToInitLocalCopyOfScalar"
+    fi
+  fi
+'
+
+# shellcheck disable=SC2016
+_codeToInitLocalCopyOfArrWithCheck='
+  if [[ -z ${!srcVarName+x} ]]; then
+    eval local -a $dstVarName=\(\)
+  else
+    local typeSignature=$(declare -p $srcVarName 2>/dev/null)
+    if [[ $typeSignature =~ ^declare[[:space:]]-a ]]; then
+      eval "$_codeToInitLocalCopyOfArray"
+    else
+      return $(_ownThrow "ожидает, что ${_ansiOutline}$srcVarName${_ansiErr} будет массивом, а не скаляром")
+    fi
+  fi
+'
+# =============================================================================
+
+# _funcParams2='local codeFileSpec && _prepareCodeToParseFuncParams2 && local __consumedParams=0 && . "$codeFileSpec" && local -a __params && { if [[ -z $__curWordIdx ]]; then __params=( "$@" ); else __params=( ${__words[@]:$__curWordIdx}); fi; } && _parseFuncParams2 "$@" && { for ((; __consumedParams>0; __consumedParams--)); do shift; done; true; } || { local __returnCode=$?; [[ $__returnCode -ne 3 ]] || __returnCode=0; return $__returnCode; }'
+_funcParams2='
+  local __returnCode  codeFileSpec
+  _prepareCodeToParseFuncParams2; __returnCode=$?
+  if [[ $__returnCode -eq 0 ]]; then
+    local __consumedParams=0
+    . "$codeFileSpec"
+    local -a __params
+    if [[ -z $__curWordIdx ]]; then
+      __params=( "$@" )
+    else
+      __params=( "${__words[@]:$__curWordIdx}" )
+    fi
+    _parseFuncParams2 "$@"; __returnCode=$?
+  fi
+  if [[ $__returnCode -ne 0 ]]; then
+    [[ $__returnCode -ne 3 ]] || __returnCode=0
+    return $__returnCode
+  else
+    for ((; __consumedParams>0; __consumedParams--)); do
+      shift
+    done
+    true
+  fi
+'
 
 _help_paramDef="!--help/?h"
 _help_description='Выводит справку'
@@ -53,9 +115,14 @@ _profileBegin
     if \
       [[ ! -f $codeFileSpec ]] || \
       ( [[ -n $__thisOnlyPrepareCode || -n $_isBwDevelop || -n $_isBwDevelopInherited ]] \
-        && ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[0]}" "${BASH_SOURCE[1]}" "${additionalDependencies[@]}" \
+        && ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[@]::2}" "${additionalDependencies[@]}" \
       ) \
     ; then
+    # if \
+    #   [[ ! -f $codeFileSpec ]] || \
+    #   ! _everyFileNotNewerThan "$codeFileSpec" "$_bwFileSpec" "${BASH_SOURCE[@]::2}" "${additionalDependencies[@]}" \
+    # ; then
+        # && ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[0]}" "${BASH_SOURCE[1]}" "${additionalDependencies[@]}" \
       [[ -z $verbose ]] || _warn "Создаем ${_ansiFileSpec}$codeFileSpec $completionCodeFileSpec"
       local paramsHolder="${funcName}Params";
       ! _funcExists $paramsHolder || $paramsHolder || return $?;
@@ -365,9 +432,12 @@ _profileBegin
       precode+='local __thisFuncCommand=${__funcCommand:-$__funcName} __funcCommand= __isCompletionMode='$_nl
       precode+='local -a __additionalDependencies=( '
       local fileSpec; for fileSpec in "${additionalDependencies[@]}"; do
-        [[ $fileSpec =~ ^$_bwDir ]] \
-          && fileSpec='$_bwDir'${fileSpec:${#_bwDir}} \
-          || fileSpec=$(_shortenFileSpec "$fileSpec")
+        if [[ $fileSpec =~ ^$_bwDir ]]; then
+          fileSpec='$_bwDir'${fileSpec:${#_bwDir}}
+        else
+          [[ $fileSpec =~ -f ]] && _debugVar fileSpec
+          fileSpec=$(_shortenFileSpec "$fileSpec")
+        fi
         precode+='"'$fileSpec'"'
       done
       precode+=' )'$_nl
@@ -433,6 +503,7 @@ _profileBegin
       [[ -z $isCommandWrapper ]] \
         || code+="${_nl}local -a __thisInheritedImportantOptVarNames=( \${__thisInheritedImportantOptVarNames[@]} ${importantOptVarNames[@]} )"$_nl
 
+# [[ -n $BW_DRILL ]] && { echo -n "funcParamsSupport2.bash#436 _assureDir: "; declare -f _assureDir;  }
       _assureDir $(dirname "$codeFileSpec") \
         || return $?
       echo -n "$code" > "$codeFileSpec"
@@ -579,7 +650,7 @@ _codeToAddCandidateToCompletion='
 _parseFuncParams2() {
   _profileBegin
   local __argCount=${#__argVarNames[@]} __argIdx=0
-  local __err __varName __varValue
+  local __err __errSuffixCode __varName __varValue
   if [[ -n $__curWordIdx ]]; then
     local __thisCurWordIdx=$__curWordIdx
     __curWordIdx=
@@ -592,13 +663,13 @@ _parseFuncParams2() {
   fi
   local __initAsEmpty=; [[ -z $__isCompletionMode ]] || __initAsEmpty=true
 
-
   if [[ -n $__isCompletionMode ]]; then
     local suffix; for suffix in Reset Bold Dim ResetBold ResetDim Underline Header Url Cmd FileSpec Dir Err Warn Will OK Outline Debug PrimaryLiteral SecondaryLiteral; do
       eval local _ansi$suffix=
     done
   fi
 
+  local __needReturn=""
   local __curWord="${__words[$__thisCurWordIdx]}"
   while true; do
 
@@ -652,7 +723,6 @@ _parseFuncParams2() {
                 # __err="$__expects значением (${_ansiPrimaryLiteral}$__curWord${_ansiErr}) не похожим на опцию"
               else
                 local __varValue="$__curWord"
-                local __errSuffixCode=
                 if [[ -z $__isCompletionMode ]] && ! _validateVarValue "$__varValue" ; then
                   [[ $__errSuffixCode -eq 0 ]] \
                     && __err+=" для" \
@@ -760,7 +830,7 @@ _parseFuncParams2() {
         [[ -n $__canBeMixedOptionsAndArgs ]] || _postProcessVarNames || break
         local __usedSubCommand="$__curWord"
         local __funcSuffix=
-        local -a __funcNameSuffixes=(); help= _prepareSubCommandFuncSuffixes --checkCondition $__funcName || return $?
+        local -a __funcNameSuffixes=(); help= _prepareSubCommandFuncSuffixes --checkCondition $__funcName || { __returnCode=$?; break; }
         local __funcNameSuffix; for __funcNameSuffix in "${__funcNameSuffixes[@]}"; do
           local subCommand; dstVarName=subCommand _upperCamelCaseToKebabCase $__funcNameSuffix
           dstVarName=__subCommands srcVarName=${__funcName}_${__funcNameSuffix}Shortcuts eval "$_codeToInitLocalCopyOfArray"
@@ -787,8 +857,9 @@ _parseFuncParams2() {
           __complete_$__subFuncName
         fi
         local __returnCode=$?
-
-        return $__returnCode
+        __needReturn=true
+        break 2
+        # return $__returnCode
       fi
 
     done;
@@ -798,9 +869,12 @@ _parseFuncParams2() {
 
     if [[ -n $help ]]; then
       local __helpCodeFileSpec; __ownPrefix=__ help= _prepareCodeOfAutoHelp2 && cmdName="$__thisFuncCommand" . "$__helpCodeFileSpec"; local __returnCode=$?
-      [[ $__returnCode -eq 0 ]] \
-        && return 3 \
-        || return $?
+      [[ $__returnCode -ne 0 ]] || __returnCode=3
+      __needReturn=true
+      break
+      # [[ $__returnCode -eq 0 ]] \
+      #   && return 3 \
+      #   || return $?
     elif [[ -n $__isCommandWrapper ]]; then
       local -a __funcNameSuffixes=(); help= _prepareSubCommandFuncSuffixes --checkCondition $__funcName
       __err="в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}$(_echoAllSubCommands)"
@@ -825,6 +899,7 @@ _parseFuncParams2() {
     break
   done
   _profileEnd
+  [[ -z $__needReturn ]] || return $__returnCode
   [[ -n $__err ]] || return 0
   [[ -n $__isCompletionMode ]] \
     && _setCompReplyToHint "$__err" \
@@ -863,7 +938,7 @@ _setCompReplyToOptionNames() {
 }
 
 _setCompReplyToHint() {
-  COMPREPLY=( "<-- HINT: ${__thisFuncCommand:-${FUNCNAME[1]}} $@" "-->")
+  COMPREPLY=( "!<-- HINT: ${__thisFuncCommand:-${FUNCNAME[1]}} $@" "-->")
 }
 
 _setCompReplyToSubCommand() {
@@ -1104,6 +1179,7 @@ _postProcessVarNames() {
 
 _validateDefaultCalculatedValue() {
   local __varValue="$1"
+            
   _validateVarValue "$__varValue" && return 0
   local paramHolder="__PARAM_$__varName"
   [[ -n $infix3 ]] && infix3=" ${_ansiSecondaryLiteral}$infix3${_ansiErr}"
@@ -1357,6 +1433,7 @@ _prepareCodeOfAutoHelp2() {
     __result+="$__optionsDescription"
   fi
 
+# [[ -n $BW_DRILL ]] && { echo -n "funcParamsSupport2.bash#1361 _assureDir: "; declare -f _assureDir;  }
   _assureDir $(dirname "$__helpCodeFileSpec") || return $?
   echo "$__result" > "$__helpCodeFileSpec"
 }

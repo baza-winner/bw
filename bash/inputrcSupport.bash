@@ -16,12 +16,13 @@ _inputrcSetPropsParams=(
   '--showModeInPrompt:(on off)'
   '--viCmdModeString='
   '--viInsModeString='
+  '--horizontalScrollMode:(on off)'
 )
 _inputrcSetProps() { eval "$_funcParams2"
   local returnCode=0
   local -a optVarNames=()
   local optVarName; for optVarName in ${__optVarNames[@]}; do
-    if [[ -n ${!optVarName} ]]; then
+    if [[ $optVarName != didNotChangeReturnCode && -n ${!optVarName} ]]; then
       local propNameHolder=__OPTNAME_$optVarName
       local propName="${!propNameHolder}"
       if [[ -f $_inputrcFileSpec ]]; then

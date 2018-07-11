@@ -62,7 +62,7 @@ _profileInit() {
   done
 
   _gdateTiming=$($_gdate +%s%3N)
-  for ((_i=0; _i<30; _i++)); do
+  local _i; for ((_i=0; _i<30; _i++)); do
     $_gdate +%s%3N >/dev/null
   done
   _gdateTiming=$(( ( $($_gdate +%s%3N) - _gdateTiming ) / 30 * 6 / 5 ))
@@ -296,7 +296,9 @@ _everyFileNotNewerThan() {
   return 0
 }
 
-_spaceContainer=; for ((_i=0; _i<1024; _i++)); do _spaceContainer+=" "; done
+_i=
+_spaceContainer=
+for ((_i=0; _i<1024; _i++)); do _spaceContainer+=" "; done
 _indent() {
   echo -n "${_spaceContainer:0:${1:0}}"
 }
@@ -413,6 +415,14 @@ _getOwnIpList() {
 
 _isInDocker() {
   [[ -f /.dockerenv ]]
+}
+
+# =============================================================================
+
+_prepareAwkFileSpecParams=( 'infix:?' )
+_prepareAwkFileSpec() { eval "$_funcParams2"
+  [[ -z $infix ]] || infix=".$infix"
+  awkFileSpec="$(dirname "${BASH_SOURCE[1]}")/${FUNCNAME[1]}$infix.awk"
 }
 
 # =============================================================================

@@ -21,7 +21,13 @@ bw project bwdev
 
 ## Сборка
 
-### Только сборка
+### Только сборка без прегенерации
+
+```
+bwdev build -n only
+```
+
+### Только сборка с прегенерацией
 
 ```
 bwdev build only
@@ -51,11 +57,15 @@ diff tgz/Имя-файла Имя-файла
 
 #### main
 
+```
 _getBwTar bw.bash | tar t
+```
 
 #### tests
 
+```
 _getBwTar bw.bash tests | tar t
+```
 
 ### Извлечение содержимого архива
 

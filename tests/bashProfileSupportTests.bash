@@ -370,7 +370,7 @@ _hasExportVarAtBashProfileTests=(
   '
 )
 
-export _getAlreadyProjDirTests=(
+_getAlreadyProjDirTests=(
   '
     --inTmpDir
     --stdout "/Users/username"

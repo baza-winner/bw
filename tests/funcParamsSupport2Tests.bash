@@ -46,8 +46,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка _codeToCheckParams
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2${_ansiErr} не ожидает параметр ${_ansiPrimaryLiteral}--canBeMoreParams${_ansiErr}, используйте ${_ansiOutline}_runBashTestHelperParamsOpt${_ansiErr} для задания опций ${_ansiCmd}_prepareCodeToParseFuncParams2${_ansiReset}"
     "_prepareCodeToParseFuncParams2 --canBeMoreParams"
@@ -55,8 +54,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка  _codeToCheckNoArgsInOpt
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --before "local -a __someFuncParams=() __someFuncParamsOpt=( some )"
     --before "eval \"__someFunc() { eval \\\"\\\$_funcParams2\\\"; }\""
     --after "unset -f __someFunc"
@@ -91,8 +89,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка на границы @args
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что в параметре ${_ansiCmd}@4..2args${_ansiErr} левая граница ${_ansiPrimaryLiteral}4${_ansiErr} не должна превосходить правую ${_ansiPrimaryLiteral}2${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -100,8 +97,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что в параметре ${_ansiCmd}@..0args${_ansiErr} правая граница ${_ansiPrimaryLiteral}0${_ansiErr} не должна быть меньше ${_ansiPrimaryLiteral}1${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -111,8 +107,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка следования опций и аргументов в *Params
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что опции будут следовать строго перед аргументами, т.к. ${_ansiCmd}_prepareCodeToParseFuncParams2${_ansiErr} вызвана без ${_ansiCmd}--canBeMixedOptionsAndArgs${_ansiErr}, но обнаружено ${_ansiOutline}определение опции ${_ansiCmd}--option-b${_ansiErr} после ${_ansiOutline}определения аргумента ${_ansiCmd}arg${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --option-a arg --option-b"
@@ -120,8 +115,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка отсутствия аргументов в *Params в режиме --isCommandWrapper
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает определения аргументов в режиме ${_ansiCmd}--isCommandWrapper${_ansiErr}, но получено ${_ansiCmd}arg${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --isCommandWrapper --option-a arg"
@@ -129,8 +123,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка того, что списочный аргумент, если задан, является последним аргументом
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что определение списочного аргумента ${_ansiCmd}@args${_ansiErr} будет последним в списке определений аргументов, но после него следует ещё ${_ansiCmd}argA${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --canBeMixedOptionsAndArgs @args --option-a argA argB"
@@ -138,15 +131,13 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка отсутсвия модификаторов списочного типа в определении скаляроного параметра
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает тип ${_ansiPrimaryLiteral}sorted${_ansiErr} в определении ${_ansiOutline}скалярного${_ansiErr} параметра ${_ansiCmd}--:sorted=some${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --:sorted=some"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает тип ${_ansiPrimaryLiteral}unique${_ansiErr} в определении ${_ansiOutline}скалярного${_ansiErr} параметра ${_ansiCmd}--:unique=some${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --:unique=some"
@@ -154,8 +145,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка наличия закрывающейся скобки в определении перечислимого типа параметра
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что определение перечислимого типа ${_ansiPrimaryLiteral}(1 \"a b\" 2 3${_ansiErr} для параметра ${_ansiCmd}--a:(1 \"a b\" 2 3=1${_ansiErr} должно заканчиваться закрывающейся скобкой: ${_ansiSecondaryLiteral}(1 \"a b\" 2 3)${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -165,8 +155,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка наличия закрывающейся скобки в вычисляемом определении перечислимого типа параметра
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что вычисляемое определение перечислимого типа ${_ansiPrimaryLiteral}( \$(echo 1 \"a b\" 2 3)${_ansiErr} для параметра ${_ansiCmd}--a:( \$(echo 1 \"a b\" 2 3)=1${_ansiErr} должно заканчиваться закрывающейся скобкой: ${_ansiSecondaryLiteral}( \$(echo 1 \"a b\" 2 3))${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -176,8 +165,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка границ диапазона в определении типа параметра
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что в определении диапазона для параметра ${_ansiCmd}--a:4..2${_ansiErr} левая граница ${_ansiPrimaryLiteral}4${_ansiErr} не превосходит правую ${_ansiSecondaryLiteral}2${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --a:4..2"
@@ -185,8 +173,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка определения типа параметра
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "
       ${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}:!${_ansiErr} в определении параметра ${_ansiCmd}--:!=some${_ansiErr} ожидает:
@@ -205,8 +192,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "_prepareCodeToParseFuncParams2TestFunc --:!=some"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "
       ${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}:!${_ansiErr} в определении параметра ${_ansiCmd}@--:!=some${_ansiErr} ожидает:
@@ -230,22 +216,19 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка имени переменной для параметра
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает непустое имя переменной для параметра ${_ansiCmd}--:?=some${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --:?=some"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что имя переменной ${_ansiPrimaryLiteral}some option${_ansiErr} для параметра ${_ansiCmd}--some option:1..${_ansiErr} $_mustBeValidVarName${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'--some option:1..'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не может использовать то же самое имя переменной ${_ansiPrimaryLiteral}a${_ansiErr} для параметра ${_ansiCmd}a${_ansiErr}, что было использовано для параметра ${_ansiCmd}--a${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --a a"
@@ -253,50 +236,43 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка соответтсвия значения по умолчанию типу парметра
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что списочный параметр ${_ansiCmd}@--a=1 2 3${_ansiErr} в качестве значения по умолчанию не будет иметь скалярное значение ${_ansiPrimaryLiteral}1 2 3${_ansiErr} (не заключенное в круглые скобки)${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'@--a=1 2 3'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что списочное значение ${_ansiPrimaryLiteral}(1 2 3${_ansiErr} параметра ${_ansiCmd}@--a=(1 2 3${_ansiErr} будет заканчиваться закрывающейся скобкой: ${_ansiSecondaryLiteral}(1 2 3)${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'@--a='$_stOpenBraceInQ'1 2 3'$_stq'"
   '
     '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что скалярный параметр ${_ansiCmd}a=(1 2 3${_ansiErr} в качестве значения по умолчанию не будет иметь списочное значение ${_ansiPrimaryLiteral}(1 2 3${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'a='$_stOpenBraceInQ'1 2 3'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве значения по умолчанию параметра ${_ansiCmd}--a:0..=-1${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'--a:0..=-1'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}положительное целое число${_ansiErr} в качестве значения по умолчанию параметра ${_ansiCmd}--a:1..=0${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'--a:1..=0'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}d${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"d e\"${_ansiErr} в качестве значения по умолчанию параметра ${_ansiCmd}--a:(b \"d e\")=d${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'--a:'$_stOpenBraceInQ'b '$_stqq'd e'$_stqq''$_stCloseBraceInQ'=d'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --before "local -a __enumValues=( b \"d e\" ) __someFuncParams=()"
     --before "eval \"__enumValues() { echo \\\$(_quotedArgs \\\"\\\${__enumValues[@]}\\\"); }\""
     --before "eval \"__someFunc() { eval \\\"\\\$_codeToCallFuncParams2\\\"; }\""
@@ -311,22 +287,19 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве значения по умолчанию параметра ${_ansiCmd}a:0..=-1${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'a:0..=-1'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}положительное целое число${_ansiErr} в качестве значения по умолчанию параметра ${_ansiCmd}a:1..=0${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'a:1..=0'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}d${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"d e\"${_ansiErr} в качестве элемента значения по умолчанию ${_ansiSecondaryLiteral}(d \"b e\")${_ansiErr} параметра ${_ansiCmd}@a:(b \"d e\")=(d \"b e\")${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -334,8 +307,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве элемента значения по умолчанию ${_ansiSecondaryLiteral}(1 0 -1)${_ansiErr} параметра ${_ansiCmd}@--a:0..=(1 0 -1)${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'@--a:0..='$_stOpenBraceInQ'1 0 -1'$_stCloseBraceInQ''$_stq'"
@@ -343,8 +315,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка ункальности сокращения для опции
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не может использовать для опции ${_ansiCmd}--opt-b/a${_ansiErr} то же сокращение ${_ansiPrimaryLiteral}a${_ansiErr}, что и для опции ${_ansiCmd}--opt-a${_ansiReset}"
     --return "1"
     --before "local __defaultValueOfArgC=defaultValueOfArgC"
@@ -357,15 +328,13 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверки для режима --isCommandWrapper
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что будет определена по крайней мере одна функция ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc_${_ansiOutline}*${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --isCommandWrapper"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --before "eval \"_prepareCodeToParseFuncParams2TestFunc_alpha() { eval \\\"\\\$_codeToCallFuncParams2\\\"; }\""
     --before "local _prepareCodeToParseFuncParams2TestFunc_alphaShortcuts=( \"alef bravo\" )"
     --after "unset -f _prepareCodeToParseFuncParams2TestFunc_alpha"
@@ -399,43 +368,37 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка опции
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает опцию ${_ansiCmd}--a${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc -- --a"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает опцию ${_ansiCmd}--b${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --a= -- --b"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что опция ${_ansiCmd}--a${_ansiErr} будет снабжена ${_ansiOutline}значением${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --a= -- --a"
   '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что опция ${_ansiCmd}--a${_ansiErr} будет снабжена значением (${_ansiPrimaryLiteral}-b${_ansiErr}) не похожим на опцию${_ansiReset}"
   #   "_prepareCodeToParseFuncParams2TestFunc --a= -- --a -b"
   # '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает ${_ansiOutline}непустое${_ansiErr} значение для опции ${_ansiCmd}--a${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --a= -- --a '$_stqq$_stqq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает, что опция ${_ansiCmd}-b${_ansiErr} будет указана повторно с другим значением ${_ansiPrimaryLiteral}thing${_ansiErr} против ${_ansiPrimaryLiteral}SOME${_ansiErr}, указанного первоначально${_ansiReset}"
     --return "1"
     --before "local __defaultValueOfArgC=defaultValueOfArgC"
@@ -450,8 +413,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка краткой опции
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает значение для опции ${_ansiCmd}--opt-b${_ansiErr}, поэтому её краткая форма ${_ansiCmd}-b${_ansiErr} не может быть использоваана в ${_ansiOutline}объединении опций ${_ansiCmd}-ab${_ansiReset}"
     --return "1"
     --before "local __defaultValueOfArgC=defaultValueOfArgC"
@@ -464,8 +426,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает краткую опцию ${_ansiPrimaryLiteral}c${_ansiErr} в ${_ansiOutline}объединении опций ${_ansiCmd}-abc${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -478,22 +439,19 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка превышения числа аргументов в цикле разбора параметров
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает ни одного аргумента, но обнаружен: ${_ansiCmd}\"f g\"${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc -- '$_stq'f g'$_stq' '$_stqq'h i'$_stqq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает не более 1 аргумента, но обнаружен 2-й: ${_ansiCmd}\"h i\"${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc a:? -- '$_stq'f g'$_stq' '$_stqq'h i'$_stqq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает не более 2 аргументов, но обнаружен 3-й: ${_ansiCmd}e${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc a b:? -- c d e '$_stq'f g'$_stq' '$_stqq'h i'$_stqq'"
@@ -501,8 +459,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # валидация аргументов в цикле разбора параметров
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}c${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"c d\"${_ansiErr} в качестве 1-го аргумента ${_ansiOutline}a${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -512,8 +469,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}положительное целое число${_ansiErr} в качестве 2-го аргумента ${_ansiOutline}b${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -525,8 +481,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве 3-го аргумента ${_ansiOutline}c${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -540,8 +495,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает ${_ansiOutline}непустое${_ansiErr} значение в качестве 4-го аргумента ${_ansiOutline}d${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -557,8 +511,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}c${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"c d\"${_ansiErr} в качестве 3-го аргумента ${_ansiOutline}a${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -570,8 +523,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}положительное целое число${_ansiErr} в качестве 4-го аргумента ${_ansiOutline}b${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -585,8 +537,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве 4-го аргумента ${_ansiOutline}c${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -601,8 +552,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает ${_ansiOutline}непустое${_ansiErr} значение в качестве 6-го аргумента ${_ansiOutline}d${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -622,8 +572,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # ожидание команды
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --before "local -a _prepareCodeToParseFuncParams2TestFunc_alphaShortcuts=( alef a )"
     --before "local -a _prepareCodeToParseFuncParams2TestFunc_bravoCharlieShortcuts=( beta-gamma b )"
     --before "eval \"_prepareCodeToParseFuncParams2TestFunc_alpha() { eval \\\"\\\$_codeToCallFuncParams2\\\"; }\""
@@ -638,8 +587,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --before "local -a _prepareCodeToParseFuncParams2TestFunc_alphaShortcuts=( alef a )"
     --before "local -a _prepareCodeToParseFuncParams2TestFunc_bravoCharlieShortcuts=( beta-gamma b )"
     --before "eval \"_prepareCodeToParseFuncParams2TestFunc_alpha() { eval \\\"\\\$_codeToCallFuncParams2\\\"; }\""
@@ -654,15 +602,13 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # ожидание аргумента
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает 1-й аргумент ${_ansiOutline}a${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc a -- "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает 2-й аргумент ${_ansiOutline}b${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc a b -- c"
@@ -671,8 +617,7 @@ _prepareCodeToParseFuncParams2Tests=(
 # _postProcessVarNames
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает не менее ${_ansiPrimaryLiteral}2${_ansiErr} элементов в списке значений аргумента ${_ansiOutline}args${_ansiErr}, но не получено ничего${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -682,8 +627,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает не менее ${_ansiPrimaryLiteral}2${_ansiErr} элементов в списке значений аргумента ${_ansiOutline}args${_ansiErr}, но получен ${_ansiSecondaryLiteral}1${_ansiErr}: ${_ansiCmd}itemValue0${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -693,8 +637,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает не менее ${_ansiPrimaryLiteral}3${_ansiErr} элементов в списке значений аргумента ${_ansiOutline}args${_ansiErr}, но получены ${_ansiSecondaryLiteral}2${_ansiErr}: ${_ansiCmd}itemValue0 itemValue1${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -704,8 +647,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает не более ${_ansiPrimaryLiteral}2${_ansiErr} элементов в списке значений аргумента ${_ansiOutline}args${_ansiErr}, но получены ${_ansiSecondaryLiteral}3${_ansiErr}: ${_ansiCmd}itemValue0 itemValue1 itemValue2${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -717,8 +659,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}<empty>
       ${_ansiOutline}optB${_ansiReset}<empty>
@@ -741,8 +682,7 @@ _prepareCodeToParseFuncParams2Tests=(
   '
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "0"
     --stderr "
       extraParam
@@ -762,8 +702,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "0"
     --stderr "
       ${_ansiOutline}argA${_ansiReset}: ${_ansiPrimaryLiteral}thing${_ansiReset}
@@ -782,8 +721,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "0"
     --stderr "
       ${_ansiOutline}argA${_ansiReset}: ${_ansiPrimaryLiteral}thing${_ansiReset}
@@ -802,8 +740,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "0"
     --stderr "
       ${_ansiOutline}argA${_ansiReset}: ${_ansiPrimaryLiteral}thing${_ansiReset}
@@ -826,8 +763,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}<empty>
       ${_ansiOutline}OPT_a${_ansiReset}(2): ${_ansiSecondaryLiteral}--a '$_stqq$_stqq'${_ansiReset}
@@ -845,8 +781,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   "--stderr=
   #     ${_ansiOutline}a${_ansiReset}<empty>
   #     ${_ansiOutline}OPT_a${_ansiReset}(2): ${_ansiSecondaryLiteral}--a '$_stqq$_stqq'${_ansiReset}
@@ -863,8 +798,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}c${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"c d\"${_ansiErr} для опции ${_ansiCmd}--a${_ansiReset}"
   #   "_prepareCodeToParseFuncParams2TestFunc --
@@ -874,8 +808,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}положительное целое число${_ansiErr} для опции ${_ansiCmd}--a${_ansiReset}"
   #   "_prepareCodeToParseFuncParams2TestFunc --
@@ -885,8 +818,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} для опции ${_ansiCmd}--a${_ansiReset}"
   #   "_prepareCodeToParseFuncParams2TestFunc --
@@ -896,8 +828,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}c${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"c d\"${_ansiErr} в качестве 1-го аргумента ${_ansiOutline}a${_ansiReset}"
   #   "_prepareCodeToParseFuncParams2TestFunc --
@@ -907,8 +838,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве 2-го аргумента ${_ansiOutline}a${_ansiReset}"
   #   "_prepareCodeToParseFuncParams2TestFunc --
@@ -918,8 +848,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}boolOptA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}OPT_boolOptA${_ansiReset}(1): ${_ansiSecondaryLiteral}--boolOptA${_ansiReset}
@@ -939,8 +868,7 @@ _prepareCodeToParseFuncParams2Tests=(
   '
   # ${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не ожидает, что опция ${_ansiCmd}--boolOptA${_ansiErr} будет указана повторно${_ansiReset}
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "0"
   #   "--stderr=
   #     ${_ansiOutline}a${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
@@ -959,8 +887,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: Значение по умолчанию (задаваемое после ${_ansiSecondaryLiteral}=${_ansiErr}) в определении аргумента ${_ansiCmd}arg:1..=${_ansiErr} функции ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} не может быть пустым, в противном случае аргумент должен быть помечен суффиксом ${_ansiPrimaryLiteral}?${_ansiErr} как ${_ansiOutline}опциональный${_ansiErr}: ${_ansiCmd}arg:1..?${_ansiReset}"
   #   "_prepareCodeToParseFuncParams2TestFunc -- arg:1..="
@@ -968,8 +895,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(4): ${_ansiSecondaryLiteral}100 20 -3 -3${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 -a -3 --a 20 -a -3${_ansiReset}
@@ -989,8 +915,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(4): ${_ansiSecondaryLiteral}-3 20 20 100${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 --a 20 -a -3 --a 20${_ansiReset}
@@ -1010,8 +935,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(4): ${_ansiSecondaryLiteral}20 100 100 -3${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 --a 20 -a -3 -a 100${_ansiReset}
@@ -1031,8 +955,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(3): ${_ansiSecondaryLiteral}100 20 -3${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 -a -3 --a 20 -a -3${_ansiReset}
@@ -1052,8 +975,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(3): ${_ansiSecondaryLiteral}-3 20 100${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 --a 20 -a -3 --a 20${_ansiReset}
@@ -1073,8 +995,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(3): ${_ansiSecondaryLiteral}20 100 -3${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 --a 20 -a -3 -a 100${_ansiReset}
@@ -1094,8 +1015,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(3): ${_ansiSecondaryLiteral}100 -3 20${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 -a -3 --a 20 -a -3${_ansiReset}
@@ -1115,8 +1035,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(3): ${_ansiSecondaryLiteral}100 20 -3${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 --a 20 -a -3 --a 20${_ansiReset}
@@ -1136,8 +1055,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}a${_ansiReset}(3): ${_ansiSecondaryLiteral}100 20 -3${_ansiReset}
       ${_ansiOutline}OPT_a${_ansiReset}(8): ${_ansiSecondaryLiteral}-a 100 --a 20 -a -3 -a 100${_ansiReset}
@@ -1158,16 +1076,14 @@ _prepareCodeToParseFuncParams2Tests=(
   '
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}d${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"d e\"${_ansiErr} в качестве вычисляемого значения по умолчанию параметра ${_ansiCmd}a:(b \"d e\")=\$defaultValueForArgA${_ansiReset}"
     --before "local defaultValueForArgA=d"
     "_prepareCodeToParseFuncParams2TestFunc '$_stq'a:'$_stOpenBraceInQ'b '$_stqq'd e'$_stqq''$_stCloseBraceInQ'='$_stDollarInQ'defaultValueForArgA'$_stq'"
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}d${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}b \"d e\"${_ansiErr} в качестве элемента вычисляемого значения по умолчанию параметра ${_ansiCmd}@--a:(b \"d e\")=( \${defaultValueForOptA[@]} )${_ansiReset}"
     --before "local -a defaultValueForOptA=( d e )"
@@ -1178,8 +1094,7 @@ _prepareCodeToParseFuncParams2Tests=(
   '
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}<empty>
       ${_ansiOutline}optA2${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
@@ -1415,8 +1330,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}argA${_ansiReset}: ${_ansiPrimaryLiteral}--unknownOption${_ansiReset}
@@ -1439,33 +1353,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
-    --stderr "
-      ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
-      ${_ansiOutline}argA${_ansiReset}: ${_ansiPrimaryLiteral}--unknownOption${_ansiReset}
-    "
-    --return "0"
-    --stderrParaWithIndent "0"
-    --before "local __defaultValueOfArgC=defaultValueOfArgC"
-    --before "local __partOfDefaultValueOfArgD=DefaultValueOfArgD"
-    "_prepareCodeToParseFuncParams2TestFunc \
-      --run '$_stq' \
-        _debugVar --clean --joiner '$_stqq''$_stSlashInQ'n'$_stqq' \
-          optA argA \
-      '$_stq' \
-      --canBeMixedOptionsAndArgs \
-      --treatUnknownOptionAsArg \
-      --opt-a \
-      '$_stq'argA'$_stq' \
-      -- \
-      --optA \
-      --unknownOption \
-    "
-  '
-  '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}argA${_ansiReset}: ${_ansiPrimaryLiteral}--unknownOption${_ansiReset}
@@ -1484,13 +1372,36 @@ _prepareCodeToParseFuncParams2Tests=(
       --opt-a \
       '$_stq'argA'$_stq' \
       -- \
+      --optA \
+      --unknownOption \
+    "
+  '
+  '
+    --noErrorStack
+    --stderr "
+      ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
+      ${_ansiOutline}argA${_ansiReset}: ${_ansiPrimaryLiteral}--unknownOption${_ansiReset}
+    "
+    --return "0"
+    --stderrParaWithIndent "0"
+    --before "local __defaultValueOfArgC=defaultValueOfArgC"
+    --before "local __partOfDefaultValueOfArgD=DefaultValueOfArgD"
+    "_prepareCodeToParseFuncParams2TestFunc \
+      --run '$_stq' \
+        _debugVar --clean --joiner '$_stqq''$_stSlashInQ'n'$_stqq' \
+          optA argA \
+      '$_stq' \
+      --canBeMixedOptionsAndArgs \
+      --treatUnknownOptionAsArg \
+      --opt-a \
+      '$_stq'argA'$_stq' \
+      -- \
       --unknownOption \
       --optA \
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optB${_ansiReset}: ${_ansiPrimaryLiteral}\"some thing\"${_ansiReset}
@@ -1552,8 +1463,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optB${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
@@ -1576,8 +1486,7 @@ _prepareCodeToParseFuncParams2Tests=(
   '
 
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}valueC${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}valueA valueB${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1587,8 +1496,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}valueC${_ansiErr} ожидает одно из следующих значений: ${_ansiSecondaryLiteral}valueA valueB${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1598,8 +1506,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}valueC${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1609,8 +1516,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}valueC${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1620,8 +1526,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}положительное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1631,8 +1536,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}положительное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1642,8 +1546,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1653,8 +1556,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}-1${_ansiErr} ожидает ${_ansiOutline}неотрицательное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1664,8 +1566,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}1${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} не менее ${_ansiPrimaryLiteral}2${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1675,8 +1576,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}1${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} не менее ${_ansiPrimaryLiteral}2${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1686,8 +1586,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}отрицательное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1697,8 +1596,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}0${_ansiErr} ожидает ${_ansiOutline}отрицательное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1708,8 +1606,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}1${_ansiErr} ожидает ${_ansiOutline}неположительное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1719,8 +1616,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}1${_ansiErr} ожидает ${_ansiOutline}неположительное целое число${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1730,8 +1626,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}3${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} не более ${_ansiPrimaryLiteral}2${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1741,8 +1636,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}3${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} не более ${_ansiPrimaryLiteral}2${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1752,8 +1646,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}2${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} из диапазона ${_ansiPrimaryLiteral}4..6${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1763,8 +1656,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} вместо ${_ansiPrimaryLiteral}2${_ansiErr} ожидает ${_ansiOutline}целое число${_ansiErr} из диапазона ${_ansiPrimaryLiteral}4..6${_ansiErr} в качестве значения опции ${_ansiCmd}-a${_ansiReset}"
     --return "1"
     "_prepareCodeToParseFuncParams2TestFunc \
@@ -1780,8 +1672,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "_prepareCodeToParseFuncParams2TestFunc2 --isCommandWrapper"
   # '
 
-    # --before "_substitute noStack true"
-    # --after "_restore noStack"
+    # --noErrorStack
   '
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
@@ -1813,8 +1704,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc3${_ansiErr} ожидает не менее ${_ansiPrimaryLiteral}1${_ansiErr} элемента в списке значений опции ${_ansiCmd}--opt-d${_ansiErr}, но не получено ничего${_ansiReset}"
     --stderrParaWithIndent "0"
@@ -1836,8 +1726,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc3 alpha${_ansiErr} не ожидает краткую опцию ${_ansiPrimaryLiteral}a${_ansiErr} в ${_ansiOutline}объединении опций ${_ansiCmd}-ab${_ansiReset}"
     --stderrParaWithIndent "0"
@@ -1858,8 +1747,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optB${_ansiReset}<empty>
@@ -1889,8 +1777,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optB${_ansiReset}<empty>
@@ -1920,8 +1807,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
  # Влияние --canBeMixedOptionsAndArgs на наследование опций "через голову"
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --stderr "
   #     ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
   #     ${_ansiOutline}optB${_ansiReset}<empty>
@@ -1951,8 +1837,7 @@ _prepareCodeToParseFuncParams2Tests=(
   #   "
   # '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc3 alpha delta${_ansiErr} не ожидает опцию ${_ansiCmd}-c${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc3 \
@@ -1968,8 +1853,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optB${_ansiReset}<empty>
@@ -2001,8 +1885,7 @@ _prepareCodeToParseFuncParams2Tests=(
 
  # important-опции
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}<empty>
       ${_ansiOutline}OPT_optA${_ansiReset}(0)
@@ -2023,8 +1906,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}OPT_optA${_ansiReset}(1): ${_ansiSecondaryLiteral}-a${_ansiReset}
@@ -2045,8 +1927,7 @@ _prepareCodeToParseFuncParams2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}OPT_optA${_ansiReset}(1): ${_ansiSecondaryLiteral}-a${_ansiReset}
@@ -2225,7 +2106,7 @@ _parseFuncParams2Tests=(
   '
     --before "local -a COMPREPLY=()"
     --varName "COMPREPLY"
-    --varValue "declare -a COMPREPLY=([0]=\"<-- HINT: _parseFuncParams2TestFunc ожидает целое число\" [1]=\"-->\")"
+    --varValue "declare -a COMPREPLY=([0]=\"!<-- HINT: _parseFuncParams2TestFunc ожидает целое число\" [1]=\"-->\")"
     --varTstPostProcess '"$_postProcessDeclareArray"'
     "true \
       && local -a COMP_WORDS=( _parseFuncParams2TestFunc \"-?\" \"-a\" \"\") \
@@ -2239,7 +2120,7 @@ _parseFuncParams2Tests=(
   '
     --before "local -a COMPREPLY=()"
     --varName "COMPREPLY"
-    --varValue "declare -a COMPREPLY=([0]=\"<-- HINT: _parseFuncParams2TestFunc ожидает целое число\" [1]=\"-->\")"
+    --varValue "declare -a COMPREPLY=([0]=\"!<-- HINT: _parseFuncParams2TestFunc ожидает целое число\" [1]=\"-->\")"
     --varTstPostProcess '"$_postProcessDeclareArray"'
     "true \
       && local -a COMP_WORDS=( _parseFuncParams2TestFunc \"-?\" \"--aOpt\" \"\") \
@@ -2253,7 +2134,7 @@ _parseFuncParams2Tests=(
   '
     --before "local -a COMPREPLY=()"
     --varName "COMPREPLY"
-    --varValue "declare -a COMPREPLY=([0]=\"<-- HINT: _parseFuncParams2TestFunc ожидает целое число из диапазона 4..5 или пустое значение\" [1]=\"-->\")"
+    --varValue "declare -a COMPREPLY=([0]=\"!<-- HINT: _parseFuncParams2TestFunc ожидает целое число из диапазона 4..5 или пустое значение\" [1]=\"-->\")"
     --varTstPostProcess '"$_postProcessDeclareArray"'
     "true \
       && local -a COMP_WORDS=( _parseFuncParams2TestFunc \"-?\" \"-a\" \"\") \
@@ -2267,7 +2148,7 @@ _parseFuncParams2Tests=(
   '
     --before "local -a COMPREPLY=()"
     --varName "COMPREPLY"
-    --varValue "declare -a COMPREPLY=([0]=\"<-- HINT: _parseFuncParams2TestFunc ожидает целое число из диапазона 4..5 или пустое значение\" [1]=\"-->\")"
+    --varValue "declare -a COMPREPLY=([0]=\"!<-- HINT: _parseFuncParams2TestFunc ожидает целое число из диапазона 4..5 или пустое значение\" [1]=\"-->\")"
     --varTstPostProcess '"$_postProcessDeclareArray"'
     "true \
       && local -a COMP_WORDS=( _parseFuncParams2TestFunc \"-?\" \"--aOpt\" \"\") \
@@ -2281,7 +2162,7 @@ _parseFuncParams2Tests=(
   '
     --before "local -a COMPREPLY=()"
     --varName "COMPREPLY"
-    --varValue "declare -a COMPREPLY=([0]=\"<-- HINT: _parseFuncParams2TestFunc не ожидает опцию --some\" [1]=\"-->\")"
+    --varValue "declare -a COMPREPLY=([0]=\"!<-- HINT: _parseFuncParams2TestFunc не ожидает опцию --some\" [1]=\"-->\")"
     --varTstPostProcess '"$_postProcessDeclareArray"'
     "true \
       && local -a COMP_WORDS=( _parseFuncParams2TestFunc \"-?\" \"--some\" \"--aOpt\" \"\") \
@@ -2297,7 +2178,7 @@ _parseFuncParams2Tests=(
     --after "unset -f _parseFuncParams2TestFunc_alpha"
     --before "local -a COMPREPLY=()"
     --varName "COMPREPLY"
-    --varValue "declare -a COMPREPLY=([0]=\"<-- HINT: _parseFuncParams2TestFunc a не ожидает опцию --some\" [1]=\"-->\")"
+    --varValue "declare -a COMPREPLY=([0]=\"!<-- HINT: _parseFuncParams2TestFunc a не ожидает опцию --some\" [1]=\"-->\")"
     --varTstPostProcess '"$_postProcessDeclareArray"'
     "true \
       && local -a COMP_WORDS=( _parseFuncParams2TestFunc \"-?\" a \"--some\" \"--aOpt\" \"\") \
@@ -2982,8 +2863,7 @@ _prepareCodeOfAutoHelp2Tests=(
 
   '
     --return "1"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiErr} ожидает, что ${_ansiOutline}_prepareCodeOfAutoHelp2TestFuncMoreArgsUsage${_ansiErr} будет скаляром, а не массивом${_ansiReset}"
     "true \
       && local -a _prepareCodeOfAutoHelp2TestFuncParamsOpt=( --canBeMoreParams ) \
@@ -2993,8 +2873,7 @@ _prepareCodeOfAutoHelp2Tests=(
   '
   '
     --return "1"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiErr} ожидает, что ${_ansiOutline}_prepareCodeOfAutoHelp2TestFuncMoreArgs${_ansiErr} будет массивом, а не скаляром${_ansiReset}"
     "true \
       && local -a _prepareCodeOfAutoHelp2TestFuncParamsOpt=( --canBeMoreParams ) \
@@ -3004,8 +2883,7 @@ _prepareCodeOfAutoHelp2Tests=(
   '
   '
     --return "1"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiErr} ожидает, что имя переменной ${_ansiPrimaryLiteral}Дополнительный аргумент${_ansiErr} указанное в ${_ansiOutline}_prepareCodeOfAutoHelp2TestFuncMoreArgs${_ansiErr} $_mustBeValidVarName${_ansiReset}"
     "true \
       && local -a _prepareCodeOfAutoHelp2TestFuncParamsOpt=( --canBeMoreParams ) \
@@ -3015,8 +2893,7 @@ _prepareCodeOfAutoHelp2Tests=(
   '
   '
     --return "1"
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeOfAutoHelp2TestFunc${_ansiErr} ${_ansiOutline}_prepareCodeOfAutoHelp2TestFuncMoreArgs${_ansiErr} содержит аргумент ${_ansiPrimaryLiteral}arg${_ansiErr} одноименный параметру из ${_ansiOutline}_prepareCodeOfAutoHelp2TestFuncParams${_ansiReset}"
     "true \
       && local -a _prepareCodeOfAutoHelp2TestFuncParamsOpt=( --canBeMoreParams ) \

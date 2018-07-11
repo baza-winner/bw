@@ -33,15 +33,36 @@ _prepareCodeToParseFuncOptions2() {
 
   dstVarName= codeType=funcOptions fileSpec= originalCodeDeep= eval "$_codeToPrepareCodeFileSpec"
 
-  if [[ -z $onlyPrepareCode ]]; then
-    [[ ! -f $codeFileSpec ]] \
-      || [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]] && ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[0]}" "${BASH_SOURCE[1]}" \
-      || return 0
-  else
-    [[ ! -f $codeFileSpec ]] \
-      || ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[0]}" "${BASH_SOURCE[1]}" \
-      || return 2
+  # if [[ -z $onlyPrepareCode ]]; then
+  #   [[ ! -f $codeFileSpec ]] \
+  #     || [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]] && ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[0]}" "${BASH_SOURCE[1]}" \
+  #     || return 0
+  # else
+  #   [[ ! -f $codeFileSpec ]] \
+  #     || ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[0]}" "${BASH_SOURCE[1]}" \
+  #     || return 2
+  # fi
+
+  if [[ -f $codeFileSpec ]]; then
+    if [[ -z $onlyPrepareCode && -z $_isBwDevelop && -z $_isBwDevelopInherited ]]; then
+      return 0
+    elif _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[@]::2}"; then
+      if [[ -n $onlyPrepareCode ]]; then
+        return 2
+      else
+        return 0
+      fi
+    fi
   fi
+
+  # if [[ -f $codeFileSpec ]] && _everyFileNotNewerThan "$codeFileSpec" "$_bwFileSpec" "${BASH_SOURCE[@]::2}"; then
+  #   if [[ -n $onlyPrepareCode ]]; then
+  #     return 2
+  #   else
+  #     return 0
+  #   fi
+  # fi
+
   local verbose=
   # verbose=true
   if [[ -n $verbose ]]; then
@@ -139,6 +160,7 @@ _prepareCodeToParseFuncOptions2() {
     shift
   done'
 
+# [[ -n $BW_DRILL ]] && { echo -n "funcOptionsSupport2.bash _assureDir: "; declare -f _assureDir;  }
   _assureDir $(dirname "$codeFileSpec") || return $?
   echo "$code" > "$codeFileSpec"
   [[ -z $onlyPrepareCode ]] || return 2
@@ -201,6 +223,7 @@ _codeToCheckNoArgsInOpt='
 
 _codeToPrepareCodeFileSpec='
   [[ -n $additionalSuffix && ! $additionalSuffix =~ ^\. ]] && additionalSuffix=".$additionalSuffix"
+  local __generatedDirSpec=
   fileSpec="${fileSpec:-${BASH_SOURCE[${originalCodeDeep:-1}]}}" codeHolder=_codeToPrepareGeneratedDirSpec eval "$_evalCode"
   eval ${dstVarName:-codeFileSpec}="$__generatedDirSpec/${funcName:-${FUNCNAME[${originalCodeDeep:-1}]}}$additionalSuffix.$codeType$_codeBashExt"
 '

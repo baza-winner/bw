@@ -29,8 +29,7 @@ _prepareCodeToParseFuncOptions2TestFunc() { eval "$_funcOptions2"
 }
 _prepareCodeToParseFuncOptions2Tests=(
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} ожидает, что ${_ansiOutline}имя переменной ${_ansiPrimaryLiteral}not valid id${_ansiErr} для опции ${_ansiCmd}not valid id${_ansiErr} $_mustBeValidVarName${_ansiReset}"
     "_prepareCodeToParseFuncOptions2TestFunc \
@@ -38,8 +37,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} не ожидает опцию ${_ansiCmd}--opt-a${_ansiReset}"
     "_prepareCodeToParseFuncOptions2TestFunc \
@@ -48,8 +46,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} ожидает, что опция ${_ansiCmd}--scalar-opt${_ansiErr} будет снабжена значением${_ansiReset}"
     "_prepareCodeToParseFuncOptions2TestFunc \
@@ -128,8 +125,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} не ожидает, что опция ${_ansiCmd}--scalar-opt-a${_ansiErr} будет указана повторно${_ansiReset}"
     "_prepareCodeToParseFuncOptions2TestFunc \
@@ -140,8 +136,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} ожидает, что опция ${_ansiCmd}--scalar-opt-a${_ansiErr} будет снабжена значением не похожим на опцию ${_ansiPrimaryLiteral}-value${_ansiReset}"
   #   "_prepareCodeToParseFuncOptions2TestFunc \
@@ -151,8 +146,7 @@ _prepareCodeToParseFuncOptions2Tests=(
   #   "
   # '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} ожидает, что опция ${_ansiCmd}--scalar-opt-a${_ansiErr} будет снабжена значением${_ansiReset}"
     "_prepareCodeToParseFuncOptions2TestFunc \
@@ -162,8 +156,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} ожидает, что опция ${_ansiCmd}--list-opt-a${_ansiErr} будет снабжена значением${_ansiReset}"
     "_prepareCodeToParseFuncOptions2TestFunc \
@@ -173,8 +166,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   # '
-  #   --before "_substitute noStack true"
-  #   --after "_restore noStack"
+  #   --noErrorStack
   #   --return "1"
   #   --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncOptions2TestFunc${_ansiErr} ожидает, что опция ${_ansiCmd}--list-opt-a${_ansiErr} будет снабжена значением не похожим на опцию ${_ansiPrimaryLiteral}-value${_ansiReset}"
   #   "_prepareCodeToParseFuncOptions2TestFunc \
@@ -186,8 +178,7 @@ _prepareCodeToParseFuncOptions2Tests=(
 
 # Влияние treatUnknownOptionAsArg на поглощение --
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optB${_ansiReset}<${_ansiErr}is unset${_ansiReset}>
@@ -209,8 +200,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optC${_ansiReset}<${_ansiErr}is unset${_ansiReset}>
@@ -230,8 +220,7 @@ _prepareCodeToParseFuncOptions2Tests=(
     "
   '
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}optA${_ansiReset}: ${_ansiPrimaryLiteral}true${_ansiReset}
       ${_ansiOutline}optC${_ansiReset}<${_ansiErr}is unset${_ansiReset}>
@@ -252,8 +241,7 @@ _prepareCodeToParseFuncOptions2Tests=(
 
 # Поправил bug, который не позволял значению скалярной опции начинаться с пробела
   '
-    --before "_substitute noStack true"
-    --after "_restore noStack"
+    --noErrorStack
     --stderr "
       ${_ansiOutline}opt${_ansiReset}: ${_ansiPrimaryLiteral}\" some\"${_ansiReset}
     "

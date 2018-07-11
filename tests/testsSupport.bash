@@ -22,16 +22,16 @@ bw_bashTestsHelper() {
 
   export _bwdevDockerHttp="${_bwdevDockerHttp:-8998}"
 
-  for _fileSpec in "$testsDirSpec/testsSupport.bash"; do
-    fileNamesToProcess+=( $(basename "$_fileSpec") )
-    funcNamesToPregen+=( $(_getFuncNamesOfScriptToUnset "$_fileSpec") )
+  local fileSpec; for fileSpec in "$testsDirSpec/testsSupport.bash"; do
+    fileNamesToProcess+=( $(basename "$fileSpec") )
+    funcNamesToPregen+=( $(_getFuncNamesOfScriptToUnset "$fileSpec") )
     codeHolder=_codeSource eval "$_evalCode"
   done
 
   if [[ ${#args[@]} -eq 0 ]]; then
-    for _fileSpec in "$testsDirSpec/"*Tests.bash; do
-      fileNamesToProcess+=( $(basename "$_fileSpec") )
-      funcNamesToPregen+=( $(_getFuncNamesOfScriptToUnset "$_fileSpec") )
+    local fileSpec; for fileSpec in "$testsDirSpec/"*Tests.bash; do
+      fileNamesToProcess+=( $(basename "$fileSpec") )
+      funcNamesToPregen+=( $(_getFuncNamesOfScriptToUnset "$fileSpec") )
       codeHolder=_codeSource eval "$_evalCode"
     done
   else
@@ -41,12 +41,12 @@ bw_bashTestsHelper() {
     done
     funcsTestFor=( $(_getUniqArray "${funcsTestFor[@]}") )
     for funcTestFor in "${funcsTestFor[@]}"; do
-      for _fileSpec in "$testsDirSpec/"*Tests.bash; do
-        local fileNameToProcess=$(basename "$_fileSpec")
+      local fileSpec; for fileSpec in "$testsDirSpec/"*Tests.bash; do
+        local fileNameToProcess=$(basename "$fileSpec")
         ! _hasItem "$fileNameToProcess" "${fileNamesToProcess[@]}" || continue
-        _hasItem ${funcTestFor}Tests $(_getVarNamesOfScriptToUnset "$_fileSpec") || continue
+        _hasItem ${funcTestFor}Tests $(_getVarNamesOfScriptToUnset "$fileSpec") || continue
         fileNamesToProcess+=( "$fileNameToProcess" )
-        funcNamesToPregen+=( $(_getFuncNamesOfScriptToUnset "$_fileSpec") )
+        funcNamesToPregen+=( $(_getFuncNamesOfScriptToUnset "$fileSpec") )
         codeHolder=_codeSource eval "$_evalCode"
       done
     done
@@ -64,7 +64,7 @@ bw_bashTestsHelper() {
     fi
   fi
 
-  for _fileSpec in $(find "$testsDirSpec/$_generatedDir" -name *.completion$_codeBashExt); do
+  local fileSpec; for fileSpec in $(find "$testsDirSpec/$_generatedDir" -name *.completion$_codeBashExt); do
     codeHolder=_codeSource eval "$_evalCode"
   done
 
@@ -350,9 +350,6 @@ _runBashTestParams() {
     )
   done
 
-  # _runBashTestParams+=( --catOptions "" )
-  # _runBashTestParams+=( '--catOptions' )
-  # _runBashTestParams+=( '--inTmpDir' )
   _runBashTestParams+=( 
     '--catOptions'
     '--inTmpDir'
