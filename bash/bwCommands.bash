@@ -1352,6 +1352,7 @@ _cmd_selfTest() { eval "$_funcParams2"
       echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Чтобы выйти из docker-контейнера, выполните команду ${_ansiCmd}exit 0${_ansiReset}"
       _exec -v all $bwProjShortcut docker shell "dev-${bwProjShortcut}-nginx" || { returnCode=$?; break; }    
     fi
+    _exec -v all "$bwProjShortcut" docker down || { returnCode=$?; break; }
     break
   done
   if [[ $returnCode -eq 0 ]]; then
