@@ -1152,7 +1152,7 @@ _initBwProjCmd() {
   funcNamesToRegen+=( "$bwProjShortcut"'_docker_down' )
   eval "$bwProjShortcut"'_docker_downParams=()'
   eval "$bwProjShortcut"'_docker_down() { eval "$_funcParams2"
-    _docker_down '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+    _inDir "$_'"$bwProjShortcut"'Dir/docker" _docker_down '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
   }'
 
 
