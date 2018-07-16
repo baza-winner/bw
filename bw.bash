@@ -315,7 +315,7 @@ _bwProjDefs=(
   '
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch feature/docker
+    --branch develop
     --http 8088
     --https 8089
     --upstream 3000
