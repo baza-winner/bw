@@ -5,13 +5,15 @@ bw -- общая bash-инфраструктура [проектов baza-winner
 
 # Использование
 
-[Установка команды bw](https://github.com/baza-winner/bw/wiki/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B-bw)
+[install_bw]: https://github.com/baza-winner/bw/wiki/%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B-bw
+
+[Установка команды bw][install_bw]
 
 # Разработка
 
 ## Настройка окружения
 
-1. [Установить команду bw](https://github.com/baza-winner/bw/wiki)
+1. [Установить команду bw][install_bw] 
 
 2. Развернуть рабочее место проекта bwdev
 
@@ -164,7 +166,7 @@ curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=loc
 
 ### BW_PREGEN_ONLY
 
-`BW_PREGEN_ONLY` (опция `-p`) ограничивает прегенерацию вспомогательного кода (codeToParseOptions, codeToParseFuncParams, autoHelp, completion) и приводит к тому, что прегенерация происходит только для заданных функций (например, `BW_PREGEN_ONLY=bw\ bw_install` или `-p "bw bw_install"`). Значение `-` отменяет прегенерацию (но оставляет ранее сгенеренные файлы нетронутыми). К генерации вспомогательного кода для всех функций и формированию списка completion-функций заново (только в режиме разработки) приводит только пустое значение `BW_PREGEN_ONLY` (достаточно просто не упоминать `BW_PREGEN_ONLY` при вызове `. bw.bash`)
+`BW_PREGEN_ONLY` (опция `-p`) ограничивает прегенерацию вспомогательного кода (codeToParseOptions, codeToParseFuncParams) и приводит к тому, что прегенерация происходит только для заданных функций (например, `BW_PREGEN_ONLY=bw\ bw_install` или `-p "bw bw_install"`). Значение `-` отменяет прегенерацию (но оставляет ранее сгенеренные файлы нетронутыми). К генерации вспомогательного кода для всех функций (только в режиме разработки) приводит только пустое значение `BW_PREGEN_ONLY` (достаточно просто не упоминать `BW_PREGEN_ONLY` при вызове `. bw.bash`)
 
 ### BW_SELF_UPDATE_SOURCE
 
