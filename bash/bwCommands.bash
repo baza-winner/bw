@@ -9,6 +9,120 @@ _resetBash
 
 # =============================================================================
 
+# shellcheck disable=SC2016,SC2034
+_bwProjDefs=()
+
+# =============================================================================
+
+_bwProjDefs+=(
+  # 'mls' '
+  #   --gitOrigin github.com:baza-winner/mls-pm.git
+  # '
+  'bwdev' '
+    --gitOrigin github.com:baza-winner/bw.git
+    --branch master
+    --http 8998
+    --https 8999
+    --no-docker-build
+    --docker-compose "docker-compose.nginx.yml"
+  '
+)
+
+# =============================================================================
+
+_bwProjDefs+=(
+  'dubu' '
+    --gitOrigin github.com:baza-winner/dev-ubuntu.git
+    --branch master
+    --docker-image-name bazawinner/dev-ubuntu
+    --http 8996
+    --https 8997
+    --docker-compose "docker-compose.nginx.yml"
+    --docker-compose "docker-compose.main.yml"
+  '
+)
+
+# =============================================================================
+
+_bwProjDefs+=(
+  'dnvm' '
+    --gitOrigin github.com:baza-winner/dev-nvm.git
+    --branch master
+    --docker-image-name bazawinner/dev-nvm
+    --http 8994
+    --https 8995
+    --docker-compose "docker-compose.nginx.yml"
+    --docker-compose "docker-compose.main.yml"
+  '
+)
+
+# =============================================================================
+
+# shellcheck disable=SC2154
+_bw_project_dnvm() {
+  _exec "${sub_OPT[@]}" git submodule update --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+}
+
+# =============================================================================
+
+_bwProjDefs+=(
+  'bgate' '
+    --gitOrigin github.com:baza-winner/billing-gate.git
+    --branch develop
+    --http 8086
+    --https 8087
+    --upstream 6783
+    --docker-compose "docker-compose.nginx.yml"
+    --docker-compose "docker-compose.main.yml"
+  '
+)
+
+# shellcheck disable=SC2154
+_bw_project_bgate() {
+  _exec "${sub_OPT[@]}" git submodule update --init --recursive
+}
+
+# =============================================================================
+
+_bwProjDefs+=(
+  'crm' '
+    --gitOrigin github.com:baza-winner/crm.git
+    --branch develop
+    --http 8088
+    --https 8089
+    --upstream 3000
+    --docker-compose "docker-compose.nginx.yml"
+    --docker-compose "docker-compose.main.yml"
+  '
+)
+
+# =============================================================================
+
+_bwProjDefs+=(
+  'wcraw' '
+    --gitOrigin github.com:baza-winner/wcrawler.git
+    --branch feature/docker
+  '
+      # --http 8090
+    # --https 8091
+)
+
+# =============================================================================
+
+# _bwProjDefs+=(
+#   'bcore' '
+#     --gitOrigin github.com:baza-winner/billingcore.git
+#   '
+# )
+
+# # shellcheck disable=SC2154
+# _bw_project_bcore() {
+#   _exec "${sub_OPT[@]}" git submodule update --init --recursive
+# }
+
+
+# =============================================================================
+
 _unsetBash() {
   local verbosity="$1"
   local fileSpec="${fileSpec:-${BASH_SOURCE[1]}}"
@@ -105,8 +219,9 @@ bw_update() { eval "$_funcParams2"
   if [[ -n $noPregen ]]; then
     OPT=( -p - )
   fi
-  . "$_bwFileSpec" "${OPT[@]}"
+  . "$_bwFileSpec" "${OPT[@]}"; local returnCode=$?
   echo "Current version: $(bw_version)"
+  return $returnCode
 }
 
 # =============================================================================
@@ -883,9 +998,10 @@ bw_project() { eval "$_funcParams2"
             break
           fi
         fi
-        _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; break; }
+        _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; brancheak; }
         local cloneStderrFileSpec="/tmp/$bwProjShortcut.clone.stderr"
-        if ! git ls-remote -t "git@$bwProjGitOrigin" no-ref >"$cloneStderrFileSpec" 2>&1; then
+        # if ! git ls-remote -t "git@$bwProjGitOrigin" no-ref >"$cloneStderrFileSpec" 2>/dev/null; then
+        if ! _exec "${OPT_verbosity[@]}" --stdout "$cloneStderrFileSpec" git ls-remote -t "git@$bwProjGitOrigin" no-ref; then
           if grep 'Permission denied (publickey)' "$cloneStderrFileSpec"; then
             local msg=
             msg+="Похоже, Вы не настроили ssh-ключи для доступа к ${_ansiPrimaryLiteral}git@$bwProjGitOrigin${_ansiWarn}"$_nl
@@ -899,6 +1015,7 @@ bw_project() { eval "$_funcParams2"
           { returnCode=1; break; }
         fi
         _exec "${sub_OPT[@]}" --cmdAsIs "git clone git@$bwProjGitOrigin \"$projDir\"" || { returnCode=$?; break; }
+        # _exec -v all -s no --cmdAsIs "git clone git@$bwProjGitOrigin \"$projDir\"" || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" git checkout "$branch" || { returnCode=$?; break; }
         local funcName="_${FUNCNAME[0]}_$bwProjShortcut"
@@ -1116,7 +1233,7 @@ _initBwProjCmd() {
     _cmd_selfTest "${OPT[@]}" "'"$bwProjShortcut"'" "'"${!bwProjDirHolder}"'"
   }'
 
-  local dockerComposeFileSpec="$_${bwProjShortcut}Dir/docker/docker-compose.yml"
+  # local dockerComposeFileName="$_${bwProjShortcut}Dir/docker/docker-compose.yml"
 
   eval "$bwProjShortcut"'_docker_upParamsOpt=(
     --canBeMixedOptionsAndArgs
@@ -1144,7 +1261,7 @@ _initBwProjCmd() {
 
     '"$codeToPrepareOPTForDockerUp"'
 
-    _inDir "$_'"$bwProjShortcut"'Dir/docker" _docker_up "${OPT[@]}" '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"; local returnCode=$?
+    _inDir "$_'"$bwProjShortcut"'Dir/docker" _docker_up "${OPT[@]}" '"${bwProjDockerCompose[@]}"'; local returnCode=$?
     return $returnCode
   }'
 
@@ -1152,7 +1269,7 @@ _initBwProjCmd() {
   funcNamesToRegen+=( "$bwProjShortcut"'_docker_down' )
   eval "$bwProjShortcut"'_docker_downParams=()'
   eval "$bwProjShortcut"'_docker_down() { eval "$_funcParams2"
-    _inDir "$_'"$bwProjShortcut"'Dir/docker" _docker_down '"$(_quotedArgs "${bwProjDockerCompose[@]}")"' "$_'"$bwProjShortcut"'Dir/docker/docker-compose.yml"
+    _inDir "$_'"$bwProjShortcut"'Dir/docker" _docker_down '"${bwProjDockerCompose[@]}"'
   }'
 
 
@@ -1303,19 +1420,28 @@ _docker_build() { eval "$_funcParams2"
 }
 
 _docker_downParams=( 
-  '@1..dockerComposeFileSpecs'
+  '@1..dockerComposeFileNames'
 )
 _docker_down() { eval "$_funcParams2"
-  local dockerDir; dockerDir=$(dirname "${dockerComposeFileSpecs[ $(( ${#dockerComposeFileSpecs[@]} - 1 )) ]}")
-  local -a OPT=()
-  local dockerComposeFileSpec; for dockerComposeFileSpec in "${dockerComposeFileSpecs[@]}"; do
-    if [[ $(dirname "$dockerComposeFileSpec") != "$dockerDir" ]]; then
-      local srcFileSpec="$dockerComposeFileSpec"
-      dockerComposeFileSpec="$dockerDir/$(basename "$dockerComposeFileSpec")"
-    fi
-    OPT+=( -f "$dockerComposeFileSpec" )
-  done
-  _dockerCompose "${OPT[@]}" down --remove-orphans
+  # local dockerDir; dockerDir=$(dirname "${dockerComposeFileNames[ $(( ${#dockerComposeFileNames[@]} - 1 )) ]}")
+  # local -a OPT=()
+  # local dockerComposeFileName; for dockerComposeFileName in "${dockerComposeFileNames[@]}"; do
+  #   if [[ $(dirname "$dockerComposeFileName") != "$dockerDir" ]]; then
+  #     local srcFileSpec="$dockerComposeFileName"
+  #     dockerComposeFileName="$dockerDir/$(basename "$dockerComposeFileName")"
+  #   fi
+  #   OPT+=( -f "$dockerComposeFileName" )
+  # done
+  if [[ -f '.docker-compose.yml' ]]; then
+    local -a dockerComposeOPT; _prepateDockerComposeOpt
+    _dockerCompose "${dockerComposeOPT[@]}" down --remove-orphans
+  fi
+}
+
+_prepateDockerComposeOpt() {
+  local dockerComposeProjectName="$(_shortenFileSpec "$(cd .. && pwd)")"
+  [[ $dockerComposeProjectName =~ '^~' ]] && dockerComposeProjectName=${dockerComposeProjectName:1}
+  dockerComposeOPT=( -v all -p "$dockerComposeProjectName" -f '.docker-compose.yml' )
 }
 
 _cmd_selfTestParams=(
@@ -1350,7 +1476,7 @@ _cmd_selfTest() { eval "$_funcParams2"
     fi
     if [[ -n $http || -n $https ]]; then
       echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Чтобы выйти из docker-контейнера, выполните команду ${_ansiCmd}exit 0${_ansiReset}"
-      _exec -v all $bwProjShortcut docker shell "dev-${bwProjShortcut}-nginx" || { returnCode=$?; break; }    
+      _exec -v all "$bwProjShortcut" docker shell "dev-${bwProjShortcut}-nginx" || { returnCode=$?; break; }    
     fi
     _exec -v all "$bwProjShortcut" docker down || { returnCode=$?; break; }
     break
@@ -1375,7 +1501,7 @@ _docker_upParams=(
   '--bwProjName='
   '@--restart'
   '--noCheck'
-  '@1..dockerComposeFileSpecs'
+  '@1..dockerComposeFileNames'
 )
 _docker_up() { eval "$_funcParams2"
   local returnCode=0
@@ -1399,7 +1525,7 @@ _docker_up() { eval "$_funcParams2"
       returnCode=$?; break
     fi
 
-    local dockerDir; dockerDir="$(dirname "${dockerComposeFileSpecs[ $(( ${#dockerComposeFileSpecs[@]} - 1 )) ]}")"
+    # local dockerDir; dockerDir="$(dirname "${dockerComposeFileNames[ $(( ${#dockerComposeFileNames[@]} - 1 )) ]}")"
 
     bw_install --silentIfAlreadyInstalled docker || { returnCode=$?; break; }
 
@@ -1438,7 +1564,7 @@ _docker_up() { eval "$_funcParams2"
       [[ $returnCode -eq 0 ]] || break
     fi
 
-    local dockerComposeEnvFileSpec="$dockerDir/.env"
+    local dockerComposeEnvFileName=".env"
     {
       echo "# file generated by $bwProjShortcut_docker_up"
       local -a varNames=(
@@ -1458,12 +1584,12 @@ _docker_up() { eval "$_funcParams2"
       [[ -z $https ]] || echo "_${bwProjShortcut}DockerHttps=$https"
       [[ -z $upstream ]] || echo "_${bwProjShortcut}DockerUpstream=$upstream"
       [[ -z $dockerImageName ]] || echo "_${bwProjShortcut}DockerImageName=$dockerImageName"
-    } > "$dockerComposeEnvFileSpec"
+    } > "$dockerComposeEnvFileName"
 
     if [[ -n $dockerImageName ]]; then
       local promptHolder="_${bwProjShortcut}Prompt"
       _prepareProjPrompt || return $?
-      local dockerContainerEnvFileSpec="$dockerDir/main.env"
+      local dockerContainerEnvFileName="main.env"
       { 
         echo "# file generated by '$bwProjShortcut'_docker_up"
         echo "_isBwDevelopInherited=$_isBwDevelop"
@@ -1480,7 +1606,7 @@ _docker_up() { eval "$_funcParams2"
         if _funcExists "$addonFuncName"; then 
           $addonFuncName
         fi
-      } > "$dockerContainerEnvFileSpec"
+      } > "$dockerContainerEnvFileName"
     fi
 
     if [[ -n $http || -n $https ]]; then
@@ -1495,7 +1621,7 @@ _docker_up() { eval "$_funcParams2"
           fi
         done
       fi
-      local nginxDir="$dockerDir/nginx"
+      local nginxDir="nginx"
       if [[ -n $needProcessNginxConfTemplate ]]; then
         local separatorLine='# !!! you SHOULD put all custom rules above this line; all lines below will be autocleaned'
         if [[ -f "$nginxDir/.gitignore" ]]; then
@@ -1512,6 +1638,7 @@ _docker_up() { eval "$_funcParams2"
             http="$http" \
             https="$https" \
             upstream="$upstream" \
+            mainContainerName="$dockerContainerName" \
             projName="$bwProjName" \
             projShortcut="$bwProjShortcut" \
             _mkFileFromTemplate "$fileSpec"
@@ -1528,30 +1655,44 @@ _docker_up() { eval "$_funcParams2"
     [[ -z $https ]] || eval export "_${bwProjShortcut}DockerHttps"'="$https"'
     [[ -z $upstream ]] || eval export "_${bwProjShortcut}DockerUpstream"'="$upstream"'
 
-    local -a OPT=()
-    local dockerComposeFileSpec; for dockerComposeFileSpec in "${dockerComposeFileSpecs[@]}"; do
-      if [[ $(dirname "$dockerComposeFileSpec") != "$dockerDir" ]]; then
-        local srcFileSpec="$dockerComposeFileSpec"
-        dockerComposeFileSpec="$dockerDir/$(basename "$dockerComposeFileSpec")"
-        cp -f "$srcFileSpec" "$dockerComposeFileSpec"
+    local -a config_OPT=()
+    dockerComposeFileNames+=( "docker-compose.yml" )
+    local dockerComposeFileName; for dockerComposeFileName in "${dockerComposeFileNames[@]}"; do
+      if [[ $dockerComposeFileName != 'docker-compose.yml' ]]; then
+        local srcFileSpec="$_bwDir/docker/helper/$dockerComposeFileName"
+        _exec -v all cp -f "$srcFileSpec" "$dockerComposeFileName"
       fi
-      OPT+=( -f "$dockerComposeFileSpec" )
+      dockerComposeFileName="$(basename "$dockerComposeFileName" .yml )"
+
+      nginxContainerName="$dockerContainerName-nginx" \
+      mainContainerName="$dockerContainerName" \
+      mainImageName="$dockerImageName" \
+      _mkFileFromTemplate -n -e .yml -v nginxContainerName -v mainContainerName -v mainImageName "$dockerComposeFileName"
+
+      config_OPT+=( -f "$dockerComposeFileName" )
     done
+    # config_OPT+=( -f "docker-compose.yml" )
+
+    # local -a OPT=( -f '.docker-compose.yml' )
 
     if [[ "${#restart[@]}" -gt 0 ]]; then
-      _dockerCompose -v all "${OPT[@]}" stop "${restart[@]}"
+      if [[ -f ".docker-compose.yml" ]]; then
+        _dockerCompose -v all "${OPT[@]}" stop "${restart[@]}" || { returnCode=$?; break; }
+      fi
     fi
 
-    # local stderrFileSpec="/tmp/$bwProjShortcut.docker-compose.stderr"
-    # {
-      [[ -z $forceRecreate ]] || OPT_forceRecreate=( '--force-recreate' )
-      _dockerCompose -v all "${OPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans
-    # } 2> >(tee "$stderrFileSpec"); 
-    local returnCode=$?
+    _dockerCompose -v err "${config_OPT[@]}" config > '.docker-compose.yml' || { returnCode=$?; break; }
 
-    # if [[ $returnCode -ne 0 ]] && grep -P -o '(?<=:)\d+(?= failed: port is already allocated)' "$stderrFileSpec" >/dev/null; then
-    #   _err "port is already allocated"
-    # fi
+    [[ -z $forceRecreate ]] || OPT_forceRecreate=( '--force-recreate' )
+    local -a dockerComposeOPT; _prepateDockerComposeOpt
+    _dockerCompose "${dockerComposeOPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans || { returnCode=$?; break; }
+
+    if [[ -n $http || -n $https ]]; then
+      echo "Проверка доступности docker-приложения:"
+      [[ -z $http ]] || echo "  ${_ansiCmd}curl localhost:$http/whoami/${_ansiReset}"
+      [[ -z $https ]] || echo "  ${_ansiCmd}curl https://localhost:$https/whoami/${_ansiReset}"
+    fi
+    
     break
   done
 
@@ -1582,18 +1723,18 @@ _docker_shell() { eval "$_funcParams2"
   fi
 }
 
-_dockerComposeContainerNamesParams=( 'dockerComposeFileSpec' )
+_dockerComposeContainerNamesParams=( 'dockerComposeFileName' )
 _dockerComposeContainerNames() { eval "$_funcParams2"
   local -a result=()
-  local nameHolder; for nameHolder in $(perl -ne 'print if s/^\s*container_name:\s*(.+?)\s*/$1/' "$dockerComposeFileSpec"); do
+  local nameHolder; for nameHolder in $(perl -ne 'print if s/^\s*container_name:\s*(.+?)\s*/$1/' "$dockerComposeFileName"); do
     eval result+=\( "$nameHolder" \)
   done
   echo "${result[@]}"
 }
 
-_dockerComposeServiceNamesParams=( 'dockerComposeFileSpec' )
+_dockerComposeServiceNamesParams=( 'dockerComposeFileName' )
 _dockerComposeServiceNames() { eval "$_funcParams2"
-  perl -ne 'print if s/^\s\s(\w[\w\d]*):\s*$/$1\n/' "$dockerComposeFileSpec"
+  perl -ne 'print if s/^\s\s(\w[\w\d]*):\s*$/$1\n/' "$dockerComposeFileName"
 }
 
 # =============================================================================
@@ -1940,38 +2081,112 @@ bw_install_rootCert() { eval "$_funcParams2"
 _bw_install_rootCertCheck() {
   if [[ $OSTYPE =~ ^linux ]]; then
     [[ -f /usr/local/share/ca-certificates/bw/root.cert.crt ]]
-  else
+  elif [[ $OSTYPE =~ ^darwin ]]; then
     _silent security find-certificate -c dev.baza-winner.ru
+  else
+    return 1
   fi
 }
+_bwCertFile="$_bwDir/ssl/rootCA.pem"
+_bwCertName="dev.baza-winner.ru - WinNER"
+_bwDarwinCertuilFileSpec="/usr/local/opt/nss/bin/certutil"
 _bw_install_rootCertDarwin() {
   while true; do
     _exec "${sub_OPT[@]}" --sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$_bwDir/ssl/rootCA.pem" || { returnCode=$?; break; }
+    _bw_install_rootCert_usingCertutil --certutil "$_bwDarwinCertuilFileSpec" || { returnCode=$?; break; }
+    # local -a cert8Dirs; mapfile -t cert8Dirs < <(find / -name "cert8.db" -exec dirname {} \; 2>/dev/null)
+    # local -a cert9Dirs; mapfile -t cert9Dirs < <(find / -name "cert9.db" -exec dirname {} \; 2>/dev/null)
+    # if [[ ${#cert8Dirs[@]} -gt 0 || ${#cert9Dirs[@]} -gt 0 ]]; then
+    #   bw_install certutil --silentIfAlreadyInstalled || { returnCode=$?; break; }
+    #   local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TCu,Cu,Tu" -i "${_bwCertFile}")
+    #   local certDir; for certDir in "${cert8Dirs[@]}"; do
+    #     _exec "${sub_OPT[@]}" certutil "${certutil_OPT[@]}" -d "dbm:${certDir}" || { returnCode=$?; break 2; }
+    #   done
+    #   local certDir; for certDir in "${cert9Dirs[@]}"; do
+    #     _exec "${sub_OPT[@]}" certutil "${certutil_OPT[@]}"  -d "sql:${certDir}" || { returnCode=$?; break 2; }
+    #   done
+    # fi
     break
   done
 }
 _bw_install_rootCertLinux() {
   while true; do
-    local certfile="$_bwDir/ssl/rootCA.pem"
+    # local certfile="$_bwDir/ssl/rootCA.pem"
     #https://thomas-leister.de/en/how-to-import-ca-root-certificate/
     [[ -d /usr/local/share/ca-certificates/bw ]] || _exec "${sub_OPT[@]}" --sudo mkdir /usr/local/share/ca-certificates/bw || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo cp "$certfile" /usr/local/share/ca-certificates/bw/root.cert.crt || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo update-ca-certificates || { returnCode=$?; break; }
 
-    local certname="dev.baza-winner.ru - WinNER"
-    local certdir certDB
+    _bw_install_rootCert_usingCertutil --findFrom "$HOME" || { returnCode=$?; break; }
+    # local certname="dev.baza-winner.ru - WinNER"
+    # local certdir certDB
     ### prerequisite
+    # _exec "${sub_OPT[@]}" --sudo apt install -y --force-yes libnss3-tools || { returnCode=$?; break; }
+    # local -a cert8Dirs=(); mapfile -t cert8Dirs < (find ~/ -name "cert8.db" -exec dirname {} \; 2>/dev/null)
+    # ### For cert8 (legacy - DBM)
+    # for certDB in $(find ~/ -name "cert8.db"); do
+    #   certdir="$(dirname ${certDB})"
+    #   _exec "${sub_OPT[@]}" certutil -A -n "${certname}" -t "TCu,Cu,Tu" -i "${certfile}" -d "dbm:${certdir}" || { returnCode=$?; break 2; }
+    # done
+    # ### For cert9 (SQL)
+    # for certDB in $(find ~/ -name "cert9.db"); do
+    #   certdir=$(dirname ${certDB});
+    #   _exec "${sub_OPT[@]}" certutil -A -n "${certname}" -t "TCu,Cu,Tu" -i "${certfile}" -d "sql:${certdir}" || { returnCode=$?; break 2; }
+    # done
+    break
+  done
+}
+_bw_install_rootCert_usingCertutilParams=(
+  '--findFrom=/'
+  '--certutil=certutil'
+)
+_bw_install_rootCert_usingCertutil() { eval "$_funcParams2"
+  local -a cert8Dirs; 
+  local -a cert9Dirs; 
+  _spinner "Поиск файлов cert8.db cert9.db" _bw_install_rootCert_prepareCertDirs
+  if [[ ${#cert8Dirs[@]} -gt 0 || ${#cert9Dirs[@]} -gt 0 ]]; then
+    bw_install certutil --silentIfAlreadyInstalled || { returnCode=$?; break; }
+    # local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TCu,Cu,Tu" -i "${_bwCertFile}")
+    local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TC,C,T" -i "${_bwCertFile}") # https://blogs.oracle.com/meena/about-trust-flags-of-certificates-in-nss-database-that-can-be-modified-by-certutil
+    local certDir; for certDir in "${cert8Dirs[@]}"; do
+      _exec "${sub_OPT[@]}" "$certutil" "${certutil_OPT[@]}" -d "dbm:${certDir}" || { returnCode=$?; break 2; }
+    done
+    local certDir; for certDir in "${cert9Dirs[@]}"; do
+      _exec "${sub_OPT[@]}" "$certutil" "${certutil_OPT[@]}"  -d "sql:${certDir}" || { returnCode=$?; break 2; }
+    done
+  fi
+}
+_bw_install_rootCert_prepareCertDirs() {
+  mapfile -t cert8Dirs < <(find $findFrom -name "cert8.db" -exec dirname {} \; 2>/dev/null)
+  mapfile -t cert9Dirs < <(find $findFrom -name "cert9.db" -exec dirname {} \; 2>/dev/null)
+}
+
+# =============================================================================
+
+bw_install_certutilParams=()
+bw_install_certutil_description='Устанавливает ${_ansiPrimaryLiteral}certutil${_ansiReset}'
+bw_install_certutil() {
+  name="certutil" codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_certutilCheck() {
+  if [[ $OSTYPE =~ ^linux ]]; then
+    _which certutil
+  elif [[ $OSTYPE =~ ^darwin ]]; then
+    [[ -f $_bwDarwinCertuilFileSpec ]] 
+  else
+    return 1
+  fi
+}
+_bw_install_certutilLinux() {
+  while true; do
     _exec "${sub_OPT[@]}" --sudo apt install -y --force-yes libnss3-tools || { returnCode=$?; break; }
-    ### For cert8 (legacy - DBM)
-    for certDB in $(find ~/ -name "cert8.db"); do
-      certdir="$(dirname ${certDB})"
-      _exec "${sub_OPT[@]}" certutil -A -n "${certname}" -t "TCu,Cu,Tu" -i "${certfile}" -d "dbm:${certdir}" || { returnCode=$?; break 2; }
-    done
-    ### For cert9 (SQL)
-    for certDB in $(find ~/ -name "cert9.db"); do
-      certdir=$(dirname ${certDB});
-      _exec "${sub_OPT[@]}" certutil -A -n "${certname}" -t "TCu,Cu,Tu" -i "${certfile}" -d "sql:${certdir}" || { returnCode=$?; break 2; }
-    done
+    break
+  done
+}
+_bw_install_certutilDarwin() {
+  while true; do
+    bw_install brew --silentIfAlreadyInstalled || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" brew install nss || { returnCode=$?; break; }
     break
   done
 }

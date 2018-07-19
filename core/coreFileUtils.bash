@@ -80,10 +80,13 @@ _exec() { eval "$_funcParams2"
   [[ ${#redir[@]} -eq 0 ]] || cmd+=" ${redir[@]}"
 
   local returnCode=0
+  local cmdTitle="${_ansiCmd}"
+  [[ -z $sudo ]] || cmdTitle+="sudo "
+  cmdTitle+="$cmd${_ansiReset}"
   if [[ $verbosity == 'dry' ]]; then
-    echo "${_ansiCmd}$cmd${_ansiReset}"
+    echo "$cmdTitle"
   else
-    [[ $verbosity == 'all' ]] && echo "${_ansiCmd}$cmd${_ansiReset} . . ."
+    [[ $verbosity == 'all' ]] && echo "$cmdTitle . . ."
     if [[ -z $sudo ]]; then
       eval "$cmd"
     else
@@ -115,9 +118,9 @@ _exec() { eval "$_funcParams2"
     fi
     if [[ $verbosity != 'none' ]]; then
       if [[ -n $isOK ]]; then
-        [[ $verbosity == 'err' ]] || _ok "${_ansiCmd}$cmd"
+        [[ $verbosity == 'err' ]] || _ok "$cmdTitle"
       else
-        [[ $verbosity == 'ok' ]] || _err "${_ansiCmd}$cmd"
+        [[ $verbosity == 'ok' ]] || _err "$cmdTitle"
       fi
     fi
   fi
@@ -379,10 +382,14 @@ _killApp() { eval "$_funcParams2"
 }
 
 verbosityDefault=err silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
+_dockerComposeParamsOpt=(
+  '--canBeMoreParams'
+  '--treatUnknownOptionAsArg'
+)
 _dockerComposeParams=(
   "${_verbosityParams[@]}"
+  '--stdout='
 )
-_dockerComposeParamsOpt=(--canBeMoreParams --treatUnknownOptionAsArg)
 _dockerCompose() { eval "$_funcParams2"
   bw_install docker-compose --silentIfAlreadyInstalled || return $?
   local -a OPT=()
@@ -391,7 +398,7 @@ _dockerCompose() { eval "$_funcParams2"
   elif [[ ! $OSTYPE =~ ^darwin ]]; then
     return $(_err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE")
   fi
-  _exec ${OPT_verbosity[@]} ${OPT_silent[@]} "${OPT[@]}" docker-compose "$@"
+  _exec "${OPT_verbosity[@]}" "${OPT_silent[@]}" "${OPT_stdout[@]}" "${OPT[@]}" docker-compose "$@"
 }
 
 verbosityDefault=err silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
@@ -427,7 +434,8 @@ _mkFileFromTemplateParams=(
   '--commentPostLine='
   '--commentPrefix='
   '--commentSuffix='
-  '--templateFileSpec/t="$fileSpec.template"'
+  '--templateFileExt/e=.template'
+  '--templateFileSpec/t="$fileSpec$templateFileExt"'
   '--noShowErrorIfNoTemplate'
   '--returnCodeIfNoTemplate:0..=1'
   '@--varNames/v'

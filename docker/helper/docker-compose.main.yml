@@ -1,6 +1,8 @@
 version: '2'
 services:
-  main:
+  ${mainContainerName}:
+    container_name: ${mainContainerName}
+    image: ${mainImageName}
     volumes:
       - ${_bwDir}:/home/dev/.bw
       - ${_bwFileSpec}:/home/dev/bw.bash
