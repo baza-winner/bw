@@ -1438,35 +1438,31 @@ _prepareProjDir() { eval "$_funcParams2"
 
 # shellcheck disable=SC2034
 _runInDockerContainer='
-  local __bwProjShortcut="${FUNCNAME[0]%%_*}"
   if ! _isInDocker; then
-    _prepareProjDir "$__bwProjShortcut" || return $?
-    _inDir -v none "$projDir/docker" _runInDockerContainerHelper ${FUNCNAME[0]//_/ } "${__params[@]}"
+    _runInDockerContainer_outOfDocker
     return $?
-  fi
-  if [[ $- =~ i && -z $wrapped ]]; then
-    local code='\''
-      [[ $- =~ i ]] && . "$HOME/.bashrc"
-      . "$HOME/bw.bash" -p -
-      . "$HOME/proj/bin/'\''$__bwProjShortcut'\''.bash"
-      wrapped=true '\''${FUNCNAME[0]//_/ } "${__params[@]}"
-    /usr/local/bin/dumb-init /bin/bash -c "$code"  
+  elif [[ $- =~ i && -z $wrapped ]]; then
+    _runInDockerContainer_nonWrapped
     return $?
+  else
+    _runInDockerContainer_main
   fi
-  local __queueFileSpec="$HOME/proj/docker/${queue:-default}.queue"; shift
-  if [[ -s $__queueFileSpec ]]; then
-    local __pid; read -r -d $'\''\x04'\'' __pid < "$__queueFileSpec" 
-    kill -SIGTERM $__pid 2>/dev/null
-  fi
-  echo $PPID > "$__queueFileSpec"
-  local trapEXIT=$(trap -p EXIT)
-  [[ -z $trapEXIT ]] || trapEXIT="
-    ${trapEXIT:9:-6}
-    rm -f \"$__queueFileSpec\"
-  "
-  trap "$trapEXIT" EXIT
 '
-_runInDockerContainerHelper() {
+_runInDockerContainer_outOfDocker() {
+  local bwProjShortcut="${FUNCNAME[1]%%_*}"
+  _prepareProjDir "$bwProjShortcut" || return $?
+  _inDir -v none "$projDir/docker" _runInDockerContainer_outOfDockerHelper ${FUNCNAME[1]//_/ } "${__params[@]}"
+}
+_runInDockerContainer_nonWrapped() {
+  local bwProjShortcut="${FUNCNAME[1]%%_*}"
+  local code='
+    [[ $- =~ i ]] && . "$HOME/.bashrc"
+    . "$HOME/bw.bash" -p -
+    . "$HOME/proj/bin/'"$bwProjShortcut"'.bash"
+    wrapped=true '"${FUNCNAME[1]//_/ } $(_quotedArgs "${__params[@]}")"
+  /usr/local/bin/dumb-init /bin/bash -c "$code"  
+}
+_runInDockerContainer_outOfDockerHelper() {
   local -a dockerCompose_OPT; _prepareDockerComposeOpt
   local -a OPT_T; [[ -n $it ]] || OPT_T=( -T )
   local -a cmd_params=( "${dockerCompose_OPT[@]:2}" exec "${OPT_T[@]}" main "$_bwDevDockerEntryPointFileSpec" )
@@ -1476,9 +1472,27 @@ _runInDockerContainerHelper() {
     local pidFileSpec="$projDir/docker/$$.pid"
     # shellcheck disable=SC2064
     trap "_runInDockerCtrlC $subPid \"$pidFileSpec\" \"$*\" $(_quotedArgs "${cmd_params[@]}")" SIGINT
-    wait $subPid
+    wait $subPid; local returnCode=$?
     trap - SIGINT
+    return $returnCode
   )
+}
+_runInDockerContainer_main() {
+  local queueFileSpec="$HOME/proj/docker/${queue:-default}.queue"; shift
+  if [[ -s $queueFileSpec ]]; then
+    local pid; read -r -d $'\x04' pid < "$queueFileSpec" 
+    _debugVar queueFileSpec pid
+    kill -SIGTERM $pid 2>/dev/null
+  else
+    _warn "${_ansiFileSpec}$queueFileSpec{_ansiWarn} not found"
+  fi
+  echo $PPID > "$queueFileSpec"
+  local trapEXIT=$(trap -p EXIT)
+  [[ -z $trapEXIT ]] || trapEXIT="
+    ${trapEXIT:9:-6}
+    rm -f \"$queueFileSpec\"
+  "
+  trap "$trapEXIT" EXIT
 }
 
 _runInDockerCtrlC() {
@@ -2707,7 +2721,7 @@ red() {
 }
 _redDarwin() {
   while true; do
-    _download -s "$_redForMacUrl" "$_redForMacFileSpec" || { returnCode=$?; break; }
+    _download -s yes "$_redForMacUrl" "$_redForMacFileSpec" || { returnCode=$?; break; }
     chmod u+x "$_redForMacFileSpec" || { returnCode=99; break; }
     "$_redForMacFileSpec" "$@" || { returnCode=$?; break; }
     break
@@ -2715,8 +2729,13 @@ _redDarwin() {
 }
 _redLinux() {
   while true; do
-    _download -s "$_redForLinuxUrl" "$_redForLinuxFileSpec" || { returnCode=$?; break; }
+    _download -s yes "$_redForLinuxUrl" "$_redForLinuxFileSpec" || { returnCode=$?; break; }
     chmod u+x "$_redForLinuxFileSpec" || { returnCode=99; break; }
+    if ! _silent dpkg -l libc6:i386 || ! _silent dpkg -l libcurl3:i386; then
+      _exec --sudo dpkg --add-architecture i386
+      _exec --sudo apt-get update
+      _exec --sudo apt-get install -y libc6:i386 libcurl3:i386
+    fi
     "$_redForLinuxFileSpec" "$@" || { returnCode=$?; break; }
     break
   done
