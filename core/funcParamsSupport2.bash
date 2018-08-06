@@ -5,22 +5,13 @@ _resetBash
 # =============================================================================
 
 # shellcheck disable=SC2016
-_codeToInitLocalCopyOfScalar='
-  local $dstVarName="${!srcVarName}"
-'
-# shellcheck disable=SC2016
-_codeToInitLocalCopyOfArray='
-  eval local -a $dstVarName=\( \"\${$srcVarName[@]}\" \)
-'
-
-# shellcheck disable=SC2016
 _codeToInitLocalCopyOfScalarWithCheck='
   if [[ -z ${!srcVarName+x} ]]; then
     local $dstVarName=
   else
     local typeSignature=$(declare -p $srcVarName 2>/dev/null)
     if [[ $typeSignature =~ ^declare[[:space:]]-a ]]; then
-      return $(_ownThrow "ожидает, что ${_ansiOutline}$srcVarName${_ansiErr} будет скаляром, а не массивом")
+      return $(_throw "ожидает, что ${_ansiOutline}$srcVarName${_ansiErr} будет скаляром, а не массивом")
     else
       eval "$_codeToInitLocalCopyOfScalar"
     fi
@@ -36,13 +27,12 @@ _codeToInitLocalCopyOfArrWithCheck='
     if [[ $typeSignature =~ ^declare[[:space:]]-a ]]; then
       eval "$_codeToInitLocalCopyOfArray"
     else
-      return $(_ownThrow "ожидает, что ${_ansiOutline}$srcVarName${_ansiErr} будет массивом, а не скаляром")
+      return $(_throw "ожидает, что ${_ansiOutline}$srcVarName${_ansiErr} будет массивом, а не скаляром")
     fi
   fi
 '
 # =============================================================================
 
-# _funcParams2='local codeFileSpec && _prepareCodeToParseFuncParams2 && local __consumedParams=0 && . "$codeFileSpec" && local -a __params && { if [[ -z $__curWordIdx ]]; then __params=( "$@" ); else __params=( ${__words[@]:$__curWordIdx}); fi; } && _parseFuncParams2 "$@" && { for ((; __consumedParams>0; __consumedParams--)); do shift; done; true; } || { local __returnCode=$?; [[ $__returnCode -ne 3 ]] || __returnCode=0; return $__returnCode; }'
 _funcParams2='
   local __returnCode  codeFileSpec
   _prepareCodeToParseFuncParams2; __returnCode=$?
@@ -336,7 +326,7 @@ _profileBegin
         local indent=
         if [[ -n $__hasWrapper ]]; then
           if [[ $varKind == arg ]]; then
-            code+="! _hasItem $__varName \${__thisInheritedOptVarNames[@]} || return \$(_ownThrow \"не ожидает аргумент \${_ansiOutline}$__varName\${_ansiErr} одноименный унаследованной опции\")$_nl"
+            code+="! _hasItem $__varName \${__thisInheritedOptVarNames[@]} || return \$(_throw \"не ожидает аргумент \${_ansiOutline}$__varName\${_ansiErr} одноименный унаследованной опции\")$_nl"
           else
             code+="if ! _hasItem $__varName \${__thisInheritedImportantOptVarNames[@]}; then$_nl"
             indent='  '
@@ -368,9 +358,9 @@ _profileBegin
               code+="${indent}local __ENUM_$__varName="\'$enumDef\'"$_nl"
               code+="${indent}local __codeIsValidEnumValue_$__varName='"
               if [[ $enumDef =~ \$ ]]; then
-                code+='eval "$_codeToPrepareEnumValues" && _hasItem "$__varValue" "${enumValues[@]}"'
+                code+='eval "$_codeToPrepareEnumValues" || return $?; _hasItem "$__varValue" "${enumValues[@]}"'
               else
-                eval "$_codeToPrepareEnumValues"
+                eval "$_codeToPrepareEnumValues" 
                 local codeAccum=
                 local enumValue; for enumValue in "${enumValues[@]}"; do
                   [[ -z $codeAccum ]] || codeAccum+=' || '
@@ -518,9 +508,10 @@ _profileBegin
           local completeFuncName="__complete_${funcName}"
           echo '
 '$completeFuncName'() {
-local __consumedParams=0
-. "$_bwDir'${codeFileSpec:${#_bwDir}}'"
-__isCompletionMode=true _parseFuncParams2
+  local __consumedParams=0
+  local ____isCompletionMode=true
+  . "$_bwDir'${codeFileSpec:${#_bwDir}}'"
+  __isCompletionMode=true _parseFuncParams2
 }
 complete -o nospace -F '$completeFuncName' '$funcName > "$completionCodeFileSpec"
 
@@ -669,6 +660,9 @@ _parseFuncParams2() {
     done
   fi
 
+  # local holder="_codeToPrepareParamVarsOf_${__thisFuncName}"
+  # [[ -z ${!holder} ]] || codeHolder=$holder eval "$_evalCode" || return $?
+
   local __needReturn=""
   local __curWord="${__words[$__thisCurWordIdx]}"
   while true; do
@@ -695,7 +689,6 @@ _parseFuncParams2() {
             eval "$_codeToPrepareVarNameByOptionShortcut"
           fi
           eval "$__codeIsOptVarName" || __varName=
-
 
           if [[ -z $__varName ]]; then
             if [[ -z $__treatUnknownOptionAsArg ]]; then
@@ -872,9 +865,6 @@ _parseFuncParams2() {
       [[ $__returnCode -ne 0 ]] || __returnCode=3
       __needReturn=true
       break
-      # [[ $__returnCode -eq 0 ]] \
-      #   && return 3 \
-      #   || return $?
     elif [[ -n $__isCommandWrapper ]]; then
       local -a __funcNameSuffixes=(); help= _prepareSubCommandFuncSuffixes --checkCondition $__funcName
       __err="в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}$(_echoAllSubCommands)"
@@ -901,9 +891,12 @@ _parseFuncParams2() {
   _profileEnd
   [[ -z $__needReturn ]] || return $__returnCode
   [[ -n $__err ]] || return 0
-  [[ -n $__isCompletionMode ]] \
-    && _setCompReplyToHint "$__err" \
-    || _ownThrow "$__err"
+  if [[ -n $__isCompletionMode ]]; then
+    _setCompReplyToHint "$__err"
+  else
+    # errOriginName="$__thisFuncCommand" 
+    _throw "$__err"
+  fi
 }
 
 _codeToNextWord='
@@ -979,7 +972,7 @@ _setCompReplyToValueDescription() {
     [[ -z ${!emptyHolder} ]] || valueDescription+=" или пустое значение"
     _setCompReplyToHint "ожидает $valueDescription"
   elif [[ ${!__varValtypeHolder} == enum ]]; then
-    eval "$_codeToPrepareEnumValues"
+    eval "$_codeToPrepareEnumValues" || return $?
     local enumValue; for enumValue in "${enumValues[@]}"; do
       __candidate="$enumValue" eval "$_codeToAddCandidateToCompletion"
     done
@@ -1006,10 +999,11 @@ _echoAllSubCommands() {
 
 _codeToPrepareEnumValues='
   local __varEnumHolder="__ENUM_$__varName"
-  if [[ ${!__varEnumHolder} =~ $_isCalcEnumRegExp ]]; then
-    eval eval local -a enumValues="${!__varEnumHolder}"
+  local -a enumValues
+  if [[ ! ${!__varEnumHolder} =~ $_isCalcEnumRegExp ]]; then
+    eval enumValues="${!__varEnumHolder}"
   else
-    eval local -a enumValues="${!__varEnumHolder}"
+    eval eval enumValues="${!__varEnumHolder}"
   fi
 '
 _postProcessVarNames() {
@@ -1105,7 +1099,7 @@ _postProcessVarNames() {
                 [[ -n ${!__uniqueHolder} ]] && __sortOpts+=( -u )
                 IFS="$_nl" __result=( $(sort "${__sortOpts[@]}" <<<"${__list[*]}" ) ); unset IFS # https://stackoverflow.com/questions/7442417/how-to-sort-an-array-in-bash
               else
-                eval "$_codeToPrepareEnumValues"
+                eval "$_codeToPrepareEnumValues" || return $?
                 local __value; for __value in "${enumValues[@]}"; do
                   _hasItem "$__value" "${__list[@]}" || continue
                   if [[ -n ${!__uniqueHolder} ]]; then
@@ -1229,8 +1223,11 @@ _validateVarValue() {
     if [[ ${!__varValtypeHolder} == enum ]]; then
       local __codeIsValidEnumValueHolder=__codeIsValidEnumValue_$__varName
       local __codeIsValidEnumValue="${!__codeIsValidEnumValueHolder}"
+
+      # [[ -n $__codeIsValidEnumValue ]] || _warn "${_ansiOutline}__codeIsValidEnumValue${_ansiWarn} is empty"
       [[ -n $__codeIsValidEnumValue ]] \
-        || __codeIsValidEnumValue='eval "$_codeToPrepareEnumValues" && _hasItem "$__varValue" "${enumValues[@]}"'
+        || __codeIsValidEnumValue='eval "$_codeToPrepareEnumValues" || return $?; _hasItem "$__varValue" "${enumValues[@]}"'
+
       eval "$__codeIsValidEnumValue" || {
         eval "$_codeToPrepareEnumValues"
         __err="одно из следующих значений: ${_ansiSecondaryLiteral}$(_quotedArgs "${enumValues[@]}" )"
@@ -1306,11 +1303,10 @@ _prepareCodeOfAutoHelp2() {
     || return 0
 
   local holder="_codeToPrepareDescriptionsOf_${__thisFuncName}"
-  if [[ -n ${!holder} ]]; then
-    codeHolder=$holder eval "$_evalCode" || return $?
-  fi
+  [[ -z ${!holder} ]] || codeHolder=$holder eval "$_evalCode" || return $?
 
-  local __optionsDescription= __optionsTitle=; _prepareOptionsDescription
+  local codeToPrepareVarsForDescriptions=''
+  local __optionsDescription='' __optionsTitle=''; _prepareOptionsDescription
   local __usage='${_ansiCmd}$cmdName${_ansiReset}'
   [[ -n $__optionsTitle ]] && __usage+=" [$__optionsTitle]"
 
@@ -1391,9 +1387,9 @@ _prepareCodeOfAutoHelp2() {
     local __i; for (( __i=0; __i < ${#__moreArgs[@]}; __i++ )); do
       local __varName="${__moreArgs[$__i]}"
       [[ $__varName =~ $_isValidVarNameRegExp ]] \
-        || return $(_ownThrow "ожидает, что имя переменной ${_ansiPrimaryLiteral}$__varName${_ansiErr} указанное в ${_ansiOutline}$__moreArgsHolder${_ansiErr} $_mustBeValidVarName")
+        || return $(_throw "ожидает, что имя переменной ${_ansiPrimaryLiteral}$__varName${_ansiErr} указанное в ${_ansiOutline}$__moreArgsHolder${_ansiErr} $_mustBeValidVarName")
       ! _hasItem "$__varName" "${__argVarNames[@]}" \
-        || return $(_ownThrow "${_ansiOutline}$__moreArgsHolder${_ansiErr} содержит аргумент ${_ansiPrimaryLiteral}$__varName${_ansiErr} одноименный параметру из ${_ansiOutline}${__thisFuncName}Params")
+        || return $(_throw "${_ansiOutline}$__moreArgsHolder${_ansiErr} содержит аргумент ${_ansiPrimaryLiteral}$__varName${_ansiErr} одноименный параметру из ${_ansiOutline}${__thisFuncName}Params")
       local __argNameHolder="${__thisFuncName}_$__varName$_nameSuffix"
       local __argName="${!__argNameHolder:-$__varName}"
       local __varTypeHolder=__TYPE_$__varName
@@ -1407,7 +1403,7 @@ _prepareCodeOfAutoHelp2() {
     done
   fi
 
-  local __result
+  local __result=
 
   __indentLevel=0; eval "$_codeToPrepareHelpLinePrefixTemplate"
   __result+=$__helpCodeLinePrefix'${_ansiHeader}Использование:${_ansiReset} '$__usage$_helpCodeLineSuffix
@@ -1433,8 +1429,17 @@ _prepareCodeOfAutoHelp2() {
     __result+="$__optionsDescription"
   fi
 
-# [[ -n $BW_DRILL ]] && { echo -n "funcParamsSupport2.bash#1361 _assureDir: "; declare -f _assureDir;  }
   _assureDir $(dirname "$__helpCodeFileSpec") || return $?
+
+  if [[ -n $codeToPrepareVarsForDescriptions ]]; then
+    __result="$codeToPrepareVarsForDescriptions$_nl$__result"
+  fi
+
+  local holder="_codeToPrepareVarsForDescriptionsOf_${__thisFuncName}"
+  if [[ -n ${!holder} ]]; then
+    __result="${!holder}$_nl$__result"
+  fi
+
   echo "$__result" > "$__helpCodeFileSpec"
 }
 
@@ -1474,7 +1479,7 @@ _prepareParamDescription2() {
 
   if [[ ${!__varValtypeHolder} == enum ]]; then
     local __varEnumHolder="__ENUM_$__varName"
-    __paramDescription+="$_nl"'local -a enumValues='${!__varEnumHolder}
+    codeToPrepareVarsForDescriptions+="${_nl}local -a enumValues_$__varName; enumValues_$__varName=${!__varEnumHolder}"' || return $?'
   fi
   if [[ ${!__varKindHolder} == arg ]]; then
     __indentLevel=0; eval "$_codeToPrepareHelpLinePrefixTemplate"
@@ -1489,22 +1494,20 @@ _prepareParamDescription2() {
   fi
   eval "$_codeToPrepareHelpLinePrefixTemplate"
 
-  if [[ ${!__varValtypeHolder} == enum ]]; then
-    if ! [[ ${!__varEnumHolder} =~ $_isCalcEnumRegExp ]]; then
-      eval "$_codeToPrepareEnumValues"
-      local -a descriptionHolders=( )
-      local hasEnumValueDescription=
-      local enumValue; for enumValue in "${enumValues[@]}"; do
-        local normalizedEnumValue="${enumValue//[-]/_}"
-        normalizedEnumValue="${normalizedEnumValue//[^[:alpha:][:digit:]]/}"
-        descriptionHolder="${__thisFuncName}_${__varName}_$normalizedEnumValue$_descriptionSuffix"
-        [[ -z ${!descriptionHolder} &&  -n ${!importantHolder} ]] \
-          && descriptionHolder="_${__varName}_$normalizedEnumValue$_descriptionSuffix"
-        descriptionHolders+=( "$descriptionHolder" )
-        [[ -n ${!descriptionHolder} ]] || continue
-        hasEnumValueDescription=true
-      done
-    fi
+  if [[ ${!__varValtypeHolder} == enum && ! ${!__varEnumHolder} =~ $_isCalcEnumRegExp ]]; then
+    eval "$_codeToPrepareEnumValues"
+    local -a descriptionHolders=( )
+    local hasEnumValueDescription=
+    local enumValue; for enumValue in "${enumValues[@]}"; do
+      local normalizedEnumValue="${enumValue//[-]/_}"
+      normalizedEnumValue="${normalizedEnumValue//[^[:alpha:][:digit:]]/}"
+      descriptionHolder="${__thisFuncName}_${__varName}_$normalizedEnumValue$_descriptionSuffix"
+      [[ -z ${!descriptionHolder} &&  -n ${!importantHolder} ]] \
+        && descriptionHolder="_${__varName}_$normalizedEnumValue$_descriptionSuffix"
+      descriptionHolders+=( "$descriptionHolder" )
+      [[ -n ${!descriptionHolder} ]] || continue
+      hasEnumValueDescription=true
+    done
   fi
 
   local descriptionOf=$kindTitle
@@ -1543,7 +1546,7 @@ _prepareParamDescription2() {
     valueDescription+=$__helpCodeLinePrefix'Варианты ${_ansiOutline}значения${_ansiReset}:'
 
     if [[ -z $hasEnumValueDescription ]]; then
-      valueDescription+=' ${_ansiSecondaryLiteral}$(_quotedArgs "${enumValues[@]}")${_ansiReset}"'
+      valueDescription+=' ${_ansiSecondaryLiteral}$(_quotedArgs "${enumValues_'$__varName'[@]}")${_ansiReset}"'
     else
       valueDescription+='"'
       local __i; for (( __i=0; __i < ${#enumValues[@]}; __i++ )); do
@@ -1722,8 +1725,8 @@ _prepareListDescription2() {
     && listDescription+="не более ${!__maxCountHolder} $(_getPluralWord ${!__maxCountHolder} элемента элементов))"
   local __uniqueHolder=__UNIQUE_$__varName
   [[ -n ${!__uniqueHolder} && ( ${!__maxCountHolder} == Infinite || ${!__maxCountHolder} -gt 1 ) ]] \
-    && listDescription+=" ${_ansiUnderline}уникальных${_ansiReset}"
-  listDescription+=" ${_ansiOutline}значений${_ansiReset}"
+    && listDescription+=' ${_ansiUnderline}уникальных${_ansiReset}'
+  listDescription+=' ${_ansiOutline}значений${_ansiReset}'
 }
 
 _prepareCodeForDescriptionOutput2Params=(
@@ -1736,7 +1739,7 @@ _prepareCodeForDescriptionOutput2Params=(
 )
 _prepareCodeForDescriptionOutput2() { eval "$_funcParams2"
   [[ -z $descriptionPrefix || ! $descriptionPrefix =~ "$_nl" ]] \
-    || return $(_ownThrow "ожидает ${_ansiOutline}descriptionPrefix${_ansiErr} (${_ansiPrimaryLiteral}${!descriptionPrefix}${_ansiErr}) без перевода строки")
+    || return $(_throw "ожидает ${_ansiOutline}descriptionPrefix${_ansiErr} (${_ansiPrimaryLiteral}${!descriptionPrefix}${_ansiErr}) без перевода строки")
   [[ -n $description || -n $descriptionPrefix ]] || return 0
   if [[ -z $alwaysMultiline && ! $description =~ "$_nl" ]]; then
     description="${description//\"/\\\"}"

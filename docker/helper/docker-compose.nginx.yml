@@ -1,6 +1,6 @@
 version: '2'
 services:
-  ${nginxContainerName}:
+  nginx:
     container_name: ${nginxContainerName}
     image: nginx:alpine
     volumes:

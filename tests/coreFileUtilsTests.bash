@@ -880,8 +880,8 @@ _mvFileTests=(
 
 _mkFileFromTemplateTests=(
   '
-    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
-    --before "echo some_var_value:some_var2_value:some_var3_value > some.eta"
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}:\${SOME_VAR2}'\'' > some.template"
+    --before "echo some_var_value:some_var2_value:some_var3_value:some_var2_value > some.eta"
     --inTmpDir
     "SOME_VAR=some_var_value SOME_VAR2=some_var2_value SOME_VAR3=some_var3_value _mkFileFromTemplate -n some && diff some some.eta"
   '
@@ -896,6 +896,33 @@ _mkFileFromTemplateTests=(
     --before "echo '\''some_var_value:\${SOME_VAR2}:some_var3_value'\'' > some.eta"
     --inTmpDir
     "SOME_VAR=some_var_value SOME_VAR2=some_var2_value SOME_VAR3=some_var3_value _mkFileFromTemplate -n -v SOME_VAR -v SOME_VAR3 some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo some_var_value:some_var2_value:some_var3_value > some.eta"
+    --before "local SOME_VAR=some_var_value"
+    --before "local SOME_VAR2=some_var2_value"
+    --before "local SOME_VAR3=some_var3_value"
+    --inTmpDir
+    "_mkFileFromTemplate -n some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo '\''\${SOME_VAR}:some_var2_value:\${SOME_VAR3}'\'' > some.eta"
+    --before "local SOME_VAR=some_var_value"
+    --before "local SOME_VAR2=some_var2_value"
+    --before "local SOME_VAR3=some_var3_value"
+    --inTmpDir
+    "_mkFileFromTemplate -n -v SOME_VAR2 some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo '\''some_var_value:\${SOME_VAR2}:some_var3_value'\'' > some.eta"
+    --before "local SOME_VAR=some_var_value"
+    --before "local SOME_VAR2=some_var2_value"
+    --before "local SOME_VAR3=some_var3_value"
+    --inTmpDir
+    "_mkFileFromTemplate -n -v SOME_VAR -v SOME_VAR3 some && diff some some.eta"
   '
 )
 

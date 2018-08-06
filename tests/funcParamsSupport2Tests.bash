@@ -65,23 +65,21 @@ _prepareCodeToParseFuncParams2Tests=(
 
 # проверка реакции на *Complete
   # '
-  #   --before "_substitute noStack true"
+    # --noErrorStack
   #   --before "local -a __someCompleteParams=( some )"
   #   --before "eval \"__someComplete() { eval \\\"\\\$_funcParams2\\\"; }\""
   #   --after "unset -f __someComplete"
-  #   --after "_restore noStack"
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: ${_ansiCmd}__someComplete${_ansiErr} не ожидает, что будет определена переменная ${_ansiOutline}__someCompleteParams${_ansiErr}, т.к. все ${_ansiOutline}*${_ansiCmd}Complete${_ansiErr}-функции имеют предопределенный ${_ansiOutline}_completeParams${_ansiErr}: ${_ansiSecondaryLiteral}( --varName --argIdx:0.. \"compWord:?\" )${_ansiReset}"
   #   "__someComplete"
   # '
   # '
-  #   --before "_substitute noStack true"
+    # --noErrorStack
   #   --before "eval \"__someCompleteParams() { __someCompleteParams=( some ); }\""
   #   --before "eval \"__someComplete() { eval \\\"\\\$_funcParams2\\\"; }\""
   #   --after "unset -f __someComplete"
   #   --after "unset -f __someCompleteParams"
   #   --after "unset __someCompleteParams"
-  #   --after "_restore noStack"
   #   --return "1"
   #   "--stderr=${_ansiErr}ERR: ${_ansiCmd}__someComplete${_ansiErr} не ожидает, что будет определена функция ${_ansiCmd}__someCompleteParams${_ansiErr}, т.к. все ${_ansiOutline}*${_ansiCmd}Complete${_ansiErr}-функции имеют предопределенный ${_ansiOutline}_completeParams${_ansiErr}: ${_ansiSecondaryLiteral}( --varName --argIdx:0.. \"compWord:?\" )${_ansiReset}"
   #   "__someComplete"
@@ -343,22 +341,20 @@ _prepareCodeToParseFuncParams2Tests=(
     "_prepareCodeToParseFuncParams2TestFunc --isCommandWrapper"
   '
   '
-    --before "_substitute noStack true"
+    --noErrorStack
     --before "eval \"_prepareCodeToParseFuncParams2TestFunc_alpha() { eval \\\"\\\$_codeToCallFuncParams2\\\"; }\""
     --before "local _prepareCodeToParseFuncParams2TestFunc_alphaShortcuts=( alef bravo )"
     --before "eval \"_prepareCodeToParseFuncParams2TestFunc_bravo() { eval \\\"\\\$_codeToCallFuncParams2\\\"; }\""
     --after "unset -f _prepareCodeToParseFuncParams2TestFunc_alpha _prepareCodeToParseFuncParams2TestFunc_bravo"
-    --after "_restore noStack"
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc${_ansiErr} ожидает, что команда ${_ansiCmd}bravo${_ansiErr} не будет совпадать с одним из сокращений для команды ${_ansiCmd}alpha${_ansiErr}: ${_ansiSecondaryLiteral}alef bravo${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --isCommandWrapper"
   '
   '
-    --before "_substitute noStack true"
+    --noErrorStack
     --before "local -a _prepareCodeToParseFuncParams2TestFunc_alphaParams=( @5..3arg )"
     --before "eval \"_prepareCodeToParseFuncParams2TestFunc_alpha() { eval \\\"\\\$_codeToCallFuncParams2\\\"; }\""
     --after "unset -f _prepareCodeToParseFuncParams2TestFunc_alpha"
-    --after "_restore noStack"
     --return "1"
     --stderr "${_ansiErr}ERR: ${_ansiCmd}_prepareCodeToParseFuncParams2TestFunc_alpha${_ansiErr} ожидает, что в параметре ${_ansiCmd}@5..3arg${_ansiErr} левая граница ${_ansiPrimaryLiteral}5${_ansiErr} не должна превосходить правую ${_ansiPrimaryLiteral}3${_ansiReset}"
     "_prepareCodeToParseFuncParams2TestFunc --isCommandWrapper -- alpha "

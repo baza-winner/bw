@@ -22,16 +22,29 @@ END {
   exit exitCode
 }
 
-$0 == exactLine { 
-  foundExact++
-  printExactLine()
-  next 
+
+{ 
+  if ($0 == exactLine) {
+    foundExact++
+    printExactLine()
+  } else if ( matchRegexp != "-" && $0 ~ matchRegexp ) {
+    foundMatch++ 
+    printExactLine()
+  } else {
+    print $0 
+  }
 }
 
-$0 ~ matchRegexp  { 
-  foundMatch++ 
-  printExactLine()
-  next 
-}
+# $0 == exactLine { 
+#   foundExact++
+#   printExactLine()
+#   next 
+# }
 
-{ print $0 }
+# $0 ~ matchRegexp  { 
+#   foundMatch++ 
+#   printExactLine()
+#   next 
+# }
+
+# { print $0 }

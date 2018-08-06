@@ -1,6 +1,6 @@
 version: '2'
 services:
-  ${mainContainerName}:
+  main:
     container_name: ${mainContainerName}
     image: ${mainImageName}
     volumes:

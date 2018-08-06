@@ -259,31 +259,42 @@ _lcpTests=(
   '
 )
 
-_prepareTypeOfVarTests=(
+_getTypeOfVarTests=(
   '
-    --before "local typeOfVar="
-    --varName "typeOfVar"
-    --varValue "declare -- typeOfVar=\"scalar\""
-    --before "declare __prepareTypeOfVarTestA=0"
-    "_prepareTypeOfVar __prepareTypeOfVarTestA"
+    --before "local __getTypeOfVarTestA=0"
+    --stdout "scalar"
+    "_getTypeOfVar __getTypeOfVarTestA"
   '
   '
-    --before "local typeOfVar="
-    --varName "typeOfVar"
-    --varValue "declare -- typeOfVar=\"array\""
-    --before "declare -a __prepareTypeOfVarTestB=()"
-    "_prepareTypeOfVar __prepareTypeOfVarTestB"
+    --before "local -a __getTypeOfVarTestB=()"
+    --stdout "array"
+    "_getTypeOfVar __getTypeOfVarTestB"
   '
   '
-    --before "local typeOfVar="
-    --varName "typeOfVar"
-    --varValue "declare -- typeOfVar=\"none\""
-    "_prepareTypeOfVar __prepareTypeOfVarTestD"
+    --before "unset __getTypeOfVarTestD"
+    --stdout "none"
+    "_getTypeOfVar __getTypeOfVarTestD"
   '
 )
 
-_prepareTypeOfVar() {
-  varName=$1 eval "$_codeToPrepareTypeOfVar"
-}
+_upperFirstTests=(
+  '
+    --stdout Some
+    "_upperFirst some"
+  '
+  '
+    --stdout Слово
+    "_upperFirst слово"
+  '
+)
 
-# =============================================================================
+_lowerFirstTests=(
+  '
+    --stdout some
+    "_lowerFirst Some"
+  '
+  '
+    --stdout слово
+    "_lowerFirst Слово"
+  '
+)

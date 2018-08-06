@@ -31,6 +31,7 @@ _substituteParamsOpt=(--canBeMoreParams)
 _substituteParams=( '--silent/s' 'varName' )
 _substitute() { eval "$_funcParams2"
   local typeOfVar; eval "$_codeToPrepareTypeOfVar"
+  local typeOfVar; typeOfVar=$(_getTypeOfVar "$varName")
   if [[ $typeOfVar == 'none' ]]; then
     if [[ -z $silent ]]; then
       _throw "could not resolve type of ${_ansiOutline}$varName${_ansiErr}, first declare it with initial value"
@@ -59,6 +60,14 @@ _shortenFileSpec() { eval "$_funcParams2"
   local lcp=$(_lcp "$fileSpec" "$HOME")
   [[ ${#lcp} -ne ${#HOME} ]] || fileSpec="~/${fileSpec:$(( ${#HOME} + 1 ))}"
   echo "$fileSpec"
+}
+
+# =============================================================================
+
+_prepareAwkFileSpecParams=( 'infix:?' )
+_prepareAwkFileSpec() { eval "$_funcParams2"
+  [[ -z $infix ]] || infix=".$infix"
+  awkFileSpec="$(dirname "${BASH_SOURCE[1]}")/${FUNCNAME[1]}$infix.awk"
 }
 
 # =============================================================================

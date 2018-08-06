@@ -82,11 +82,11 @@ _exec() { eval "$_funcParams2"
   local returnCode=0
   local cmdTitle="${_ansiCmd}"
   [[ -z $sudo ]] || cmdTitle+="sudo "
-  cmdTitle+="$cmd${_ansiReset}"
+  cmdTitle+="$cmd"
   if [[ $verbosity == 'dry' ]]; then
-    echo "$cmdTitle"
+    echo "$cmdTitle${_ansiReset}"
   else
-    [[ $verbosity == 'all' ]] && echo "$cmdTitle . . ."
+    [[ $verbosity == 'all' ]] && echo "$cmdTitle${_ansiReset} . . ."
     if [[ -z $sudo ]]; then
       eval "$cmd"
     else
@@ -415,7 +415,6 @@ _docker() { eval "$_funcParams2"
     return $(_err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE")
   fi
   _exec ${OPT_verbosity[@]} ${OPT_silent[@]} "${OPT[@]}" docker "$@"; local returnCode=$?
-  # [[ $returnCode -eq 0 ]] || _debugVar returnCode
   return $returnCode
 }
 
@@ -480,16 +479,27 @@ _mkFileFromTemplate() {
       echo "$__msg" > "$fileSpec"
     fi
 
-    local __regexp=$(_joinBy '|' "${varNames[@]}")
-    local __regexp="s/\\\${(${__regexp:-[^\}]+})}/\$ENV{\$1}/ge"
+    local awkFileSpec; _prepareAwkFileSpec 
+    local -a awk_OPT=(
+      -f "$awkFileSpec" 
+      -v "funcName=${FUNCNAME[0]}"
+    )
+    local -a __foundVarNames; mapfile -t __foundVarNames < <(awk "${awk_OPT[@]}" "$templateFileSpec") 
 
+    local templateFileContent
+    read -d $'\x04' __templateFileContent < "$templateFileSpec" # https://askubuntu.com/questions/367136/how-do-i-read-a-variable-from-a-file 
+    local -a __varNames=( "${varNames[@]}" )
     local __fileSpec="$fileSpec"
-    local __templateFileSpec="$templateFileSpec"
-
     local __varName; for __varName in "${__substitutedVarNames[@]}"; do
       _restore "$__varName"
     done
-    perl -pe "$__regexp" "$__templateFileSpec" >> "$__fileSpec"
+    local __varName; for __varName in "${__foundVarNames[@]}"; do
+      if [[ ${#__varNames[@]} -eq 0 ]] || _hasItem "$__varName" "${__varNames[@]}"; then
+        __templateFileContent="${__templateFileContent//\$\{$__varName\}/${!__varName}}"
+      fi
+    done
+    echo "$__templateFileContent" >> "$__fileSpec"
+
   else
     if [[ -z $noShowErrorIfNoTemplate ]]; then
       _throw "could not find template ${_ansiFileSpec}$templateFileSpec"
