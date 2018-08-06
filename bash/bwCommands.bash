@@ -1109,6 +1109,7 @@ bw_project() { eval "$_funcParams2"
         returnCode=1
       else
         _setAtBashProfile "$exactLine" "$matchRegexp" || return $?
+        rm -f "$_bwDir/generated/$bwProjShortcut"*
         "$bwProjShortcut" update -c
         [[ $verbosity == none  ]] || echo "${_ansiWarn}Теперь доступна команда ${_ansiCmd}$bwProjShortcut${_ansiReset}"
         _exec "${sub_OPT[@]}" "$bwProjShortcut" -? || return $?
