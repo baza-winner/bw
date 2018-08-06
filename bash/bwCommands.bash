@@ -87,13 +87,14 @@ _bw_project_bgate() {
 _bwProjDefs+=(
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch develop
+    --branch feature/docker
     --http 8088
     --https 8089
     --upstream 3000
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
+    # --branch develop
 )
 
 # =============================================================================
@@ -103,23 +104,7 @@ _bwProjDefs+=(
     --gitOrigin github.com:baza-winner/wcrawler.git
     --branch feature/docker
   '
-      # --http 8090
-    # --https 8091
 )
-
-# =============================================================================
-
-# _bwProjDefs+=(
-#   'bcore' '
-#     --gitOrigin github.com:baza-winner/billingcore.git
-#   '
-# )
-
-# # shellcheck disable=SC2154
-# _bw_project_bcore() {
-#   _exec "${sub_OPT[@]}" git submodule update --init --recursive
-# }
-
 
 # =============================================================================
 
