@@ -46,7 +46,7 @@ _entrypoint() {
   else
     local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
     echo $PPID > "$pidFileSpec"
-    trap "rm -f \"$pidFileSpec\"" EXIT
+    # trap "rm -f \"$pidFileSpec\"" EXIT
     eval "$@"
   fi
 }

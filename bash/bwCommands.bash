@@ -1279,9 +1279,17 @@ _initBwProjCmd() {
   eval local -a 'additionalDependencies=(
     --additionalDependencies "$_'"$bwProjShortcut"'Dir/bin/'"$bwProjShortcut"'.bash"
   )'
-  _prepareVarsForDefaultPort http
-  _prepareVarsForDefaultPort https
+  local needNoTestAccessMessage=''
+  _prepareVarsForDefaultPort http && needNoTestAccessMessage=true
+  _prepareVarsForDefaultPort https && needNoTestAccessMessage=true
   _prepareVarsForDefaultPort upstream 'для сервиса ${_ansiPrimaryLiteral}nginx${_ansiReset}'
+  if [[ -n $needNoTestAccessMessage ]]; then
+    dockerUpParams+=( '--noTestAccessMessage/m' )
+    eval "${bwProjShortcut}_docker_up_noTestAccessMessage_description='Не выводить сообщение о проверке доступности docker-приложения'"
+    codeToPrepareOPTForDockerUp+='
+      OPT+=( ${OPT_noTestAccessMessage[@]} )
+    '
+  fi
   eval "$bwProjShortcut"'_selfTestParamsOpt=(
     --canBeMixedOptionsAndArgs
     "${additionalDependencies[@]}"
@@ -1319,8 +1327,7 @@ _initBwProjCmd() {
   '\'
   eval "$bwProjShortcut"'_docker_up_restart_description='\''Останавливает и поднимает указанные сервисы'\'
   eval "$bwProjShortcut"'_docker_up_forceRecreate_description='\''Поднимает ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset} с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\'
-  # eval "$bwProjShortcut"'_docker_up_projDir_description='\''Папка проекта'\'
-  eval "$bwProjShortcut"'_docker_up_description='\''Поднимает (up) ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset}'\'
+  eval "$bwProjShortcut"'_docker_up_description='\''Поднимает (docker-compose up) следующие контейнеры: ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset}'\'
   eval "$bwProjShortcut"'_docker_up() { eval "$_funcParams2"
     _prepareProjDir '"$bwProjShortcut"' || return $?
 
@@ -1334,7 +1341,7 @@ _initBwProjCmd() {
 
     '"$codeToPrepareOPTForDockerUp"'
 
-    _inDir "$projDir/docker" _docker_up "${OPT[@]}" '"${bwProjDockerCompose[*]}"'
+    _inDir -v none "$projDir/docker" _docker_up "${OPT[@]}" '"${bwProjDockerCompose[*]}"'
   }'
 
   eval '_'"$bwProjShortcut"'_prepareDockerComposeYmlParams=( 
@@ -1402,9 +1409,9 @@ _prepareProjDir() { eval "$_funcParams2"
     elif [[ $count -eq 1 ]]; then
       projDir=${projDirs[0]}
     else
-      local curDir; curDir=$(_shortenFileSpec "$(pwd)")
+      local curDir; curDir="$(_shortenFileSpec "$(pwd)")/"
       local __projDir; for __projDir in "${projDirs[@]}"; do
-        __projDir=$(_shortenFileSpec "$__projDir")
+        __projDir="$(_shortenFileSpec "$__projDir")/"
         if [[ "${curDir:0:${#__projDir}}" == "$__projDir" ]]; then
           projDir="$__projDir"
           break
@@ -1471,7 +1478,7 @@ _runInDockerContainer_outOfDockerHelper() {
     local subPid=$!
     local pidFileSpec="$projDir/docker/$$.pid"
     # shellcheck disable=SC2064
-    trap "_runInDockerCtrlC $subPid \"$pidFileSpec\" \"$*\" $(_quotedArgs "${cmd_params[@]}")" SIGINT
+    trap "trap - SIGINT; _runInDockerCtrlC $subPid \"$pidFileSpec\" \"$*\" $(_quotedArgs "${cmd_params[@]}")" SIGINT
     wait $subPid; local returnCode=$?
     trap - SIGINT
     return $returnCode
@@ -1481,18 +1488,13 @@ _runInDockerContainer_main() {
   local queueFileSpec="$HOME/proj/docker/${queue:-default}.queue"; shift
   if [[ -s $queueFileSpec ]]; then
     local pid; read -r -d $'\x04' pid < "$queueFileSpec" 
-    _debugVar queueFileSpec pid
-    kill -SIGTERM $pid 2>/dev/null
-  else
-    _warn "${_ansiFileSpec}$queueFileSpec{_ansiWarn} not found"
+    if [[ $pid -ne $PPID ]] && ps axo pid | awk '{print $1}' | grep -x $pid > /dev/null; then
+      _silent kill -SIGINT $pid 
+      sleep 2
+      _silent kill -SIGTERM $pid 
+    fi
   fi
   echo $PPID > "$queueFileSpec"
-  local trapEXIT=$(trap -p EXIT)
-  [[ -z $trapEXIT ]] || trapEXIT="
-    ${trapEXIT:9:-6}
-    rm -f \"$queueFileSpec\"
-  "
-  trap "$trapEXIT" EXIT
 }
 
 _runInDockerCtrlC() {
@@ -1501,21 +1503,12 @@ _runInDockerCtrlC() {
   local title=$1; shift
   local wasPidFileSpec
 
-  local _runInDockerCtrlCHolder=_runInDockerCtrlC_$subPid
-  if [[ -z ${!_runInDockerCtrlCHolder} ]]; then
-    eval "$_runInDockerCtrlCHolder=true"
-    if _exist -v err "$pidFileSpec"; then
-      wasPidFileSpec=true
-      local pid; read -r -d $'\x04' pid < "$pidFileSpec" 
-      _spinner -t "Отправка сигнала SIGINT в docker-контейнер заняла" "Отправка сигнала SIGINT в docker-контейнер" _dockerCompose "$@" kill -SIGINT "$pid" 
-    fi
-  fi 
-  wait "$subPid"
-  unset "$_runInDockerCtrlCHolder"
-  trap - SIGINT
-  if [[ -f "$pidFileSpec" ]]; then
-    _spinner -t "Ожидание останова выполнения ${_ansiCmd}$title${_ansiReset} заняло" "Ожидание останова выполнения ${_ansiCmd}$title${_ansiReset}" _runInDockerCtrlCHelper
+  if _exist -v err "$pidFileSpec"; then
+    wasPidFileSpec=true
+    local pid; read -r -d $'\x04' pid < "$pidFileSpec" 
+    _spinner -t "Отправка сигнала SIGINT в docker-контейнер заняла" "Отправка сигнала SIGINT в docker-контейнер" _dockerCompose "$@" kill -SIGINT "$pid" 
   fi
+  wait "$subPid"
   if [[ -n $wasPidFileSpec ]]; then
     echo "Остановлено выполнение ${_ansiCmd}$title${_ansiReset}"
   fi
@@ -1566,6 +1559,7 @@ _prepareVarsForDefaultPort() { eval "$_funcParams2"
   if [[ -z ${!defaultHolder} ]]; then
     unset "${bwProjShortcut}_docker_up_${portName}_description"
     unset "${bwProjShortcut}_selfTest_${portName}_description"
+    return 2
   else
     local paramDef="--$portName:$_tcpPortDiap=${!defaultHolder}"
     local description="$portName-порт по которому будет доступно docker-приложение" 
@@ -1581,7 +1575,9 @@ _prepareVarsForDefaultPort() { eval "$_funcParams2"
     eval "${bwProjShortcut}_selfTest_${portName}_description='$description'"
     codeToPrepareOPTForDockerUp+="$code"
     codeToPrepareOPTForSelfTest+="$code"
+    return 0
   fi
+
 }
 
 _getDefaultShellOfDockerContainer() {
@@ -1732,6 +1728,7 @@ _docker_upParams=(
   '--bwProjName='
   '@--restart'
   '--noCheck'
+  '--noTestAccessMessage/m'
   '@1..dockerComposeFileNames'
 )
 _docker_up() { eval "$_funcParams2"
@@ -1810,9 +1807,37 @@ _docker_up() { eval "$_funcParams2"
     fi
 
     [[ -z $forceRecreate ]] || OPT_forceRecreate=( '--force-recreate' )
-    _dockerCompose "${dockerCompose_OPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans || { returnCode=$?; break; }
+    # https://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe
+    local fileSpec="/tmp/$$.docker_up.log"
+    _dockerCompose "${dockerCompose_OPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans 2> >(tee "$fileSpec" >&2) || { returnCode=$?; }
+    if [[ $returnCode -ne 0 ]]; then
+      local awkFileSpec; _prepareAwkFileSpec 
+      local -a awk_OPT=(
+        -f "$awkFileSpec" 
+      )
+      local port
+      if port=$(awk "${awk_OPT[@]}" "$fileSpec"); then
+        local optName=
+        if [[ $port -eq $http ]]; then
+          optName=http
+        elif [[ $port -eq $https ]]; then
+          optName=https
+        fi
+        if [[ -n $optName ]]; then
+          local msg=''
+          msg+="${_nl}${_ansiWarn}ВНИМАНИЕ!"
+          msg+="${_nl}$optName-порт ${_ansiPrimaryLiteral}$port${_ansiWarn} занят"
+          msg+="${_nl}Пользуясь опцией ${_ansiCmd}--$optName${_ansiWarn}, укажите другой порт:"
+          msg+="${_nl} ${_ansiCmd}--$optName ${_ansiOutline}Порт"
+          msg+="${_nl}${_ansiReset}"
+          echo "$msg"
+        fi
+      fi
+    fi
+    rm -f "$fileSpec"
+    [[ $returnCode -eq 0 ]] || break
 
-    if [[ -n $http || -n $https ]]; then
+    if [[ ( -n $http || -n $https ) && -z $noTestAccessMessage ]]; then
       echo "Проверка доступности docker-приложения:"
       [[ -z $http ]] || echo "  ${_ansiUrl}http://localhost:$http/whoami/${_ansiReset}"
       [[ -z $https ]] || echo "  ${_ansiUrl}https://localhost:$https/whoami/${_ansiReset}"
@@ -1903,7 +1928,7 @@ _defaultDockerComposeServiceNameParams=( 'bwProjShortcut' )
 _defaultDockerComposeServiceName() { eval "$_funcParams2"
   local projDir="$*"
   local -a serviceNames
-  _dockerComposeServiceNames -v serviceNames "$bwProjShortcut" "$projDir"
+  _dockerComposeServiceNames -v serviceNames "$bwProjShortcut" "$projDir" || return $?
   if _hasItem main serviceNames; then
     echo main
   else
@@ -2707,23 +2732,25 @@ _bw_run_dockerDarwinHelper() {
 # =============================================================================
 
 _redDir="$_bwDir/red"
-_redForMacUrl="https://static.red-lang.org/dl/mac/red-063"
-_redForMacFileSpec="$_redDir/red_063_for_mac"
-_redForLinuxUrl="https://static.red-lang.org/dl/linux/red-063"
-_redForLinuxFileSpec="$_redDir/red_063_for_linux"
+_redForDarwinUrl="$_bwGithubSource/master/red/red-063.darwin"
+# _redForDarwinUrl="https://static.red-lang.org/dl/mac/red-063"
+# _redForLinuxUrl="https://static.red-lang.org/dl/linux/red-063"
+_redForDarwinFileSpec="$_redDir/red-063.darwin"
+_redForLinuxUrl="$_bwGithubSource/master/red/red-063.linux"
+_redForLinuxFileSpec="$_redDir/red-063.linux"
 red() {
   local returnCode=0
   _osSpecific || return $?
   if [[ $returnCode -eq 99 ]]; then
-    _err "Не удалось сделать файл ${_ansiCmd}$_redForMacFileSpec${_ansiErr} исполняемым"
+    _err "Не удалось сделать файл ${_ansiCmd}$_redForDarwinFileSpec${_ansiErr} исполняемым"
   fi
   return $returnCode
 }
 _redDarwin() {
   while true; do
-    _download -s yes "$_redForMacUrl" "$_redForMacFileSpec" || { returnCode=$?; break; }
-    chmod u+x "$_redForMacFileSpec" || { returnCode=99; break; }
-    "$_redForMacFileSpec" "$@" || { returnCode=$?; break; }
+    _download -s yes "$_redForDarwinUrl" "$_redForDarwinFileSpec" || { returnCode=$?; break; }
+    chmod u+x "$_redForDarwinFileSpec" || { returnCode=99; break; }
+    "$_redForDarwinFileSpec" "$@" || { returnCode=$?; break; }
     break
   done
 }

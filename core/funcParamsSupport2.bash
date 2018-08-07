@@ -1021,7 +1021,7 @@ _postProcessVarNames() {
           && __varValueHolder="$__varName" \
           || __varValueHolder="OPT_$__varName"
         if [[ -z ${!__varValueHolder} ]]; then
-          eval $__varName="${!__defaultValueHolder}"
+          eval $__varName="${!__defaultValueHolder}" || return $?
           local __varValtypeHolder="__VALTYPE_$__varName"
           local __varEnumHolder="__ENUM_$__varName"
           if [[ \

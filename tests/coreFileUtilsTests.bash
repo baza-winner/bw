@@ -45,12 +45,12 @@ _downloadTests=(
   #   "_download -?"
   # '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_exist -n bw.bash && _download localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -62,17 +62,17 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v dry localhost:$_bwdevDockerHttp/bw.bash bw.bash && _exist -n bw.bash"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_exist -n bw.bash && _download -v none localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_exist -n bw.bash && _download -v err localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -84,7 +84,7 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v ok localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -96,7 +96,7 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v allBrief localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -109,7 +109,7 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v all localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_download localhost:$_bwdevDockerHttp/bw.bash bw.bash && _download -c etag localhost:$_bwdevDockerHttp/bw.bash bw.bash"
   '
