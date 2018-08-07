@@ -27,10 +27,7 @@ bwdev_build() { eval "$_funcParams2"
     OPT_noPregen=( -p - )
   fi
   if [[ $scenario == only ]]; then
-    # [[ -n $BW_DRILL ]] && echo "BEFORE _bwDir: $_bwDir"
     _exec "${OPT[@]}" . "$bwBashFileSpec" "${OPT_noPregen[@]}" _buildBw
-    # . "$bwBashFileSpec" "${OPT_noPregen[@]}" _buildBw
-    # [[ -n $BW_DRILL ]] && echo "AFTER _bwDir: $_bwDir"
   else
     local bwTestAll=
     [[ $scenario != afterAllTests ]] || bwTestAll=true

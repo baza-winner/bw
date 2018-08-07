@@ -1,7 +1,6 @@
 version: '2'
 services:
   nginx:
-    container_name: ${_bwdevDockerContainerName}-nginx
     ports:
-      - ${_bwdevDockerHttp}:80
-      - ${_bwdevDockerHttps}:443
+      - ${http}:80
+      - ${https}:443

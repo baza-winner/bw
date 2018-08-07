@@ -99,7 +99,7 @@ bw_bashTestsHelper() {
           wasError=true
         elif [[ -z $wasErrorForFuncTestFor && -z $list ]]; then
           if [[ -n $diapErr ]]; then
-            _ownThrow "$diapErr"
+            _throw "$diapErr"
             wasError=true
           elif [[ -z $funcTestFor ]]; then
             origin=2 _throw "ожидает в качестве ${_ansiOutline}Аргумента${_ansiErr} имя функции вместо дипазона номеров тестов ${_ansiPrimaryLiteral}$arg${_ansiErr}"
@@ -118,7 +118,7 @@ bw_bashTestsHelper() {
             if [[ -n $num ]]; then
               local diap="${_ansiSecondaryLiteral}от 0 до $maxIndex${_ansiErr} или ${_ansiSecondaryLiteral}от -1 до -$count"
               [[ $maxIndex -ne 0 ]] || diap="${_ansiPrimaryLiteral}0"
-              _ownThrow "ожидает, что ${_ansiOutline}Номер теста${_ansiErr} ${_ansiCmd}$funcTestFor${_ansiErr} должен быть $diap${_ansiErr}, a не ${_ansiPrimaryLiteral}$num"
+              _throw "ожидает, что ${_ansiOutline}Номер теста${_ansiErr} ${_ansiCmd}$funcTestFor${_ansiErr} должен быть $diap${_ansiErr}, a не ${_ansiPrimaryLiteral}$num"
               wasError=true
             else
               if [[ $diapMin == Infinite && $diapMax == Infinite ]]; then
@@ -465,7 +465,7 @@ _runBashTestHelper() {
   ( profileTmpFileSpec="$_profileTmpFileSpec"
     _isTesting=true
     if [[ -n $noErrorStack ]]; then
-      noStack=true
+      _noStack=true
     fi
     eval "$testCmd" 1>"$stdoutTstFileSpec" 2>"$stderrTstFileSpec";
     local returnTst=$?

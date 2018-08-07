@@ -80,10 +80,13 @@ _exec() { eval "$_funcParams2"
   [[ ${#redir[@]} -eq 0 ]] || cmd+=" ${redir[@]}"
 
   local returnCode=0
+  local cmdTitle="${_ansiCmd}"
+  [[ -z $sudo ]] || cmdTitle+="sudo "
+  cmdTitle+="$cmd"
   if [[ $verbosity == 'dry' ]]; then
-    echo "${_ansiCmd}$cmd${_ansiReset}"
+    echo "$cmdTitle${_ansiReset}"
   else
-    [[ $verbosity == 'all' ]] && echo "${_ansiCmd}$cmd${_ansiReset} . . ."
+    [[ $verbosity == 'all' ]] && echo "$cmdTitle${_ansiReset} . . ."
     if [[ -z $sudo ]]; then
       eval "$cmd"
     else
@@ -115,9 +118,9 @@ _exec() { eval "$_funcParams2"
     fi
     if [[ $verbosity != 'none' ]]; then
       if [[ -n $isOK ]]; then
-        [[ $verbosity == 'err' ]] || _ok "${_ansiCmd}$cmd"
+        [[ $verbosity == 'err' ]] || _ok "$cmdTitle"
       else
-        [[ $verbosity == 'ok' ]] || _err "${_ansiCmd}$cmd"
+        [[ $verbosity == 'ok' ]] || _err "$cmdTitle"
       fi
     fi
   fi
@@ -379,10 +382,14 @@ _killApp() { eval "$_funcParams2"
 }
 
 verbosityDefault=err silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
+_dockerComposeParamsOpt=(
+  '--canBeMoreParams'
+  '--treatUnknownOptionAsArg'
+)
 _dockerComposeParams=(
   "${_verbosityParams[@]}"
+  '--stdout='
 )
-_dockerComposeParamsOpt=(--canBeMoreParams --treatUnknownOptionAsArg)
 _dockerCompose() { eval "$_funcParams2"
   bw_install docker-compose --silentIfAlreadyInstalled || return $?
   local -a OPT=()
@@ -391,7 +398,7 @@ _dockerCompose() { eval "$_funcParams2"
   elif [[ ! $OSTYPE =~ ^darwin ]]; then
     return $(_err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE")
   fi
-  _exec ${OPT_verbosity[@]} ${OPT_silent[@]} "${OPT[@]}" docker-compose "$@"
+  _exec "${OPT_verbosity[@]}" "${OPT_silent[@]}" "${OPT_stdout[@]}" "${OPT[@]}" docker-compose "$@"
 }
 
 verbosityDefault=err silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
@@ -408,7 +415,6 @@ _docker() { eval "$_funcParams2"
     return $(_err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE")
   fi
   _exec ${OPT_verbosity[@]} ${OPT_silent[@]} "${OPT[@]}" docker "$@"; local returnCode=$?
-  # [[ $returnCode -eq 0 ]] || _debugVar returnCode
   return $returnCode
 }
 
@@ -427,7 +433,8 @@ _mkFileFromTemplateParams=(
   '--commentPostLine='
   '--commentPrefix='
   '--commentSuffix='
-  '--templateFileSpec/t="$fileSpec.template"'
+  '--templateFileExt/e=.template'
+  '--templateFileSpec/t="$fileSpec$templateFileExt"'
   '--noShowErrorIfNoTemplate'
   '--returnCodeIfNoTemplate:0..=1'
   '@--varNames/v'
@@ -472,16 +479,27 @@ _mkFileFromTemplate() {
       echo "$__msg" > "$fileSpec"
     fi
 
-    local __regexp=$(_joinBy '|' "${varNames[@]}")
-    local __regexp="s/\\\${(${__regexp:-[^\}]+})}/\$ENV{\$1}/ge"
+    local awkFileSpec; _prepareAwkFileSpec 
+    local -a awk_OPT=(
+      -f "$awkFileSpec" 
+      -v "funcName=${FUNCNAME[0]}"
+    )
+    local -a __foundVarNames; mapfile -t __foundVarNames < <(awk "${awk_OPT[@]}" "$templateFileSpec") 
 
+    local templateFileContent
+    read -d $'\x04' __templateFileContent < "$templateFileSpec" # https://askubuntu.com/questions/367136/how-do-i-read-a-variable-from-a-file 
+    local -a __varNames=( "${varNames[@]}" )
     local __fileSpec="$fileSpec"
-    local __templateFileSpec="$templateFileSpec"
-
     local __varName; for __varName in "${__substitutedVarNames[@]}"; do
       _restore "$__varName"
     done
-    perl -pe "$__regexp" "$__templateFileSpec" >> "$__fileSpec"
+    local __varName; for __varName in "${__foundVarNames[@]}"; do
+      if [[ ${#__varNames[@]} -eq 0 ]] || _hasItem "$__varName" "${__varNames[@]}"; then
+        __templateFileContent="${__templateFileContent//\$\{$__varName\}/${!__varName}}"
+      fi
+    done
+    echo "$__templateFileContent" >> "$__fileSpec"
+
   else
     if [[ -z $noShowErrorIfNoTemplate ]]; then
       _throw "could not find template ${_ansiFileSpec}$templateFileSpec"

@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/local/bin/dumb-init /bin/bash
 
 # =============================================================================
 # =============================================================================
 
 _entrypoint() {
-  if [[ ! -f /tmp/owned ]]; then
+  if false && [[ ! -f /tmp/owned ]]; then
     local cmdTitle="${_ansiCmd}sudo chown -R dev $HOME${_ansiReset}"
     _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
     if [[ $returnCode -eq 0 ]]; then
@@ -17,14 +17,12 @@ _entrypoint() {
   fi
 
   # https://www.gnu.org/software/bash/manual/html_node/Is-this-Shell-Interactive_003f.html
-  [[ -z $PS1 ]] || . "$HOME/.bashrc"
+  [[ $- =~ i ]] && . "$HOME/.bashrc"
 
   [[ -n $_bwFileSpec ]] || . "$HOME/bw.bash" -p - || return $?
   . "$HOME/proj/bin/$_bwProjShortcut.bash" || return $?
 
-  if [[ $# -gt 0 ]]; then
-    $_bwProjShortcut "$@"
-  else
+  if [[ $# -eq 0 ]]; then
     alias q='exit 0'
     PS1="$_prompt"
 
@@ -43,6 +41,13 @@ _entrypoint() {
 
     "$_bwProjShortcut" update -c
     "$_bwProjShortcut" -?
+  elif [[ $1 == kill ]]; then
+    eval "$@"
+  else
+    local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
+    echo $PPID > "$pidFileSpec"
+    # trap "rm -f \"$pidFileSpec\"" EXIT
+    eval "$@"
   fi
 }
 

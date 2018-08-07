@@ -1,146 +1,25 @@
+#!/bin/bash
+
+{
+  # shellcheck disable=SC2154
+  if [[ -n $shellcheck ]]; then 
+    . bw.bash
+    . core/profileSupport.bash
+  fi
+}
 
 # =============================================================================
 
-[[ $(type -t _resetBash) != function  ]] || _resetBash
+_resetBash
 
 # =============================================================================
 
 _noop() { true; }
 
-_gdate=date; [[ $OSTYPE =~ ^darwin ]] && _gdate=gdate
+# =============================================================================
 
-_profileStack=()
-_profileStackIdx=0
-_profileBegin() {
-  if [[ -n $BW_PROFILE ]]; then
-    local needProfile=
-    local profileName=${FUNCNAME[1]}
-    [[ -z $1 ]] || profileName=$1_IN_$profileName
-    if [[ $_profileStackIdx -eq 0 || -n ${_profileStack[$(( _profileStackIdx - 1))]} ]]; then
-      local profileHolder=_profile_$profileName
-      [[ ${!profileHolder} == false ]] || needProfile=0
-    fi
-    _profileStack[$_profileStackIdx]=$needProfile
-    _profileStackIdx=$((_profileStackIdx + 1))
-    [[ -z $needProfile ]] || eval _startTime_$profileName=$($_gdate +%s%3N)
-  fi
-}
-
-_gdateTiming=0
-
-_profileEnd() {
-  if [[ -n $BW_PROFILE ]]; then
-    _profileStackIdx=$((_profileStackIdx - 1))
-    if [[ $_profileStackIdx -lt 0 ]]; then
-      _debugVar _profileStackIdx
-      _profileStackIdx=0
-    elif [[ -n ${_profileStack[$_profileStackIdx]} ]]; then
-      local profileName=${FUNCNAME[1]}
-      [[ -z $1 ]] || profileName=$1_IN_$profileName
-      local startTimeHolder=_startTime_$profileName
-      local endTime=$($_gdate +%s%3N)
-      local elapsedTime=$(( endTime - ${!startTimeHolder} ))
-      if [[ $_profileStackIdx -gt 0 ]]; then
-        local parentProfileStackIdx=$(( _profileStackIdx - 1 ))
-        _profileStack[$parentProfileStackIdx]=$(( _profileStack[$parentProfileStackIdx] + elapsedTime + _gdateTiming ))
-      fi
-      elapsedTime=$(( elapsedTime - _profileStack[$_profileStackIdx] - _gdateTiming ))
-      [[ $elapsedTime -ge 0 ]] || elapsedTime=0
-      eval _profileTotal_$profileName=$(( _profileTotal_$profileName + elapsedTime ))
-      eval _profileCount_$profileName=$(( _profileCount_$profileName + 1 ))
-    fi
-  fi
-}
-
-_profileInit() {
-  local prefix=_profileTotal_
-  local varName; for varName in $(compgen -v | grep "^$prefix" ); do # https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash/5691#5691
-    [[ -n $varName ]] || continue
-    eval $varName=0
-    local funcName=${varName:${#prefix}}
-    eval _profileCount_$funcName=0
-  done
-
-  _gdateTiming=$($_gdate +%s%3N)
-  local _i; for ((_i=0; _i<30; _i++)); do
-    $_gdate +%s%3N >/dev/null
-  done
-  _gdateTiming=$(( ( $($_gdate +%s%3N) - _gdateTiming ) / 30 * 6 / 5 ))
-}
-
-_profileResult() {
-  local prefix=_profileTotal_
-  local total=0
-  local varName; for varName in $(compgen -v | grep "^$prefix" ); do # https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash/5691#5691
-    local funcName=${varName:${#prefix}}
-    local profileHolder=_profile_$funcName
-    if [[ ${!profileHolder} != false ]]; then
-      local countHolder=_profileCount_$funcName
-      if [[ ${!countHolder} -gt 0 ]]; then
-        echo $funcName: ${!varName}ms ${!countHolder} $(( ${!varName} / ${!countHolder} ))ms
-        total=$(( total + ${!varName} ))
-      fi
-    fi
-  done
-  echo total ${total}ms
-}
-
-_profileTmpFileSpec=
-_profileInitTransfer() {
-  if [[ -n $BW_PROFILE ]]; then 
-    _profileTmpFileSpec="/tmp/bw.profile.$$.bash"
-  fi
-}
-
-_profileDoTransfer() {
-  if [[ -n $BW_PROFILE ]]; then 
-    echo >"$profileTmpFileSpec"
-    local prefix=_profileTotal_
-    local varName; for varName in $(compgen -v | grep "^$prefix" ); do # https://unix.stackexchange.com/questions/3510/how-to-print-only-defined-variables-shell-and-or-environment-variables-in-bash/5691#5691
-      echo "$varName=${!varName}" >>"$profileTmpFileSpec"
-      local funcName=${varName:${#prefix}}
-      varName=_profileCount_$funcName
-      echo "$varName=${!varName}" >>"$profileTmpFileSpec"
-    done
-  fi
-}
-
-_profileGetTransfer() {
-  if [[ -n $BW_PROFILE ]]; then 
-    . "$_profileTmpFileSpec"
-  fi
-}
-
-_noSleepWhileProfile=true
-_funcToProfile() { _profileBegin;
-  [[ -n $_noSleepWhileProfile ]] || sleep 1
-  _subFuncToProfile
-  _subFuncToProfile2
-_profileEnd; }
-
-_subFuncToProfile() { _profileBegin;
-  [[ -n $_noSleepWhileProfile ]] || sleep .3
-  _subSubFuncToProfile
-_profileEnd; }
-
-_subSubFuncToProfile() { _profileBegin;
-  [[ -n $_noSleepWhileProfile ]] || sleep .1
-  _subSubSubFuncToProfile
-_profileEnd; }
-
-_subSubSubFuncToProfile() { _profileBegin;
-  [[ -n $_noSleepWhileProfile ]] || sleep .1
-_profileEnd; }
-
-_subFuncToProfile2() { _profileBegin;
-  [[ -n $_noSleepWhileProfile ]] || sleep .5
-_profileEnd; }
-
-_useOptimizedHasItem=
-# _useOptimizedHasItem=true
-
-_hasItemAccumTime=0
 _hasItem() {
+  #shellcheck disable=SC2119
   _profileBegin
   local testItem="$1"; shift
   local returnCode=1
@@ -150,14 +29,25 @@ _hasItem() {
       break
     fi
   done
+  #shellcheck disable=SC2119
   _profileEnd
   return $returnCode
 }
 
-_joinBy() { # https://stackoverflow.com/questions/1527049/join-elements-of-an-array
-  local IFS="$1" 
-  shift 
-  echo "$*"
+_joinBy() { 
+  # https://stackoverflow.com/questions/1527049/join-elements-of-an-array
+  local separator="$1"; shift
+  local needSeparator=
+  while [[ $# -gt 0 ]]; do
+    [[ -z $needSeparator ]] || echo -n "$separator"
+    if [[ $# -eq 1 ]]; then
+      echo "$1"
+    else
+      echo -n "$1"
+      needSeparator=true
+    fi
+    shift
+  done
 }
 # _hasSuffix() {
 #   _profileBegin
@@ -216,7 +106,7 @@ _quotedArgs() {
     ]]; then
       result+="$joiner$arg"
     else
-      local quotedArg=$(declare -p arg )
+      local quotedArg; quotedArg=$(declare -p arg)
       [[ $quotedArg =~ ^([^=]*=) ]] \
         && quotedArg=${quotedArg:${#BASH_REMATCH[0]}}
       [[ -n $strip ]] \
@@ -230,26 +120,26 @@ _quotedArgs() {
 
 _upperFirst() {
   local string="$*"
-  echo $(tr '[:lower:]' '[:upper:]' <<< ${string:0:1})${string:1}
-  # echo "$*" | perl -C -pe 's/^(.)/\U$1/'
+  echo "$(tr '[:lower:]' '[:upper:]' <<< "${string:0:1}")${string:1}"
 }
 
 _lowerFirst() {
-  echo "$*" | perl -C -pe 's/^(.)/\L$1/'
+  local string="$*"
+  echo "$(tr '[:upper:]' '[:lower:]' <<< "${string:0:1}")${string:1}"
 }
 
 _kebabCaseToCamelCase() { # https://stackoverflow.com/questions/34420091/spinal-case-to-camel-case/34420162#34420162
   if [[ ! $1 =~ - ]]; then
-    # echo dstVarName: $dstVarName, \$1: $1
-    eval $dstVarName=\"\$1\"
+    eval "${dstVarName?}"'="$1"'
   else
+    #shellcheck disable=SC2119
     _profileBegin
-    local result=$(echo $1 | perl -pe 's/(-)(\w)/\U$2/g')
-    eval $dstVarName=\$result
+    local result; result=$(echo "$1" | perl -pe 's/(-)(\w)/\U$2/g')
+    eval "${dstVarName?}"'=$result'
+    #shellcheck disable=SC2119
     _profileEnd
   fi
 }
-
 
 # _kebabCaseToUpperCamelCase() { # https://stackoverflow.com/questions/34420091/spinal-case-to-camel-case/34420162#34420162
 #   _profileBegin
@@ -259,38 +149,44 @@ _kebabCaseToCamelCase() { # https://stackoverflow.com/questions/34420091/spinal-
 
 _upperCamelCaseToKebabCase() { # https://stackoverflow.com/questions/28795479/awk-sed-script-to-convert-a-file-from-camelcase-to-underscores/28795550#28795550
   if [[ ! $1 =~ [A-Z] ]]; then
-    eval $dstVarName=$1
+    eval "${dstVarName?}=$1"
   else
     local holder=__upperCamelCaseToKebabCase_$1_
     if [[ -n ${!holder} ]]; then
-      eval $dstVarName=\${!holder}
+      eval "${dstVarName?}"'=${!holder}'
     else
+      #shellcheck disable=SC2119
       _profileBegin
-      local result=$(echo $1 | perl -pe 's/(?<=.)([A-Z])/-\L$1/g; s/^(.)/\L$1/')
-      eval $dstVarName=\$result
-      eval $holder=\$result
+      local result; result=$(echo "$1" | perl -pe 's/(?<=.)([A-Z])/-\L$1/g; s/^(.)/\L$1/')
+      eval "${dstVarName?}"'=$result'
+      eval "$holder"'=$result'
+      #shellcheck disable=SC2119
       _profileEnd
     fi
   fi
 }
 
 _funcExists() {
-  [[ $(type -t $1) == 'function' ]]
+  [[ $(type -t "$1") == 'function' ]]
 }
 
 _getUniqArray() {
   # https://superuser.com/questions/461981/how-do-i-convert-a-bash-array-variable-to-a-string-delimited-with-newlines/462400#462400
   # https://stackoverflow.com/questions/13648410/how-can-i-get-unique-values-from-an-array-in-bash/13648438#13648438
-  local unique=$(IFS=$'\n'; echo "$*" | sort -u)
+  local unique
+  # shellcheck disable=SC2034
+  unique=$(IFS=$'\n'; echo "$*" | sort -u)
   # https://stackoverflow.com/questions/11393817/bash-read-lines-in-file-into-an-array/11393884#11393884
-  IFS=$'\r\n' GLOBIGNORE='*' command eval 'local -a arr=( $(echo "$unique") )'
-  echo $(_quotedArgs "${arr[@]}")
+  local -a arr
+  # shellcheck disable=SC2016
+  IFS=$'\r\n' GLOBIGNORE='*' command eval 'arr=( $(echo "$unique") )'
+  _quotedArgs "${arr[@]}"
 }
 
 _everyFileNotNewerThan() {
   local etaFileSpec="$1"; shift
   local tstFileSpec; for tstFileSpec in "$@"; do
-    [[ $tstFileSpec != $_bwFileName ]] || tstFileSpec="$_bwFileSpec"
+    [[ $tstFileSpec != "$_bwFileName" ]] || tstFileSpec="$_bwFileSpec"
     [[ ! $tstFileSpec -nt $etaFileSpec ]] || return $?
   done
   return 0
@@ -303,57 +199,65 @@ _indent() {
   echo -n "${_spaceContainer:0:${1:0}}"
 }
 
+_substituteValueSuffix='_VALUE'
+_substituteIdxSuffix='_IDX'
 _restore() {
-  _profileBegin;
+  #shellcheck disable=SC2119
+  _profileBegin
   local varName; for varName in "$@"; do
-    local typeOfVar; eval "$_codeToPrepareTypeOfVar"
-    if [[ $typeOfVar == 'none' ]]; then
-      return $(_err "could not resolve type of ${_ansiOutline}$varName${_ansiErr}, first declare it with initial value")
-    else
-      local idxVarName="${_substitutePrefix}${varName}${_substituteIdxSuffix}"
-      if [[ -z ${!idxVarName} ]]; then
-        return $(_err "can not restore ${_ansiOutline}$varName${_ansiErr} which is not substituted before")
-      fi
-      local valueToRestoreVarName="${_substitutePrefix}${varName}${_substituteValueSuffix}${!idxVarName}"
-      if [[ $typeOfVar == 'scalar' ]]; then
-        eval "$varName=\$$valueToRestoreVarName"
-      elif [[ $typeOfVar == 'array' ]]; then
-        eval $varName=\( \"\${$valueToRestoreVarName[@]}\" \)
-      fi
-      if [[ ${!idxVarName} -le 0 ]]; then
-        eval "$idxVarName="
-      else
-        eval "$idxVarName=\$(( $idxVarName - 1 ))"
-      fi
+    local typeOfVar; typeOfVar=$(_getTypeOfVar "$varName")
+    # shellcheck disable=SC2046
+    [[ $typeOfVar != 'none' ]] \
+      || return $(_err "could not resolve type of ${_ansiOutline}$varName${_ansiErr}, first declare it with initial value")
+    local idxVarName="${_substitutePrefix}${varName}${_substituteIdxSuffix}"
+    # shellcheck disable=SC2046
+    [[ -n ${!idxVarName} ]] \
+      || return $(_err "can not restore ${_ansiOutline}$varName${_ansiErr} which is not substituted before")
+    local valueToRestoreVarName="${_substitutePrefix}${varName}${_substituteValueSuffix}${!idxVarName}"
+    local codeToEval="$varName="
+    if [[ $typeOfVar == 'scalar' ]]; then
+      codeToEval+='$'"$valueToRestoreVarName"
+    elif [[ $typeOfVar == 'array' ]]; then
+      # shellcheck disable=SC2016
+      codeToEval+='( "${'"$valueToRestoreVarName"'[@]}" )'
     fi
+    codeToEval+="$_nl$idxVarName="
+    # shellcheck disable=SC2016
+    [[ ${!idxVarName} -le 0 ]] || codeToEval+='$(( idxVarName - 1 ))'
+    eval "$codeToEval"
   done
-  _profileEnd;
+  #shellcheck disable=SC2119
+  _profileEnd
 }
 
-_codeToPrepareTypeOfVar='
-  local __typeSignature=$(declare -p $varName 2>/dev/null)
+_getTypeOfVar() {
+  local __varName="$1"
+  local __typeSignature; __typeSignature=$(declare -p "$__varName" 2>/dev/null)
   if [[ $__typeSignature =~ ^declare[[:space:]]-a ]]; then
-    typeOfVar=array
-  elif [[ -z ${!varName+x} ]]; then
-    typeOfVar=none
+    echo array
+  elif [[ -z ${!__varName+x} ]]; then
+    echo none
   else
-    typeOfVar=scalar
+    echo scalar
   fi
-'
+}
 
-_lcpDescription="longest common prefix, from ${_ansiUrl}https://rosettacode.org/wiki/Longest_common_prefix#Perl${_ansiReset}"
+# shellcheck disable=SC2034
+_lcp_description="longest common prefix, from ${_ansiUrl}https://rosettacode.org/wiki/Longest_common_prefix#Perl${_ansiReset}"
 _lcp() {
   perl -e "print scalar ((join(\"\\0\", @ARGV) =~ /^([^\\0]*)[^\\0]*(?:\\0\\1[^\\0]*)*\$/s)[0])" "$@"
 }
 
-noStack=
+_noStack=
+# shellcheck disable=SC2120
 _debugStack() {
-  if [[ -n $noStack ]]; then
+  if [[ -n $_noStack ]]; then
     echo >&2
   else
     local ofs=$1; [[ $ofs =~ ^[1-9][0-9]* ]] || ofs=2
-    echo -n "$___joiner${_ansiOutline}STACK${_ansiReset}($(( ${#FUNCNAME[@]} - $ofs ))):" >&2
-    local idx; for (( idx=$ofs; idx<${#FUNCNAME[@]}; idx++ )); do
+    # shellcheck disable=SC2154
+    echo -n "$___joiner${_ansiOutline}STACK${_ansiReset}($(( ${#FUNCNAME[@]} - ofs ))):" >&2
+    local idx; for (( idx=ofs; idx<${#FUNCNAME[@]}; idx++ )); do
       echo -n " ${_ansiCmd}${FUNCNAME[$idx]}${_ansiReset}${_ansiDim}@${_ansiResetDim}${_ansiCmd}${BASH_SOURCE[$idx]}${_ansiReset}" >&2
     done
     echo "${_ansiReset}" >&2
@@ -361,11 +265,13 @@ _debugStack() {
 }
 
 _warn() {
-  echo "${_ansiWarn}WARN: $@${_ansiReset}" >&2
+  echo "${_ansiWarn}WARN: $*${_ansiReset}" >&2
 }
 
 _todo() {
-  echo -n "$prefix${_ansiErr}TODO in ${_ansiCmd}${FUNCNAME[1]}${_ansiErr}: $@${_ansiReset}" >&2
+  # shellcheck disable=SC2154
+  echo -n "$prefix${_ansiErr}TODO in ${_ansiCmd}${FUNCNAME[1]}${_ansiErr}: $*${_ansiReset}" >&2
+  # shellcheck disable=SC2119
   _debugStack
   return 3
 }
@@ -376,15 +282,13 @@ _todo() {
 #   test -n "$(find "$(dirname "$fileSpecTemplate")" -maxdepth 1 -name "$(basename  "$fileSpecTemplate")" -print -quit)"
 # }
 
-
-
 _getExternalIp() {
   curl ipecho.net/plain 
 }      
 
 _getOwnIpList() {
   # https://stackoverflow.com/questions/13322485/how-to-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x
-  if which hostname >/dev/null 2>&1; then
+  if command -v hostname >/dev/null 2>&1; then
     hostname -I
   else
     local useSedVersion=
@@ -415,14 +319,6 @@ _getOwnIpList() {
 
 _isInDocker() {
   [[ -f /.dockerenv ]]
-}
-
-# =============================================================================
-
-_prepareAwkFileSpecParams=( 'infix:?' )
-_prepareAwkFileSpec() { eval "$_funcParams2"
-  [[ -z $infix ]] || infix=".$infix"
-  awkFileSpec="$(dirname "${BASH_SOURCE[1]}")/${FUNCNAME[1]}$infix.awk"
 }
 
 # =============================================================================

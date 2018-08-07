@@ -161,20 +161,20 @@ _getAlreadyProjDir() { eval "$_funcParams2"
 }
 _getAlreadyProjDirHelper() {
   local sedCode='s/'"$_sourceMatchRegexp"'bin\/'"${bwProjShortcut?}"'\.bash''.*$/\1/p'
-  sed -n -E -e "$sedCode" "${profileFileSpec?}" | tail -n 1
+  sed -nEe "$sedCode" "${profileFileSpec?}" | tail -n 1
 }
 
 # =============================================================================
 
 _setAtBashProfileHelper() {
   local awkFileSpec; _prepareAwkFileSpec 
-  local -a OPT=(
+  local -a awk_OPT=(
     -f "$awkFileSpec" 
     -v "exactLine=${exactLine?}" 
     -v "matchRegexp=${matchRegexp?}" 
     -v "uninstall=${uninstall?}" 
   )
-  awk "${OPT[@]}" "${profileFileSpec?}"
+  awk "${awk_OPT[@]}" "${profileFileSpec?}"
 }
 
 # shellcheck disable=SC2016

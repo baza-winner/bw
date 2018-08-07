@@ -45,12 +45,12 @@ _downloadTests=(
   #   "_download -?"
   # '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_exist -n bw.bash && _download localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -62,17 +62,17 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v dry localhost:$_bwdevDockerHttp/bw.bash bw.bash && _exist -n bw.bash"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_exist -n bw.bash && _download -v none localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_exist -n bw.bash && _download -v err localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -84,7 +84,7 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v ok localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -96,7 +96,7 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v allBrief localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     --stdoutParaWithIndent "0"
     --stdout "
       ${_ansiOK}OK: ${_ansiCmd}rm -f bw.bash.download.header${_ansiReset}
@@ -109,7 +109,7 @@ _downloadTests=(
     "_exist -n bw.bash && _download -v all localhost:$_bwdevDockerHttp/bw.bash bw.bash && cmp bw.bash '$_stqq'$_bwDir/bw.bash'$_stqq'"
   '
   '
-    --before "bwdev docker up"
+    --before "bwdev docker up -m"
     "--inTmpDir"
     "_download localhost:$_bwdevDockerHttp/bw.bash bw.bash && _download -c etag localhost:$_bwdevDockerHttp/bw.bash bw.bash"
   '
@@ -880,8 +880,8 @@ _mvFileTests=(
 
 _mkFileFromTemplateTests=(
   '
-    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
-    --before "echo some_var_value:some_var2_value:some_var3_value > some.eta"
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}:\${SOME_VAR2}'\'' > some.template"
+    --before "echo some_var_value:some_var2_value:some_var3_value:some_var2_value > some.eta"
     --inTmpDir
     "SOME_VAR=some_var_value SOME_VAR2=some_var2_value SOME_VAR3=some_var3_value _mkFileFromTemplate -n some && diff some some.eta"
   '
@@ -896,6 +896,33 @@ _mkFileFromTemplateTests=(
     --before "echo '\''some_var_value:\${SOME_VAR2}:some_var3_value'\'' > some.eta"
     --inTmpDir
     "SOME_VAR=some_var_value SOME_VAR2=some_var2_value SOME_VAR3=some_var3_value _mkFileFromTemplate -n -v SOME_VAR -v SOME_VAR3 some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo some_var_value:some_var2_value:some_var3_value > some.eta"
+    --before "local SOME_VAR=some_var_value"
+    --before "local SOME_VAR2=some_var2_value"
+    --before "local SOME_VAR3=some_var3_value"
+    --inTmpDir
+    "_mkFileFromTemplate -n some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo '\''\${SOME_VAR}:some_var2_value:\${SOME_VAR3}'\'' > some.eta"
+    --before "local SOME_VAR=some_var_value"
+    --before "local SOME_VAR2=some_var2_value"
+    --before "local SOME_VAR3=some_var3_value"
+    --inTmpDir
+    "_mkFileFromTemplate -n -v SOME_VAR2 some && diff some some.eta"
+  '
+  '
+    --before "echo '\''\${SOME_VAR}:\${SOME_VAR2}:\${SOME_VAR3}'\'' > some.template"
+    --before "echo '\''some_var_value:\${SOME_VAR2}:some_var3_value'\'' > some.eta"
+    --before "local SOME_VAR=some_var_value"
+    --before "local SOME_VAR2=some_var2_value"
+    --before "local SOME_VAR3=some_var3_value"
+    --inTmpDir
+    "_mkFileFromTemplate -n -v SOME_VAR -v SOME_VAR3 some && diff some some.eta"
   '
 )
 

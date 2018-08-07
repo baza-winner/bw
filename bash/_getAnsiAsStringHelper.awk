@@ -23,7 +23,7 @@ END {
     match($0, "'")
     value = substr($0, 1, RSTART - 1)
   } else if (substr($0, 1, 1) != "\"" ) {
-    print "ERR: " funcName " expects $' or \" after " key "= at bw.bash line " NR > "/dev/tty"
+    print "ERR: " funcName " expects $' or \" after " key "= at " FILENAME " line " NR > "/dev/tty"
     exitCode=1
     exit exitCode
   } else {
@@ -34,7 +34,7 @@ END {
     value = ""
     while (length($0)) {
       if ( substr($0, 1, 2) != "${" ) {
-        print "ERR: " funcName " expects ${ at bw.bash line " NR " pos " pos > "/dev/tty"
+        print "ERR: " funcName " expects ${ at " FILENAME " line " NR " pos " pos > "/dev/tty"
         exitCode=1
         exit exitCode
       }
@@ -43,7 +43,7 @@ END {
       match($0, "}")
       varName = substr($0, 1, RSTART - 1)
       if ( ! length(ansi[varName]) ) {
-        print "ERR: " funcName " got unknown " varName " at bw.bash line " NR " pos " pos > "/dev/tty"
+        print "ERR: " funcName " got unknown " varName " at " FILENAME " line " NR " pos " pos > "/dev/tty"
         exitCode=1
         exit exitCode
       }
@@ -52,10 +52,4 @@ END {
     }
   }
   ansi[ key ] = value
-  # if ( substr(key, 6) == searchFor ) {
-  #   print value
-  #   exit
-  # } else {
-  #   ansi[ key ] = value
-  # }
 }

@@ -112,18 +112,19 @@ _substituteTests=(
     "_substitute __substituteTestVarA"
   '
   # TODO: реанимировать следующий тест
-  # '
-  #   --before "local __substituteTestVarB"
-  #   --varName "__substituteTestVarB"
-  #   --varValue "declare -a __substituteTestVarB=([0]=\"d\" [1]=\"e f\")"
-  #   --varTstPostProcess '"$_postProcessDeclareArray"'
-  #   --var2Name "${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}"
-  #   --var2Value "declare -- ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=\"1\""
-  #   --var3Name "${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1"
-  #   --var3Value "declare -a ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1='\''([1]=\"a\" [2]=\"b c\")'\''"
-  #   --before "__substituteTestVarB=( a \"b c\" ) ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=0 ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1="
-  #   "_substitute __substituteTestVarB d '$_stqq'e f'$_stqq'"
-  # '
+  '
+    --before "local __substituteTestVarB"
+    --varName "__substituteTestVarB"
+    --varValue "declare -a __substituteTestVarB=([0]=\"d\" [1]=\"e f\")"
+    --varTstPostProcess '"$_postProcessDeclareArray"'
+    --var2Name "${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}"
+    --var2Value "declare -- ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=\"1\""
+    --var3Name "${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1"
+    --var3Value "declare -a ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1=([0]=\"a\" [1]=\"b c\")"
+    --before "__substituteTestVarB=( a \"b c\" ) ${_substitutePrefix}__substituteTestVarB${_substituteIdxSuffix}=0 ${_substitutePrefix}__substituteTestVarB${_substituteValueSuffix}1="
+    --var3TstPostProcess "perl -pe \"s/='\''\\(/=(/s; s/'\''$//s\""
+    "_substitute __substituteTestVarB d '$_stqq'e f'$_stqq'"
+  '
     # --var3TstPostProcess "perl -pe \"s/='\''\\(/=(/s; s/'\''$//s\""
   '
     --noErrorStack
@@ -133,29 +134,6 @@ _substituteTests=(
     "_substitute __substituteTestVarC 1"
   '
 )
-
-# _prepareTypeOfVarTests=(
-#   '
-#     --before "local typeOfVar="
-#     --varName "typeOfVar"
-#     --varValue "declare -- typeOfVar=\"scalar\""
-#     --before "declare __prepareTypeOfVarTestA=0"
-#     "_prepareTypeOfVar __prepareTypeOfVarTestA"
-#   '
-#   '
-#     --before "local typeOfVar="
-#     --varName "typeOfVar"
-#     --varValue "declare -- typeOfVar=\"array\""
-#     --before "declare -a __prepareTypeOfVarTestB=()"
-#     "_prepareTypeOfVar __prepareTypeOfVarTestB"
-#   '
-#   '
-#     --before "local typeOfVar="
-#     --varName "typeOfVar"
-#     --varValue "declare -- typeOfVar=\"none\""
-#     "_prepareTypeOfVar __prepareTypeOfVarTestD"
-#   '
-# )
 
 _lcpTests=(
   '

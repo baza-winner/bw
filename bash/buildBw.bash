@@ -6,12 +6,10 @@ _resetBash
 
 _buildBwParams=()
 _buildBw() { eval "$_funcParams2"
-  # [[ -n $BW_DRILL ]] && echo "_buildBw after _funcParams2 _bwDir: $_bwDir"
   [[ -n $_isBwDevelop ]] || return $(_err "Команда ${_ansiCmd}${FUNCNAME[0]}${_ansiErr} доступна только в режиме _isBwDevelop")
   _inDir "$_bwDir" _buildBwHelper
 }
 _buildBwHelper() {
-  # [[ -n $BW_DRILL ]] && echo "_buildBwHelper _bwDir: $_bwDir"
   local excludeRegExp='_bwCreateServerHttpsCrtKey'
   local bwProjShortcut; for bwProjShortcut in $(_getBwProjShortcuts); do
     if [[ -n $excludeRegExp ]]; then

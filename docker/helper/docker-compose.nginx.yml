@@ -1,6 +1,7 @@
 version: '2'
 services:
   nginx:
+    container_name: ${nginxContainerName}
     image: nginx:alpine
     volumes:
       - ${_bwNginxConfDir}:/etc/nginx/conf.bw
