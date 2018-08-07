@@ -20,7 +20,7 @@ _bwProjDefs+=(
   # '
   'bwdev' '
     --gitOrigin github.com:baza-winner/bw.git
-    --branch master
+    --branch develop
     --http 8998
     --https 8999
     --no-docker-build
@@ -87,7 +87,7 @@ _bw_project_bgate() {
 _bwProjDefs+=(
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch feature/docker
+    --branch develop
     --http 8088
     --https 8089
     --upstream 3000
