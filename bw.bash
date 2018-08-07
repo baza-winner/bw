@@ -7,7 +7,7 @@
 
 # shellcheck disable=SC2034
 {
-_bwVersion="0.0.261"
+_bwVersion="1.0.0"
 _bwGithubSource="https://raw.githubusercontent.com/baza-winner/bw"
 _bwGithubSshUrl='git@github.com:baza-winner/bw.git'
 _bwGithubHttpsUrl='https://github.com/baza-winner/bw.git'
