@@ -1,5 +1,6 @@
 .DS_Store
 *.sublime-workspace
+README.html
 generated/
 old.bw.bash
 tgz/
@@ -7,4 +8,3 @@ tmp/
 tmp2/
 libRedRT*
 github-keygen
-README.html
