@@ -4,7 +4,7 @@
 # =============================================================================
 
 _entrypoint() {
-  if false && [[ ! -f /tmp/owned ]]; then
+  if [[ ! -f /tmp/owned ]]; then
     local cmdTitle="${_ansiCmd}sudo chown -R dev $HOME${_ansiReset}"
     _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
     if [[ $returnCode -eq 0 ]]; then
@@ -46,7 +46,6 @@ _entrypoint() {
   else
     local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
     echo $PPID > "$pidFileSpec"
-    # trap "rm -f \"$pidFileSpec\"" EXIT
     eval "$@"
   fi
 }
