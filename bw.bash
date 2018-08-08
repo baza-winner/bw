@@ -42,8 +42,26 @@ _gitHasStaged() {
   ! git diff --no-ext-diff --cached --quiet
 }
 
+# _timeout() { 
+#   perl -e 'alarm shift; exec @ARGV' "$@" 
+# }
+
 _gitHasNonPushed() {
-  [[ $(git log --branches --not --remotes) ]]
+  local branch; branch=$(_gitBranch)
+  if [[ $(git branch -r --list "origin/$branch") ]]; then 
+    [[ $(git log -n 1 "origin/$branch..$branch") ]] 
+  fi
+  # [[ -n $(git branch -r --list "origin/$branch") || -n $(git log -n 1 "origin/$branch..$branch") ]]
+
+  # local origin; origin=$(_gitOrigin); [[ -n $origin ]] || return 1
+  # local host; host=$(_gitOrigin | sed -nEe 's#^git@([^:]+).*#\1#p;s#^https://([^/]+).*#\1#p')
+  # [[ -n $host ]] || return 1
+  # _timeout 1 ping -c1 $host >/dev/null 2>&1 || return $?
+  # local branch; branch=$(_gitBranch)
+  # ! git ls-remote --exit-code -h "$origin" "$branch" >/dev/null 2>&1 || [[ $(git log -n 1 "origin/$branch..$branch") ]] # https://stackoverflow.com/questions/2016901/viewing-unpushed-git-commits
+  
+  # ! git ls-remote 2>/dev/null | awk '{ print $2 }' | grep -x "refs/heads/$branch" >/dev/null 2>&1 || [[ $(git log "origin/$branch..$branch") ]] # https://stackoverflow.com/questions/2016901/viewing-unpushed-git-commits
+  # [[ $(git log --branches --not --remotes) ]]
 }
 
 _gitHasStashed() {
