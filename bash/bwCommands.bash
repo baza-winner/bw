@@ -1432,6 +1432,7 @@ _prepareProjDir() { eval "$_funcParams2"
   fi
   local tilda="~"
   projDir=${projDir/$tilda/$HOME}
+  projDir=${projDir%/} # https://stackoverflow.com/questions/1848415/remove-slash-from-the-end-of-a-variable/1848456#1848456
   local dockerDirSpec="$projDir/docker"
   if [[ ! -d "$dockerDirSpec" ]]; then
     if [[ -n $____isCompletionMode ]]; then
