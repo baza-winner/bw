@@ -102,7 +102,7 @@ _bwProjDefs+=(
 _bwProjDefs+=(
   'wcraw' '
     --gitOrigin github.com:baza-winner/wcrawler.git
-    --branch feature/docker
+    --branch develop
     --docker-compose "docker-compose.main.yml"
   '
 )
