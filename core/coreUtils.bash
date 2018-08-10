@@ -119,13 +119,15 @@ _quotedArgs() {
 }
 
 _upperFirst() {
-  local string="$*"
-  echo "$(tr '[:lower:]' '[:upper:]' <<< "${string:0:1}")${string:1}"
+  # local string="$*"
+  # echo "$(tr '[:lower:]' '[:upper:]' <<< "${string:0:1}")${string:1}"
+ perl -XCA -e 'use utf8; print "\u$ARGV[0]\n"' "$*"
 }
 
 _lowerFirst() {
-  local string="$*"
-  echo "$(tr '[:upper:]' '[:lower:]' <<< "${string:0:1}")${string:1}"
+  # local string="$*"
+  # echo "$(tr '[:upper:]' '[:lower:]' <<< "${string:0:1}")${string:1}"
+  perl -XCA -e 'use utf8; print "\l$ARGV[0]\n"' "$*"
 }
 
 _kebabCaseToCamelCase() { # https://stackoverflow.com/questions/34420091/spinal-case-to-camel-case/34420162#34420162
