@@ -56,7 +56,11 @@ _substitute() { eval "$_funcParams2"
 }
 
 _shortenFileSpecParams=( 'fileSpec' )
-_shortenFileSpec() { eval "$_funcParams2"
+_shortenFileSpec() { 
+  # if [[ "$*" =~ -f ]]; then
+  #   _debugVar --mark "$*"
+  # fi
+  eval "$_funcParams2"
   local lcp=$(_lcp "$fileSpec" "$HOME")
   [[ ${#lcp} -ne ${#HOME} ]] || fileSpec="~/${fileSpec:$(( ${#HOME} + 1 ))}"
   echo "$fileSpec"

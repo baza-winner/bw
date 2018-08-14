@@ -36,7 +36,7 @@ _entrypoint() {
 
     echo "
   ${_ansiPrimaryLiteral}$_hostUser${_ansiOK}, Вы вошли в Docker-контейнер ${_ansiPrimaryLiteral}$_bwProjShortcut${_ansiOK} проекта ${_ansiSecondaryLiteral}$_bwProjName
-  ${_ansiWarn}Подсказка: Чтобы выйти из Docker-container'а, выполните команду ${_ansiCmd}q
+  ${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}q
   ${_ansiReset}В Docker-контейнере доступна команда ${_ansiCmd}$_bwProjShortcut${_ansiReset}"
 
     "$_bwProjShortcut" update -c
