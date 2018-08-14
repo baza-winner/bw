@@ -137,7 +137,9 @@ _bwProjDefs+=(
 
 # shellcheck disable=SC2154
 _bw_project_dip() {
-  _exec "${sub_OPT[@]}" git submodule update --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+  # _exec "${sub_OPT[@]}" git submodule update --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+  _exec "${sub_OPT[@]}" git submodule init
+  _exec "${sub_OPT[@]}" git submodule update --remote # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
 }
 
 # =============================================================================
@@ -1351,7 +1353,7 @@ _initBwProjCmd() {
 
     local -a OPT=()
     '"$codeToPrepareOPTForSelfTest"'
-    _cmd_selfTest "${OPT[@]}" '"$bwProjShortcut"' "$projDir"
+    _inDir -v none "$projDir/docker" _cmd_selfTest "${OPT[@]}" '"$bwProjShortcut"' "$projDir"
   }'
 
   eval "$bwProjShortcut"'_docker_upParamsOpt=(
@@ -1401,7 +1403,7 @@ _initBwProjCmd() {
       --bwProjShortcut '"$bwProjShortcut"'
     )
     '"$codeToPrepareOPTForDockerUp"'
-    _inDir "$projDir/docker" _prepareDockerComposeYml "${OPT[@]}" '"${bwProjDockerCompose[*]}"'
+    _inDir -v none "$projDir/docker" _prepareDockerComposeYml "${OPT[@]}" '"${bwProjDockerCompose[*]}"'
   }'
 
   eval '_codeToPrepareVarsForDescriptionsOf_'"$bwProjShortcut"'_docker_down='\''
@@ -1412,7 +1414,7 @@ _initBwProjCmd() {
   eval "$bwProjShortcut"'_docker_downParams=( !--projDir/p= )'
   eval "$bwProjShortcut"'_docker_down() { eval "$_funcParams2"
     _prepareProjDir '"$bwProjShortcut"' || return $?
-    _docker_down "$projDir"
+    _inDir -v none "$projDir/docker" _docker_down "$projDir"
   }'
 
   eval "$bwProjShortcut"'_docker_shellParamsOpt=( --canBeMixedOptionsAndArgs )'
@@ -1427,7 +1429,7 @@ _initBwProjCmd() {
   eval "$bwProjShortcut"'_docker_shell_shell_name='\''Командная-оболочка'\'
   eval "$bwProjShortcut"'_docker_shell() { eval "$_funcParams2"
     _prepareProjDir '"$bwProjShortcut"' || return $?
-    _inDir "$projDir/docker" _docker_shell "$serviceName" "$shell"
+    _inDir -v none "$projDir/docker" _docker_shell "$serviceName" "$shell"
   }'
 
   if [[ -n $BW_NEED_REGEN ]]; then
@@ -1905,7 +1907,7 @@ _docker_downParams=( 'projDir' )
 _docker_down() { eval "$_funcParams2"
   if _exist "$projDir/docker/.docker-compose.yml"; then
     local -a dockerCompose_OPT; _prepareDockerComposeOpt
-    _inDir "$projDir/docker" _dockerCompose "${dockerCompose_OPT[@]}" down --remove-orphans
+    _dockerCompose "${dockerCompose_OPT[@]}" down --remove-orphans
   fi
 }
 
@@ -1932,17 +1934,17 @@ _cmd_selfTest() { eval "$_funcParams2"
     local tstFileSpec="/tmp/$bwProjShortcut.selfTest"
     if [[ -n $http ]]; then
       _exec -v err curl -s "http://localhost:${http}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
-      _exec -v all diff "$tstFileSpec" "$projDir/docker/nginx/whoami/index.html" || { returnCode=$?; break; }
+      _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
       rm "$tstFileSpec"
     fi
     if [[ -n $https ]]; then
       _exec -v err curl -s "https://localhost:${https}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
-      _exec -v all diff "$tstFileSpec" "$projDir/docker/nginx/whoami/index.html" || { returnCode=$?; break; }
+      _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
       rm "$tstFileSpec"
     fi
     local funcName="_${bwProjShortcut}_selfTestAddOn"
     if _funcExists "$funcName"; then
-      "$funcName"  || { returnCode=$?; break; }    
+      "$funcName" || { returnCode=$?; break; }    
     fi
     if [[ -n $dockerImageName ]]; then
       _exec -v all "$bwProjShortcut" docker shell || { returnCode=$?; break; }    
@@ -1959,6 +1961,30 @@ _cmd_selfTest() { eval "$_funcParams2"
   else
     _err "self-test failed"
   fi
+  return $returnCode
+}
+
+_selfTestParamsOpt=( --canBeMixedOptionsAndArgs )
+_selfTestParams=( 
+  '--queue=default' 
+  '--sleep:0..=10'
+  'runCommand'
+  'testCommands'
+)
+_selfTest() { eval "$_funcParams2"
+  local queueFileSpec="$queue.queue"
+  rm -f "$queueFileSpec"
+  _exec -v all $runCommand & 
+  sleep $sleep
+  _exist "$queueFileSpec" || return $?
+  local returnCode=0
+  while true; do
+    eval "$testCommands"
+    break
+  done
+  local pid; read -r -d $'\x04' pid < "$queueFileSpec"
+  local -a dockerCompose_OPT; _prepareDockerComposeOpt
+  _spinner -t "Отправка сигнала SIGINT в docker-контейнер заняла" "Отправка сигнала SIGINT в docker-контейнер" _dockerCompose "${dockerCompose_OPT[@]:2}" exec -T main "$_bwDevDockerEntryPointFileSpec" kill -SIGINT "$pid" 
   return $returnCode
 }
 
@@ -2714,7 +2740,7 @@ _bw_install_rootCertLinux() {
     # local certfile="$_bwDir/ssl/rootCA.pem"
     #https://thomas-leister.de/en/how-to-import-ca-root-certificate/
     [[ -d /usr/local/share/ca-certificates/bw ]] || _exec "${sub_OPT[@]}" --sudo mkdir /usr/local/share/ca-certificates/bw || { returnCode=$?; break; }
-    _exec "${sub_OPT[@]}" --sudo cp "$certfile" /usr/local/share/ca-certificates/bw/root.cert.crt || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" --sudo cp "$_bwCertFile" /usr/local/share/ca-certificates/bw/root.cert.crt || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo update-ca-certificates || { returnCode=$?; break; }
 
     _bw_install_rootCert_usingCertutil --findFrom "$HOME" || { returnCode=$?; break; }
