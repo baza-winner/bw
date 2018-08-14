@@ -2487,12 +2487,12 @@ bw_installParams=(
 )
 bw_installParamsOpt=(--canBeMixedOptionsAndArgs --isCommandWrapper)
 bw_install_cmd_name=Имя-приложения
-bw_install_description='устанавливает приложения'
-bw_install_force_description='устанавливает приложения, даже если оно уже установлено'
+bw_install_description='Устанавливает приложения'
+bw_install_force_description='Устанавливает приложения, даже если оно уже установлено'
+bw_install_silentIfAlreadyInstalled_description='Для служебного пользования'
 }
 bw_install() { eval "$_funcParams2"
 }
-
 
 # shellcheck disable=SC2034
 {
@@ -2660,6 +2660,8 @@ _bw_install_xclipLinux() {
 
 # shellcheck disable=SC2034
 bw_githubKeygenParams=( 'username' )
+bw_githubKeygen_username_description='Имя пользователя на ${_ansiCmd}github${_ansiReset}'
+bw_githubKeygen_description='Устанавливает ключ для доступа к ${_ansiCmd}github${_ansiReset}'
 bw_githubKeygen() { eval "$_funcParams2"
   bw_install github-keygen --silentIfAlreadyInstalled || return $?
   _rm "$_githubKeygenPastedMarkFileSpec"
