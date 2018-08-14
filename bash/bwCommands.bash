@@ -1078,8 +1078,7 @@ bw_project() { eval "$_funcParams2"
         fi
         _mkDir "${sub_OPT[@]}" "$projDir" || { returnCode=$?; brancheak; }
         local cloneStderrFileSpec="/tmp/$bwProjShortcut.clone.stderr"
-        # if ! git ls-remote -t "git@$bwProjGitOrigin" no-ref >"$cloneStderrFileSpec" 2>/dev/null; then
-        if ! _exec "${OPT_verbosity[@]}" --stdout "$cloneStderrFileSpec" git ls-remote -t "git@$bwProjGitOrigin" no-ref; then
+        if ! _exec "${OPT_verbosity[@]}" --stderr "$cloneStderrFileSpec" git ls-remote -t "git@$bwProjGitOrigin" no-ref; then
           if grep 'Permission denied (publickey)' "$cloneStderrFileSpec"; then
             local msg=
             msg+="Похоже, Вы не настроили ssh-ключи для доступа к ${_ansiPrimaryLiteral}git@$bwProjGitOrigin${_ansiWarn}"$_nl
