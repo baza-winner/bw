@@ -15,11 +15,31 @@ _bwProjDefs=()
 # =============================================================================
 
 _bwProjDefs+=(
+  'dubu' '
+    --gitOrigin github.com:baza-winner/dev-ubuntu.git
+    --branch master
+    --docker-image-name bazawinner/dev-ubuntu
+    --ssh 2201
+    --http 8001
+    --https 4401
+    --docker-compose "docker-compose.nginx.yml"
+    --docker-compose "docker-compose.main.yml"
+  '
+)
+
+# shellcheck disable=SC2154
+_bw_project_dubu() {
+  _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+}
+
+# =============================================================================
+
+_bwProjDefs+=(
   'bwdev' '
     --gitOrigin github.com:baza-winner/bw.git
     --branch develop
-    --http 8998
-    --https 8999
+    --http 8002
+    --https 4402
     --no-docker-build
     --docker-compose "docker-compose.nginx.yml"
   '
@@ -27,38 +47,26 @@ _bwProjDefs+=(
 
 # =============================================================================
 
-_bwProjDefs+=(
-  'dubu' '
-    --gitOrigin github.com:baza-winner/dev-ubuntu.git
-    --branch master
-    --docker-image-name bazawinner/dev-ubuntu
-    --http 8996
-    --https 8997
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
+# _bwProjDefs+=(
+#   'dnvm' '
+#     --gitOrigin github.com:baza-winner/dev-nvm.git
+#     --branch master
+#     --docker-image-name bazawinner/dev-nvm
+#     --ssh 2202
+#     --http 8994
+#     --https 8995
+#     --docker-compose "docker-compose.nginx.yml"
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
 
 # =============================================================================
 
-_bwProjDefs+=(
-  'dnvm' '
-    --gitOrigin github.com:baza-winner/dev-nvm.git
-    --branch master
-    --docker-image-name bazawinner/dev-nvm
-    --http 8994
-    --https 8995
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# =============================================================================
-
-# shellcheck disable=SC2154
-_bw_project_dnvm() {
-  _exec "${sub_OPT[@]}" git submodule update --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
-}
+# # shellcheck disable=SC2154
+# _bw_project_dnvm() {
+#   # _exec "${sub_OPT[@]}" git submodule init
+#   _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+# }
 
 # =============================================================================
 
@@ -66,9 +74,11 @@ _bwProjDefs+=(
   'bgate' '
     --gitOrigin github.com:baza-winner/billing-gate.git
     --branch develop
-    --http 8086
-    --https 8087
+    --ssh 2203
+    --http 8003
+    --https 4403
     --upstream 6783
+    --mysql 3303
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
@@ -85,8 +95,9 @@ _bwProjDefs+=(
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
     --branch develop
-    --http 8088
-    --https 8089
+    --ssh 2204
+    --http 8004
+    --https 4404
     --upstream 3000
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
@@ -99,8 +110,10 @@ _bwProjDefs+=(
   'agate' '
     --gitOrigin github.com:baza-winner/agate.git
     --branch develop
-    --http 8090
-    --https 8091
+    --ssh 2205
+    --http 8005
+    --https 4405
+    --mysql 3305
     --upstream 3005
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
@@ -113,8 +126,12 @@ _bwProjDefs+=(
   'mls' '
     --gitOrigin github.com:baza-winner/mls-pm.git
     --branch develop
-    --http 8092
-    --https 8093
+    --ssh 2207
+    --http 8007
+    --https 4407
+    --mysql 3307
+    --postgresql 5407
+    --elastic 9207
     --upstream 3000
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
@@ -127,8 +144,9 @@ _bwProjDefs+=(
   'dip' '
     --gitOrigin github.com:baza-winner/dip2.git
     --branch develop
-    --http 8094
-    --https 8095
+    --ssh 2208
+    --http 8008
+    --https 4408
     --upstream 3000
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
@@ -137,9 +155,7 @@ _bwProjDefs+=(
 
 # shellcheck disable=SC2154
 _bw_project_dip() {
-  # _exec "${sub_OPT[@]}" git submodule update --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
-  _exec "${sub_OPT[@]}" git submodule init
-  _exec "${sub_OPT[@]}" git submodule update --remote # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+  _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
 }
 
 # =============================================================================
@@ -147,6 +163,7 @@ _bw_project_dip() {
 _bwProjDefs+=(
   'wcraw' '
     --gitOrigin github.com:baza-winner/wcrawler.git
+    --ssh 2209
     --branch develop
     --docker-compose "docker-compose.main.yml"
   '
@@ -950,44 +967,56 @@ _codeToCallPrepareBwProjVarsHelper='
   fi
 '
 
+_prepareBwProjVarsHelperParams() {
+  _prepareBwProjVarsHelperParams=(
+    '--gitOrigin='
+    '--branch='
+    '--docker-image-name='
+    '--no-docker-build'
+    '@--docker-compose'
+  )
+  local port; for port in "${_bwProjPorts[@]}" upstream; do
+    _prepareBwProjVarsHelperParams+=( "--$port:$_tcpPortDiap" )
+  done
+}
+
+# shellcheck disable=SC2034
+_prepareBwProjVarsHelper() { eval "$_funcParams2"
+  codeToGetBwProjDef="
+    bwProjGitOrigin=\"$gitOrigin\"
+    bwProjDefaultBranch=\"$branch\"
+    bwProjDockerImageName=\"$dockerImageName\"
+    bwProjNoDockerBuild=\"$noDockerBuild\"
+    bwProjDockerCompose=( $(_quotedArgs "${dockerCompose[@]}") )
+  "
+  local port; for port in "${_bwProjPorts[@]}" upstream; do
+    local Port=$(_upperFirst "$port")
+    local bwProjDefaultPort="bwProjDefault$Port"
+    codeToGetBwProjDef+="$bwProjDefaultPort=\"${!port}\";"
+  done
+}
+
+_bwProjPorts=( ssh http https mysql postgresql elastic )
 _tcpPortDiap='1024..65535'
-_prepareBwProjVarsHelperParams=(
-  '--gitOrigin='
-  "--http:$_tcpPortDiap"
-  "--https:$_tcpPortDiap"
-  "--upstream:$_tcpPortDiap"
-  '--branch='
-  '--docker-image-name='
-  '--no-docker-build'
-  '@--docker-compose'
-)
+
 _codeToDeclareLocalBwProjVars='
   local bwProjName=""
   local bwProjTitle=""
   local bwProjGitOrigin="" 
-  local bwProjDefaultHttp=""
-  local bwProjDefaultHttps="" 
-  local bwProjDefaultUpstream=""
   local bwProjDefaultBranch="" 
   local bwProjDockerImageName="" 
   local bwProjNoDockerBuild=""
   local -a bwProjDockerCompose=()
 '
 }
-
-# shellcheck disable=SC2034
-_prepareBwProjVarsHelper() { eval "$_funcParams2"
-  codeToGetBwProjDef='
-    bwProjGitOrigin="'"$gitOrigin"'"
-    bwProjDefaultHttp='"$http"'
-    bwProjDefaultHttps='"$https"'
-    bwProjDefaultUpstream="'"$upstream"'"
-    bwProjDefaultBranch="'"$branch"'"
-    bwProjDockerImageName="'"$dockerImageName"'"
-    bwProjNoDockerBuild="'"$noDockerBuild"'"
-    bwProjDockerCompose=( '$(_quotedArgs "${dockerCompose[@]}")' )
-  '
+_updateCodeToDeclareLocalBwProjVars() {
+  local port; for port in "${_bwProjPorts[@]}" upstream; do
+    local Port=$(_upperFirst "$port")
+    local bwProjDefaultPort="bwProjDefault$Port"
+    _codeToDeclareLocalBwProjVars+="local $bwProjDefaultPort=;"
+  done
 }
+_updateCodeToDeclareLocalBwProjVars
 
 # shellcheck disable=SC2034
 _codeToPrepareDescriptionsOf_bw_project='
@@ -1218,7 +1247,7 @@ _getDefaultXdebugRemoteHost() {
 _bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/entrypoint.bash"
 _bwDevDockerBwFileSpec="/home/dev/bw.bash"
 _bwDevDockerBwDir="/home/dev/.bw"
-_bwDevDockerProjDir="/home/dev/proj"
+# _bwDevDockerProjDir="/home/dev/proj"
 _bwSslFileSpecPrefix="$_bwDir/ssl/server."
 _bwNginxConfDir="$_bwDir/docker/nginx/conf.bw"
 
@@ -1236,8 +1265,6 @@ _initBwProjCmd() {
   eval export "_$bwProjShortcut"'DockerImageName="${bwProjDockerImageName:-bazawinner/dev-$bwProjShortcut}"'
   local -a funcNamesToRegen=()
   mapfile -t funcNamesToRegen < <( _getFuncNamesOfScriptToUnset "${BASH_SOURCE[1]}")
-
-  _isInDocker && export TZ=Europe/Moscow
 
   eval "$bwProjShortcut"'_description='\''Базовая утилита проекта ${_ansiPrimaryLiteral}'"$bwProjName"' ${_ansiUrl}$bwProjGitOrigin${_ansiReset}'\'
   eval "$bwProjShortcut"'Params=()'
@@ -1326,8 +1353,12 @@ _initBwProjCmd() {
     --additionalDependencies "$_'"$bwProjShortcut"'Dir/bin/'"$bwProjShortcut"'.bash"
   )'
   local needNoTestAccessMessage=''
-  _prepareVarsForDefaultPort http && needNoTestAccessMessage=true
-  _prepareVarsForDefaultPort https && needNoTestAccessMessage=true
+  local port; for port in "${_bwProjPorts[@]:0:3}"; do
+    _prepareVarsForDefaultPort $port && needNoTestAccessMessage=true
+  done
+  local port; for port in "${_bwProjPorts[@]:3}"; do
+    _prepareVarsForDefaultPort $port 'для сервиса ${_ansiPrimaryLiteral}$port${_ansiReset}'
+  done
   _prepareVarsForDefaultPort upstream 'для сервиса ${_ansiPrimaryLiteral}nginx${_ansiReset}'
   if [[ -n $needNoTestAccessMessage ]]; then
     dockerUpParams+=( '--noTestAccessMessage/m' )
@@ -1501,6 +1532,7 @@ _runInDockerContainer='
   else
     _runInDockerContainer_main
   fi
+  local projDir=/home/dev/proj
 '
 _runInDockerContainer_outOfDocker() {
   local bwProjShortcut="${FUNCNAME[1]%%_*}"
@@ -1519,21 +1551,47 @@ _runInDockerContainer_nonWrapped() {
 _runInDockerContainer_outOfDockerHelper() {
   local -a dockerCompose_OPT; _prepareDockerComposeOpt
   local -a OPT_T; [[ -n $it ]] || OPT_T=( -T )
-  local -a cmd_params=( "${dockerCompose_OPT[@]:2}" exec "${OPT_T[@]}" main "$_bwDevDockerEntryPointFileSpec" )
+  local -a cmd_base=( _dockerCompose "${dockerCompose_OPT[@]:2}" exec "${OPT_T[@]}" main )
+  local -a cmd=( "${cmd_base[@]}" "$_bwDevDockerEntryPointFileSpec" "$$" "$@" )
   if [[ -n $it ]]; then
-    _dockerCompose "${cmd_params[@]}" "$$" "$@"
+    eval "$(_quotedArgs "${cmd[@]}")"
   else
     (
-      _dockerCompose "${cmd_params[@]}" "$$" "$@" &
+      eval "$(_quotedArgs "${cmd[@]}")" &
       local subPid=$!
-      local pidFileSpec="$projDir/docker/$$.pid"
+      local pidFileSpec="$$.pid"
       # shellcheck disable=SC2064
-      trap "trap - SIGINT; _runInDockerCtrlC $subPid \"$pidFileSpec\" \"$*\" $(_quotedArgs "${cmd_params[@]}")" SIGINT
+      trap "trap - SIGINT; _runInDockerCtrlC $subPid \"$pidFileSpec\" \"$*\" $(_quotedArgs "${cmd_base[@]}")" SIGINT
       wait $subPid; local returnCode=$?
       trap - SIGINT
       return $returnCode
     )
   fi
+}
+_runInDockerCtrlC() {
+  local subPid=$1; shift
+  local pidFileSpec=$1; shift
+  local title=$1; shift
+  local wasPidFileSpec
+
+  if _exist -v err "$pidFileSpec"; then
+    wasPidFileSpec=true
+    local pid; read -r -d $'\x04' pid < "$pidFileSpec" 
+    _spinner \
+      -t "Отправка сигнала SIGINT в docker-контейнер заняла" \
+      "Отправка сигнала SIGINT в docker-контейнер" \
+      "$@" \
+        kill -SIGINT "$pid" 
+  fi
+  wait "$subPid"
+  if [[ -n $wasPidFileSpec ]]; then
+    echo "Остановлено выполнение ${_ansiCmd}$title${_ansiReset}"
+  fi
+}
+_runInDockerCtrlCHelper() {
+  while [[ -f "$pidFileSpec" ]]; do
+    sleep 1 
+  done 
 }
 _runInDockerContainer_main() {
   local queueFileSpec="$HOME/proj/docker/${queue:-default}.queue"; shift
@@ -1548,28 +1606,6 @@ _runInDockerContainer_main() {
   if [[ $PPID -gt 8 ]]; then # защита от самоуничтожения
     echo $PPID > "$queueFileSpec"
   fi
-}
-
-_runInDockerCtrlC() {
-  local subPid=$1; shift
-  local pidFileSpec=$1; shift
-  local title=$1; shift
-  local wasPidFileSpec
-
-  if _exist -v err "$pidFileSpec"; then
-    wasPidFileSpec=true
-    local pid; read -r -d $'\x04' pid < "$pidFileSpec" 
-    _spinner -t "Отправка сигнала SIGINT в docker-контейнер заняла" "Отправка сигнала SIGINT в docker-контейнер" _dockerCompose "$@" kill -SIGINT "$pid" 
-  fi
-  wait "$subPid"
-  if [[ -n $wasPidFileSpec ]]; then
-    echo "Остановлено выполнение ${_ansiCmd}$title${_ansiReset}"
-  fi
-}
-_runInDockerCtrlCHelper() {
-  while [[ -f "$pidFileSpec" ]]; do
-    sleep 1 
-  done 
 }
 
 # shellcheck disable=SC2034
@@ -1681,6 +1717,28 @@ _cmd_update() { eval "$_funcParams2"
   done
 }
 
+_noMysql_description='Без подготовки MySQL'
+_noPostgresql_description='Без подготовки PostgreSQL'
+_noElasticsearch_description='Без подготовки Elasticsearch'
+
+_declare_prepareLocal_jsParams=()
+_declare_prepareLocal_js() { eval "$_funcParams2"
+  local bwProjShortcut=$(basename "${BASH_SOURCE[1]}" .bash)
+  eval "${bwProjShortcut}_prepareLocal"'ParamsOpt=( --canBeMixedOptionsAndArgs )'
+  eval "${bwProjShortcut}_prepareLocal"'Params=( 
+    !--projDir/p=
+    "${'"$bwProjShortcut"'_prepareLocalParamsAddon[@]}"
+  )'
+  eval "${bwProjShortcut}_prepareLocal"'_description='\''Производит подготовку локальных инструментов (баз данных и т.п)'\'
+  eval "${bwProjShortcut}_prepareLocal"'() { eval "$_funcParams2"
+    eval "$_runInDockerContainer"
+    local bwProjShortcut='"$bwProjShortcut"'
+    local funcName="_'"$bwProjShortcut"'_prepareLocal"
+    _funcExists "$funcName" || return $(_throw "функция ${_ansiCmd}$funcName${_ansiErr} не определена")
+    _'"$bwProjShortcut"'_prepareLocal
+  }'
+}
+
 _declare_jsParamsOpt=( --canBeMixedOptionsAndArgs )
 _declare_jsParams=( 
   '--pm2Dir=' 
@@ -1696,6 +1754,7 @@ _declare_js() { eval "$_funcParams2"
   eval "${bwProjShortcut}_${kind}"'ParamsOpt=( --canBeMixedOptionsAndArgs )'
   eval "${bwProjShortcut}_${kind}"'Params=( 
     !--projDir/p=
+    "${'"$bwProjShortcut"'_prepareLocalParamsAddon[@]}"
     '\''applicationEnv:('"${envs[*]}"')='"${envs[0]}"''\'' 
   )'
   eval "${bwProjShortcut}_${kind}"'_applicationEnv_name='\''Имя-среды'\'
@@ -1713,7 +1772,7 @@ _declare_js() { eval "$_funcParams2"
 
 _cmd_jsParams=( 'kind' 'bwProjShortcut' 'pm2Dir:?' 'yaml' )
 _cmd_js() { eval "$_funcParams2"
-  _npm_install || return $?
+  # _npm_install "$bwProjShortcut" || return $?
 
   local funcName="${bwProjShortcut}_prepare_local"
   if _funcExists "$funcName"; then
@@ -1722,7 +1781,6 @@ _cmd_js() { eval "$_funcParams2"
       localEnvs=( local testing )
     fi
     if _hasItem "$applicationEnv" "${localEnvs[@]}"; then
-      local noCoverage noDbsync noMysql
       eval "$funcName"
     fi
   fi
@@ -1737,11 +1795,36 @@ _cmd_js() { eval "$_funcParams2"
   FORCE_COLOR=1 _inDir "$HOME/proj/$pm2Dir" pm2-dev "$bwStartProcessFilename"
 }
 
+_declare_test_jsParams=( 'testVars:?' )
+_declare_test_js() { eval "$_funcParams2"
+  local bwProjShortcut=$(basename "${BASH_SOURCE[1]}" .bash)
+  eval "$bwProjShortcut"'_testParamsOpt=(--canBeMixedOptionsAndArgs)'
+  eval "$bwProjShortcut"'_testParams=(
+    --noCoverage/c
+    !--projDir/p=
+    "${'"$bwProjShortcut"'_prepareParams[@]}"
+    "${'"$bwProjShortcut"'_testParamsAddon[@]}"
+    '\''@testNames:( $(_'"$bwProjShortcut"'_testNames "$projDir") )'\''
+  )'
+  eval "$bwProjShortcut"'_test_description='\''Прогоняет тест(ы)'\'
+  eval "$bwProjShortcut"'_test_noCoverage_description='\''Без покрытия (без istanbul'\'\\\'\''а)'\'
+  eval "$bwProjShortcut"'_test() { eval "$_funcParams2"
+    eval "$_runInDockerContainer"
+    local testContainerDir=""
+    local nodeEnv=travis
+    local recursive=
+    local path="$projDir/node_modules/.bin"
+    '"${testVars}"'
+    testContainerDir="$HOME/proj/$testContainerDir"
+    PATH="$PATH:$path" _cmd_test_js '"$bwProjShortcut"'
+  }'
+}
+
 _cmd_test_jsParams=( 'bwProjShortcut' )
 _cmd_test_js() { eval "$_funcParams2"
-  _npm_install "$bwProjShortcut" || return $?
-  local funcName="_${bwProjShortcut}_prepare_local"
+  local funcName="_${bwProjShortcut}_prepareLocal"
   ! _funcExists "$funcName" || $funcName || return $?
+
   local -a testsToRun=()
   if [[ ${#testNames[@]} -eq 0 ]]; then
     [[ -z $recursive ]] || testsToRun+=( --recursive )
@@ -1757,63 +1840,171 @@ _cmd_test_js() { eval "$_funcParams2"
   _inDir "$testContainerDir" _exec -v all NODE_ENV="$nodeEnv" "${params[@]}" "${mocha_OPT[@]}" "${testsToRun[@]}"
 }
 
-_declare_test_jsParams=( 'testVars:?' )
-_declare_test_js() { eval "$_funcParams2"
-  local bwProjShortcut=$(basename "${BASH_SOURCE[1]}" .bash)
-  eval "$bwProjShortcut"'_testParamsOpt=(--canBeMixedOptionsAndArgs)'
-  eval "$bwProjShortcut"'_testParams=(
-    --noCoverage/c
-    !--projDir/p=
-    "${'"$bwProjShortcut"'_testParamsAddon[@]}"
-    '\''@testNames:( $(_'"$bwProjShortcut"'_testNames "$projDir") )'\''
-  )'
-  eval "$bwProjShortcut"'_test_description='\''Прогоняет тест(ы)'\'
-  eval "$bwProjShortcut"'_test_noCoverage_description='\''Без покрытия (без istanbul'\'\\\'\''а)'\'
-  eval "$bwProjShortcut"'_test() { eval "$_funcParams2"
-    eval "$_runInDockerContainer"
-    local testContainerDir=""
-    local nodeEnv=travis
-    local recursive=
-    local path="/home/dev/proj/node_modules/.bin"
-    local -a npmInstallDirs=()
-    '"${testVars}"'
-    testContainerDir="$HOME/proj/$testContainerDir"
-    PATH="$PATH:$path" _cmd_test_js '"$bwProjShortcut"'
-  }'
-}
-
 _cmd_mysql() {
   local returnCode=0
   while true; do
     doWhat=_start_mysql eval "$_doOnceInContainer" || { returnCode=$?; break; }
     echo "${_ansiWarn}ВНИМАНИЕ! Для выхода из ${_ansiCmd}mysql${_ansiWarn} используйте команду ${_ansiCmd}quit;${_ansiReset}"
-    eval "${_mysql_root_cnf[@]}" || { returnCode=$?; break; }
+    MYSQL_PWD=root mysql -u root || { returnCode=$?; break; }
     break
   done
   return $returnCode
 }
 
-_declare_mysqlParams=()
-_declare_mysql() { eval "$_funcParams2"
-  local bwProjShortcut=$(basename "${BASH_SOURCE[1]}" .bash)
-  eval "$bwProjShortcut"'_mysqlParams=(!--projDir/p=)'
-  eval "$bwProjShortcut"'_mysql_description='\''Запускает mysql-клиент'\'
-  eval "$bwProjShortcut"'_mysql() { eval "$_funcParams2"
+ _declare_mysqlParams=()
+ _declare_mysql() { eval "$_funcParams2"
+   local bwProjShortcut=$(basename "${BASH_SOURCE[1]}" .bash)
+   eval "$bwProjShortcut"'_mysql_description='\''Запускает mysql-клиент'\'
+   eval "$bwProjShortcut"'_mysql() { eval "$_funcParams2"
     it=true eval "$_runInDockerContainer"
     _cmd_mysql
+   }'
+ }
+
+_declare_mysql_mysqldumpParams=()
+_declare_mysql_mysqldump() { eval "$_funcParams2"
+  local bwProjShortcut=$(basename "${BASH_SOURCE[1]}" .bash)
+  local codeToPrepareMysqlHostHolder="_${bwProjShortcut}_codeToPrepareMysqlHost"
+  [[ -n ${!codeToPrepareMysqlHostHolder} ]] || return $(_throw "Значение ${_ansiOutline}$codeToPrepareMysqlHostHolder${_ansiErr} не определено")
+
+  eval "$bwProjShortcut"'_mysqlParams=(
+    !--projDir/p=
+    '\''--env:(local alpha stable)=local'\''
+    "${'"$bwProjShortcut"'_mysqlParamsAddon[@]}"
+    --execute/e=
+    --database/D=
+    --skip-column-names/N
+    --batch/B
+    --auto-rehash/a
+    --write
+  )'
+  eval "$bwProjShortcut"'_mysql_env_description='\''Среда'\'
+  eval "$bwProjShortcut"'_mysql_execute_description='\''Опция ${_ansiCmd}--execute${_ansiReset} команды ${_ansiCmd}mysql${_ansiReset}'\'
+  eval "$bwProjShortcut"'_mysql_database_description='\''Опция ${_ansiCmd}--database${_ansiReset} команды ${_ansiCmd}mysql${_ansiReset}'\'
+  eval "$bwProjShortcut"'_mysql_skipColumnNames_description='\''Опция ${_ansiCmd}--skip-column-names${_ansiReset} команды ${_ansiCmd}mysql${_ansiReset}'\'
+  eval "$bwProjShortcut"'_mysql_batch_description='\''Опция ${_ansiCmd}--batch${_ansiReset} команды ${_ansiCmd}mysql${_ansiReset}'\'
+  eval "$bwProjShortcut"'_mysql_autoRehash_description='\''Отключает опцию ${_ansiCmd}--no-auto-rehash${_ansiReset} команды ${_ansiCmd}mysql${_ansiReset}, по умолчанию, включенную'\'
+  eval "$bwProjShortcut"'_mysql_write_description='\''Зайти под логином с полномочиями на модификацию'\'
+  eval "$bwProjShortcut"'_mysql_description='\''Запускает mysql-клиент'\'
+  eval "$bwProjShortcut"'_mysql() { eval "$_funcParams2"
+    local it; [[ -n $execute ]] || it=true
+    queue=$$ it=$it eval "$_runInDockerContainer"
+    if [[ $env == local ]]; then
+      doWhat=_start_mysql eval "$_doOnceInContainer" || return $?
+    else
+      codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlHost eval "$_evalCode"
+      codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlLogin eval "$_evalCode"
+      [[ -n $host ]] || return $(_throw "ожидает, что ${_ansiOutline}_'"$bwProjShortcut"'_codeToPrepareMysqlLogin${_ansiErr} определит значение переменной ${_ansiOutline}host")
+    fi
+    _mysqlHelper
   }'
+  eval "_$bwProjShortcut"'_codeToPrepareMysqlLogin='\''
+    local accessLevel
+    if [[ -z $write ]]; then
+      accessLevel=readonly
+    else
+      accessLevel=readwrite
+    fi
+    local srcVarName="_'"$bwProjShortcut"'_${env}_${accessLevel}_login"
+    dstVarName=login eval "$_codeToInitLocalCopyOfArray"
+    if ! [[ ${#login[@]} -eq 3 && ( ${login[0]} == --user || ${login[0]} == -u ) && ${login[2]} =~ ^-p ]]; then
+      _debugVar $srcVarName
+      return $(_throw "Ожидает, что массив ${_ansiOutline}$srcVarName${_ansiErr} будет содержать три элемента, первый из которых будет ${_ansiPrimaryLiteral}--user${_ansiErr} или ${_ansiSecondaryLiteral}-u${_ansiErr}, а третий начинается на ${_ansiPrimaryLiteral}-p")
+    fi
+    local pwd="${login[@]: -1}"
+  '\'
+
+  eval "$bwProjShortcut"'_mysqldumpParams=( --canBeMoreParams )'
+  eval "$bwProjShortcut"'_mysqldumpParams=(
+    !--projDir/p=
+    '\''--env:(local alpha stable)=alpha'\''
+    "${'"$bwProjShortcut"'_mysqlParamsAddon[@]}"
+    --write
+    outputFileSpec
+    @1..mysqldumpParams
+  )'
+  eval "$bwProjShortcut"'_mysqldump_env_description='\''Среда'\'
+  eval "$bwProjShortcut"'_mysqldump_server_description='\''Сервер объявлений (adv) или брокеров (broker), актуально, если ${_ansiCmd}--env${_ansiReset} не ${_ansiPrimaryLiteral}local${_ansiReset}'\'
+  eval "$bwProjShortcut"'_mysqldump_shard_description='\''Номер шарда, актуально только для ${_ansiCmd}--server adv${_ansiReset}'\'
+  eval "$bwProjShortcut"'_mysqldump_write_description='\''Зайти под логином с полномочиями на модификацию'\'
+  eval "$bwProjShortcut"'_mysqldump_outputFileSpec_description='\''Путь относительно корня проекта к файлу, куда будет записан dump.'\'
+  eval "$bwProjShortcut"'_mysqldump_mysqldumpParams_description='\''параметров ${_ansiCmd}mysqldump${_ansiReset}'\'
+  eval "$bwProjShortcut"'_mysqldump_description='\''Запускает mysqldump'\'
+  eval "$bwProjShortcut"'_mysqldump() { eval "$_funcParams2"
+    if [[ $outputFileSpec =~ ^/ ]]; then
+      return $(_throw "ожидает, что параметр ${_ansiOutline}outputFileSpec${_ansiErr} будет путем ${_ansiOutline}относительно${_ansiErr} корня проекта")
+    fi
+    queue=$$ eval "$_runInDockerContainer"
+    if [[ $env == local ]]; then
+      doWhat=_start_mysql eval "$_doOnceInContainer" || return $?
+    else
+      codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlHost eval "$_evalCode"
+      codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlLogin eval "$_evalCode"
+    fi
+    _mysqldumpHelper
+  }'
+}
+_mysqlHelper() {
+  local -a OPT_noAutoRehash=(); [[ -z $execute && -z $autoRehash ]] && OPT_noAutoRehash=( --no-auto-rehash )
+  local -a mysqlParams=( "${OPT_database[@]}" "${OPT_skipColumnNames[@]}" "${OPT_noAutoRehash[@]}" "${OPT_batch[@]}" "${OPT_execute[@]}" )
+
+  if [[ -z $execute ]]; then
+    echo -n "${_nl}${_ansiWarn}ВНИМАНИЕ! Вы входите на сервер ${_ansiCmd}mysql:"
+    if [[ $env == local ]]; then
+      echo "root@localhost"
+    else
+      echo "${login[1]}@$host"
+      echo -n "${_ansiWarn}У Вас есть полномочия "
+      if [[ -z $write ]]; then
+        echo -n "только на ${_ansiOK}чтение"
+      else
+        echo -n "на ${_ansiOK}чтение${_ansiWarn} и ${_ansiErr}модификацию"
+      fi
+      echo "${_ansiReset}"
+    fi
+    echo "${_ansiWarn}Для выхода используйте команду ${_ansiCmd}quit;${_ansiReset}"
+  fi
+
+  local -a mysql_OPT
+  local mysqlPwd
+  if [[ $env == local ]]; then
+    mysqlPwd=root
+    mysql_OPT=( -u root )
+  else
+    mysqlPwd=${pwd:2}
+    mysql_OPT=( --host $host "${login[@]:0:2}")
+  fi
+
+  MYSQL_PWD="$mysqlPwd" _exec -v err mysql "${mysql_OPT[@]}" "${mysqlParams[@]}" 
+}
+
+_mysqldumpHelper() {
+  local -a mysqldump_OPT
+  local mysqlPwd
+  if [[ $env == local ]]; then
+    mysqlPwd=root
+    mysqldump_OPT=( -u root )
+  else
+    mysqlPwd="${pwd:2}"
+    mysqldump_OPT=( --host $host "${login[@]:0:2}" )
+  fi
+  local -a mysqldump=(mysqldump --skip-lock-tables "${mysqldump_OPT[@]}" "${mysqldumpParams[@]}")
+  MYSQL_PWD="$mysqlPwd" _spinner \
+    -t "Выполнение заняло" \
+    "$(_quotedArgs "${mysqldump[@]}" ) > $(_quotedArgs "$outputFileSpec")" \
+    _exec -v err --stdout "$projDir/$outputFileSpec" "${mysqldump[@]}"
 }
 
 _exec_sqlParamsOpt=( '--canBeMoreParams' )
 _exec_sqlParams=( 
-  'scriptName:( $(find "$HOME/proj/sql" -maxdepth 1 -name "*.sql" -exec basename {} .sql \; ) )'
+  'scriptName:( $(find "$HOME/proj/docker/mysql" -maxdepth 1 -name "*.sql" -exec basename {} .sql \; ) )'
 )
 _exec_sql() { eval "$_funcParams2"
   local fileSpec="sql/$scriptName.sql"
   if [[ -s $fileSpec ]]; then
     local sqlCommands
     read -d $'\x04' sqlCommands < "$fileSpec"
-    _inDir "$HOME/proj" _exec -v allBrief "${_mysql_root_cnf[@]}" --execute="${_nl}$sqlCommands${_nl}" "$@"
+    MYSQL_PWD=root _inDir "$HOME/proj/docker" _exec -v allBrief mysql -u root -e "${_nl}$sqlCommands${_nl}" "$@"
   fi
 }
 
@@ -1821,8 +2012,8 @@ _clear_mysql_dbParams=( 'dbName' )
 _clear_mysql_db() { eval "$_funcParams2"
   # https://dev.mysql.com/doc/refman/8.0/en/drop-database.html
   local scriptName="clear_database"
-  local fileSpec="$HOME/proj/sql/$scriptName.sql"
-  eval "${_mysql_root_cnf[@]}" -D "$dbName" "-BNe 'show tables'" | awk '{print "set foreign_key_checks=0; drop table if exists `" $1 "`;"}' > "$fileSpec"
+  local fileSpec="$HOME/proj/docker/mysql/$scriptName.sql"
+  MYSQL_PWD=root mysql -u root -D "$dbName" "-BNe 'show tables'" | awk '{print "set foreign_key_checks=0; drop table if exists `" $1 "`;"}' > "$fileSpec"
   if [[ -s $fileSpec ]]; then
     _exec_sql "$scriptName" -D "$dbName"
   fi
@@ -1833,32 +2024,32 @@ _start_mysql() {
   local returnCode=0
   while true; do
     # https://askubuntu.com/questions/482923/mysql-error-the-partition-with-var-lib-mysql-is-too-full/483136#483136
+    _exec --sudo sed -i.bak -Ee 's/^bind-address(\s*)=\s*127\.0\.0\.1/bind-address\1= 0.0.0.0/' /etc/mysql/my.cnf  || { returnCode=$?; break; }
+    echo "
+#https://airbladesoftware.com/notes/fixing-mysql-illegal-mix-of-collations/
+[mysqld]
+character-set-server=utf8
+collation-server=utf8_general_ci
+[client]
+default-character-set=utf8" | sudo tee -a /etc/mysql/my.cnf >/dev/null || { returnCode=$?; break; }
     _exec --sudo /etc/init.d/mysql start || { returnCode=$?; break; }
-    _exec_sql mysql_secure_installation || { returnCode=$?; break; } # https://gist.github.com/Mins/4602864
-    mysql_tzinfo_to_sql /usr/share/zoneinfo | "${_mysql_root_cnf[@]}" mysql
-    _exec_sql init_database || { returnCode=$?; break; }
+    local sqlCommands
+    read -d $'\x04' sqlCommands < "$_bwDir/docker/helper/mysql_secure_installation.sql"
+    MYSQL_PWD=root _inDir "$HOME/proj/docker" _exec -v allBrief mysql -u root -e "${_nl}$sqlCommands${_nl}" "$@"
+    mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD=root mysql -u root mysql
+    [[ ! -f $projDir/docker/mysql/init_database.sql ]] || _exec_sql init_database || { returnCode=$?; break; }
     break
   done
   return $returnCode
 }
 
-_npm_installParams=( 'bwProjShortcut:?' )
-_npm_install() {
-  _mkDir "$HOME/did" || return $?
-  local markerFileSpec="$HOME/did/npm_install"
-  if [[ ! -f "$markerFileSpec" ]]; then
-    [[ -n $bwProjShortcut ]] || bwProjShortcut="$(basename $BASH_SOURCE[1])"
-    # local npmInstallDirsHolder="$bwProjShortcut_npmInstallDirs"
-    dstVarName=npmInstallDirs srcVarName="_${bwProjShortcut}_npmInstallDirs" eval "$_codeToInitLocalCopyOfArray"
-
-    if [[ ${#npmInstallDirs[@]} -eq 0 ]]; then
-      _npm_installHelper
-    else 
-      local dir; for dir in "${npmInstallDirs[@]}"; do
-        _npm_installHelper "$dir" || return $?
-      done
-    fi
-    touch "$markerFileSpec" || return $?
+_npm_install() { 
+  if [[ $# -eq 0 ]]; then
+    _npm_installHelper
+  else 
+    local dir; for dir in "$@"; do
+      _npm_installHelper "$dir" || return $?
+    done
   fi
 }
 _npm_installHelper() {
@@ -1905,33 +2096,46 @@ _docker_build() { eval "$_funcParams2"
 # shellcheck disable=SC2034
 _docker_downParams=( 'projDir' )
 _docker_down() { eval "$_funcParams2"
-  if _exist "$projDir/docker/.docker-compose.yml"; then
+  if _exist "$projDir/docker/docker-compose.yml"; then
     local -a dockerCompose_OPT; _prepareDockerComposeOpt
     _dockerCompose "${dockerCompose_OPT[@]}" down --remove-orphans
+    _bwCleanTempDockerFiles
   fi
 }
 
+_bwCleanTempDockerFiles() {
+  rm -f *.pid *.queue
+}
+
 _prepareDockerComposeOpt() {
-  # local dockerComposeProjectName; dockerComposeProjectName="$(_shortenFileSpec "$(cd .. && pwd)")"
   local dockerComposeProjectName; dockerComposeProjectName="$(_shortenFileSpec "$projDir")"
   [[ $dockerComposeProjectName =~ ^~ ]] && dockerComposeProjectName=${dockerComposeProjectName:1}
-  dockerCompose_OPT=( -v all -p "$dockerComposeProjectName" -f '.docker-compose.yml' )
+  dockerCompose_OPT=( -v all -p "$dockerComposeProjectName" )
 }
 
 # shellcheck disable=SC2034
-_cmd_selfTestParams=(
-  '--http='
-  '--https='
-  '--upstream='
-  '--dockerImageName='
-  'bwProjShortcut'
-  'projDir'
-)
+_cmd_selfTestParams() {
+  _cmd_selfTestParams=()
+  local port; for port in "${_bwProjPorts[@]}" upstream; do
+    _cmd_selfTestParams+=( "--$port=" )
+  done
+  _cmd_selfTestParams+=(
+    '--dockerImageName='
+    'bwProjShortcut'
+    'projDir'
+  )
+}
 _cmd_selfTest() { eval "$_funcParams2"
   local returnCode=0
   while true; do
-    _exec -v all "$bwProjShortcut" docker up -f "${OPT_http[@]}" "${OPT_https[@]}" "${OPT_upstream[@]}" || { returnCode=$?; break; }
-    local tstFileSpec="/tmp/$bwProjShortcut.selfTest"
+    local -a OPT=()
+    local port; for port in "${_bwProjPorts[@]}" upstream; do
+      dstVarName=_OPT srcVarName="OPT_${port}" eval "$_codeToInitLocalCopyOfArray"
+      OPT+=( "${_OPT[@]}" )
+    done
+    _exec -v all "$bwProjShortcut" docker up -f "${OPT[@]}" || { returnCode=$?; break; }
+    _mkDir $projDir/tmp
+    local tstFileSpec="$projDir/tmp/$bwProjShortcut.selfTest"
     if [[ -n $http ]]; then
       _exec -v err curl -s "http://localhost:${http}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
       _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
@@ -1942,15 +2146,27 @@ _cmd_selfTest() { eval "$_funcParams2"
       _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
       rm "$tstFileSpec"
     fi
-    local funcName="_${bwProjShortcut}_selfTestAddOn"
+    if [[ -n $mysql ]]; then
+      _exec -v all "${bwProjShortcut}" mysql --env local -BN -e 'create database if not exists temp;' || { returnCode=$?; break; }
+      _exec -v all "${bwProjShortcut}" mysqldump --env local tmp/temp.dump temp || { returnCode=$?; break; }
+      _exec -v all "${bwProjShortcut}" mysql --env alpha -BN -e 'show databases;' || { returnCode=$?; break; }
+    fi
+    local funcName="_${bwProjShortcut}_selfTestAddon"
     if _funcExists "$funcName"; then
       "$funcName" || { returnCode=$?; break; }    
+    fi
+    if [[ -n $mysql ]]; then
+      _exec -v all "${bwProjShortcut}" mysql || { returnCode=$?; break; }
+    fi
+    if [[ -n $ssh ]]; then
+      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из ssh-сессии выполните команду ${_ansiCmd}exit${_ansiReset}"
+      _exec -v all ssh -p "$ssh" dev@localhost || { returnCode=$?; break; }    
     fi
     if [[ -n $dockerImageName ]]; then
       _exec -v all "$bwProjShortcut" docker shell || { returnCode=$?; break; }    
     fi
     if [[ -n $http || -n $https ]]; then
-      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}exit 0${_ansiReset}"
+      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}exit${_ansiReset}"
       _exec -v all "$bwProjShortcut" docker shell "nginx" || { returnCode=$?; break; }    
     fi
     _exec -v all "$bwProjShortcut" docker down || { returnCode=$?; break; }
@@ -1974,7 +2190,7 @@ _selfTestParams=(
 _selfTest() { eval "$_funcParams2"
   local queueFileSpec="$queue.queue"
   rm -f "$queueFileSpec"
-  _exec -v all $runCommand & 
+  ( _exec -v all $runCommand & )
   sleep $sleep
   _exist "$queueFileSpec" || return $?
   local returnCode=0
@@ -1984,24 +2200,32 @@ _selfTest() { eval "$_funcParams2"
   done
   local pid; read -r -d $'\x04' pid < "$queueFileSpec"
   local -a dockerCompose_OPT; _prepareDockerComposeOpt
-  _spinner -t "Отправка сигнала SIGINT в docker-контейнер заняла" "Отправка сигнала SIGINT в docker-контейнер" _dockerCompose "${dockerCompose_OPT[@]:2}" exec -T main "$_bwDevDockerEntryPointFileSpec" kill -SIGINT "$pid" 
+  # _spinner -t "Отправка сигнала SIGINT в docker-контейнер заняла" "Отправка сигнала SIGINT в docker-контейнер" _dockerCompose "${dockerCompose_OPT[@]:2}" exec -T main "$_bwDevDockerEntryPointFileSpec" kill -SIGINT "$pid" 
+  _spinner \
+    -t "Отправка сигнала SIGINT в docker-контейнер заняла" \
+    "Отправка сигнала SIGINT в docker-контейнер" \
+    _dockerCompose "${dockerCompose_OPT[@]:2}" exec -T main \
+      kill -SIGINT "$pid" 
   return $returnCode
 }
 
 # shellcheck disable=SC2034
-_docker_upParams=(
-  '--force-recreate/f'
-  '--http='
-  '--https='
-  '--upstream='
-  '--dockerImageName='
-  '--bwProjShortcut='
-  '--bwProjName='
-  '@--restart'
-  '--noCheck'
-  '--noTestAccessMessage/m'
-  '@1..dockerComposeFileNames'
-)
+_docker_upParams() {
+  _docker_upParams=()
+  local port; for port in "${_bwProjPorts[@]}" upstream; do
+    _docker_upParams+=( "--$port=" )
+  done
+  _docker_upParams+=(
+    '--force-recreate/f'
+    '--dockerImageName='
+    '--bwProjShortcut='
+    '--bwProjName='
+    '@--restart'
+    '--noCheck'
+    '--noTestAccessMessage/m'
+    '@1..dockerComposeFileNames'
+  )
+}
 _docker_up() { eval "$_funcParams2"
   local returnCode=0
   while true; do
@@ -2064,14 +2288,15 @@ _docker_up() { eval "$_funcParams2"
     fi
 
     local -a _prepareDockerComposeYml_OPT=(
-      "${OPT_http[@]}" 
-      "${OPT_https[@]}"
-      "${OPT_upstream[@]}"
       "${OPT_dockerImageName[@]}"
       "${OPT_bwProjShortcut[@]}"
       "${OPT_dockerImageName[@]}"
     )
-    _prepareDockerComposeYml "${_prepareDockerComposeYml_OPT[@]}" "${dockerComposeFileNames[@]}"  || { returnCode=$?; break; }
+    local port; for port in "${_bwProjPorts[@]}" upstream; do
+      dstVarName=_OPT srcVarName="OPT_${port}" eval "$_codeToInitLocalCopyOfArray"
+      _prepareDockerComposeYml_OPT+=( "${_OPT[@]}" )
+    done
+    _prepareDockerComposeYml "${_prepareDockerComposeYml_OPT[@]}" "${dockerComposeFileNames[@]}" || { returnCode=$?; break; }
 
     local -a dockerCompose_OPT; _prepareDockerComposeOpt
     if [[ "${#restart[@]}" -gt 0 ]]; then
@@ -2105,14 +2330,46 @@ _docker_up() { eval "$_funcParams2"
           echo "$msg"
         fi
       fi
+    elif [[ -n $forceRecreate ]]; then
+      _bwCleanTempDockerFiles
     fi
     rm -f "$fileSpec"
     [[ $returnCode -eq 0 ]] || break
 
+    if [[ -n $dockerImageName ]]; then
+      local -a dockerCompose_OPT; _prepareDockerComposeOpt
+      # _inDir -v none "$projDir/docker" 
+      _runInDockerContainer_outOfDockerHelper || { returnCode=$?; break; }
+    fi
+
     if [[ ( -n $http || -n $https ) && -z $noTestAccessMessage ]]; then
+      _mkDir nginx/whoami
+      {
+      echo -n "<pre>"
+      echo -n "
+  projName: ${bwProjName}
+  projShortcut: ${bwProjShortcut}
+  projDir: $(_shortenFileSpec $(cd .. && pwd))
+  ssh: ${ssh}
+  http: ${http}
+  https: ${https}"
+      [[ -z $mysql ]] || echo -n "
+  mysql: ${mysql}"
+      [[ -z $postresql ]] || echo -n "
+  postresql: ${postresql}"
+      [[ -z $elastic ]] || echo -n "
+  elastic: ${elastic}"
+      echo "${_nl}</pre>"
+      } > nginx/whoami/index.html
+
       echo "Проверка доступности docker-приложения:"
       [[ -z $http ]] || echo "  ${_ansiUrl}http://localhost:$http/whoami/${_ansiReset}"
       [[ -z $https ]] || echo "  ${_ansiUrl}https://localhost:$https/whoami/${_ansiReset}"
+      [[ -z $ssh ]] || echo "  ${_ansiCmd}ssh -p $ssh dev@localhost${_ansiReset}"
+    fi
+
+    if [[ -n $ssh ]]; then
+      _prepareSsh
     fi
 
     break
@@ -2125,10 +2382,28 @@ _prepareProjPrompt() {
     --additionalDependencies "$_bwFileSpec"
     --additionalDependencies "$_bwDir/bash/psSupport.bash" 
   )
-  _useCache "${OPT[@]}" "$promptHolder"
+  _useCache "${OPT[@]}" "$promptHolder"; local returnCode=$?; [[ $returnCode -eq 2 ]] || return $returnCode
   local prompt; _preparePrompt --user "$bwProjShortcut" --userAnsi PrimaryLiteral --gitDirty - || return $?
   eval "$promptHolder"'="$prompt"'
   _saveToCache "$promptHolder"
+}
+_prepareSsh() {
+  if [[ ! -f ~/.ssh/bw_dev_id_rsa ]]; then
+    local returnCode=0
+    while true; do
+      _exec -v err cp "$_bwDir/ssh/bw_dev_id_rsa" ~/.ssh || { returnCode=$?; break; }
+      _exec -v err chmod 600 ~/.ssh/bw_dev_id_rsa || { returnCode=$?; break; }
+      _exec -v err --append ~/.ssh/config echo "
+# added by bw.bash (_prepareSsh@$_bwDir/bash/bwCommands.bash)
+Host localhost
+User dev
+IdentityFile ~/.ssh/bw_dev_id_rsa" || { returnCode=$?; break; }
+      break
+    done
+    if [[ $returnCode -ne 0 ]]; then
+      _warn "Могут быть проблемы с ssh-доступом к docker-контейнеру"
+    fi
+  fi
 }
 
 # shellcheck disable=SC2034
@@ -2142,6 +2417,7 @@ _docker_shell() { eval "$_funcParams2"
     OPT+=( --init-file "$_bwDevDockerEntryPointFileSpec" )
   fi
   local -a dockerCompose_OPT; _prepareDockerComposeOpt
+  # _dockerCompose "${dockerCompose_OPT[@]}" exec "$serviceName" "$shell" "${OPT[@]}"
   _dockerCompose "${dockerCompose_OPT[@]}" exec "$serviceName" "$shell" "${OPT[@]}"
 }
 
@@ -2156,7 +2432,7 @@ _dockerComposeContainerNamesParams=(
 _dockerComposeContainerNames() { eval "$_funcParams2"
   local projDir="$*"
   _prepareProjDir "$bwProjShortcut" || return $?
-  [[ -f $projDir/docker/.docker-compose.yml ]] \
+  [[ -f $projDir/docker/docker-compose.yml ]] \
     || "_${bwProjShortcut}_prepareDockerComposeYml" -p "$projDir" \
     || return $?
   if [[ -n $varName ]]; then
@@ -2167,7 +2443,7 @@ _dockerComposeContainerNames() { eval "$_funcParams2"
   fi
 }
 _dockerComposeContainerNamesHelper() {
-  sed -nEe 's/^[ \t]*container_name:[ \t]*([^ \t]*)/\1/p' "$projDir/docker/.docker-compose.yml"
+  sed -nEe 's/^[ \t]*container_name:[ \t]*([^ \t]*)/\1/p' "$projDir/docker/docker-compose.yml"
 }
 
 # shellcheck disable=SC2034
@@ -2181,7 +2457,7 @@ _dockerComposeServiceNamesParams=(
 _dockerComposeServiceNames() { eval "$_funcParams2"
   local projDir="$*"
   _prepareProjDir "$bwProjShortcut" || return $?
-  [[ -f $projDir/docker/.docker-compose.yml ]] \
+  [[ -f $projDir/docker/docker-compose.yml ]] \
     || "_${bwProjShortcut}_prepareDockerComposeYml" -p "$projDir" \
     || return $?
   if [[ -n $varName ]]; then
@@ -2192,7 +2468,7 @@ _dockerComposeServiceNames() { eval "$_funcParams2"
   fi
 }
 _dockerComposeServiceNamesHelper() {
-  _dockerCompose -f  "$projDir/docker/.docker-compose.yml" config --services
+  _dockerCompose -f  "$projDir/docker/docker-compose.yml" config --services
 }
 
 _defaultDockerComposeServiceNameParamsOpt=( '--canBeMoreParams' )
@@ -2209,14 +2485,17 @@ _defaultDockerComposeServiceName() { eval "$_funcParams2"
 }
 
 # shellcheck disable=SC2034
-_prepareDockerComposeYmlParams=(
-  '--http='
-  '--https='
-  '--upstream='
-  '--dockerImageName='
-  '--bwProjShortcut='
-  '@1..dockerComposeFileNames'
-)
+_prepareDockerComposeYmlParams() {
+  _prepareDockerComposeYmlParams=()
+  local port; for port in "${_bwProjPorts[@]}" upstream; do
+    _prepareDockerComposeYmlParams+=( "--$port=" )
+  done
+  _prepareDockerComposeYmlParams+=(
+    '--dockerImageName='
+    '--bwProjShortcut='
+    '@1..dockerComposeFileNames'
+  )
+}
 _prepareDockerComposeYml() { eval "$_funcParams2"
   local returnCode=0
   while true; do
@@ -2226,16 +2505,18 @@ _prepareDockerComposeYml() { eval "$_funcParams2"
       _prepareProjPrompt || return $?
       local dockerContainerEnvFileName="main.env"
       { 
-        echo "# file generated by $bwProjShortcut_docker_up"
-        echo "_isBwDevelopInherited=$_isBwDevelop"
-        echo "BW_SELF_UPDATE_SOURCE=$BW_SELF_UPDATE_SOURCE"
-        echo "_bwProjName=$bwProjName"
-        echo "_bwProjShortcut=$bwProjShortcut"
-        echo "_hostUser=$(whoami)"
-        [[ -z $http ]] || echo "_http=$http"
-        [[ -z $https ]] || echo "_https=$https"
-        [[ -z $upstream ]] || echo "_upstream=$upstream"
-        echo "_prompt=${!promptHolder}"
+        echo "#!/bin/bash"
+        echo "# file generated by ${bwProjShortcut}_docker_up"
+        echo "export _isBwDevelopInherited=$_isBwDevelop"
+        echo "export BW_SELF_UPDATE_SOURCE=$BW_SELF_UPDATE_SOURCE"
+        echo "export _bwProjName=$bwProjName"
+        echo "export _bwProjShortcut=$bwProjShortcut"
+        echo "export _hostUser=$(whoami)"
+        local port; for port in "${_bwProjPorts[@]}"; do
+          [[ -n ${!port} ]] || continue
+          echo "export _${port}=${!port}"
+        done
+        echo "export _prompt='${!promptHolder}'"
 
         local addonFuncName="_${bwProjShortcut}_docker_upAddon"
         if _funcExists "$addonFuncName"; then 
@@ -2282,9 +2563,9 @@ _prepareDockerComposeYml() { eval "$_funcParams2"
     fi
 
     local -a config_OPT=()
-    dockerComposeFileNames+=( "docker-compose.yml" )
+    dockerComposeFileNames+=( "docker-compose.proj.yml" )
     local dockerComposeFileName; for dockerComposeFileName in "${dockerComposeFileNames[@]}"; do
-      if [[ $dockerComposeFileName != 'docker-compose.yml' ]]; then
+      if [[ $dockerComposeFileName != 'docker-compose.proj.yml' ]]; then
         local srcFileSpec="$_bwDir/docker/helper/$dockerComposeFileName"
         _exec -v err cp -f "$srcFileSpec" "$dockerComposeFileName" || { returnCode=$?; break; }
       fi
@@ -2299,16 +2580,10 @@ _prepareDockerComposeYml() { eval "$_funcParams2"
 
       _mkFileFromTemplate -n -e .yml "$dockerComposeFileName"
 
-      config_OPT+=( -f "$dockerComposeFileName" )
+      config_OPT+=( -f "$projDir/docker/$dockerComposeFileName" )
     done
 
-    local -a dockerCompose_OPT; _prepareDockerComposeOpt
-
-    if [[ "${#restart[@]}" -gt 0 && -f ".docker-compose.yml" ]]; then
-      _dockerCompose "${dockerCompose_OPT[@]}" stop "${restart[@]}" || { returnCode=$?; break; }
-    fi
-
-    _dockerCompose -v err "${config_OPT[@]}" config > '.docker-compose.yml' || { returnCode=$?; break; }
+    _dockerCompose -v err "${config_OPT[@]}" config > 'docker-compose.yml' || { returnCode=$?; break; }
     break
   done
   return $returnCode
@@ -2397,14 +2672,28 @@ _prepareDuplicatePorts() {
   local i; for ((i=0; i<${#_bwProjDefs[@]}; i+=2)); do
     local bwProjShortcut="${_bwProjDefs[$i]}"
     codeHolder=_codeToCallPrepareBwProjVarsHelper eval "$_evalCode"
-    if [[ -n $bwProjDefaultHttp ]]; then
-      eval local "__usedPort$bwProjDefaultHttp"
-      eval "__usedPort$bwProjDefaultHttp"'=$(( __usedPort$bwProjDefaultHttp + 1 ))'
-    fi
-    if [[ -n $bwProjDefaultHttps ]]; then
-      eval local "__usedPort$bwProjDefaultHttps"
-      eval "__usedPort$bwProjDefaultHttps"'=$(( __usedPort$bwProjDefaultHttps + 1 ))'
-    fi
+    local port; for port in "${_bwProjPorts[@]}"; do
+      local Port=$(_upperFirst $port)
+      local bwProjDefaultPort="bwProjDefault$Port"
+      eval local "__usedPort${!bwProjDefaultPort}"
+      eval "__usedPort${!bwProjDefaultPort}"'=$(( __usedPort'"${!bwProjDefaultPort}"' + 1 ))'
+    done
+    # if [[ -n $bwProjDefaultSsh ]]; then
+    #   eval local "__usedPort$bwProjDefaultHttp"
+    #   eval "__usedPort$bwProjDefaultSsh"'=$(( __usedPort$bwProjDefaultSsh + 1 ))'
+    # fi
+    # if [[ -n $bwProjDefaultHttp ]]; then
+    #   eval local "__usedPort$bwProjDefaultHttp"
+    #   eval "__usedPort$bwProjDefaultHttp"'=$(( __usedPort$bwProjDefaultHttp + 1 ))'
+    # fi
+    # if [[ -n $bwProjDefaultHttps ]]; then
+    #   eval local "__usedPort$bwProjDefaultHttps"
+    #   eval "__usedPort$bwProjDefaultHttps"'=$(( __usedPort$bwProjDefaultHttps + 1 ))'
+    # fi
+    # if [[ -n $bwProjDefaultMysql ]]; then
+    #   eval local "__usedPort$bwProjDefaultMysql"
+    #   eval "__usedPort$bwProjDefaultMysql"'=$(( __usedPort$bwProjDefaultMysql + 1 ))'
+    # fi
   done
   duplicatePorts=()
   local prefix=__usedPort
@@ -2429,23 +2718,45 @@ _bwProjectInfoHelper() {
       echo "${_ansiWarn}$branch${_ansiReset}"
     fi
 
-    echo -n "  http: "
-    if [[ -z $bwProjDefaultHttp || $bwProjDefaultHttp -eq "$bwProjGlobalDefaultHttp" ]]; then
-      echo "${_ansiWarn}$bwProjGlobalDefaultHttp${_ansiReset}"
-    elif _hasItem "$bwProjDefaultHttp" "${duplicatePorts[@]}"; then
-      echo "${_ansiWarn}$bwProjDefaultHttp${_ansiReset}"
-    else
-      echo "$bwProjDefaultHttp"
-    fi
+    local port; for port in "${_bwProjPorts[@]}"; do
+      local Port=$(_upperFirst "$port")
+      local bwProjDefaultPort="bwProjDefault$Port"
+      if [[ -n ${!bwProjDefaultPort} ]]; then
+        echo -n "  $port: "
+        if _hasItem "${!bwProjDefaultPort}" "${duplicatePorts[@]}"; then
+          echo "${_ansiWarn}${!bwProjDefaultPort}${_ansiReset}"
+        else
+          echo "${!bwProjDefaultPort}"
+        fi
+      fi
+    done
 
-    echo -n "  https: "
-    if [[ -z $bwProjDefaultHttps || $bwProjDefaultHttps -eq "$bwProjGlobalDefaultHttps" ]]; then
-      echo "${_ansiWarn}$bwProjGlobalDefaultHttps${_ansiReset}"
-    elif _hasItem "$bwProjDefaultHttps" "${duplicatePorts[@]}"; then
-      echo "${_ansiWarn}$bwProjDefaultHttps${_ansiReset}"
-    else
-      echo "$bwProjDefaultHttps"
-    fi
+    # echo -n "  ssh: "
+    # if [[ -z $bwProjDefaultSsh || $bwProjDefaultSsh -eq "$bwProjGlobalDefaultSsh" ]]; then
+    #   echo "${_ansiWarn}$bwProjGlobalDefaultSsh${_ansiReset}"
+    # elif _hasItem "$bwProjDefaultSsh" "${duplicatePorts[@]}"; then
+    #   echo "${_ansiWarn}$bwProjDefaultSsh${_ansiReset}"
+    # else
+    #   echo "$bwProjDefaultSsh"
+    # fi
+
+    # echo -n "  http: "
+    # if [[ -z $bwProjDefaultHttp || $bwProjDefaultHttp -eq "$bwProjGlobalDefaultHttp" ]]; then
+    #   echo "${_ansiWarn}$bwProjGlobalDefaultHttp${_ansiReset}"
+    # elif _hasItem "$bwProjDefaultHttp" "${duplicatePorts[@]}"; then
+    #   echo "${_ansiWarn}$bwProjDefaultHttp${_ansiReset}"
+    # else
+    #   echo "$bwProjDefaultHttp"
+    # fi
+
+    # echo -n "  https: "
+    # if [[ -z $bwProjDefaultHttps || $bwProjDefaultHttps -eq "$bwProjGlobalDefaultHttps" ]]; then
+    #   echo "${_ansiWarn}$bwProjGlobalDefaultHttps${_ansiReset}"
+    # elif _hasItem "$bwProjDefaultHttps" "${duplicatePorts[@]}"; then
+    #   echo "${_ansiWarn}$bwProjDefaultHttps${_ansiReset}"
+    # else
+    #   echo "$bwProjDefaultHttps"
+    # fi
 
   else
     local -a projDirs; _prepareProjDirs "$bwProjShortcut" || return $?
@@ -2773,7 +3084,9 @@ _bw_install_rootCert_usingCertutilParams=(
 _bw_install_rootCert_usingCertutil() { eval "$_funcParams2"
   local -a cert8Dirs; 
   local -a cert9Dirs; 
-  _spinner "Поиск файлов cert8.db cert9.db" _bw_install_rootCert_prepareCertDirs
+  _spinner \
+    "Поиск файлов cert8.db cert9.db" \
+    _bw_install_rootCert_prepareCertDirs
   if [[ ${#cert8Dirs[@]} -gt 0 || ${#cert9Dirs[@]} -gt 0 ]]; then
     bw_install certutil --silentIfAlreadyInstalled || return $?
     # local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TCu,Cu,Tu" -i "${_bwCertFile}")
@@ -2995,7 +3308,10 @@ _bw_run_dockerDarwin() {
     local -r appDir="${applicationsPath}/${appName}.app"
     [[ -d $appDir ]] || _installDocker || { returnCode=$?; break; }
     _exec -v err --silent --untilSuccessSleep=1 open -a "$appName" || { returnCode=$?; break; } # http://osxdaily.com/2007/02/01/how-to-launch-gui-applications-from-the-terminal/
-    _spinner "Ожидание запуска ${_ansiPrimaryLiteral}$appName${_ansiReset}" _bw_run_dockerDarwinHelper || { returnCode=$?; break; }
+    _spinner \
+      "Ожидание запуска ${_ansiPrimaryLiteral}$appName${_ansiReset}" \
+      _bw_run_dockerDarwinHelper \
+      || { returnCode=$?; break; }
     break
   done
 }

@@ -169,7 +169,7 @@ _upperCamelCaseToKebabCase() { # https://stackoverflow.com/questions/28795479/aw
 }
 
 _funcExists() {
-  [[ $(type -t "$1") == 'function' ]]
+  [[ $(type -t -- "$1") == 'function' ]]
 }
 
 _getUniqArray() {

@@ -1,6 +1,0 @@
-version: '2'
-services:
-  nginx:
-    ports:
-      - ${http}:80
-      - ${https}:443

@@ -117,13 +117,13 @@ bwdev profile bw bt _rm 0
 ## Установка для отладки в той же системе
 
 ```
-curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && . bw.bash -u localhost:${_bwdevDockerHttp:-8998} bw bt
+curl -O localhost:8002/bw.bash && . bw.bash -u localhost:8002 bw bt
 ```
 
 или
 
 ```
-curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:${_bwdevDockerHttp:-8998} . bw.bash bw bt
+curl -O localhost:8002/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8002 . bw.bash bw bt
 ```
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
@@ -131,13 +131,13 @@ curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=loc
 ## Установка для отладки в гостевой системе под Parallels
 
 ```
-curl -o ~/bw.bash -L 10.211.55.2:8998/bw.bash && . ~/bw.bash -u 10.211.55.2:8998 bw bt
+curl -o ~/bw.bash -L 10.211.55.2:8002/bw.bash && . ~/bw.bash -u 10.211.55.2:8002 bw bt
 ```
 
 или
 
 ```
-curl -o ~/10.211.55.2:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=10.211.55.2:${_bwdevDockerHttp:-8998} . ~/bw.bash bw bt
+curl -o ~/10.211.55.2:8002/bw.bash && BW_SELF_UPDATE_SOURCE=10.211.55.2:8002 . ~/bw.bash bw bt
 ```
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
@@ -151,13 +151,13 @@ BW_VERBOSE=true . bw.bash -p - 'bw rm -y && . bw.bash bw bt && bw rm -y'; compge
 ## Отладка самобновления
 
 ```
-curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && . bw.bash -u localhost:${_bwdevDockerHttp:-8998} 'rm -rf .bw; . bw.bash bw bt'
+curl -O localhost:8002/bw.bash && . bw.bash -u localhost:8002 'rm -rf .bw; . bw.bash bw bt'
 ```
 
 или
 
 ```
-curl -O localhost:${_bwdevDockerHttp:-8998}/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:${_bwdevDockerHttp:-8998} . bw.bash 'rm -rf .bw; . bw.bash bw bt'
+curl -O localhost:8002/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8002 . bw.bash 'rm -rf .bw; . bw.bash bw bt'
 ```
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)

@@ -3,7 +3,7 @@
 # =============================================================================
 # =============================================================================
 
-_entrypoint() {
+_init() {
   if [[ ! -f /tmp/owned ]]; then
     local cmdTitle="${_ansiCmd}sudo chown -R dev $HOME${_ansiReset}"
     _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
@@ -12,17 +12,42 @@ _entrypoint() {
       touch /tmp/owned
     else
       _err "$cmdTitle"
-      exit $returnCode
+      return $returnCode
     fi
   fi
 
-  # https://www.gnu.org/software/bash/manual/html_node/Is-this-Shell-Interactive_003f.html
-  [[ $- =~ i ]] && . "$HOME/.bashrc"
+  if [[ ! -f /tmp/sshd ]]; then
+    sudo /etc/init.d/ssh start
+    touch /tmp/sshd
+  fi
+
+  if [[ $- =~ i ]]; then 
+    . "$HOME/.bashrc" || return $?
+  else
+    . "$HOME/._bashrc" || return $?
+  fi
 
   [[ -n $_bwFileSpec ]] || . "$HOME/bw.bash" -p - || return $?
-  . "$HOME/proj/bin/$_bwProjShortcut.bash" || return $?
+  . "$HOME/proj/bin/${_bwProjShortcut}.bash" || return $?
 
-  if [[ $# -eq 0 ]]; then
+  local funcName="_${_bwProjShortcut}_init"
+  if _funcExists "$funcName" && [[ ! -f /tmp/init ]]; then
+    $funcName || return $?
+    touch /tmp/init
+  fi
+}
+
+_entrypoint() {
+  if [[ $# -gt 0 ]]; then
+    local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
+    echo $PPID > "$pidFileSpec"
+  fi
+
+  _init || return $?
+
+  if [[ $# -gt 0 ]]; then
+    eval "$(_quotedArgs "$@")"
+  elif [[ $- =~ i ]]; then
     alias q='exit 0'
     PS1="$_prompt"
 
@@ -35,18 +60,14 @@ _entrypoint() {
     fi
 
     echo "
-  ${_ansiPrimaryLiteral}$_hostUser${_ansiOK}, Вы вошли в Docker-контейнер ${_ansiPrimaryLiteral}$_bwProjShortcut${_ansiOK} проекта ${_ansiSecondaryLiteral}$_bwProjName
-  ${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}q
-  ${_ansiReset}В Docker-контейнере доступна команда ${_ansiCmd}$_bwProjShortcut${_ansiReset}"
+${_ansiPrimaryLiteral}$_hostUser${_ansiOK}, Вы вошли в Docker-контейнер ${_ansiPrimaryLiteral}$_bwProjShortcut${_ansiOK} проекта ${_ansiSecondaryLiteral}$_bwProjName
+${_ansiReset}В Docker-контейнере доступна команда ${_ansiCmd}$_bwProjShortcut${_ansiReset}"
 
-    "$_bwProjShortcut" update -c
-    "$_bwProjShortcut" -?
-  elif [[ $1 == kill ]]; then
-    eval "$@"
-  else
-    local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
-    echo $PPID > "$pidFileSpec"
-    eval "$@"
+  "$_bwProjShortcut" update -c
+  "$_bwProjShortcut" -?
+
+    echo "
+${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}q"
   fi
 }
 

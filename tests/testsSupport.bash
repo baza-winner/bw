@@ -20,7 +20,7 @@ bw_bashTestsHelper() {
   local -a fileNamesToProcess=()
   local -a funcsWithTests=();
 
-  export _bwdevDockerHttp="${_bwdevDockerHttp:-8998}"
+  export _bwdevDockerHttp="${_bwdevDockerHttp:-8002}"
 
   local fileSpec; for fileSpec in "$testsDirSpec/testsSupport.bash"; do
     fileNamesToProcess+=( $(basename "$fileSpec") )
