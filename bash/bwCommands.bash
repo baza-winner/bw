@@ -35,6 +35,26 @@ _bw_project_dubu() {
 # =============================================================================
 
 _bwProjDefs+=(
+  'dubu18' '
+    --gitOrigin github.com:baza-winner/dev-ubuntu18.git
+    --branch master
+    --docker-image-name bazawinner/dev-ubuntu18
+    --ssh 2206
+    --http 8006
+    --https 4406
+    --docker-compose "docker-compose.nginx.yml"
+    --docker-compose "docker-compose.main.yml"
+  '
+)
+
+# shellcheck disable=SC2154
+_bw_project_dubu18() {
+  _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+}
+
+# =============================================================================
+
+_bwProjDefs+=(
   'bwdev' '
     --gitOrigin github.com:baza-winner/bw.git
     --branch develop
@@ -44,29 +64,6 @@ _bwProjDefs+=(
     --docker-compose "docker-compose.nginx.yml"
   '
 )
-
-# =============================================================================
-
-# _bwProjDefs+=(
-#   'dnvm' '
-#     --gitOrigin github.com:baza-winner/dev-nvm.git
-#     --branch master
-#     --docker-image-name bazawinner/dev-nvm
-#     --ssh 2202
-#     --http 8994
-#     --https 8995
-#     --docker-compose "docker-compose.nginx.yml"
-#     --docker-compose "docker-compose.main.yml"
-#   '
-# )
-
-# =============================================================================
-
-# # shellcheck disable=SC2154
-# _bw_project_dnvm() {
-#   # _exec "${sub_OPT[@]}" git submodule init
-#   _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
-# }
 
 # =============================================================================
 
@@ -92,12 +89,14 @@ _bw_project_bgate() {
 # =============================================================================
 
 _bwProjDefs+=(
+    # --branch develop
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch develop
+    --branch feature/docker
     --ssh 2204
     --http 8004
     --https 4404
+    --mysql 3304
     --upstream 3000
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
@@ -123,9 +122,10 @@ _bwProjDefs+=(
 # =============================================================================
 
 _bwProjDefs+=(
+    # --branch develop
   'mls' '
     --gitOrigin github.com:baza-winner/mls-pm.git
-    --branch develop
+    --branch feature/MLS-1540
     --ssh 2207
     --http 8007
     --https 4407
@@ -141,12 +141,14 @@ _bwProjDefs+=(
 # =============================================================================
 
 _bwProjDefs+=(
+    # --branch develop
   'dip' '
     --gitOrigin github.com:baza-winner/dip2.git
-    --branch develop
+    --branch feature/docker
     --ssh 2208
     --http 8008
     --https 4408
+    --mysql 3308
     --upstream 3000
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
@@ -878,8 +880,8 @@ _showResult() {
 }
 
 _showProjectResult() {
-  toFolder="в папку ${_ansiFileSpec}$folder"
-  fromFolder="из папки ${_ansiFileSpec}$folder"
+  toFolder="в папку ${_ansiFileSpec}$(_shortenFileSpec "$folder")"
+  fromFolder="из папки ${_ansiFileSpec}$(_shortenFileSpec "$folder")"
   titlePrefix=проект didInstall="установлен $toFolder" didUninstall="удален $fromFolder" toInstall="установить $toFolder" toUninstall="полностью удалить $fromFolder" _showResult
 }
 
@@ -1063,7 +1065,7 @@ bw_project() { eval "$_funcParams2"
             projDir="$(_shortenFileSpec "$projDir")"
             local cmd="${FUNCNAME[0]//_/ } $bwProjShortcut"
             local msg=
-            msg+="Проект ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} уже установлен в ${_ansiFileSpec}$projDir${_ansiWarn}$_nl"
+            msg+="Проект ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} уже установлен в ${_ansiFileSpec}$(_shortenFileSpec "$projDir")${_ansiWarn}$_nl"
             msg+="Перед повторной установкой его необходимо удалить командой$_nl"
             msg+="  ${_ansiCmd}$cmd -u $(_quotedArgs "projDir")${_ansiWarn}$_nl"
             msg+="или установить с опцией ${_ansiCmd}--force${_ansiWarn}:$_nl"
@@ -1097,11 +1099,11 @@ bw_project() { eval "$_funcParams2"
               _rm "${sub_OPT[@]}" -d "$projDir" \
                 || { returnCode=$?; break; }
             else
-              _err "Папка ${_ansiCmd}$projDir${_ansiErr} существует и непуста. Ее надо предварительно удалить вручную" \
+              _err "Папка ${_ansiCmd}$(_shortenFileSpec "$projDir")${_ansiErr} существует и непуста. Ее надо предварительно удалить вручную" \
                 || { returnCode=$?; break; }
             fi
           else
-            _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle"
+            _warn "Папка ${_ansiCmd}$(_shortenFileSpec "$projDir")${_ansiWarn} уже содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle"
             _exec "${sub_OPT[@]}" cd "$projDir" || { returnCode=$?; break; }
             _hasItem "$gitDirty" '?' '*' '+' '^' || _exec "${sub_OPT[@]}" git pull
             break
@@ -1136,7 +1138,7 @@ bw_project() { eval "$_funcParams2"
               _rm "${sub_OPT[@]}" -d "$projDir" \
                 || { returnCode=$?; break; }
             else
-              _warn "Папка ${_ansiCmd}$projDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn}; оставлена для ручного удаления"
+              _warn "Папка ${_ansiCmd}$(_shortenFileSpec "$projDir")${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn}; оставлена для ручного удаления"
             fi
           elif _hasItem "$gitDirty" '?' '*' '+'; then
             _err "Репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} содержит изменения, проверьте ${_ansiCmd}git status" \
@@ -1259,9 +1261,9 @@ _initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
-  eval "_$bwProjShortcut"'FileSpec="$fileSpec"'
-  local bwProjDirHolder="_${bwProjShortcut}Dir"
-  _realpath -v "$bwProjDirHolder" "$(dirname "$fileSpec")/.."
+  # eval "_$bwProjShortcut"'FileSpec="$fileSpec"'
+  # local bwProjDirHolder="_${bwProjShortcut}Dir"
+  # _realpath -v "$bwProjDirHolder" "$(dirname "$fileSpec")/.."
   eval export "_$bwProjShortcut"'DockerImageName="${bwProjDockerImageName:-bazawinner/dev-$bwProjShortcut}"'
   local -a funcNamesToRegen=()
   mapfile -t funcNamesToRegen < <( _getFuncNamesOfScriptToUnset "${BASH_SOURCE[1]}")
@@ -1516,7 +1518,7 @@ _prepareProjDir() { eval "$_funcParams2"
       return 1
     else
       # shellcheck disable=SC2046
-      return $(_throw "Папка ${_ansiFileSpec}$projDir${_ansiErr} не содержит проект ${_ansiPrimaryLiteral}$bwProjShortcut${_ansiErr}: не обнаружена папка ${_ansiFileSpec}$dockerDirSpec")
+      return $(_throw "Папка ${_ansiFileSpec}$(_shortenFileSpec "$projDir")${_ansiErr} не содержит проект ${_ansiPrimaryLiteral}$bwProjShortcut${_ansiErr}: не обнаружена папка ${_ansiFileSpec}$dockerDirSpec")
     fi
   fi
 }
@@ -1693,18 +1695,9 @@ _cmd_updateParams=(
   'sourceFileSpec'
 )
 _cmd_update() { eval "$_funcParams2"
-  local sourceFileSpec
-  if _isInDocker; then
-    sourceFileSpec="$HOME/proj/bin/${bwProjShortcut}.bash"
-  else
-    local sourceFileSpecHolder="_${bwProjShortcut}FileSpec"
-    sourceFileSpec=${!sourceFileSpecHolder}
-  fi
   if [[ -z $completionOnly ]]; then
     local -a OPT=()
-    if [[ -n $noPregen ]]; then
-      OPT=( -p - )
-    fi
+    [[ -z $noPregen ]] || OPT=( -p - )
     . "$_bwFileSpec" "${OPT[@]}" || return $?
     . "$sourceFileSpec" || return $?
     rm -f "$_bwDir/generated/$bwProjShortcut"*
@@ -1803,7 +1796,7 @@ _declare_test_js() { eval "$_funcParams2"
     --noCoverage/c
     !--projDir/p=
     "${'"$bwProjShortcut"'_prepareParams[@]}"
-    "${'"$bwProjShortcut"'_testParamsAddon[@]}"
+    "${'"$bwProjShortcut"'_prepareLocalParamsAddon[@]}"
     '\''@testNames:( $(_'"$bwProjShortcut"'_testNames "$projDir") )'\''
   )'
   eval "$bwProjShortcut"'_test_description='\''Прогоняет тест(ы)'\'
@@ -1931,9 +1924,6 @@ _declare_mysql_mysqldump() { eval "$_funcParams2"
   eval "$bwProjShortcut"'_mysqldump_mysqldumpParams_description='\''параметров ${_ansiCmd}mysqldump${_ansiReset}'\'
   eval "$bwProjShortcut"'_mysqldump_description='\''Запускает mysqldump'\'
   eval "$bwProjShortcut"'_mysqldump() { eval "$_funcParams2"
-    if [[ $outputFileSpec =~ ^/ ]]; then
-      return $(_throw "ожидает, что параметр ${_ansiOutline}outputFileSpec${_ansiErr} будет путем ${_ansiOutline}относительно${_ansiErr} корня проекта")
-    fi
     queue=$$ eval "$_runInDockerContainer"
     if [[ $env == local ]]; then
       doWhat=_start_mysql eval "$_doOnceInContainer" || return $?
@@ -1977,8 +1967,13 @@ _mysqlHelper() {
 
   MYSQL_PWD="$mysqlPwd" _exec -v err mysql "${mysql_OPT[@]}" "${mysqlParams[@]}" 
 }
-
 _mysqldumpHelper() {
+  if [[ $outputFileSpec =~ ^/ ]]; then
+    return $(errOrigin=1 _throw "ожидает, что параметр ${_ansiOutline}outputFileSpec${_ansiErr} будет путем ${_ansiOutline}относительно${_ansiErr} корня проекта")
+  else
+    local outputFileDir=$(dirname "$projDir/$outputFileSpec")
+    _mkDir -v err "$outputFileDir" || return $?
+  fi
   local -a mysqldump_OPT
   local mysqlPwd
   if [[ $env == local ]]; then
@@ -2000,7 +1995,7 @@ _exec_sqlParams=(
   'scriptName:( $(find "$HOME/proj/docker/mysql" -maxdepth 1 -name "*.sql" -exec basename {} .sql \; ) )'
 )
 _exec_sql() { eval "$_funcParams2"
-  local fileSpec="sql/$scriptName.sql"
+  local fileSpec="$HOME/proj/docker/mysql/$scriptName.sql"
   if [[ -s $fileSpec ]]; then
     local sqlCommands
     read -d $'\x04' sqlCommands < "$fileSpec"
@@ -2011,9 +2006,9 @@ _exec_sql() { eval "$_funcParams2"
 _clear_mysql_dbParams=( 'dbName' )
 _clear_mysql_db() { eval "$_funcParams2"
   # https://dev.mysql.com/doc/refman/8.0/en/drop-database.html
-  local scriptName="clear_database"
+  local scriptName="clear_database.temp"
   local fileSpec="$HOME/proj/docker/mysql/$scriptName.sql"
-  MYSQL_PWD=root mysql -u root -D "$dbName" "-BNe 'show tables'" | awk '{print "set foreign_key_checks=0; drop table if exists `" $1 "`;"}' > "$fileSpec"
+  MYSQL_PWD=root mysql -u root -D "$dbName" -BNe 'show tables' | awk '{print "set foreign_key_checks=0; drop table if exists `" $1 "`;"}' > "$fileSpec"
   if [[ -s $fileSpec ]]; then
     _exec_sql "$scriptName" -D "$dbName"
   fi
@@ -2037,7 +2032,7 @@ default-character-set=utf8" | sudo tee -a /etc/mysql/my.cnf >/dev/null || { retu
     read -d $'\x04' sqlCommands < "$_bwDir/docker/helper/mysql_secure_installation.sql"
     MYSQL_PWD=root _inDir "$HOME/proj/docker" _exec -v allBrief mysql -u root -e "${_nl}$sqlCommands${_nl}" "$@"
     mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD=root mysql -u root mysql
-    [[ ! -f $projDir/docker/mysql/init_database.sql ]] || _exec_sql init_database || { returnCode=$?; break; }
+    [[ ! -f $HOME/proj/docker/mysql/init_database.sql ]] || _exec_sql init_database || { returnCode=$?; break; }
     break
   done
   return $returnCode
@@ -2105,6 +2100,8 @@ _docker_down() { eval "$_funcParams2"
 
 _bwCleanTempDockerFiles() {
   rm -f *.pid *.queue
+  rm -rf whoami
+  rm -f mysql/*.temp.sql
 }
 
 _prepareDockerComposeOpt() {
@@ -2159,14 +2156,14 @@ _cmd_selfTest() { eval "$_funcParams2"
       _exec -v all "${bwProjShortcut}" mysql || { returnCode=$?; break; }
     fi
     if [[ -n $ssh ]]; then
-      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из ssh-сессии выполните команду ${_ansiCmd}exit${_ansiReset}"
+      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из ssh-сессии выполните команду ${_ansiCmd}exit 0${_ansiReset}"
       _exec -v all ssh -p "$ssh" dev@localhost || { returnCode=$?; break; }    
     fi
     if [[ -n $dockerImageName ]]; then
       _exec -v all "$bwProjShortcut" docker shell || { returnCode=$?; break; }    
     fi
     if [[ -n $http || -n $https ]]; then
-      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}exit${_ansiReset}"
+      echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}exit 0${_ansiReset}"
       _exec -v all "$bwProjShortcut" docker shell "nginx" || { returnCode=$?; break; }    
     fi
     _exec -v all "$bwProjShortcut" docker down || { returnCode=$?; break; }
@@ -2188,19 +2185,18 @@ _selfTestParams=(
   'testCommands'
 )
 _selfTest() { eval "$_funcParams2"
-  local queueFileSpec="$queue.queue"
-  rm -f "$queueFileSpec"
+  local queueFileName="$queue.queue"
+  rm -f "$queueFileName"
   ( _exec -v all $runCommand & )
   sleep $sleep
-  _exist "$queueFileSpec" || return $?
+  _exist "$(pwd)/$queueFileName" || return $?
   local returnCode=0
   while true; do
     eval "$testCommands"
     break
   done
-  local pid; read -r -d $'\x04' pid < "$queueFileSpec"
+  local pid; read -r -d $'\x04' pid < "$queueFileName"
   local -a dockerCompose_OPT; _prepareDockerComposeOpt
-  # _spinner -t "Отправка сигнала SIGINT в docker-контейнер заняла" "Отправка сигнала SIGINT в docker-контейнер" _dockerCompose "${dockerCompose_OPT[@]:2}" exec -T main "$_bwDevDockerEntryPointFileSpec" kill -SIGINT "$pid" 
   _spinner \
     -t "Отправка сигнала SIGINT в docker-контейнер заняла" \
     "Отправка сигнала SIGINT в docker-контейнер" \
@@ -2349,16 +2345,11 @@ _docker_up() { eval "$_funcParams2"
       echo -n "
   projName: ${bwProjName}
   projShortcut: ${bwProjShortcut}
-  projDir: $(_shortenFileSpec $(cd .. && pwd))
-  ssh: ${ssh}
-  http: ${http}
-  https: ${https}"
-      [[ -z $mysql ]] || echo -n "
-  mysql: ${mysql}"
-      [[ -z $postresql ]] || echo -n "
-  postresql: ${postresql}"
-      [[ -z $elastic ]] || echo -n "
-  elastic: ${elastic}"
+  projDir: $(_shortenFileSpec $(cd .. && pwd))"
+  local port; for port in "${_bwProjPorts[@]}"; do
+       [[ -z ${!port} ]] || echo -n "
+  $port: ${!port}"   
+  done
       echo "${_nl}</pre>"
       } > nginx/whoami/index.html
 
@@ -2766,13 +2757,13 @@ _bwProjectInfoHelper() {
         local expandedProjDir=${projDir/$tilda/$HOME}
         local projDir; projDir=$(_shortenFileSpec "$projDir")
         if [[ ! -d $expandedProjDir ]]; then
-          _warn "Папка ${_ansiFileSpec}$projDir${_ansiWarn} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} не обнаружена"
+          _warn "Папка ${_ansiFileSpec}$(_shortenFileSpec "$projDir")${_ansiWarn} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn} не обнаружена"
         else
           if ! _inDir "$expandedProjDir" _prepareGitDirty "$bwProjGitOrigin"; then
-            _warn "Папка ${_ansiFileSpec}$projDir${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn}"
+            _warn "Папка ${_ansiFileSpec}$(_shortenFileSpec "$projDir")${_ansiWarn} не содержит репозиторий проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiWarn}"
           else
             local gitBranchName; gitBranchName=$(_inDir "$expandedProjDir" _gitBranch) || return $?
-            _ok "Ветка ${_ansiSecondaryLiteral}$gitBranchName${_ansiOK} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiOK} обнаружена в ${_ansiFileSpec}$projDir"
+            _ok "Ветка ${_ansiSecondaryLiteral}$gitBranchName${_ansiOK} проекта ${_ansiPrimaryLiteral}$bwProjTitle${_ansiOK} обнаружена в ${_ansiFileSpec}$(_shortenFileSpec "$projDir")"
           fi
         fi
       done

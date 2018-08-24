@@ -15,7 +15,7 @@ _buildBwHelper() {
     if [[ -n $excludeRegExp ]]; then
       excludeRegExp+='|'
     fi
-    excludeRegExp+="$bwProjShortcut"
+    excludeRegExp+="$bwProjShortcut|_$bwProjShortcut"
   done
   excludeRegExp="generated/($excludeRegExp)"
   local -a OPT_docker=(
@@ -30,8 +30,6 @@ _buildBwHelper() {
     ! -path '*nginx/main.conf' 
     ! -path '*nginx/nginx.conf'
   )
-  # $(find docker -type f ! -name '*.log' ! -name .DS_Store ! -name .gitignore ! -name 'docker-compose*' ! -name '*.env' ! -path '*nginx/whoami*' ! -path '*nginx/main.conf' ! -path '*nginx/nginx.conf') \
-  # $(find docker -type f -name docker-compose.*.yaml) \
   local -a fileNamesToMainArchive=(
     $(find core bash -name '*.bash' -or -name '*.c' -or -name '*.awk')
     $(find "$_generatedDir" -name "*$_codeBashExt" -or -name "*.completion.unset.bash" | grep -v -E "$excludeRegExp")

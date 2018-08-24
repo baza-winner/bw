@@ -6,7 +6,9 @@
 _init() {
   if [[ ! -f /tmp/owned ]]; then
     local cmdTitle="${_ansiCmd}sudo chown -R dev $HOME${_ansiReset}"
-    _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
+    # _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
+    # _spinner -t "Выполнение команды ${_ansiCmd}sudo chown -R dev $HOME${_ansiReset} заняло" $cmdTitle" _chown; local returnCode=$?
+
     if [[ $returnCode -eq 0 ]]; then
       _ok "$cmdTitle"
       touch /tmp/owned
@@ -35,6 +37,33 @@ _init() {
     $funcName || return $?
     touch /tmp/init
   fi
+}
+_chownParams=( 
+  '--homeSubdir/d='
+  '--max-process/P=1..100'
+  '--max-depth/D=0..'
+)
+_chown() { eval "$_funcParams2"
+  local -a OPT_maxdepth
+  if [[ $maxDepth -gt 0 ]]; then
+    OPT_maxdepth=( -maxdepth $maxDepth )
+  fi
+  local root="$HOME/$homeSubdir"
+  local fileSpecs=( $(sudo find "$HOME/$homeSubdir" "${OPT_maxdepth[@]}")  )
+  foundFiles=()
+  local fileSpec; for fileSpec in "${fileSpecs[@]}"; do
+    foundFiles+=( ${fileSpec:${#root}} )
+  done
+  # -print0 | xargs -0 -n 1 -P ${1:-1} _chownHelper "$HOME/$homeSubdir" "$maxDepth"
+}
+_chownHelper() {
+  # local root=$1
+  # local maxDepth=$2
+  # local fileSpec=$3
+  # local relativeFileSpec=${fileSpec:${#root}}
+  # echo $relativeFileSpec
+  # $HOME/proj/node_modules
+  # sudo chown dev -R 
 }
 
 _entrypoint() {

@@ -60,13 +60,13 @@ diff tgz/Имя-файла Имя-файла
 #### main
 
 ```
-_getBwTar bw.bash | tar t
+_getBwTar bw.bash | tar t | sort
 ```
 
 #### tests
 
 ```
-_getBwTar bw.bash tests | tar t
+_getBwTar bw.bash tests | tar t | sort
 ```
 
 ### Извлечение содержимого архива
