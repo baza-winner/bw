@@ -83,10 +83,9 @@ _bw_project_bgate() {
 # =============================================================================
 
 _bwProjDefs+=(
-    # --branch develop
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch feature/docker
+    --branch --branch develop
     --ssh 2204
     --http 8004
     --https 4404
@@ -116,10 +115,9 @@ _bwProjDefs+=(
 # =============================================================================
 
 _bwProjDefs+=(
-    # --branch develop
   'mls' '
     --gitOrigin github.com:baza-winner/mls-pm.git
-    --branch feature/MLS-1540
+    --branch develop
     --ssh 2207
     --http 8007
     --https 4407
@@ -135,10 +133,9 @@ _bwProjDefs+=(
 # =============================================================================
 
 _bwProjDefs+=(
-    # --branch develop
   'dip' '
     --gitOrigin github.com:baza-winner/dip2.git
-    --branch feature/docker
+    --branch develop
     --ssh 2208
     --http 8008
     --https 4408
