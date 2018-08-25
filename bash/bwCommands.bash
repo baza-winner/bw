@@ -20,9 +20,6 @@ _bwProjDefs+=(
     --branch master
     --docker-image-name bazawinner/dev-ubuntu
     --ssh 2201
-    --http 8001
-    --https 4401
-    --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
 )
@@ -40,9 +37,6 @@ _bwProjDefs+=(
     --branch master
     --docker-image-name bazawinner/dev-ubuntu18
     --ssh 2206
-    --http 8006
-    --https 4406
-    --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
 )
