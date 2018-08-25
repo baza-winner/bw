@@ -85,7 +85,7 @@ _bw_project_bgate() {
 _bwProjDefs+=(
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch --branch develop
+    --branch develop
     --ssh 2204
     --http 8004
     --https 4404
