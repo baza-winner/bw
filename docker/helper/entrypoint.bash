@@ -5,7 +5,9 @@
 
 _init() {
   if [[ ! -f /tmp/owned ]]; then
-    local cmdTitle="${_ansiCmd}sudo chown -R dev $HOME${_ansiReset}"
+    _chown # dev -D 3 -P 8 -L 50
+    
+    # local cmdTitle="${_ansiCmd}sudo chown -R dev $HOME${_ansiReset}"
     # _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
     # _spinner -t "Выполнение команды ${_ansiCmd}sudo chown -R dev $HOME${_ansiReset} заняло" $cmdTitle" _chown; local returnCode=$?
 
@@ -38,34 +40,72 @@ _init() {
     touch /tmp/init
   fi
 }
-_chownParams=( 
-  '--homeSubdir/d='
-  '--max-process/P=1..100'
-  '--max-depth/D=0..'
-)
-_chown() { eval "$_funcParams2"
-  local -a OPT_maxdepth
-  if [[ $maxDepth -gt 0 ]]; then
-    OPT_maxdepth=( -maxdepth $maxDepth )
-  fi
-  local root="$HOME/$homeSubdir"
-  local fileSpecs=( $(sudo find "$HOME/$homeSubdir" "${OPT_maxdepth[@]}")  )
-  foundFiles=()
-  local fileSpec; for fileSpec in "${fileSpecs[@]}"; do
-    foundFiles+=( ${fileSpec:${#root}} )
-  done
-  # -print0 | xargs -0 -n 1 -P ${1:-1} _chownHelper "$HOME/$homeSubdir" "$maxDepth"
-}
-_chownHelper() {
-  # local root=$1
-  # local maxDepth=$2
-  # local fileSpec=$3
-  # local relativeFileSpec=${fileSpec:${#root}}
-  # echo $relativeFileSpec
-  # $HOME/proj/node_modules
-  # sudo chown dev -R 
-}
 
+# _chownParamsOpt=( --canBeMixedOptionsAndArgs )
+# _chownParams=( 
+#   '--homeSubdir/d='
+#   '--maxProcesses/P:1..100=1'
+#   '--maxFilesPerLine/L:1..1000=20'
+#   '--maxdepth/D=0..'
+#   '--verbose/v'
+#   'user'
+# )
+_chown() { 
+  local homeSubdir=
+  # local maxProcesses=32
+  local maxProcesses=8
+  local maxFilesPerLine=500
+  # local maxdepth=12
+  local maxdepth=5
+  local user=dev
+  local verbose
+  verbose=true
+  # eval "$_funcParams2"
+
+  local root="$HOME/$homeSubdir"
+  [[ $root =~ /$ ]] && root=${root:0:-1}
+  local title="${_ansiCmd}chown -R $user '$root'${_ansiReset}"
+  echo "$title . . ."
+  timeStart=$(date +%s)
+  rm -f _chown.stdout _chown.stderr
+  local batchFileSpec="/tmp/_chown.batch"
+  if [[ $maxdepth -eq 0 ]]; then
+    echo "sudo chown -R $user \"$root\"" > "$batchFileSpec"
+    if [[ -n $verbose ]]; then
+      printf "recursive: %s\n" 1
+    fi
+  else
+    local -a maxdepth_OPT=()
+    if [[ $maxdepth -gt 0 ]]; then
+      maxdepth_OPT=( -maxdepth $maxdepth )
+    fi
+    local awkFileSpec;_prepareAwkFileSpec
+    local -a awk_OPT=(
+      -v "root=$root" 
+      -v "maxdepth=$maxdepth" 
+      -v "user=$user" 
+      -v "maxProcesses=$maxProcesses"
+      -v "maxFilesPerLine=$maxFilesPerLine"
+      -v "verbose=$verbose"
+      -f "$awkFileSpec"
+    )
+    { 
+      sudo find "$HOME/$homeSubdir" "${maxdepth_OPT[@]}" -type d 
+      echo '========'
+      sudo find "$HOME/$homeSubdir" "${maxdepth_OPT[@]}" ! -type d 
+    } | awk "${awk_OPT[@]}" > "$batchFileSpec"
+  fi
+  ( . "$batchFileSpec" )
+  timeEnd=$(date +%s)
+  timeElapsed=$(( timeEnd - timeStart ))
+  printf "Выполнение $title заняло %ss\n" $timeElapsed
+}
+_prepareAwkFileSpec() { 
+  # eval "$_funcParams2"
+  # [[ -z $infix ]] || infix=".$infix"
+  local infix=
+  awkFileSpec="$(dirname "${BASH_SOURCE[1]}")/${FUNCNAME[1]}$infix.awk"
+}
 _entrypoint() {
   if [[ $# -gt 0 ]]; then
     local pidFileSpec="$HOME/proj/docker/$1.pid"; shift

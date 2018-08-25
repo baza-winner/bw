@@ -7,6 +7,7 @@ _resetBash
 
 verbosityDefault=none silentDefault=no codeHolder=_codeToPrepareVerbosityParams eval "$_evalCode"
 bwdev_buildParams=(
+  '!--projDir/p='
   '--moreDebugInfo/d'
   "${_noPregen_params[@]}"
   "${_verbosityParams[@]}"
@@ -20,7 +21,8 @@ bwdev_build_description='Тестирует и собирает bw.bash'
 bwdev_build_justBuild_description='Только собирает bw.bash'
 bwdev_build_moreDebugInfo_description='Больше отладочной информации'
 bwdev_build() { eval "$_funcParams2"
-  local bwBashFileSpec="$_bwdevDir/bw.bash"
+  _prepareProjDir bwdev || return $?
+  local bwBashFileSpec="$projDir/bw.bash"
   local -a OPT=( "${OPT_verbosity[@]}" "${OPT_silent[@]}" )
   local -a OPT_noPregen=()
   if [[ -n $noPregen ]]; then
@@ -43,17 +45,19 @@ bwdev_test_args_description="$bw_bashTests_args_description"
 bwdev_test_list_description="$bw_bashTests_list_description"
 bwdev_testParamsOpt=( '--canBeMixedOptionsAndArgs' )
 bwdev_testParams=( 
+  '!--projDir/p='
   "${_noPregen_params[@]}"
   '--list' 
   '@..args' 
 )
 bwdev_test_description='Запускает тест(ы)'
 bwdev_test() { eval "$_funcParams2"
+  _prepareProjDir bwdev || return $?
   local -a OPT=() 
   if [[ -n $noPregen ]]; then
     OPT=( -p - )
   fi
-  . "$_bwdevDir/bw.bash" "${OPT[@]}" && bw bt "${OPT_list[@]}" "${args[@]}"
+  . "$projDir/bw.bash" "${OPT[@]}" && bw bt "${OPT_list[@]}" "${args[@]}"
 }
 bwdev_testComplete() {
   bw_bashTestsComplete

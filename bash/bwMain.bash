@@ -30,7 +30,10 @@ _bwMain_force_description='Форсирует прегенерацию, неза
 _bwMain_noSelfUpdate_description='Блокирует самобновления из источника обновления'
 _bwMain_selfUpdateSource_description='Устанавливает URL источника обновления'
 _sourceMatchRegexp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~_-]+)\/'
-_bwMatchRegexp="$_sourceMatchRegexp"'bw\.bash'
+# _sourceMatchRegexp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~_-]+)\/'
+# _bwMatchRegexp="$_sourceMatchRegexp"'bw\.bash'
+# _bwMatchRegexp='^[ \t]*.[ \t]+"?([ a-zA-Z0-9/~_-]+)/bw.bash'
+_bwMatchRegexp='^[ \t]*\\.[ \t]+"?([ a-zA-Z0-9/~_-]+)/bw.bash'
 _bwMain() { eval "$_funcParams2"
   _profileBegin
 

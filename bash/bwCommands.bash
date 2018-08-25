@@ -1246,10 +1246,9 @@ _getDefaultXdebugRemoteHost() {
 
 # shellcheck disable=SC2034
 {
-_bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/entrypoint.bash"
+_bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/helper/entrypoint.bash"
 _bwDevDockerBwFileSpec="/home/dev/bw.bash"
 _bwDevDockerBwDir="/home/dev/.bw"
-# _bwDevDockerProjDir="/home/dev/proj"
 _bwSslFileSpecPrefix="$_bwDir/ssl/server."
 _bwNginxConfDir="$_bwDir/docker/nginx/conf.bw"
 
@@ -1635,8 +1634,11 @@ _prepareProjDirsParams=(
 )
 _prepareProjDirs() { eval "$_funcParams2"
   local sedCode
-  sedCode+='s/'"$_sourceMatchRegexp"'bin\/'"$bwProjShortcut"'\.bash''.*$/\1/p;'
-  sedCode+='s/^bw[ \t]*prepare[ \t]*'"$bwProjShortcut"'[ \t]*"?([ a-zA-Z0-9\/~_-]+)"?.*/\1/p;'
+  # sedCode+='s/'"$_sourceMatchRegexp"'bin\/'"$bwProjShortcut"'\.bash''.*$/\1/p;'
+  sedCode+='s/^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~_-]+)\/bin\/'"$bwProjShortcut"'\.bash''.*$/\1/p;'
+
+  # sedCode+='s/^bw[ \t]*prepare[ \t]*'"$bwProjShortcut"'[ \t]*"?([ a-zA-Z0-9\/~_-]+)"?.*/\1/p;'
+  sedCode+='s/^bw[ ]prepare[ ]'"$bwProjShortcut"'[ ]"?([ a-zA-Z0-9\/~_-]+)"?.*/\1/p;'
   mapfile -t projDirs < <(sed -nEe "$sedCode" "$profileFileSpec")
 }
 
@@ -2143,10 +2145,11 @@ _cmd_selfTest() { eval "$_funcParams2"
       _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
       rm "$tstFileSpec"
     fi
+    local skipFail=true # for debug purpose only
     if [[ -n $mysql ]]; then
       _exec -v all "${bwProjShortcut}" mysql --env local -BN -e 'create database if not exists temp;' || { returnCode=$?; break; }
       _exec -v all "${bwProjShortcut}" mysqldump --env local tmp/temp.dump temp || { returnCode=$?; break; }
-      _exec -v all "${bwProjShortcut}" mysql --env alpha -BN -e 'show databases;' || { returnCode=$?; break; }
+      _exec -v all "${bwProjShortcut}" mysql --env alpha -BN -e 'show databases;' || [[ -n $skipFail ]] || { returnCode=$?; break; }
     fi
     local funcName="_${bwProjShortcut}_selfTestAddon"
     if _funcExists "$funcName"; then

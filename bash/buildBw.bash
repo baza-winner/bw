@@ -40,9 +40,8 @@ _buildBwHelper() {
     docker/helper/docker-compose.nginx.yml
     docker/helper/docker-compose.main.yml 
     docker/helper/mysql_secure_installation.sql
-
-    docker/entrypoint.bash
-    docker/docker-compose.proj.yml
+    docker/helper/entrypoint.bash
+    docker/helper/_chown.awk
 
     docker/nginx/conf.bw/whoami.conf
     docker/nginx/conf.bw/http.conf
@@ -72,7 +71,7 @@ _buildBwHelper() {
     _getBwTar "$bwOldFileName" tests | tar xf - -C "$tgzDir" \
   ; then
     local fileName; for fileName in $(_getBwTar "$bwOldFileName" | tar tf -) $(_getBwTar "$bwOldFileName" tests | tar tf -); do
-      [[ -f $fileName ]] || continue
+      [[ -f $fileName && -f $tgzDir/$fileName ]] || continue
       cmp "$fileName" "$tgzDir/$fileName" || needBuild=true
     done
   fi
