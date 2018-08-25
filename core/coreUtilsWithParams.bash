@@ -55,15 +55,19 @@ _substitute() { eval "$_funcParams2"
   fi
 }
 
-_shortenFileSpecParams=( 'fileSpec' )
+# _shortenFileSpecParams=( 'fileSpec' )
 _shortenFileSpec() { 
-  # if [[ "$*" =~ -f ]]; then
-  #   _debugVar --mark "$*"
-  # fi
-  eval "$_funcParams2"
+  # eval "$_funcParams2"
+  local fileSpec="$*"
+  [[ -z $_isBwDevelop ]] || _debugVar fileSpec 2>> "$_bwDir/_shortenFileSpec.log"
   local lcp=$(_lcp "$fileSpec" "$HOME")
-  [[ ${#lcp} -ne ${#HOME} ]] || fileSpec="~/${fileSpec:$(( ${#HOME} + 1 ))}"
-  echo "$fileSpec"
+  local result
+  if [[ ${#lcp} -ne ${#HOME} ]]; then 
+    result="$fileSpec"
+  else
+    result="~/${fileSpec:$(( ${#HOME} + 1 ))}"
+  fi
+  echo "$result"
 }
 
 # =============================================================================

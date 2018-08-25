@@ -825,10 +825,13 @@ _parseFuncParams2() {
         local __funcSuffix=
         local -a __funcNameSuffixes=(); help= _prepareSubCommandFuncSuffixes --checkCondition $__funcName || { __returnCode=$?; break; }
         local __funcNameSuffix; for __funcNameSuffix in "${__funcNameSuffixes[@]}"; do
-          local subCommand; dstVarName=subCommand _upperCamelCaseToKebabCase $__funcNameSuffix
           dstVarName=__subCommands srcVarName=${__funcName}_${__funcNameSuffix}Shortcuts eval "$_codeToInitLocalCopyOfArray"
-          __subCommands+=( "$subCommand" )
-          _hasItem "$__usedSubCommand" "${__subCommands[@]}" && __funcSuffix="$__funcNameSuffix" && break
+          local subCommand; dstVarName=subCommand _upperCamelCaseToKebabCase $__funcNameSuffix
+          local normalizedUsedSubCommand; dstVarName=normalizedUsedSubCommand _upperCamelCaseToKebabCase "$__usedSubCommand"
+          if _hasItem "$normalizedUsedSubCommand" "$subCommand" "${__subCommands[@]}"; then 
+            __funcSuffix="$__funcNameSuffix" 
+            break
+          fi
         done; [[ -z $__err ]] || break
         if [[ -z $__funcSuffix ]]; then
           __err="вместо ${_ansiPrimaryLiteral}$(_quotedArgs "$__usedSubCommand")${_ansiErr} ожидает одну из следующих команд: ${_ansiSecondaryLiteral}$(_echoAllSubCommands)"

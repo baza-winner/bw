@@ -5,8 +5,9 @@ services:
     image: ${mainImageName}
     volumes:
       - ${_bwDir}:/home/dev/.bw
+      - ${_bwDir}/ssh/bw_dev_id_rsa.pub:/home/dev/.ssh/authorized_keys
       - ${_bwFileSpec}:/home/dev/bw.bash
       - ..:/home/dev/proj
     stdin_open: true
-    env_file:
-      - main.env
+    ports:
+      - "${ssh}:22"

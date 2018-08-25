@@ -3,26 +3,80 @@
 # =============================================================================
 # =============================================================================
 
-_entrypoint() {
+_init() {
   if [[ ! -f /tmp/owned ]]; then
     local cmdTitle="${_ansiCmd}sudo chown -R dev $HOME${_ansiReset}"
-    _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
+    # _spinner "$cmdTitle" sudo chown -R dev "$HOME"; local returnCode=$?
+    # _spinner -t "Выполнение команды ${_ansiCmd}sudo chown -R dev $HOME${_ansiReset} заняло" $cmdTitle" _chown; local returnCode=$?
+
     if [[ $returnCode -eq 0 ]]; then
       _ok "$cmdTitle"
       touch /tmp/owned
     else
       _err "$cmdTitle"
-      exit $returnCode
+      return $returnCode
     fi
   fi
 
-  # https://www.gnu.org/software/bash/manual/html_node/Is-this-Shell-Interactive_003f.html
-  [[ $- =~ i ]] && . "$HOME/.bashrc"
+  if [[ ! -f /tmp/sshd ]]; then
+    sudo /etc/init.d/ssh start
+    touch /tmp/sshd
+  fi
+
+  if [[ $- =~ i ]]; then 
+    . "$HOME/.bashrc" || return $?
+  else
+    . "$HOME/._bashrc" || return $?
+  fi
 
   [[ -n $_bwFileSpec ]] || . "$HOME/bw.bash" -p - || return $?
-  . "$HOME/proj/bin/$_bwProjShortcut.bash" || return $?
+  . "$HOME/proj/bin/${_bwProjShortcut}.bash" || return $?
 
-  if [[ $# -eq 0 ]]; then
+  local funcName="_${_bwProjShortcut}_init"
+  if _funcExists "$funcName" && [[ ! -f /tmp/init ]]; then
+    $funcName || return $?
+    touch /tmp/init
+  fi
+}
+_chownParams=( 
+  '--homeSubdir/d='
+  '--max-process/P=1..100'
+  '--max-depth/D=0..'
+)
+_chown() { eval "$_funcParams2"
+  local -a OPT_maxdepth
+  if [[ $maxDepth -gt 0 ]]; then
+    OPT_maxdepth=( -maxdepth $maxDepth )
+  fi
+  local root="$HOME/$homeSubdir"
+  local fileSpecs=( $(sudo find "$HOME/$homeSubdir" "${OPT_maxdepth[@]}")  )
+  foundFiles=()
+  local fileSpec; for fileSpec in "${fileSpecs[@]}"; do
+    foundFiles+=( ${fileSpec:${#root}} )
+  done
+  # -print0 | xargs -0 -n 1 -P ${1:-1} _chownHelper "$HOME/$homeSubdir" "$maxDepth"
+}
+_chownHelper() {
+  # local root=$1
+  # local maxDepth=$2
+  # local fileSpec=$3
+  # local relativeFileSpec=${fileSpec:${#root}}
+  # echo $relativeFileSpec
+  # $HOME/proj/node_modules
+  # sudo chown dev -R 
+}
+
+_entrypoint() {
+  if [[ $# -gt 0 ]]; then
+    local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
+    echo $PPID > "$pidFileSpec"
+  fi
+
+  _init || return $?
+
+  if [[ $# -gt 0 ]]; then
+    eval "$(_quotedArgs "$@")"
+  elif [[ $- =~ i ]]; then
     alias q='exit 0'
     PS1="$_prompt"
 
@@ -35,18 +89,14 @@ _entrypoint() {
     fi
 
     echo "
-  ${_ansiPrimaryLiteral}$_hostUser${_ansiOK}, Вы вошли в Docker-контейнер ${_ansiPrimaryLiteral}$_bwProjShortcut${_ansiOK} проекта ${_ansiSecondaryLiteral}$_bwProjName
-  ${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}q
-  ${_ansiReset}В Docker-контейнере доступна команда ${_ansiCmd}$_bwProjShortcut${_ansiReset}"
+${_ansiPrimaryLiteral}$_hostUser${_ansiOK}, Вы вошли в Docker-контейнер ${_ansiPrimaryLiteral}$_bwProjShortcut${_ansiOK} проекта ${_ansiSecondaryLiteral}$_bwProjName
+${_ansiReset}В Docker-контейнере доступна команда ${_ansiCmd}$_bwProjShortcut${_ansiReset}"
 
-    "$_bwProjShortcut" update -c
-    "$_bwProjShortcut" -?
-  elif [[ $1 == kill ]]; then
-    eval "$@"
-  else
-    local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
-    echo $PPID > "$pidFileSpec"
-    eval "$@"
+  "$_bwProjShortcut" update -c
+  "$_bwProjShortcut" -?
+
+    echo "
+${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}q"
   fi
 }
 

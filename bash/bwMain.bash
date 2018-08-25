@@ -37,7 +37,7 @@ _bwMain() { eval "$_funcParams2"
   local returnCode=0
   while true; do
 
-    [[ ! $selfUpdateSource =~ ^- ]] || selfUpdateSource="$_bwGithubSource/master"
+    [[ ! $selfUpdateSource =~ ^- ]] || selfUpdateSource="$_defaultBwUpdateSource"
 
     if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]] ; then
       selfUpdateSource=$(_inDir "$_bwDir" _gitBranch) || { returnCode=$?; break; }
@@ -88,7 +88,7 @@ _bwMain() { eval "$_funcParams2"
   fi
 }
 _export_BW_SELF_UPDATE_SOURCE() {
-  if [[ $selfUpdateSource == $_defaultBwUpdateSource ]]; then
+  if [[ $selfUpdateSource == "$_defaultBwUpdateSource" ]]; then
     export BW_SELF_UPDATE_SOURCE=
   else
     export BW_SELF_UPDATE_SOURCE="$selfUpdateSource"
