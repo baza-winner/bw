@@ -370,20 +370,4 @@ _hasExportVarAtBashProfileTests=(
   '
 )
 
-_getAlreadyProjDirTests=(
-  '
-    --inTmpDir
-    --stdout "/Users/username"
-    --before "echo \" . /Users/username/bin/bwdev.bash; bwdev update\" > profile"
-    "_getAlreadyProjDir bwdev ${_OPT_profileFileSpec[*]}"
-  '
-  '
-    --inTmpDir
-    --varName alreadyProjDir
-    --varValue "declare -- alreadyProjDir=\"~/bwdev\""
-    --before "echo \" . ~/bwdev/bin/bwdev.bash; bwdev update\" > profile"
-    "_getAlreadyProjDir bwdev --varName alreadyProjDir ${_OPT_profileFileSpec[*]}"
-  '
-)
-
 # =============================================================================

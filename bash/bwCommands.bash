@@ -20,9 +20,6 @@ _bwProjDefs+=(
     --branch master
     --docker-image-name bazawinner/dev-ubuntu
     --ssh 2201
-    --http 8001
-    --https 4401
-    --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
 )
@@ -40,9 +37,6 @@ _bwProjDefs+=(
     --branch master
     --docker-image-name bazawinner/dev-ubuntu18
     --ssh 2206
-    --http 8006
-    --https 4406
-    --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
 )
@@ -89,10 +83,9 @@ _bw_project_bgate() {
 # =============================================================================
 
 _bwProjDefs+=(
-    # --branch develop
   'crm' '
     --gitOrigin github.com:baza-winner/crm.git
-    --branch feature/docker
+    --branch --branch develop
     --ssh 2204
     --http 8004
     --https 4404
@@ -122,10 +115,9 @@ _bwProjDefs+=(
 # =============================================================================
 
 _bwProjDefs+=(
-    # --branch develop
   'mls' '
     --gitOrigin github.com:baza-winner/mls-pm.git
-    --branch feature/MLS-1540
+    --branch develop
     --ssh 2207
     --http 8007
     --https 4407
@@ -141,10 +133,9 @@ _bwProjDefs+=(
 # =============================================================================
 
 _bwProjDefs+=(
-    # --branch develop
   'dip' '
     --gitOrigin github.com:baza-winner/dip2.git
-    --branch feature/docker
+    --branch develop
     --ssh 2208
     --http 8008
     --https 4408
@@ -1246,10 +1237,9 @@ _getDefaultXdebugRemoteHost() {
 
 # shellcheck disable=SC2034
 {
-_bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/entrypoint.bash"
+_bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/helper/entrypoint.bash"
 _bwDevDockerBwFileSpec="/home/dev/bw.bash"
 _bwDevDockerBwDir="/home/dev/.bw"
-# _bwDevDockerProjDir="/home/dev/proj"
 _bwSslFileSpecPrefix="$_bwDir/ssl/server."
 _bwNginxConfDir="$_bwDir/docker/nginx/conf.bw"
 
@@ -1635,8 +1625,11 @@ _prepareProjDirsParams=(
 )
 _prepareProjDirs() { eval "$_funcParams2"
   local sedCode
-  sedCode+='s/'"$_sourceMatchRegexp"'bin\/'"$bwProjShortcut"'\.bash''.*$/\1/p;'
-  sedCode+='s/^bw[ \t]*prepare[ \t]*'"$bwProjShortcut"'[ \t]*"?([ a-zA-Z0-9\/~_-]+)"?.*/\1/p;'
+  # sedCode+='s/'"$_sourceMatchRegexp"'bin\/'"$bwProjShortcut"'\.bash''.*$/\1/p;'
+  sedCode+='s/^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~_-]+)\/bin\/'"$bwProjShortcut"'\.bash''.*$/\1/p;'
+
+  # sedCode+='s/^bw[ \t]*prepare[ \t]*'"$bwProjShortcut"'[ \t]*"?([ a-zA-Z0-9\/~_-]+)"?.*/\1/p;'
+  sedCode+='s/^bw[ ]prepare[ ]'"$bwProjShortcut"'[ ]"?([ a-zA-Z0-9\/~_-]+)"?.*/\1/p;'
   mapfile -t projDirs < <(sed -nEe "$sedCode" "$profileFileSpec")
 }
 
@@ -2143,10 +2136,11 @@ _cmd_selfTest() { eval "$_funcParams2"
       _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
       rm "$tstFileSpec"
     fi
+    local skipFail=true # for debug purpose only
     if [[ -n $mysql ]]; then
       _exec -v all "${bwProjShortcut}" mysql --env local -BN -e 'create database if not exists temp;' || { returnCode=$?; break; }
       _exec -v all "${bwProjShortcut}" mysqldump --env local tmp/temp.dump temp || { returnCode=$?; break; }
-      _exec -v all "${bwProjShortcut}" mysql --env alpha -BN -e 'show databases;' || { returnCode=$?; break; }
+      _exec -v all "${bwProjShortcut}" mysql --env alpha -BN -e 'show databases;' || [[ -n $skipFail ]] || { returnCode=$?; break; }
     fi
     local funcName="_${bwProjShortcut}_selfTestAddon"
     if _funcExists "$funcName"; then

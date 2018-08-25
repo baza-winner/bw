@@ -143,27 +143,6 @@ _setAtBashProfile() { eval "$_funcParams2"
   fi
 }
 
-_getAlreadyProjDirParamsOpt=(
-  '--canBeMixedOptionsAndArgs'
-)
-_getAlreadyProjDirParams=( 
-  '--profileFileSpec=$_profileFileSpec'
-  '--varName='
-  'bwProjShortcut' 
-)
-_getAlreadyProjDir() { eval "$_funcParams2"
-  [[ -z $varName ]] || eval "$varName"'=""'
-  if [[ -z $varName ]]; then
-    _getAlreadyProjDirHelper
-  else
-    eval "$varName"'="$(_getAlreadyProjDirHelper)"'
-  fi
-}
-_getAlreadyProjDirHelper() {
-  local sedCode='s/'"$_sourceMatchRegexp"'bin\/'"${bwProjShortcut?}"'\.bash''.*$/\1/p'
-  sed -nEe "$sedCode" "${profileFileSpec?}" | tail -n 1
-}
-
 # =============================================================================
 
 _setAtBashProfileHelper() {
