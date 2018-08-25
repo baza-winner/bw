@@ -2907,7 +2907,7 @@ _bw_install_gitLinux() {
 # shellcheck disable=SC2034
 {
 bw_install_githubKeygenParams=()
-bw_install_githubKeyGen_description='Устанавливает ${_ansiPrimaryLiteral}github-keygen${_ansiReset} (${_ansiUrl}https://github.com/dolmen/github-keygen${_ansiReset})'
+bw_install_githubKeygen_description='Устанавливает ${_ansiPrimaryLiteral}github-keygen${_ansiReset} (${_ansiUrl}https://github.com/dolmen/github-keygen${_ansiReset})'
 }
 bw_install_githubKeygen() { eval "$_funcParams2"
   [[ ! $OSTYPE =~ ^linux  ]] || bw_install --silentIfAlreadyInstalled xclip || return $?
@@ -3018,45 +3018,17 @@ _bw_install_rootCertDarwin() {
   while true; do
     _exec "${sub_OPT[@]}" --sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$_bwDir/ssl/rootCA.pem" || { returnCode=$?; break; }
     _bw_install_rootCert_usingCertutil --certutil "$_bwDarwinCertuilFileSpec" || { returnCode=$?; break; }
-    # local -a cert8Dirs; mapfile -t cert8Dirs < <(find / -name "cert8.db" -exec dirname {} \; 2>/dev/null)
-    # local -a cert9Dirs; mapfile -t cert9Dirs < <(find / -name "cert9.db" -exec dirname {} \; 2>/dev/null)
-    # if [[ ${#cert8Dirs[@]} -gt 0 || ${#cert9Dirs[@]} -gt 0 ]]; then
-    #   bw_install certutil --silentIfAlreadyInstalled || { returnCode=$?; break; }
-    #   local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TCu,Cu,Tu" -i "${_bwCertFile}")
-    #   local certDir; for certDir in "${cert8Dirs[@]}"; do
-    #     _exec "${sub_OPT[@]}" certutil "${certutil_OPT[@]}" -d "dbm:${certDir}" || { returnCode=$?; break 2; }
-    #   done
-    #   local certDir; for certDir in "${cert9Dirs[@]}"; do
-    #     _exec "${sub_OPT[@]}" certutil "${certutil_OPT[@]}"  -d "sql:${certDir}" || { returnCode=$?; break 2; }
-    #   done
-    # fi
     break
   done
 }
 _bw_install_rootCertLinux() {
   while true; do
-    # local certfile="$_bwDir/ssl/rootCA.pem"
     #https://thomas-leister.de/en/how-to-import-ca-root-certificate/
     [[ -d /usr/local/share/ca-certificates/bw ]] || _exec "${sub_OPT[@]}" --sudo mkdir /usr/local/share/ca-certificates/bw || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo cp "$_bwCertFile" /usr/local/share/ca-certificates/bw/root.cert.crt || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo update-ca-certificates || { returnCode=$?; break; }
 
     _bw_install_rootCert_usingCertutil --findFrom "$HOME" || { returnCode=$?; break; }
-    # local certname="dev.baza-winner.ru - WinNER"
-    # local certdir certDB
-    ### prerequisite
-    # _exec "${sub_OPT[@]}" --sudo apt install -y --force-yes libnss3-tools || { returnCode=$?; break; }
-    # local -a cert8Dirs=(); mapfile -t cert8Dirs < (find ~/ -name "cert8.db" -exec dirname {} \; 2>/dev/null)
-    # ### For cert8 (legacy - DBM)
-    # for certDB in $(find ~/ -name "cert8.db"); do
-    #   certdir="$(dirname ${certDB})"
-    #   _exec "${sub_OPT[@]}" certutil -A -n "${certname}" -t "TCu,Cu,Tu" -i "${certfile}" -d "dbm:${certdir}" || { returnCode=$?; break 2; }
-    # done
-    # ### For cert9 (SQL)
-    # for certDB in $(find ~/ -name "cert9.db"); do
-    #   certdir=$(dirname ${certDB});
-    #   _exec "${sub_OPT[@]}" certutil -A -n "${certname}" -t "TCu,Cu,Tu" -i "${certfile}" -d "sql:${certdir}" || { returnCode=$?; break 2; }
-    # done
     break
   done
 }
@@ -3067,26 +3039,42 @@ _bw_install_rootCert_usingCertutilParams=(
   '--certutil=certutil'
 )
 _bw_install_rootCert_usingCertutil() { eval "$_funcParams2"
-  local -a cert8Dirs; 
-  local -a cert9Dirs; 
+  local cert8DirsFileSpec=/tmp/cert8Dirs
+  local cert9DirsFileSpec=/tmp/cert9Dirs
   _spinner \
+    -t "Поиск файлов cert8.db cert9.db занял" \
     "Поиск файлов cert8.db cert9.db" \
     _bw_install_rootCert_prepareCertDirs
+  local -a cert8Dirs 
+  local -a cert9Dirs 
+  . "$cert8DirsFileSpec"
+  . "$cert9DirsFileSpec"
+
   if [[ ${#cert8Dirs[@]} -gt 0 || ${#cert9Dirs[@]} -gt 0 ]]; then
     bw_install certutil --silentIfAlreadyInstalled || return $?
-    # local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TCu,Cu,Tu" -i "${_bwCertFile}")
     local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TC,C,T" -i "${_bwCertFile}") # https://blogs.oracle.com/meena/about-trust-flags-of-certificates-in-nss-database-that-can-be-modified-by-certutil
     local certDir; for certDir in "${cert8Dirs[@]}"; do
       _exec "${sub_OPT[@]}" "$certutil" "${certutil_OPT[@]}" -d "dbm:${certDir}" || return $?
     done
     local certDir; for certDir in "${cert9Dirs[@]}"; do
-      _exec "${sub_OPT[@]}" "$certutil" "${certutil_OPT[@]}"  -d "sql:${certDir}" || return $?
+      _exec "${sub_OPT[@]}" "$certutil" "${certutil_OPT[@]}" -d "sql:${certDir}" || return $?
     done
   fi
 }
 _bw_install_rootCert_prepareCertDirs() {
-  mapfile -t cert8Dirs < <(find "$findFrom" -name "cert8.db" -exec dirname {} \; 2>/dev/null)
-  mapfile -t cert9Dirs < <(find "$findFrom" -name "cert9.db" -exec dirname {} \; 2>/dev/null)
+  _bw_install_rootCert_prepareCertDirsHelper cert8 &
+  local pid8=$!
+  _bw_install_rootCert_prepareCertDirsHelper cert9 &
+  local pid9=$!
+  wait $pid8
+  wait $pid9
+}
+_bw_install_rootCert_prepareCertDirsHelper() {
+  local certName=$1
+  local certDirsFileSpecHolder="${certName}DirsFileSpec"
+  local certDirs
+  mapfile -t certDirs < <(find "$findFrom" -name "$certName.db" -exec dirname {} \; 2>/dev/null)
+  echo "${certName}Dirs=( $(_quotedArgs "${certDirs[@]}") )" > "${!certDirsFileSpecHolder}"
 }
 
 # =============================================================================
@@ -3096,7 +3084,7 @@ _bw_install_rootCert_prepareCertDirs() {
 bw_install_certutilParams=()
 bw_install_certutil_description='Устанавливает ${_ansiPrimaryLiteral}certutil${_ansiReset}'
 }
-bw_install_certutil() {
+bw_install_certutil() { eval "$_funcParams2"
   name="certutil" codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_certutilCheck() {
