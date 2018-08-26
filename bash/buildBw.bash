@@ -41,7 +41,6 @@ _buildBwHelper() {
     docker/helper/docker-compose.main.yml 
     docker/helper/mysql_secure_installation.sql
     docker/helper/entrypoint.bash
-    docker/helper/_chown.awk
 
     docker/nginx/conf.bw/whoami.conf
     docker/nginx/conf.bw/http.conf
@@ -81,8 +80,8 @@ _buildBwHelper() {
   else
     local -r bwNewFileName="new.$_bwFileName"
     head -n $(grep -n '^# ==BINARY[[:space:]]*$' "$_bwFileName" | cut -d ':' -f 1) "$_bwFileName" > "$bwNewFileName"
-    _addBwTar "$bwNewFileName" 'main' "${fileNamesToMainArchive[@]}"
-    _addBwTar "$bwNewFileName" 'tests' "${fileNamesToTestsArchive[@]}"
+    _addBwTar "$bwNewFileName" 'main' "${fileNamesToMainArchive[@]}" || return $?
+    _addBwTar "$bwNewFileName" 'tests' "${fileNamesToTestsArchive[@]}" || return $?
     _mvFile "$bwNewFileName" "$_bwFileName" || return $?
     local bwFileSize=$(wc -c "$_bwFileName" | perl -pe "s/^\s*(\d+).*\$/\$1/")
     local bwOldFileSize=$(wc -c "$bwOldFileName" | perl -pe "s/^\s*(\d+).*\$/\$1/")
@@ -101,11 +100,15 @@ _buildBwHelper() {
 _addBwTar() {
   local fileSpec="$1"; shift
   local archiveName="$1"; shift
+  local returnCode=0
   { 
     echo "# ==$archiveName start"
-    COPYFILE_DISABLE=1 tar cf - "$@" | gzip | base64 --break=80
+    COPYFILE_DISABLE=1 tar cf - "$@" > "/tmp/archiveName.tar"
+    returnCode=$?
+    [[ $returnCode -ne 0 ]] || cat "/tmp/archiveName.tar" | gzip | base64 --break=80
     echo "# ==$archiveName end" 
   } >> "$fileSpec"
+  return $returnCode
 }
 
 # =============================================================================
