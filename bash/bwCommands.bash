@@ -136,11 +136,13 @@ _bwProjDefs+=(
   'dip' '
     --gitOrigin github.com:baza-winner/dip2.git
     --branch develop
+    --upstream 3000
     --ssh 2208
     --http 8008
     --https 4408
     --mysql 3308
-    --upstream 3000
+    --redis 6308
+    --rabbitmq 5608
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
@@ -989,7 +991,7 @@ _prepareBwProjVarsHelper() { eval "$_funcParams2"
   done
 }
 
-_bwProjPorts=( ssh http https mysql postgresql elastic )
+_bwProjPorts=( ssh http https mysql postgresql elastic redis rabbitmq)
 _tcpPortDiap='1024..65535'
 
 _codeToDeclareLocalBwProjVars='
@@ -1079,7 +1081,7 @@ bw_project() { eval "$_funcParams2"
       fi
     fi
 
-    bw_install git --silentIfAlreadyInstalled || { returnCode=$?; break; }
+    bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
 
     while true; do
       if [[ -z $uninstall ]]; then
@@ -1349,7 +1351,7 @@ _initBwProjCmd() {
     _prepareVarsForDefaultPort $port && needNoTestAccessMessage=true
   done
   local port; for port in "${_bwProjPorts[@]:3}"; do
-    _prepareVarsForDefaultPort $port 'для сервиса ${_ansiPrimaryLiteral}$port${_ansiReset}'
+    _prepareVarsForDefaultPort $port 
   done
   _prepareVarsForDefaultPort upstream 'для сервиса ${_ansiPrimaryLiteral}nginx${_ansiReset}'
   if [[ -n $needNoTestAccessMessage ]]; then
@@ -1367,14 +1369,16 @@ _initBwProjCmd() {
   eval "$bwProjShortcut"'_selfTestParams=( 
     "${selfTestParams[@]}"
     !--projDir/p=
+    --auto/a
   )'
   eval "$bwProjShortcut"'_selfTestCondition='\''! _isInDocker'\'
   eval "$bwProjShortcut"'_selfTestShortcuts=( st )'
+  eval "$bwProjShortcut"'_selfTest_auto_description='\''В автоматическом режиме (с использованием ${_ansiCmd}expect${_ansiReset})'\'
   eval "$bwProjShortcut"'_selfTest_description='\''Самопроверка'\'
   eval "$bwProjShortcut"'_selfTest() { eval "$_funcParams2"
     _prepareProjDir '"$bwProjShortcut"' || return $?
 
-    local -a OPT=()
+    local -a OPT=( ${OPT_auto[@]} )
     '"$codeToPrepareOPTForSelfTest"'
     _inDir -v none "$projDir/docker" _cmd_selfTest "${OPT[@]}" '"$bwProjShortcut"' "$projDir"
   }'
@@ -1829,7 +1833,6 @@ _cmd_test_js() { eval "$_funcParams2"
 _cmd_mysql() {
   local returnCode=0
   while true; do
-    doWhat=_start_mysql eval "$_doOnceInContainer" || { returnCode=$?; break; }
     echo "${_ansiWarn}ВНИМАНИЕ! Для выхода из ${_ansiCmd}mysql${_ansiWarn} используйте команду ${_ansiCmd}quit;${_ansiReset}"
     MYSQL_PWD=root mysql -u root || { returnCode=$?; break; }
     break
@@ -1875,9 +1878,7 @@ _declare_mysql_mysqldump() { eval "$_funcParams2"
   eval "$bwProjShortcut"'_mysql() { eval "$_funcParams2"
     local it; [[ -n $execute ]] || it=true
     queue=$$ it=$it eval "$_runInDockerContainer"
-    if [[ $env == local ]]; then
-      doWhat=_start_mysql eval "$_doOnceInContainer" || return $?
-    else
+    if [[ $env != local ]]; then
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlHost eval "$_evalCode"
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlLogin eval "$_evalCode"
       [[ -n $host ]] || return $(_throw "ожидает, что ${_ansiOutline}_'"$bwProjShortcut"'_codeToPrepareMysqlLogin${_ansiErr} определит значение переменной ${_ansiOutline}host")
@@ -1918,9 +1919,7 @@ _declare_mysql_mysqldump() { eval "$_funcParams2"
   eval "$bwProjShortcut"'_mysqldump_description='\''Запускает mysqldump'\'
   eval "$bwProjShortcut"'_mysqldump() { eval "$_funcParams2"
     queue=$$ eval "$_runInDockerContainer"
-    if [[ $env == local ]]; then
-      doWhat=_start_mysql eval "$_doOnceInContainer" || return $?
-    else
+    if [[ $env != local ]]; then
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlHost eval "$_evalCode"
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlLogin eval "$_evalCode"
     fi
@@ -2020,8 +2019,9 @@ character-set-server=utf8
 collation-server=utf8_general_ci
 [client]
 default-character-set=utf8" | sudo tee -a /etc/mysql/my.cnf >/dev/null || { returnCode=$?; break; }
-    _exec --sudo /etc/init.d/mysql start || { returnCode=$?; break; }
-    local sqlCommands
+    # _exec --sudo /etc/init.d/mysql start || { returnCode=$?; break; }
+    _exec --sudo service mysql start || { returnCode=$?; break; } # https://askubuntu.com/questions/2075/whats-the-difference-between-service-and-etc-init-d
+    local sqlCommands 
     read -d $'\x04' sqlCommands < "$_bwDir/docker/helper/mysql_secure_installation.sql"
     MYSQL_PWD=root _inDir "$HOME/proj/docker" _exec -v allBrief mysql -u root -e "${_nl}$sqlCommands${_nl}" "$@"
     mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD=root mysql -u root mysql
@@ -2110,12 +2110,44 @@ _cmd_selfTestParams() {
     _cmd_selfTestParams+=( "--$port=" )
   done
   _cmd_selfTestParams+=(
+    '--auto'
     '--dockerImageName='
     'bwProjShortcut'
     'projDir'
   )
 }
 _cmd_selfTest() { eval "$_funcParams2"
+  if [[ -n $auto ]]; then
+    local -a OPT=()
+    local port; for port in "${_bwProjPorts[@]}" upstream; do
+      dstVarName=_OPT srcVarName="OPT_${port}" eval "$_codeToInitLocalCopyOfArray"
+      OPT+=( "${_OPT[@]}" )
+    done
+    bw_install --silentIfAlreadyInstalled expect
+    expect -c '
+set timeout -1
+
+spawn bash -c ". '"$_bwFileSpec"' -p -; . ../bin/'"$bwProjShortcut"'.bash; '"$bwProjShortcut"' self-test '"$(_quotedArgs "${OPT[@]}")"'"
+
+while {1} {
+  expect {
+    eof { break }
+    -ex "\[97m\[1mquit;\[0m" { 
+      sleep 3 
+      send -- "quit;\r"
+    }
+    -ex "\[97m\[1mexit 0\[0m" { 
+      sleep 10 
+      send -- "exit 0\r"
+    }
+    -ex "\[97m\[1mq\r" { 
+      sleep 1 
+      send -- "q\r"
+    }
+  }
+}'
+    return $?
+  fi
   local returnCode=0
   while true; do
     local -a OPT=()
@@ -2221,7 +2253,7 @@ _docker_up() { eval "$_funcParams2"
   while true; do
 
     if [[ -n $https ]]; then
-      bw_install root-cert --silentIfAlreadyInstalled || { returnCode=$?; break; }
+      bw_install --silentIfAlreadyInstalled root-cert || { returnCode=$?; break; }
     fi
 
     if [[ $OSTYPE =~ ^linux ]]; then
@@ -2893,13 +2925,37 @@ _bw_install_gitCheck() {
 }
 _bw_install_gitDarwin() {
   while true; do
-    bw_install brew --silentIfAlreadyInstalled || { returnCode=$?; break; }
+    bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
     _exec brew install "${OPT_force[@]}" git || returnCode=$?
     break
   done
 }
 _bw_install_gitLinux() {
-  _exec "${sub_OPT[@]}" --sudo apt install -y --force-yes git || returnCode=$?
+  _exec "${sub_OPT[@]}" --sudo apt-get install -y git || returnCode=$?
+}
+
+# =============================================================================
+
+# shellcheck disable=SC2034
+{
+bw_install_expectParams=()
+bw_install_expect_description='Устанавливает ${_ansiPrimaryLiteral}expect${_ansiReset}'
+}
+bw_install_expect() { eval "$_funcParams2"
+  name=expect codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_expectCheck() {
+  _which expect
+}
+_bw_install_expectDarwin() {
+  while true; do
+    bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
+    _exec brew install "${OPT_force[@]}" expect || returnCode=$?
+    break
+  done
+}
+_bw_install_expectLinux() {
+  _exec "${sub_OPT[@]}" --sudo apt-get install -y expect || returnCode=$?
 }
 
 # =============================================================================
@@ -2959,7 +3015,7 @@ bw_githubKeygenParams=( 'username' )
 bw_githubKeygen_username_description='Имя пользователя на ${_ansiCmd}github${_ansiReset}'
 bw_githubKeygen_description='Устанавливает ключ для доступа к ${_ansiCmd}github${_ansiReset}'
 bw_githubKeygen() { eval "$_funcParams2"
-  bw_install github-keygen --silentIfAlreadyInstalled || return $?
+  bw_install --silentIfAlreadyInstalled github-keygen || return $?
   _rm "$_githubKeygenPastedMarkFileSpec"
   _rm "$_githubKeygenFixFileSpec"
   "$_bwDir/github-keygen/github-keygen" "$username" 
@@ -3051,7 +3107,7 @@ _bw_install_rootCert_usingCertutil() { eval "$_funcParams2"
   . "$cert9DirsFileSpec"
 
   if [[ ${#cert8Dirs[@]} -gt 0 || ${#cert9Dirs[@]} -gt 0 ]]; then
-    bw_install certutil --silentIfAlreadyInstalled || return $?
+    bw_install --silentIfAlreadyInstalled certutil || return $?
     local -a certutil_OPT=(-A -n "${_bwCertName}" -t "TC,C,T" -i "${_bwCertFile}") # https://blogs.oracle.com/meena/about-trust-flags-of-certificates-in-nss-database-that-can-be-modified-by-certutil
     local certDir; for certDir in "${cert8Dirs[@]}"; do
       _exec "${sub_OPT[@]}" "$certutil" "${certutil_OPT[@]}" -d "dbm:${certDir}" || return $?
@@ -3104,7 +3160,7 @@ _bw_install_certutilLinux() {
 }
 _bw_install_certutilDarwin() {
   while true; do
-    bw_install brew --silentIfAlreadyInstalled || { returnCode=$?; break; }
+    bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" brew install nss || { returnCode=$?; break; }
     break
   done
@@ -3228,7 +3284,7 @@ bw_install_dockerComposeParams=()
 bw_install_dockerCompose_description="Устанавливает ${_ansiPrimaryLiteral}docker-compose${_ansiReset}"
 }
 bw_install_dockerCompose() { eval "$_funcParams2"
-  bw_install docker --silentIfAlreadyInstalled || return $?
+  bw_install --silentIfAlreadyInstalled docker || return $?
   name=docker-compose codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_dockerComposeCheck() {

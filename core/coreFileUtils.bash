@@ -530,3 +530,65 @@ _realpath() { eval "$_funcParams2"
 
 # =============================================================================
 
+_chownParamsOpt=( --canBeMixedOptionsAndArgs )
+_chownParams=( 
+  '--maxProcesses/P:1..100=2'
+  '--maxFilesPerLine/L:1..1000=20'
+  '--maxdepth/D:0..=1'
+  '--verbose/v'
+  'user'
+  'homeSubdir:?'
+)
+_chown() { eval "$_funcParams2"
+  # local homeSubdir=
+  # # local maxProcesses=32
+  # local maxProcesses=8
+  # local maxFilesPerLine=500
+  # # local maxdepth=12
+  # local maxdepth=5
+  # local user=dev
+  # local verbose
+  # verbose=true
+  # 
+
+  local root="$HOME/$homeSubdir"
+  [[ $root =~ /$ ]] && root=${root:0:-1}
+  local title="${_ansiCmd}chown -R $user '$root'${_ansiReset}"
+  echo "$title . . ."
+  timeStart=$(date +%s)
+  rm -f _chown.stdout _chown.stderr
+  local batchFileSpec="/tmp/_chown.batch"
+  if [[ $maxdepth -eq 0 ]]; then
+    echo "sudo chown -R $user \"$root\"" > "$batchFileSpec"
+    if [[ -n $verbose ]]; then
+      printf "recursive: %s\n" 1
+    fi
+  else
+    local -a maxdepth_OPT=()
+    if [[ $maxdepth -gt 0 ]]; then
+      maxdepth_OPT=( -maxdepth $maxdepth )
+    fi
+    local awkFileSpec;_prepareAwkFileSpec
+    local -a awk_OPT=(
+      -v "root=$root" 
+      -v "maxdepth=$maxdepth" 
+      -v "user=$user" 
+      -v "maxProcesses=$maxProcesses"
+      -v "maxFilesPerLine=$maxFilesPerLine"
+      -v "verbose=$verbose"
+      -f "$awkFileSpec"
+    )
+    { 
+      sudo find "$HOME/$homeSubdir" "${maxdepth_OPT[@]}" -type d 
+      echo '========'
+      sudo find "$HOME/$homeSubdir" "${maxdepth_OPT[@]}" ! -type d 
+    } | awk "${awk_OPT[@]}" > "$batchFileSpec"
+  fi
+  ( . "$batchFileSpec" )
+  timeEnd=$(date +%s)
+  timeElapsed=$(( timeEnd - timeStart ))
+  printf "Выполнение $title заняло %ss\n" $timeElapsed
+}
+
+# =============================================================================
+
