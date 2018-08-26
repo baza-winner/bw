@@ -9,7 +9,7 @@ _init() {
     sudo chown -R dev "$HOME/.bw"
     . "$HOME/bw.bash" -p -
 
-    _chown dev -D 3 -P 8 -L 50 -v
+    _chown dev -D 5 -L 500 -P 8 -v
     
     if [[ $returnCode -eq 0 ]]; then
       _ok "$cmdTitle"

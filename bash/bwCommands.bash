@@ -2124,6 +2124,14 @@ _cmd_selfTest() { eval "$_funcParams2"
       OPT+=( "${_OPT[@]}" )
     done
     bw_install --silentIfAlreadyInstalled expect
+    local patch=''
+    if [[ $bwProjShortcut == agate ]]; then
+      patch='
+      -ex "passing" {
+      sleep 1
+      send \x03
+    }'
+    fi
     expect -c '
 set timeout -1
 
@@ -2163,6 +2171,7 @@ while {1} {
       sleep 1 
       send -- "yes\r"
     }
+    '"$patch"'
   }
 }'
     return $?
