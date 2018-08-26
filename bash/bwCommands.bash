@@ -2146,6 +2146,8 @@ while {1} {
     }
     -ex "\[97m\[1mexit 0\[0m" { 
       sleep 10 
+      send -- "yes\r"
+      sleep 1 
       send -- "exit 0\r"
     }
     -ex "\[97m\[1mq\r" { 
@@ -2161,15 +2163,6 @@ while {1} {
         stty echo
         send "$expect_out(1,string)\r"
       }
-    }
-    -ex "Are you sure you want to continue connecting (yes/no)" {
-      send -- "yes\r"
-      sleep 1 
-      send -- "exit 0\r"
-    }
-    -ex "Please type '\''yes'\'' or '\''no'\'':" {
-      sleep 1 
-      send -- "yes\r"
     }
     '"$patch"'
   }
