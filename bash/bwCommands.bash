@@ -2146,7 +2146,7 @@ while {1} {
     }
     -ex "\[97m\[1mexit 0\[0m" { 
       sleep 10 
-      send -- "yes\r"
+      send -- "YeS\r"
       sleep 1 
       send -- "exit 0\r"
     }
@@ -2385,7 +2385,7 @@ _docker_up() { eval "$_funcParams2"
       _runInDockerContainer_outOfDockerHelper || { returnCode=$?; break; }
     fi
 
-    if [[ ( -n $http || -n $https ) && -z $noTestAccessMessage ]]; then
+    if [[ -n $http || -n $https ]]; then
       _mkDir nginx/whoami
       {
       echo -n "<pre>"
@@ -2399,7 +2399,9 @@ _docker_up() { eval "$_funcParams2"
   done
       echo "${_nl}</pre>"
       } > nginx/whoami/index.html
+    fi
 
+    if [[ ( -n $http || -n $https || -n $ssh ) && -z $noTestAccessMessage ]]; then
       echo "Проверка доступности docker-приложения:"
       [[ -z $http ]] || echo "  ${_ansiUrl}http://localhost:$http/whoami/${_ansiReset}"
       [[ -z $https ]] || echo "  ${_ansiUrl}https://localhost:$https/whoami/${_ansiReset}"
