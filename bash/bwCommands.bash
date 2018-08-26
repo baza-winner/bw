@@ -1829,7 +1829,6 @@ _cmd_test_js() { eval "$_funcParams2"
 _cmd_mysql() {
   local returnCode=0
   while true; do
-    doWhat=_start_mysql eval "$_doOnceInContainer" || { returnCode=$?; break; }
     echo "${_ansiWarn}ВНИМАНИЕ! Для выхода из ${_ansiCmd}mysql${_ansiWarn} используйте команду ${_ansiCmd}quit;${_ansiReset}"
     MYSQL_PWD=root mysql -u root || { returnCode=$?; break; }
     break
@@ -1875,9 +1874,7 @@ _declare_mysql_mysqldump() { eval "$_funcParams2"
   eval "$bwProjShortcut"'_mysql() { eval "$_funcParams2"
     local it; [[ -n $execute ]] || it=true
     queue=$$ it=$it eval "$_runInDockerContainer"
-    if [[ $env == local ]]; then
-      doWhat=_start_mysql eval "$_doOnceInContainer" || return $?
-    else
+    if [[ $env != local ]]; then
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlHost eval "$_evalCode"
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlLogin eval "$_evalCode"
       [[ -n $host ]] || return $(_throw "ожидает, что ${_ansiOutline}_'"$bwProjShortcut"'_codeToPrepareMysqlLogin${_ansiErr} определит значение переменной ${_ansiOutline}host")
@@ -1918,9 +1915,7 @@ _declare_mysql_mysqldump() { eval "$_funcParams2"
   eval "$bwProjShortcut"'_mysqldump_description='\''Запускает mysqldump'\'
   eval "$bwProjShortcut"'_mysqldump() { eval "$_funcParams2"
     queue=$$ eval "$_runInDockerContainer"
-    if [[ $env == local ]]; then
-      doWhat=_start_mysql eval "$_doOnceInContainer" || return $?
-    else
+    if [[ $env != local ]]; then
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlHost eval "$_evalCode"
       codeHolder=_'"$bwProjShortcut"'_codeToPrepareMysqlLogin eval "$_evalCode"
     fi
@@ -2020,8 +2015,9 @@ character-set-server=utf8
 collation-server=utf8_general_ci
 [client]
 default-character-set=utf8" | sudo tee -a /etc/mysql/my.cnf >/dev/null || { returnCode=$?; break; }
-    _exec --sudo /etc/init.d/mysql start || { returnCode=$?; break; }
-    local sqlCommands
+    # _exec --sudo /etc/init.d/mysql start || { returnCode=$?; break; }
+    _exec --sudo service mysql start || { returnCode=$?; break; } # https://askubuntu.com/questions/2075/whats-the-difference-between-service-and-etc-init-d
+    local sqlCommands 
     read -d $'\x04' sqlCommands < "$_bwDir/docker/helper/mysql_secure_installation.sql"
     MYSQL_PWD=root _inDir "$HOME/proj/docker" _exec -v allBrief mysql -u root -e "${_nl}$sqlCommands${_nl}" "$@"
     mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD=root mysql -u root mysql
