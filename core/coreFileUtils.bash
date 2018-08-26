@@ -540,22 +540,11 @@ _chownParams=(
   'homeSubdir:?'
 )
 _chown() { eval "$_funcParams2"
-  # local homeSubdir=
-  # # local maxProcesses=32
-  # local maxProcesses=8
-  # local maxFilesPerLine=500
-  # # local maxdepth=12
-  # local maxdepth=5
-  # local user=dev
-  # local verbose
-  # verbose=true
-  # 
-
   local root="$HOME/$homeSubdir"
   [[ $root =~ /$ ]] && root=${root:0:-1}
-  local title="${_ansiCmd}chown -R $user '$root'${_ansiReset}"
-  echo "$title . . ."
-  timeStart=$(date +%s)
+  # local title="${_ansiCmd}chown -R $user '$root'${_ansiReset}"
+  # echo "$title . . ."
+  # timeStart=$(date +%s)
   rm -f _chown.stdout _chown.stderr
   local batchFileSpec="/tmp/_chown.batch"
   if [[ $maxdepth -eq 0 ]]; then
@@ -585,9 +574,9 @@ _chown() { eval "$_funcParams2"
     } | awk "${awk_OPT[@]}" > "$batchFileSpec"
   fi
   ( . "$batchFileSpec" )
-  timeEnd=$(date +%s)
-  timeElapsed=$(( timeEnd - timeStart ))
-  printf "Выполнение $title заняло %ss\n" $timeElapsed
+  # timeEnd=$(date +%s)
+  # timeElapsed=$(( timeEnd - timeStart ))
+  # printf "Выполнение $title заняло %ss\n" $timeElapsed
 }
 
 # =============================================================================

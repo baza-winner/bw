@@ -9,7 +9,11 @@ _init() {
     sudo chown -R dev "$HOME/.bw"
     . "$HOME/bw.bash" -p -
 
-    _chown dev -D 5 -L 500 -P 8 -v
+    local title="${_ansiCmd}chown -R dev $HOME${_ansiReset}"
+    _spinner \
+      -t "Выполнение $title заняло" \
+      "$title" \
+      _chown dev -D 5 -L 500 -P 8 -v
     
     if [[ $returnCode -eq 0 ]]; then
       _ok "$cmdTitle"
