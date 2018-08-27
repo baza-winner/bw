@@ -137,7 +137,7 @@ curl -o ~/bw.bash -L 10.211.55.2:8002/bw.bash && . ~/bw.bash -u 10.211.55.2:8002
 или
 
 ```
-curl -o ~/10.211.55.2:8002/bw.bash && BW_SELF_UPDATE_SOURCE=10.211.55.2:8002 . ~/bw.bash bw bt
+curl -o ~/bw.bash -L 10.211.55.2:8002/bw.bash && BW_SELF_UPDATE_SOURCE=10.211.55.2:8002 . ~/bw.bash bw bt
 ```
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)

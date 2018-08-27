@@ -2790,35 +2790,78 @@ bw_projectTestParams=(
 )
 bw_projectTest_bwProjShortcuts_name='Короткое-имя-проекта'
 bw_projectTest_containerDir_description='Папка, куда будут разворачиваться проекты для тестирования'
+bw_projectTest_githubUser_description='Имя пользователя на ${_ansiCmd}github${_ansiReset} для настройки ssh-доступа'
 bw_projectTest_rootPwd_description='Требуется для автоматического запуска ${_ansiCmd}docker${_ansiReset} в Ubuntu'
 bw_projectTest_description='Тестирование команды ${_ansiCmd}bw project${_ansiReset}'
 bw_projectTestShortcuts=( 'pt' )
 bw_projectTest() { eval "$_funcParams2"
-  [[ $OSTYPE =~ ^darwin ]] || [[ -n $rootPwd ]] || return $(_throw "${_ansiCmd}rootPwd${_ansiReset} должен быть задан для прогона тестов в автоматическом режиме")
-  if [[ -n $githubUser && ! -f ~/.ssh/id_${githubUser}@github.pub ]]; then 
+  [[ $OSTYPE =~ ^darwin ]] || [[ -n $rootPwd ]] || return $(_throw "значение ${_ansiCmd}--rootPwd${_ansiReset} должно быть задано для прогона тестов в автоматическом режиме")
+  bw_install --silentIfAlreadyInstalled expect || return $?
+  if ! _bw_install_gitCheck; then 
+    [[ -n $rootPwd ]] || return $(_throw "значение ${_ansiCmd}--rootPwd${_ansiReset} должно быть задано для установки ${_ansiCmd}git${_ansiReset} в автоматическом режиме")
     ROOT_PWD="$rootPwd" expect -c '
 set timeout -1
-spawn bash -c ". '"$_bwFileSpec"' -p -; bw_install --silentIfAlreadyInstalled chrome; bw_install --silentIfAlreadyInstalled git;
+spawn bash -c ". '"$_bwFileSpec"' -p -; bw_install --silentIfAlreadyInstalled git;"
 while {1} {
   expect {
     eof { break }
     -ex "sudo] password for" {
-      if { [info exists env(ROOT_PWD)] } {
-        send "$env(ROOT_PWD)\r"
-      } else {
-        stty -echo
-        expect_user -timeout -1 -re "(.*)\[\r\n]"
-        stty echo
-        send "$expect_out(1,string)\r"
-      }
+      send "$env(ROOT_PWD)\r"
     }
     '"$patch"'
   }
 }'
-    _bw_install_chromeCheck || return $(_throw "${_ansiCommand}chrome${_ansiErr} is not installed")
-    _bw_install_git || return $(_throw "${_ansiCommand}git${_ansiErr} is not installed")
-    bw github-keygen "$githubUser"
-    read -r -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} when finished${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
+    _bw_install_gitCheck || return $?
+  fi
+  if [[ -n $githubUser && ! -f ~/.ssh/id_${githubUser}@github.pub ]]; then 
+    [[ -n $rootPwd ]] || return $(_throw "значение ${_ansiCmd}--rootPwd${_ansiReset} должно быть задано для работы ${_ansiCmd}github-keygen${_ansiReset} в автоматическом режиме")
+
+    if ! _bw_install_chromeCheck; then
+      ROOT_PWD="$rootPwd" expect -c '
+set timeout -1
+spawn bash -c ". '"$_bwFileSpec"' -p -; bw_install --silentIfAlreadyInstalled chrome;"
+while {1} {
+  expect {
+    eof { break }
+    -ex "sudo] password for" {
+      send "$env(ROOT_PWD)\r"
+    }
+    '"$patch"'
+  }
+}'
+      _bw_install_chromeCheck || return $?
+    fi
+
+    ROOT_PWD="$rootPwd" expect -c '
+    set timeout -1
+spawn bash -c ". '"$_bwFileSpec"' -p -; bw github-keygen '"$githubUser"';"
+while {1} {
+  expect {
+    eof { break }
+    -ex "sudo] password for" {
+      send "$env(ROOT_PWD)\r"
+    }
+    -ex "Enter passphrase" {
+      send "$env(ROOT_PWD)\r"
+    }
+    -ex "Enter same passphrase again" {
+      send "$env(ROOT_PWD)\r"
+    }
+    -ex "errors while creating key" {
+      \x03
+    }
+    -ex "\[36m\[1mEnter\[33m\[1m" {
+      sleep 1
+      send "\r"
+    }
+    '"$patch"'
+  }
+}'
+    if [[ ! -f ~/.ssh/id_${githubUser}@github.pub ]]; then
+      return $(_throw "Failed to create key for github")
+    else
+      read -r -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} when finished${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
+    fi
   fi
   _rm -v all -d "$containerDir" || return $?
   _mkDir -v allBrief "$containerDir" || return $?
@@ -2973,7 +3016,7 @@ _bw_install_gitDarwin() {
   done
 }
 _bw_install_gitLinux() {
-  _exec "${sub_OPT[@]}" --sudo apt-get install -y git || returnCode=$?
+  _exec "${sub_OPT[@]}" --sudo apt-get install -y --force-yes git || returnCode=$?
 }
 
 # =============================================================================
