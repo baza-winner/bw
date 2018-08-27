@@ -2796,7 +2796,27 @@ bw_projectTestShortcuts=( 'pt' )
 bw_projectTest() { eval "$_funcParams2"
   [[ $OSTYPE =~ ^darwin ]] || [[ -n $rootPwd ]] || return $(_throw "${_ansiCmd}rootPwd${_ansiReset} должен быть задан для прогона тестов в автоматическом режиме")
   if [[ -n $githubUser && ! -f ~/.ssh/id_${githubUser}@github.pub ]]; then 
-    bw_install --silentIfAlreadyInstalled chrome || return $?
+    ROOT_PWD="$rootPwd" expect -c '
+set timeout -1
+spawn bash -c ". '"$_bwFileSpec"' -p -; bw_install --silentIfAlreadyInstalled chrome; bw_install --silentIfAlreadyInstalled git;
+while {1} {
+  expect {
+    eof { break }
+    -ex "sudo] password for" {
+      if { [info exists env(ROOT_PWD)] } {
+        send "$env(ROOT_PWD)\r"
+      } else {
+        stty -echo
+        expect_user -timeout -1 -re "(.*)\[\r\n]"
+        stty echo
+        send "$expect_out(1,string)\r"
+      }
+    }
+    '"$patch"'
+  }
+}'
+    _bw_install_chromeCheck || return $(_throw "${_ansiCommand}chrome${_ansiErr} is not installed")
+    _bw_install_git || return $(_throw "${_ansiCommand}git${_ansiErr} is not installed")
     bw github-keygen "$githubUser"
     read -r -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} when finished${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
   fi
@@ -2809,7 +2829,7 @@ bw_projectTest() { eval "$_funcParams2"
     bw prepare $bwProjShortcut "$projDir"
     # . "$_profileFileSpec" 2>&1 | tee "$containerDir/$bwProjShortcut.source.log"
     # _warn pwd: $(pwd)
-    ROOT_PWD=1014103yB "$bwProjShortcut" st -a -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.st.log" 
+    ROOT_PWD="$rootPwd" "$bwProjShortcut" st -a -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.st.log" 
   done
   echo "================================================================================"
   echo "================================ Сводка ========================================"
