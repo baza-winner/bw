@@ -2718,22 +2718,6 @@ _prepareDuplicatePorts() {
       eval local "__usedPort${!bwProjDefaultPort}"
       eval "__usedPort${!bwProjDefaultPort}"'=$(( __usedPort'"${!bwProjDefaultPort}"' + 1 ))'
     done
-    # if [[ -n $bwProjDefaultSsh ]]; then
-    #   eval local "__usedPort$bwProjDefaultHttp"
-    #   eval "__usedPort$bwProjDefaultSsh"'=$(( __usedPort$bwProjDefaultSsh + 1 ))'
-    # fi
-    # if [[ -n $bwProjDefaultHttp ]]; then
-    #   eval local "__usedPort$bwProjDefaultHttp"
-    #   eval "__usedPort$bwProjDefaultHttp"'=$(( __usedPort$bwProjDefaultHttp + 1 ))'
-    # fi
-    # if [[ -n $bwProjDefaultHttps ]]; then
-    #   eval local "__usedPort$bwProjDefaultHttps"
-    #   eval "__usedPort$bwProjDefaultHttps"'=$(( __usedPort$bwProjDefaultHttps + 1 ))'
-    # fi
-    # if [[ -n $bwProjDefaultMysql ]]; then
-    #   eval local "__usedPort$bwProjDefaultMysql"
-    #   eval "__usedPort$bwProjDefaultMysql"'=$(( __usedPort$bwProjDefaultMysql + 1 ))'
-    # fi
   done
   duplicatePorts=()
   local prefix=__usedPort
@@ -2770,34 +2754,6 @@ _bwProjectInfoHelper() {
         fi
       fi
     done
-
-    # echo -n "  ssh: "
-    # if [[ -z $bwProjDefaultSsh || $bwProjDefaultSsh -eq "$bwProjGlobalDefaultSsh" ]]; then
-    #   echo "${_ansiWarn}$bwProjGlobalDefaultSsh${_ansiReset}"
-    # elif _hasItem "$bwProjDefaultSsh" "${duplicatePorts[@]}"; then
-    #   echo "${_ansiWarn}$bwProjDefaultSsh${_ansiReset}"
-    # else
-    #   echo "$bwProjDefaultSsh"
-    # fi
-
-    # echo -n "  http: "
-    # if [[ -z $bwProjDefaultHttp || $bwProjDefaultHttp -eq "$bwProjGlobalDefaultHttp" ]]; then
-    #   echo "${_ansiWarn}$bwProjGlobalDefaultHttp${_ansiReset}"
-    # elif _hasItem "$bwProjDefaultHttp" "${duplicatePorts[@]}"; then
-    #   echo "${_ansiWarn}$bwProjDefaultHttp${_ansiReset}"
-    # else
-    #   echo "$bwProjDefaultHttp"
-    # fi
-
-    # echo -n "  https: "
-    # if [[ -z $bwProjDefaultHttps || $bwProjDefaultHttps -eq "$bwProjGlobalDefaultHttps" ]]; then
-    #   echo "${_ansiWarn}$bwProjGlobalDefaultHttps${_ansiReset}"
-    # elif _hasItem "$bwProjDefaultHttps" "${duplicatePorts[@]}"; then
-    #   echo "${_ansiWarn}$bwProjDefaultHttps${_ansiReset}"
-    # else
-    #   echo "$bwProjDefaultHttps"
-    # fi
-
   else
     local -a projDirs; _prepareProjDirs "$bwProjShortcut" || return $?
     if [[ "${#projDirs[@]}" -gt 0 ]]; then
@@ -2825,7 +2781,50 @@ _bwProjectInfoHelper() {
 
 # =============================================================================
 
-_mysql_root_cnf=( mysql --defaults-file=docker/mysql/root.cnf )
+bw_projectTestParamsOpt=( '--canBeMixedOptionsAndArgs' )
+bw_projectTestParams=(
+  '--githubUser/u='
+  '--rootPwd/p='
+  '--containerDir/d=/tmp/bw_projectTest'
+  '@bwProjShortcuts:( '"$(_getBwProjShortcuts)"' )=( '"$(_getBwProjShortcuts)"' )'
+)
+bw_projectTest_bwProjShortcuts_name='Короткое-имя-проекта'
+bw_projectTest_containerDir_description='Папка, куда будут разворачиваться проекты для тестирования'
+bw_projectTest_rootPwd_description='Требуется для автоматического запуска ${_ansiCmd}docker${_ansiReset} в Ubuntu'
+bw_projectTest_description='Тестирование команды ${_ansiCmd}bw project${_ansiReset}'
+bw_projectTestShortcuts=( 'pt' )
+bw_projectTest() { eval "$_funcParams2"
+  [[ $OSTYPE =~ ^darwin ]] || [[ -n $rootPwd ]] || return $(_throw "${_ansiCmd}rootPwd${_ansiReset} должен быть задан для прогона тестов в автоматическом режиме")
+  if [[ -n $githubUser && ! -f ~/.ssh/id_${githubUser}@github.pub ]]; then 
+    bw_install --silentIfAlreadyInstalled chrome || return $?
+    bw github-keygen "$githubUser"
+    read -r -p "${_ansiWarn}Press ${_ansiPrimaryLiteral}Enter${_ansiWarn} when finished${_ansiReset}" # https://unix.stackexchange.com/questions/293940/bash-how-can-i-make-press-any-key-to-continue
+  fi
+  _rm -v all -d "$containerDir" || return $?
+  _mkDir -v allBrief "$containerDir" || return $?
+  local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do 
+    local projDir="$containerDir/$bwProjShortcut"
+    bw p $bwProjShortcut -u -p "$projDir" >/dev/null 2>&1
+    bw p $bwProjShortcut -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.p.log"
+    bw prepare $bwProjShortcut "$projDir"
+    # . "$_profileFileSpec" 2>&1 | tee "$containerDir/$bwProjShortcut.source.log"
+    # _warn pwd: $(pwd)
+    ROOT_PWD=1014103yB "$bwProjShortcut" st -a -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.st.log" 
+  done
+  echo "================================================================================"
+  echo "================================ Сводка ========================================"
+  local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do 
+    echo "==== $bwProjShortcut"
+    local stLogFileSpec="$containerDir/$bwProjShortcut.st.log"
+    echo "${stLogFileSpec}:"
+    tail -n 2 "$stLogFileSpec"
+    # local sourceLogFileSpec="$containerDir/$bwProjShortcut.source.log"
+    # if [[ -s $sourceLogFileSpec ]]; then
+    #   _warn "${sourceLogFileSpec}:"
+    #   head -n 4 "$sourceLogFileSpec"
+    # fi
+  done
+}
 
 # =============================================================================
 
