@@ -8,13 +8,13 @@ _resetBash
 bwTests=(
   '
     --return "1"
-    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} вместо ${_ansiPrimaryLiteral}unexpected${_ansiErr} ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt github-keygen install prepare project p project-info pi remove rm run set update version${_ansiReset}"
+    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} вместо ${_ansiPrimaryLiteral}unexpected${_ansiErr} ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt github-keygen install prepare project p project-info pi project-test pt remove rm run set update version${_ansiReset}"
     --noErrorStack
     "bw unexpected"
   '
   '
     --return "1"
-    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt github-keygen install prepare project p project-info pi remove rm run set update version${_ansiReset}"
+    --stderr "${_ansiErr}ERR: ${_ansiCmd}bw${_ansiErr} в качестве первого аргумента ожидает одну из следующих команд: ${_ansiSecondaryLiteral}bash-tests bt github-keygen install prepare project p project-info pi project-test pt remove rm run set update version${_ansiReset}"
     --noErrorStack
     "bw"
   '
