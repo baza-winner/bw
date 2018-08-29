@@ -166,6 +166,23 @@ _bwProjDefs+=(
 
 # =============================================================================
 
+_bwProjDefs+=(
+  'geo' '
+    --gitOrigin github.com:baza-winner/geo-api2.git
+    --branch feature/docker
+    --ssh 2210
+    --http 8010
+    --https 4410
+    --mysql 3310
+    --elastic 9210
+    --upstream 3000
+    --docker-compose "docker-compose.nginx.yml"
+    --docker-compose "docker-compose.main.yml"
+  '
+)
+
+# =============================================================================
+
 _unsetBash() {
   local verbosity="$1"
   local fileSpec="${fileSpec:-${BASH_SOURCE[1]}}"
