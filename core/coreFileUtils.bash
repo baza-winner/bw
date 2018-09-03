@@ -533,21 +533,17 @@ _realpath() { eval "$_funcParams2"
 _chownParamsOpt=( --canBeMixedOptionsAndArgs )
 _chownParams=( 
   '--maxProcesses/P:1..100=2'
-  '--maxFilesPerLine/L:1..1000=20'
-  '--maxdepth/D:0..=1'
+  '--maxLineLength/L:1000..=115000' # 115000 - эмпирическая величина, на ней Ubuntu14 еще не "валится", а на 120000 уже
   '--verbose/v'
+  '@--notPath'
   'user'
   'homeSubdir:?'
 )
 _chown() { eval "$_funcParams2"
   local root="$HOME/$homeSubdir"
   [[ $root =~ /$ ]] && root=${root:0:-1}
-  # local title="${_ansiCmd}chown -R $user '$root'${_ansiReset}"
-  # echo "$title . . ."
-  # timeStart=$(date +%s)
-  rm -f _chown.stdout _chown.stderr
   local batchFileSpec="/tmp/_chown.batch"
-  if [[ $maxdepth -eq 0 ]]; then
+  if [[ $maxProcesses -eq 1 ]]; then
     echo "sudo chown -R $user \"$root\"" > "$batchFileSpec"
     if [[ -n $verbose ]]; then
       printf "recursive: %s\n" 1
@@ -560,23 +556,20 @@ _chown() { eval "$_funcParams2"
     local awkFileSpec;_prepareAwkFileSpec
     local -a awk_OPT=(
       -v "root=$root" 
-      -v "maxdepth=$maxdepth" 
       -v "user=$user" 
       -v "maxProcesses=$maxProcesses"
-      -v "maxFilesPerLine=$maxFilesPerLine"
+      -v "maxLineLength=$maxLineLength"
       -v "verbose=$verbose"
       -f "$awkFileSpec"
     )
-    { 
-      sudo find "$HOME/$homeSubdir" "${maxdepth_OPT[@]}" -type d 
-      echo '========'
-      sudo find "$HOME/$homeSubdir" "${maxdepth_OPT[@]}" ! -type d 
-    } | awk "${awk_OPT[@]}" > "$batchFileSpec"
+    local -a find_OPT=( -not -path "$HOME"'/.bw*' -and -not -path "$HOME/bw.bash" )
+    local notPathItem; for notPathItem in "${notPath[@]}"; do
+      find_OPT+=( -and -not -path "$notPathItem" )
+    done
+    sudo find "$HOME/$homeSubdir" "${find_OPT[@]}" \
+    | awk "${awk_OPT[@]}" > "$batchFileSpec"
   fi
   ( . "$batchFileSpec" )
-  # timeEnd=$(date +%s)
-  # timeElapsed=$(( timeEnd - timeStart ))
-  # printf "Выполнение $title заняло %ss\n" $timeElapsed
 }
 
 # =============================================================================

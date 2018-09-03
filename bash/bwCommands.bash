@@ -168,7 +168,7 @@ _bwProjDefs+=(
 
 _bwProjDefs+=(
   'geo' '
-    --gitOrigin github.com:baza-winner/geo-api2.git
+    --gitOrigin github.com:baza-winner/geo2-api.git
     --branch feature/docker
     --ssh 2210
     --http 8010
@@ -1809,7 +1809,6 @@ _declare_test_js() { eval "$_funcParams2"
   eval "$bwProjShortcut"'_testParams=(
     --noCoverage/c
     !--projDir/p=
-    "${'"$bwProjShortcut"'_prepareParams[@]}"
     "${'"$bwProjShortcut"'_prepareLocalParamsAddon[@]}"
     '\''@testNames:( $(_'"$bwProjShortcut"'_testNames "$projDir") )'\''
   )'
@@ -2885,6 +2884,9 @@ while {1} {
   local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do
     local projDir="$containerDir/$bwProjShortcut"
     bw p $bwProjShortcut -u -p "$projDir" >/dev/null 2>&1
+  done
+  local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do 
+    local projDir="$containerDir/$bwProjShortcut"
     bw p $bwProjShortcut -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.p.log"
     bw prepare $bwProjShortcut "$projDir"
     # . "$_profileFileSpec" 2>&1 | tee "$containerDir/$bwProjShortcut.source.log"
@@ -2904,6 +2906,7 @@ while {1} {
     #   head -n 4 "$sourceLogFileSpec"
     # fi
   done
+  . "$_profileFileSpec" 
 }
 
 # =============================================================================
