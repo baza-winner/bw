@@ -9,7 +9,7 @@ _init() {
     sudo chown -R dev "$HOME/.bw"
   fi
 
-  if [[ $- =~ i ]]; then 
+  if [[ $- =~ i ]]; then
     . "$HOME/.bashrc" || return $?
   else
     . "$HOME/bw.bash" -p - || return $?
@@ -26,12 +26,13 @@ _init() {
       OPT_notPath+=( --notPath "$HOME/$notPathItem" )
     done
 
-    local title="${_ansiCmd}chown -R dev $HOME${_ansiReset}"
+    local homeSubdir=proj
+    local title="${_ansiCmd}chown -R dev $HOME/$homeSubdir${_ansiReset}"
     _spinner \
       -t "Выполнение $title заняло" \
       "$title" \
-      _chown dev proj -P 8 "${OPT_notPath[@]}" # -v
-    
+      _chown dev "$homeSubdir" -P 8 "${OPT_notPath[@]}" # -v
+
     if [[ $returnCode -eq 0 ]]; then
       _ok "$cmdTitle"
       touch /tmp/owned
@@ -58,6 +59,9 @@ _init() {
 
 _entrypoint() {
   if [[ $# -gt 0 ]]; then
+    if [[ ! -f /tmp/owned ]]; then
+      sudo chown -R dev "$HOME/proj/docker"
+    fi
     local pidFileSpec="$HOME/proj/docker/$1.pid"; shift
     echo $PPID > "$pidFileSpec"
   fi

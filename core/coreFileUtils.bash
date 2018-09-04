@@ -440,7 +440,7 @@ _mkFileFromTemplateParams=(
   '@--varNames/v'
   'fileSpec'
 )
-_mkFileFromTemplate() { 
+_mkFileFromTemplate() {
   local -a __substitutedVarNames=()
   local __varName; for __varName in noNotice commentPrefix templateFileSpec varNames fileSpec; do
     if _substitute -s "$__varName"; then
@@ -479,15 +479,15 @@ _mkFileFromTemplate() {
       echo "$__msg" > "$fileSpec"
     fi
 
-    local awkFileSpec; _prepareAwkFileSpec 
+    local awkFileSpec; _prepareAwkFileSpec
     local -a awk_OPT=(
-      -f "$awkFileSpec" 
+      -f "$awkFileSpec"
       -v "funcName=${FUNCNAME[0]}"
     )
-    local -a __foundVarNames; mapfile -t __foundVarNames < <(awk "${awk_OPT[@]}" "$templateFileSpec") 
+    local -a __foundVarNames; mapfile -t __foundVarNames < <(awk "${awk_OPT[@]}" "$templateFileSpec")
 
     local templateFileContent
-    read -d $'\x04' __templateFileContent < "$templateFileSpec" # https://askubuntu.com/questions/367136/how-do-i-read-a-variable-from-a-file 
+    read -d $'\x04' __templateFileContent < "$templateFileSpec" # https://askubuntu.com/questions/367136/how-do-i-read-a-variable-from-a-file
     local -a __varNames=( "${varNames[@]}" )
     local __fileSpec="$fileSpec"
     local __varName; for __varName in "${__substitutedVarNames[@]}"; do
@@ -510,9 +510,9 @@ _mkFileFromTemplate() {
 
 # =============================================================================
 
-_realpathParams=( 
-  '--varName/v=' 
-   'path' 
+_realpathParams=(
+  '--varName/v='
+   'path'
 )
 _realpath() { eval "$_funcParams2"
   if [[ ! -f "$_bwDir/core/realpath.$OSTYPE" ]]; then
@@ -531,7 +531,7 @@ _realpath() { eval "$_funcParams2"
 # =============================================================================
 
 _chownParamsOpt=( --canBeMixedOptionsAndArgs )
-_chownParams=( 
+_chownParams=(
   '--maxProcesses/P:1..100=2'
   '--maxLineLength/L:1000..=115000' # 115000 - эмпирическая величина, на ней Ubuntu14 еще не "валится", а на 120000 уже
   '--verbose/v'
@@ -555,8 +555,8 @@ _chown() { eval "$_funcParams2"
     fi
     local awkFileSpec;_prepareAwkFileSpec
     local -a awk_OPT=(
-      -v "root=$root" 
-      -v "user=$user" 
+      -v "root=$root"
+      -v "user=$user"
       -v "maxProcesses=$maxProcesses"
       -v "maxLineLength=$maxLineLength"
       -v "verbose=$verbose"
@@ -566,7 +566,7 @@ _chown() { eval "$_funcParams2"
     local notPathItem; for notPathItem in "${notPath[@]}"; do
       find_OPT+=( -and -not -path "$notPathItem" )
     done
-    sudo find "$HOME/$homeSubdir" "${find_OPT[@]}" \
+    sudo find "$root" "${find_OPT[@]}" \
     | awk "${awk_OPT[@]}" > "$batchFileSpec"
   fi
   ( . "$batchFileSpec" )
