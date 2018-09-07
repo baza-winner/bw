@@ -142,7 +142,9 @@ _bwProjDefs+=(
     --https 4408
     --mysql 3308
     --redis 6308
+    --webdis 7308
     --rabbitmq 5608
+    --rabbitmqManagement 15608
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
   '
@@ -1008,7 +1010,18 @@ _prepareBwProjVarsHelper() { eval "$_funcParams2"
   done
 }
 
-_bwProjPorts=( ssh http https mysql postgresql elastic redis rabbitmq)
+_bwProjPorts=(
+  ssh # 22
+  http # 80
+  https # 443
+  mysql # 3306
+  postgresql # 5432
+  elastic # 9200
+  redis # 6379
+  webdis # 7379
+  rabbitmq # 5672
+  rabbitmqManagement # 15672
+)
 _tcpPortDiap='1024..65535'
 
 _codeToDeclareLocalBwProjVars='
@@ -1270,9 +1283,6 @@ _initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
-  # eval "_$bwProjShortcut"'FileSpec="$fileSpec"'
-  # local bwProjDirHolder="_${bwProjShortcut}Dir"
-  # _realpath -v "$bwProjDirHolder" "$(dirname "$fileSpec")/.."
   eval export "_$bwProjShortcut"'DockerImageName="${bwProjDockerImageName:-bazawinner/dev-$bwProjShortcut}"'
   local -a funcNamesToRegen=()
   mapfile -t funcNamesToRegen < <( _getFuncNamesOfScriptToUnset "${BASH_SOURCE[1]}")
@@ -1320,7 +1330,10 @@ _initBwProjCmd() {
     unset -f "$bwProjShortcut"'_docker_push'
     unset "$bwProjShortcut"_docker_up_noCheck_description
   else
-    dockerUpParams+=( '--no-check/n' )
+    dockerUpParams+=(
+      '--no-check/n'
+      '--portIncrement/i:0..=0'
+    )
     local dockerImageTitle='${_ansiPrimaryLiteral}$_'"$bwProjShortcut"'DockerImageName${_ansiReset}'
     eval "$bwProjShortcut"'_docker_up_noCheck_description='\''Не проверять актуальность docker-образа '\''"$dockerImageTitle"'
     codeToPrepareOPTForDockerUp+='
@@ -1414,6 +1427,12 @@ _initBwProjCmd() {
   )'
   eval '_codeToPrepareVarsForDescriptionsOf_'"$bwProjShortcut"'_docker_up='\''
     local -a containerNames; _dockerComposeContainerNames -v containerNames '"$bwProjShortcut"' $projDir || return $?
+  '\'
+  eval "$bwProjShortcut"'_docker_up_portIncrement_description='\''
+    Смещение относительно базовых значений для всех портов
+    Полезно для старта второго экземпляра docker-приложения ${_ansiSecondaryLiteral}'${bwProjShortcut}'${_ansiReset}
+    Примечание: второй экземпляр следует запускать из второй копии проекта, которую можно установить командой:
+      ${_ansiCmd}bw p '${bwProjShortcut}' -p ${_ansiOutline}Абсолютный-путь-к-папке-второй-копии-проекта${_ansiReset}
   '\'
   eval "$bwProjShortcut"'_docker_up_restart_description='\''Останавливает и поднимает указанные сервисы'\'
   eval "$bwProjShortcut"'_docker_up_forceRecreate_description='\''Поднимает ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset} с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\'
@@ -1666,7 +1685,7 @@ _prepareVarsForDefaultPort() { eval "$_funcParams2"
     unset "${bwProjShortcut}_selfTest_${portName}_description"
     return 2
   else
-    local paramDef="--$portName:$_tcpPortDiap=${!defaultHolder}"
+    local paramDef="--$portName:$_tcpPortDiap=\$(( ${!defaultHolder} + portIncrement ))"
     local description="$portName-порт по которому будет доступно docker-приложение"
     if [[ -n $descriptionSuffix ]]; then
       description+=" $descriptionSuffix"
@@ -1841,7 +1860,7 @@ _cmd_test_js() { eval "$_funcParams2"
     done
   fi
   local -a mocha_OPT=(-t "${timeout:-10000}" -c) # https://www.npmjs.com/package/supports-color
-  local -a params=( FORCE_COLOR=1 istanbul cover _mocha -- )
+  local -a params=( FORCE_COLOR=1 istanbul cover --report html _mocha -- )
   [[ -z $noCoverage ]] || params=( mocha )
   _inDir "$testContainerDir" _exec -v all NODE_ENV="$nodeEnv" "${params[@]}" "${mocha_OPT[@]}" "${testsToRun[@]}"
 }
@@ -2333,8 +2352,8 @@ _docker_up() { eval "$_funcParams2"
           fi
           if [[ -n $needWarn ]]; then
             msg+="Чтобы избавиться от этого сообщения, необходимо выполнить:"$_nl
-            msg+="  ${_ansiCmd}crm docker build -f${_ansiReset}"$_nl
-            msg+="  ${_ansiCmd}crm docker push${_ansiReset}"$_nl
+            msg+="  ${_ansiCmd}$bwProjShortcut docker build --force${_ansiReset}"$_nl
+            msg+="  ${_ansiCmd}$bwProjShortcut docker push${_ansiReset}"$_nl
             msg+="  ${_ansiCmd}git add $(pwd)/Dockerfile $(pwd)/$dockerImageIdFileName${_ansiReset}"$_nl
             msg+="  ${_ansiCmd}git commit${_ansiReset}"
             _warn "$msg"
@@ -2366,26 +2385,29 @@ _docker_up() { eval "$_funcParams2"
     # https://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe
     local fileSpec="/tmp/$$.docker_up.log"
     _dockerCompose "${dockerCompose_OPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans 2> >(tee "$fileSpec" >&2) || { returnCode=$?; }
+    # sudo docker-compose "${dockerCompose_OPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans 2> >(tee "$fileSpec" >&2) || { returnCode=$?; }
     if [[ $returnCode -ne 0 ]]; then
       local awkFileSpec; _prepareAwkFileSpec
       local -a awk_OPT=(
         -f "$awkFileSpec"
       )
-      local port
-      if port=$(awk "${awk_OPT[@]}" "$fileSpec"); then
+      local alreadyAllocatedPort
+      if alreadyAllocatedPort=$(awk "${awk_OPT[@]}" "$fileSpec"); then
         local optName=
-        if [[ $port -eq $http ]]; then
-          optName=http
-        elif [[ $port -eq $https ]]; then
-          optName=https
-        fi
+        local port; for port in "${_bwProjPorts[@]}"; do
+          if [[ $alreadyAllocatedPort -eq ${!port} ]]; then
+            optName=$port
+          fi
+        done
         if [[ -n $optName ]]; then
           local msg=''
           msg+="${_nl}${_ansiWarn}ВНИМАНИЕ!"
-          msg+="${_nl}$optName-порт ${_ansiPrimaryLiteral}$port${_ansiWarn} занят"
-          msg+="${_nl}Пользуясь опцией ${_ansiCmd}--$optName${_ansiWarn}, укажите другой порт:"
-          msg+="${_nl} ${_ansiCmd}--$optName ${_ansiOutline}Порт"
-          msg+="${_nl}${_ansiReset}"
+          msg+="${_nl}  ${_ansiSecondaryLiteral}$optName${_ansiWarn}-порт ${_ansiPrimaryLiteral}${!port}${_ansiWarn} занят"
+          msg+="${_nl}  Пользуясь опцией ${_ansiCmd}--$optName${_ansiWarn}, укажите другоe значение для этого порта:"
+          msg+="${_nl}    ${_ansiCmd}--$optName ${_ansiOutline}Порт${_ansiWarn}"
+          msg+="${_nl}  или опцией ${_ansiCmd}--port-increment${_ansiWarn} ( ${_ansiCmd}-i${_ansiWarn} ), укажите смещение относительно базовых значений для всех портов:"
+          msg+="${_nl}    ${_ansiCmd}-i ${_ansiOutline}Смещение"
+          msg+="${_nl}  ${_ansiReset}"
           echo "$msg"
         fi
       fi
@@ -2397,6 +2419,26 @@ _docker_up() { eval "$_funcParams2"
 
     if [[ -n $dockerImageName ]]; then
       local -a dockerCompose_OPT; _prepareDockerComposeOpt
+      local -a OPT_T; [[ -n $it ]] || OPT_T=( -T )
+      local -a cmd_base=( _dockerCompose "${dockerCompose_OPT[@]:2}" exec "${OPT_T[@]}" main )
+      # local -a cmd=( "${cmd_base[@]}" "$_bwDevDockerEntryPointFileSpec" "$$" "$@" )
+
+      local -a cmd=( "${cmd_base[@]}" sudo usermod -u $(id -u) dev)
+      eval "$(_quotedArgs "${cmd[@]}")" || { returnCode=$?; break; }
+
+      # if [[ -n $it ]]; then
+      #   eval "$(_quotedArgs "${cmd[@]}")"
+      # else
+        # # (
+        # #   # local subPid=$!
+        # #   # local pidFileSpec="$$.pid"
+        # #   # # shellcheck disable=SC2064
+        # #   # trap "trap - SIGINT; _runInDockerCtrlC $subPid \"$pidFileSpec\" \"$*\" $(_quotedArgs "${cmd_base[@]}")" SIGINT
+        # #   # wait $subPid; local returnCode=$?
+        # #   # trap - SIGINT
+        # #   # return $returnCode
+        # ) || { returnCode=$?; break; }
+      # fi
       # _inDir -v none "$projDir/docker"
       _runInDockerContainer_outOfDockerHelper || { returnCode=$?; break; }
     fi
@@ -2632,6 +2674,7 @@ _prepareDockerComposeYml() { eval "$_funcParams2"
       local mainContainerName; mainContainerName=$(_getDockerMainContainerName $bwProjShortcut $projDir)
       local nginxContainerName="$mainContainerName-nginx"
       local mainImageName="$dockerImageName"
+      local hostUserId=$(id -u)
       }
 
       _mkFileFromTemplate -n -e .yml "$dockerComposeFileName"
@@ -2885,7 +2928,7 @@ while {1} {
     local projDir="$containerDir/$bwProjShortcut"
     bw p $bwProjShortcut -u -p "$projDir" >/dev/null 2>&1
   done
-  local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do 
+  local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do
     local projDir="$containerDir/$bwProjShortcut"
     bw p $bwProjShortcut -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.p.log"
     bw prepare $bwProjShortcut "$projDir"
@@ -2906,7 +2949,7 @@ while {1} {
     #   head -n 4 "$sourceLogFileSpec"
     # fi
   done
-  . "$_profileFileSpec" 
+  . "$_profileFileSpec"
 }
 
 # =============================================================================
@@ -3038,6 +3081,32 @@ _bw_install_gitDarwin() {
 _bw_install_gitLinux() {
   _exec "${sub_OPT[@]}" --sudo apt-get install -y --force-yes git || returnCode=$?
 }
+
+# =============================================================================
+
+_bfg_fileName='bfg-1.13.0.jar'
+bw_install_bfg_description="${_ansiUrl}https://rtyley.github.io/bfg-repo-cleaner/${_ansiReset}"
+bw_install_bfg() { eval "$_funcParams2"
+  name=bfg codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_bfgCheck() {
+  [[ -f $HOME/bfg/"$_bfg_fileName" ]]
+}
+_bw_install_bfg() {
+  _mkDir $HOME/bfg || return $?
+  _pushd $HOME/bfg || return $?
+  local returnCode=0
+  while true; do
+    _download -s no "http://repo1.maven.org/maven2/com/madgag/bfg/1.13.0/$_bfg_fileName" || { returnCode=$?; break; }
+    local cmd="$(_quotedArgs alias bfg='java -jar "$HOME/bfg/'"$_bfg_fileName"'"')"
+    _setAtBashProfile "$cmd" || { returnCode=$?; break; }
+    eval "$cmd" || { returnCode=$?; break; }
+    break
+  done
+  _popd
+  return $returnCode
+}
+
 
 # =============================================================================
 

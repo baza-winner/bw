@@ -36,11 +36,11 @@ _exportVarAtBashProfileParams=(
 )
 # shellcheck disable=SC2154
 _exportVarAtBashProfile() { eval "$_funcParams2"
-  local exactLine matchRegexp 
+  local exactLine matchRegexp
   _exportVarAtBashProfileHelper
   local -a OPT=(
-    "${OPT_profileFileSpec[@]}" 
-    "${OPT_noBackup[@]}" 
+    "${OPT_profileFileSpec[@]}"
+    "${OPT_noBackup[@]}"
     "${OPT_uninstall[@]}"
   )
   _setAtBashProfile "${OPT[@]}" "$exactLine" "$matchRegexp"
@@ -67,11 +67,11 @@ _hasExportVarAtBashProfileParams=(
 )
 # shellcheck disable=SC2154
 _hasExportVarAtBashProfile() { eval "$_funcParams2"
-  local exactLine matchRegexp 
+  local exactLine matchRegexp
   _exportVarAtBashProfileHelper
   local -a OPT=(
-    "${OPT_profileFileSpec[@]}" 
-    "${OPT_differ[@]}" 
+    "${OPT_profileFileSpec[@]}"
+    "${OPT_differ[@]}"
     "${OPT_no[@]}"
   )
   _hasAtBashProfile "${OPT[@]}" "$exactLine" "$matchRegexp"
@@ -114,7 +114,7 @@ _setAtBashProfileParams=(
   '--noBackup'
   '--uninstall/u'
   'exactLine'
-  'matchRegexp'
+  'matchRegexp=-'
 )
 # shellcheck disable=SC2154
 _setAtBashProfile() { eval "$_funcParams2"
@@ -146,12 +146,12 @@ _setAtBashProfile() { eval "$_funcParams2"
 # =============================================================================
 
 _setAtBashProfileHelper() {
-  local awkFileSpec; _prepareAwkFileSpec 
+  local awkFileSpec; _prepareAwkFileSpec
   local -a awk_OPT=(
-    -f "$awkFileSpec" 
-    -v "exactLine=${exactLine?}" 
-    -v "matchRegexp=${matchRegexp?}" 
-    -v "uninstall=${uninstall?}" 
+    -f "$awkFileSpec"
+    -v "exactLine=${exactLine?}"
+    -v "matchRegexp=${matchRegexp?}"
+    -v "uninstall=${uninstall?}"
   )
   awk "${awk_OPT[@]}" "${profileFileSpec?}"
 }
