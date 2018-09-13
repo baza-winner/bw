@@ -1269,6 +1269,17 @@ _completionOnly_description='Обновить только completion-опред
 _initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
+  if [[ $1 == perl ]]; then
+    eval "$bwProjShortcut()"' { 
+      local projDir
+      _prepareProjDir '"$bwProjShortcut"' || return $?
+      _bwFileSpec="$_bwFileSpec" _bwDir="$_bwDir" projDir="$projDir" $projDir/bin/dip.pl "$@"
+      # echo $projDir
+    }'
+    return 
+  fi
+  # local fileSpec; fileSpec=$(_getSelfFileSpec 2)
+  # local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
   # eval "_$bwProjShortcut"'FileSpec="$fileSpec"'
   # local bwProjDirHolder="_${bwProjShortcut}Dir"
