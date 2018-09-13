@@ -1270,13 +1270,12 @@ _initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   if [[ $1 == perl ]]; then
-    eval "$bwProjShortcut()"' { 
+    eval "$bwProjShortcut()"' {
       local projDir
       _prepareProjDir '"$bwProjShortcut"' || return $?
-      _bwFileSpec="$_bwFileSpec" _bwDir="$_bwDir" projDir="$projDir" $projDir/bin/dip.pl "$@"
-      # echo $projDir
+      _bwDir="$_bwDir" projDir="$projDir" "$projDir/bin/dip.pl" "$@"
     }'
-    return 
+    return
   fi
   # local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   # local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
@@ -2896,7 +2895,7 @@ while {1} {
     local projDir="$containerDir/$bwProjShortcut"
     bw p $bwProjShortcut -u -p "$projDir" >/dev/null 2>&1
   done
-  local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do 
+  local bwProjShortcut; for bwProjShortcut in "${bwProjShortcuts[@]}"; do
     local projDir="$containerDir/$bwProjShortcut"
     bw p $bwProjShortcut -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.p.log"
     bw prepare $bwProjShortcut "$projDir"
@@ -2917,7 +2916,7 @@ while {1} {
     #   head -n 4 "$sourceLogFileSpec"
     # fi
   done
-  . "$_profileFileSpec" 
+  . "$_profileFileSpec"
 }
 
 # =============================================================================
