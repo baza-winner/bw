@@ -7,9 +7,9 @@ _init() {
   if [[ $- =~ i ]]; then
     . "$HOME/.bashrc" || return $?
   else
-    . "$HOME/bw.bash" -p - || return $?
     . "$HOME/._bashrc" || return $?
   fi
+  [[ -n $_bwFileSpec ]] || . "$HOME/bw.bash" -p - || return $?
 
   . "$HOME/proj/bin/${_bwProjShortcut}.bash" || return $?
 

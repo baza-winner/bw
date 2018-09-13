@@ -147,6 +147,8 @@ _bwProjDefs+=(
     --rabbitmqManagement 15608
     --docker-compose "docker-compose.nginx.yml"
     --docker-compose "docker-compose.main.yml"
+    --docker-compose "docker-compose.upstream.yml"
+    --docker-compose "docker-compose.mysql.yml"
   '
 )
 
@@ -312,7 +314,7 @@ bw_remove_yes_description='Подтверждить удаление'
 bw_remove_completely_description='Удалить не только все связанное с bw.bash, но и сам bw.bash'
 bw_removeShortcuts=( 'rm' )
 bw_remove_description="Удаляет bw.bash и все связанное с ним"
-bw_removeCondition='[[ -z $_isBwDevelopInherited ]]'
+bw_removeCondition='[[ -z $_isBwDevelop ]] || ! _isInDocker'
 }
 bw_remove() { eval "$_funcParams2"
   if [[ -z $yes ]]; then
@@ -325,7 +327,7 @@ bw_remove() { eval "$_funcParams2"
       local exactLine='. ~/bw.bash'
       if [[ $verbosity != dry ]]; then
         _setAtBashProfile -u "$exactLine" "$_bwMatchRegexp"
-        _exportVarAtBashProfile -u BW_SELF_UPDATE_SOURCE
+        # _exportVarAtBashProfile -u BW_SELF_UPDATE_SOURCE
         unset BW_SELF_UPDATE_SOURCE
       fi
     fi
@@ -421,7 +423,7 @@ bw_bashTests_description='запускает тесты bash-функций'
 bw_bashTests() {
   eval "$_funcParams2"
   local testsDirSpec="$_bwDir/tests"
-  if [[ -z $_isBwDevelop && -z $_isBwDevelopInherited ]]; then
+  if [[ -z $_isBwDevelop ]]; then
     local testsSupportFileSpec="$testsDirSpec/testsSupport.bash"
     _getBwTar "$_bwFileSpec" tests | tar xf - -C "$_bwDir" \
       || { _err "Не удалось извлечь архив tests из ${_ansiFileSpec}$_bwFileSpec${_ansiErr} в ${_ansiFileSpec}$testsDirSpec"; return $?; }
@@ -1175,7 +1177,7 @@ bw_project() { eval "$_funcParams2"
           fi
           local needChangePwd=
           [[ $(cd "$projDir" && pwd) != $(pwd) ]] || needChangePwd=true
-          _exec "${sub_OPT[@]}" rm -rf "$projDir" \
+          _exec --sudo "${sub_OPT[@]}" rm -rf "$projDir" \
             || { returnCode=$?; break; }
           [[ -z $needChangePwd ]] || _exec "${sub_OPT[@]}" cd "$HOME" \
             || { returnCode=$?; break; }
@@ -1270,10 +1272,8 @@ _getDefaultXdebugRemoteHost() {
 # shellcheck disable=SC2034
 {
 _bwDevDockerEntryPointFileSpec="/home/dev/.bw/docker/helper/entrypoint.bash"
-_bwDevDockerBwFileSpec="/home/dev/bw.bash"
-_bwDevDockerBwDir="/home/dev/.bw"
+# _bwDevDockerBwDir="/home/dev/.bw"
 _bwSslFileSpecPrefix="$_bwDir/ssl/server."
-_bwNginxConfDir="$_bwDir/docker/nginx/conf.bw"
 
 _projDir_description='Папка проекта'
 _completionOnly_description='Обновить только completion-определения'
@@ -1418,10 +1418,39 @@ _initBwProjCmd() {
     "${additionalDependencies[@]}"
   )'
   funcNamesToRegen+=( "$bwProjShortcut"'_docker_up' )
+  local funcName="_${bwProjShortcut}_clean"
+  local forceRecreateAndCleanMappedVolumesDef=
+  local forceRecreateAndCleanMappedVolumesInclude=
+  dstVarName=cleanDockerDirs srcVarName="_${bwProjShortcut}_clean_docker_dirs" codeHolder=_codeToInitLocalCopyOfArray eval "$_evalCode"
+  if [[ -n $bwProjDefaultMysql ]]; then
+    cleanDockerDirs=(
+      "mysql/.var_lib"
+      "mysql/log"
+      "${cleanDockerDirs[@]}"
+    )
+  fi
+  cleanDockerDirs=(
+    ".nvm"
+    "${cleanDockerDirs[@]}"
+  )
+
+  if _funcExists $funcName; then
+    forceRecreateAndCleanMappedVolumesDef='--force-recreate-and-clean-mapped-volumes/F'
+    forceRecreateAndCleanMappedVolumesInclude='"${OPT_forceRecreateAndCleanMappedVolumes[@]}"'
+    eval "$bwProjShortcut"'_docker_up_forceRecreateAndCleanMappedVolumes_description='\''
+      Поднимает ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset}
+      с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset},
+      предварительно очищая комадой ${_ansiCmd}'_${bwProjShortcut}'_clean${_ansiReset} подключаемые к образу папки
+      Что именно делаeт ${_ansiCmd}'_${bwProjShortcut}'_clean${_ansiReset} можно проверить, запустив ее с опцией ${_ansiCmd}-v dry${_ansiReset}:
+        ${_ansiCmd}'_${bwProjShortcut}'_clean -v dry${_ansiReset}
+      Примечание: текущей папкой на время выполнения ${_ansiCmd}'_${bwProjShortcut}'_clean${_ansiReset} становится ${_ansiCmd}$(_prepareProjDir '${bwProjShortcut}' && _shortenFileSpec $projDir)/docker${_ansiReset}
+    '\'
+  fi
   eval "$bwProjShortcut"'_docker_upParams=(
     "${dockerUpParams[@]}"
     !--projDir/p=
     --force-recreate/f
+    '$forceRecreateAndCleanMappedVolumesDef'
     '\''@--restart/r:( $(_dockerComposeServiceNames '"$bwProjShortcut"' $projDir) )'\''
     "${'"$bwProjShortcut"'_docker_upParamsAddon[@]}"
   )'
@@ -1435,7 +1464,10 @@ _initBwProjCmd() {
       ${_ansiCmd}bw p '${bwProjShortcut}' -p ${_ansiOutline}Абсолютный-путь-к-папке-второй-копии-проекта${_ansiReset}
   '\'
   eval "$bwProjShortcut"'_docker_up_restart_description='\''Останавливает и поднимает указанные сервисы'\'
-  eval "$bwProjShortcut"'_docker_up_forceRecreate_description='\''Поднимает ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset} с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}'\'
+  eval "$bwProjShortcut"'_docker_up_forceRecreate_description='\''
+    Поднимает ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset}
+    с опцией ${_ansiCmd}--force-recreate${_ansiReset}, передаваемой ${_ansiCmd}docker-compose up${_ansiReset}
+  '\'
   eval "$bwProjShortcut"'_docker_up_description='\''Поднимает (docker-compose up) следующие контейнеры: ${_ansiPrimaryLiteral}$(_quotedArgs ${containerNames[@]})${_ansiReset}'\'
   eval "$bwProjShortcut"'_docker_up() { eval "$_funcParams2"
     _prepareProjDir '"$bwProjShortcut"' || return $?
@@ -1443,6 +1475,7 @@ _initBwProjCmd() {
     local -a OPT=(
       "${OPT_noCheck[@]}"
       "${OPT_forceRecreate[@]}"
+      '$forceRecreateAndCleanMappedVolumesInclude'
       "${OPT_restart[@]}"
       --bwProjShortcut '"$bwProjShortcut"'
       --bwProjName "'"$bwProjName"'"
@@ -2045,19 +2078,14 @@ _clear_mysql_db() { eval "$_funcParams2"
 _start_mysql() {
   local returnCode=0
   while true; do
-    # https://askubuntu.com/questions/482923/mysql-error-the-partition-with-var-lib-mysql-is-too-full/483136#483136
-    _exec --sudo sed -i.bak -Ee 's/^bind-address(\s*)=\s*127\.0\.0\.1/bind-address\1= 0.0.0.0/' /etc/mysql/my.cnf  || { returnCode=$?; break; }
-    echo "
-#https://airbladesoftware.com/notes/fixing-mysql-illegal-mix-of-collations/
-[mysqld]
-character-set-server=utf8
-collation-server=utf8_general_ci
-[client]
-default-character-set=utf8" | sudo tee -a /etc/mysql/my.cnf >/dev/null || { returnCode=$?; break; }
-    # _exec --sudo /etc/init.d/mysql start || { returnCode=$?; break; }
+    if [[ ! -d /var/lib/mysql/mysql ]]; then
+      _exec -v all --sudo cp -r /var/lib/_mysql/. /var/lib/mysql/ || { returnCode=$?; break; }
+      _exec -v all --sudo chown -R mysql:mysql /var/lib/mysql /var/run/mysqld || { returnCode=$?; break; }
+    fi
+    _exec -v all --sudo chown -R mysql:adm /var/log/mysql || { returnCode=$?; break; }
     _exec --sudo service mysql start || { returnCode=$?; break; } # https://askubuntu.com/questions/2075/whats-the-difference-between-service-and-etc-init-d
     local sqlCommands
-    read -d $'\x04' sqlCommands < "$_bwDir/docker/helper/mysql_secure_installation.sql"
+    read -d $'\x04' sqlCommands < "$_bwDir/docker/helper/mysql/mysql_secure_installation.sql"
     MYSQL_PWD=root _inDir "$HOME/proj/docker" _exec -v allBrief mysql -u root -e "${_nl}$sqlCommands${_nl}" "$@"
     mysql_tzinfo_to_sql /usr/share/zoneinfo | MYSQL_PWD=root mysql -u root mysql
     [[ ! -f $HOME/proj/docker/mysql/init_database.sql ]] || _exec_sql init_database || { returnCode=$?; break; }
@@ -2101,7 +2129,7 @@ _docker_build() { eval "$_funcParams2"
     msg+="Перед сборкой образа необходимо внести изменения в ${_ansiFileSpec}$(_shortenFileSpec "$(pwd)/Dockerfile")${_ansiReset} или выполнить команду с опцией ${_ansiCmd}--force"
     _warn "$msg"
   else
-    _docker -v all build --pull -t "$dockerImageName" .; local returnCode=$?
+    _docker -v all build --pull -t "$dockerImageName" - < Dockerfile; local returnCode=$?
     if [[ $returnCode -eq 0 ]]; then
       local dockerImageIdFileName="dev-$bwProjShortcut.id"
       _docker inspect --format "{{json .Id}}" "$dockerImageName:latest" > "$dockerImageIdFileName"
@@ -2189,6 +2217,16 @@ while {1} {
       sleep 1
       send -- "q\r"
     }
+    -ex "Password:" {
+      if { [info exists env(ROOT_PWD)] } {
+        send "$env(ROOT_PWD)\r"
+      } else {
+        stty -echo
+        expect_user -timeout -1 -re "(.*)\[\r\n]"
+        stty echo
+        send "$expect_out(1,string)\r"
+      }
+    }
     -ex "sudo] password for" {
       if { [info exists env(ROOT_PWD)] } {
         send "$env(ROOT_PWD)\r"
@@ -2206,12 +2244,73 @@ while {1} {
   fi
   local returnCode=0
   while true; do
+
+    _cmd_selfTestHelper -F || { returnCode=$?; break; }
+    _cmd_selfTestHelper -f || { returnCode=$?; break; }
+
+    # local -a OPT=()
+    # local port; for port in "${_bwProjPorts[@]}" upstream; do
+    #   dstVarName=_OPT srcVarName="OPT_${port}" eval "$_codeToInitLocalCopyOfArray"
+    #   OPT+=( "${_OPT[@]}" )
+    # done
+    # _exec -v all "$bwProjShortcut" docker up -f "${OPT[@]}" || { returnCode=$?; break; }
+    # _mkDir $projDir/tmp
+    # local tstFileSpec="$projDir/tmp/$bwProjShortcut.selfTest"
+    # if [[ -n $http ]]; then
+    #   _exec -v err curl -s "http://localhost:${http}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
+    #   _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
+    #   rm "$tstFileSpec"
+    # fi
+    # if [[ -n $https ]]; then
+    #   _exec -v err curl -s "https://localhost:${https}/whoami/" > "$tstFileSpec" || { returnCode=$?; break; }
+    #   _exec -v all diff "$tstFileSpec" "nginx/whoami/index.html" || { returnCode=$?; break; }
+    #   rm "$tstFileSpec"
+    # fi
+    # local skipFail=true # for debug purpose only
+    # if [[ -n $mysql ]]; then
+    #   _exec -v all "${bwProjShortcut}" mysql --env local -BN -e 'create database if not exists temp;' || { returnCode=$?; break; }
+    #   _exec -v all "${bwProjShortcut}" mysqldump --env local tmp/temp.dump temp || { returnCode=$?; break; }
+    #   _exec -v all "${bwProjShortcut}" mysql --env alpha -BN -e 'show databases;' || [[ -n $skipFail ]] || { returnCode=$?; break; }
+    # fi
+    # local funcName="_${bwProjShortcut}_selfTestAddon"
+    # if _funcExists "$funcName"; then
+    #   "$funcName" || { returnCode=$?; break; }
+    # fi
+    # if [[ -n $mysql ]]; then
+    #   _exec -v all "${bwProjShortcut}" mysql || { returnCode=$?; break; }
+    # fi
+    # if [[ -n $ssh ]]; then
+    #   echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из ssh-сессии выполните команду ${_ansiCmd}exit 0${_ansiReset}"
+    #   _exec -v all ssh -p "$ssh" dev@localhost || { returnCode=$?; break; }
+    # fi
+    # if [[ -n $dockerImageName ]]; then
+    #   _exec -v all "$bwProjShortcut" docker shell || { returnCode=$?; break; }
+    # fi
+    # if [[ -n $http || -n $https ]]; then
+    #   echo "${_nl}${_ansiWarn}ВНИМАНИЕ! Для выхода из docker-контейнера выполните команду ${_ansiCmd}exit 0${_ansiReset}"
+    #   _exec -v all "$bwProjShortcut" docker shell "nginx" || { returnCode=$?; break; }
+    # fi
+    # _exec -v all "$bwProjShortcut" docker down || { returnCode=$?; break; }
+
+    break
+  done
+  if [[ $returnCode -eq 0 ]]; then
+    _ok "self-test complete"
+  else
+    _err "self-test failed"
+  fi
+  return $returnCode
+}
+_cmd_selfTestHelper() {
+  local docker_up_OPT=$1
+  local returnCode=0
+  while true; do
     local -a OPT=()
     local port; for port in "${_bwProjPorts[@]}" upstream; do
       dstVarName=_OPT srcVarName="OPT_${port}" eval "$_codeToInitLocalCopyOfArray"
       OPT+=( "${_OPT[@]}" )
     done
-    _exec -v all "$bwProjShortcut" docker up -f "${OPT[@]}" || { returnCode=$?; break; }
+    _exec -v all "$bwProjShortcut" docker up $docker_up_OPT "${OPT[@]}" || { returnCode=$?; break; }
     _mkDir $projDir/tmp
     local tstFileSpec="$projDir/tmp/$bwProjShortcut.selfTest"
     if [[ -n $http ]]; then
@@ -2251,13 +2350,9 @@ while {1} {
     _exec -v all "$bwProjShortcut" docker down || { returnCode=$?; break; }
     break
   done
-  if [[ $returnCode -eq 0 ]]; then
-    _ok "self-test complete"
-  else
-    _err "self-test failed"
-  fi
   return $returnCode
 }
+
 
 _selfTestParamsOpt=( --canBeMixedOptionsAndArgs )
 _selfTestParams=(
@@ -2295,6 +2390,7 @@ _docker_upParams() {
   done
   _docker_upParams+=(
     '--force-recreate/f'
+    '--force-recreate-and-clean-mapped-volumes/F'
     '--dockerImageName='
     '--bwProjShortcut='
     '--bwProjName='
@@ -2381,7 +2477,12 @@ _docker_up() { eval "$_funcParams2"
       _dockerCompose "${dockerCompose_OPT[@]}" stop "${restart[@]}" || { returnCode=$?; break; }
     fi
 
-    [[ -z $forceRecreate ]] || OPT_forceRecreate=( '--force-recreate' )
+    [[ -z $forceRecreate && -z $forceRecreateAndCleanMappedVolumes ]] || OPT_forceRecreate=( '--force-recreate' )
+    if [[ -n $forceRecreateAndCleanMappedVolumes ]]; then
+      _dockerCompose "${dockerCompose_OPT[@]}" down
+      local funcName="_${bwProjShortcut}_clean"
+      $funcName || { returnCode=$?; break; }
+    fi
     # https://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe
     local fileSpec="/tmp/$$.docker_up.log"
     _dockerCompose "${dockerCompose_OPT[@]}" up -d "${OPT_forceRecreate[@]}" --remove-orphans 2> >(tee "$fileSpec" >&2) || { returnCode=$?; }
@@ -2605,7 +2706,6 @@ _prepareDockerComposeYml() { eval "$_funcParams2"
       {
         echo "#!/bin/bash"
         echo "# file generated by ${bwProjShortcut}_docker_up"
-        echo "export _isBwDevelopInherited=$_isBwDevelop"
         echo "export BW_SELF_UPDATE_SOURCE=$BW_SELF_UPDATE_SOURCE"
         echo "export _bwProjName=$bwProjName"
         echo "export _bwProjShortcut=$bwProjShortcut"
@@ -2666,6 +2766,11 @@ _prepareDockerComposeYml() { eval "$_funcParams2"
       if [[ $dockerComposeFileName != 'docker-compose.proj.yml' ]]; then
         local srcFileSpec="$_bwDir/docker/helper/$dockerComposeFileName"
         _exec -v err cp -f "$srcFileSpec" "$dockerComposeFileName" || { returnCode=$?; break; }
+        if [[ $dockerComposeFileName == 'docker-compose.mysql.yml' ]]; then
+          local myCnfFileSpec="${_bwDir}/docker/helper/mysql/my.cnf"
+          [[ -f mysql/my.cnf ]] && myCnfFileSpec=$(pwd)/mysql/my.cnf
+          _debugVar myCnfFileSpec
+        fi
       fi
       dockerComposeFileName="$(basename "$dockerComposeFileName" .yml)"
 
@@ -2932,9 +3037,9 @@ while {1} {
     local projDir="$containerDir/$bwProjShortcut"
     bw p $bwProjShortcut -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.p.log"
     bw prepare $bwProjShortcut "$projDir"
-    # . "$_profileFileSpec" 2>&1 | tee "$containerDir/$bwProjShortcut.source.log"
-    # _warn pwd: $(pwd)
     ROOT_PWD="$rootPwd" "$bwProjShortcut" st -a -p "$projDir" 2>&1 | tee "$containerDir/$bwProjShortcut.st.log"
+    # one more time:
+    ROOT_PWD="$rootPwd" "$bwProjShortcut" st -a -p "$projDir" 2>&1 | tee -a "$containerDir/$bwProjShortcut.st.log"
   done
   echo "================================================================================"
   echo "================================ Сводка ========================================"
@@ -2943,11 +3048,6 @@ while {1} {
     local stLogFileSpec="$containerDir/$bwProjShortcut.st.log"
     echo "${stLogFileSpec}:"
     tail -n 2 "$stLogFileSpec"
-    # local sourceLogFileSpec="$containerDir/$bwProjShortcut.source.log"
-    # if [[ -s $sourceLogFileSpec ]]; then
-    #   _warn "${sourceLogFileSpec}:"
-    #   head -n 4 "$sourceLogFileSpec"
-    # fi
   done
   . "$_profileFileSpec"
 }

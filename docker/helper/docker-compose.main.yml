@@ -8,6 +8,8 @@ services:
       - ${_bwDir}/ssh/bw_dev_id_rsa.pub:/home/dev/.ssh/authorized_keys
       - ${_bwFileSpec}:/home/dev/bw.bash
       - ..:/home/dev/proj
+      - ./.nvm/versions:/home/dev/.nvm/versions
+      - ./.nvm/.cache:/home/dev/.nvm/.cache
     stdin_open: true
     ports:
       - "${ssh}:22"

@@ -2,7 +2,7 @@
 
 {
   # shellcheck disable=SC2154
-  if [[ -n $shellcheck ]]; then 
+  if [[ -n $shellcheck ]]; then
     . bw.bash
     . core/profileSupport.bash
   fi
@@ -34,7 +34,7 @@ _hasItem() {
   return $returnCode
 }
 
-_joinBy() { 
+_joinBy() {
   # https://stackoverflow.com/questions/1527049/join-elements-of-an-array
   local separator="$1"; shift
   local needSeparator=
@@ -58,7 +58,7 @@ _joinBy() {
 #     local len=${#etaSuffix}
 #     [[ $len -lt $testItemLen ]] || continue
 #     local tstSuffix="${testItem:$((testItemLen - len)):$len}"
-#     [[ "$etaSuffix" == "$tstSuffix" ]] || continue 
+#     [[ "$etaSuffix" == "$tstSuffix" ]] || continue
 #     returnCode=0
 #     break
 #   done
@@ -75,7 +75,7 @@ _joinBy() {
 #     local len=${#etaPrefix}
 #     [[ $len -lt $testItemLen ]] || continue
 #     local tstPrefix="${testItem:0:$len}"
-#     [[ "$etaPrefix" == "$tstPrefix" ]] || continue 
+#     [[ "$etaPrefix" == "$tstPrefix" ]] || continue
 #     returnCode=0
 #     break
 #   done
@@ -187,11 +187,15 @@ _getUniqArray() {
 
 _everyFileNotNewerThan() {
   local etaFileSpec="$1"; shift
+  local returnCode=0
   local tstFileSpec; for tstFileSpec in "$@"; do
     [[ $tstFileSpec != "$_bwFileName" ]] || tstFileSpec="$_bwFileSpec"
-    [[ ! $tstFileSpec -nt $etaFileSpec ]] || return $?
+    [[ ! $tstFileSpec -nt $etaFileSpec ]] || { returnCode=$? ; break; }
   done
-  return 0
+  if [[ $etaFileSpec =~ help ]]; then
+    _debugVar --mark "$*" etaFileSpec result
+  fi
+  return $returnCode
 }
 
 _i=
@@ -285,8 +289,8 @@ _todo() {
 # }
 
 _getExternalIp() {
-  curl ipecho.net/plain 
-}      
+  curl ipecho.net/plain
+}
 
 _getOwnIpList() {
   # https://stackoverflow.com/questions/13322485/how-to-get-the-primary-ip-address-of-the-local-machine-on-linux-and-os-x

@@ -4,7 +4,7 @@ services:
     container_name: ${nginxContainerName}
     image: nginx:alpine
     volumes:
-      - ${_bwNginxConfDir}:/etc/nginx/conf.bw
+      - ${_bwDir}/docker/helper/nginx/conf.bw:/etc/nginx/conf.bw
       - ${_bwSslFileSpecPrefix}crt:/etc/ssl/server.crt
       - ${_bwSslFileSpecPrefix}key:/etc/ssl/server.key
       - ..:/etc/nginx/html

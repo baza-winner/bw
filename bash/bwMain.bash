@@ -29,10 +29,6 @@ _bwMain_pregenOnly_description='Ограничивает прегенераци�
 _bwMain_force_description='Форсирует прегенерацию, независимо от значения ${_ansiOutline}_isBwDevelop${_ansiReset}'
 _bwMain_noSelfUpdate_description='Блокирует самобновления из источника обновления'
 _bwMain_selfUpdateSource_description='Устанавливает URL источника обновления'
-# _sourceMatchRegexp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~_-]+)\/'
-# _sourceMatchRegexp='^[ \t]*\.[ \t]+"?([ a-zA-Z0-9\/~_-]+)\/'
-# _bwMatchRegexp="$_sourceMatchRegexp"'bw\.bash'
-# _bwMatchRegexp='^[ \t]*.[ \t]+"?([ a-zA-Z0-9/~_-]+)/bw.bash'
 _bwMatchRegexp='^[ \t]*\\.[ \t]+"?([ a-zA-Z0-9/~_-]+)/bw.bash'
 _bwMain() { eval "$_funcParams2"
   _profileBegin
@@ -40,14 +36,19 @@ _bwMain() { eval "$_funcParams2"
   local returnCode=0
   while true; do
 
-    [[ ! $selfUpdateSource =~ ^- ]] || selfUpdateSource="$_defaultBwUpdateSource"
+    [[ $selfUpdateSource =~ ^- ]] && selfUpdateSource="$_defaultBwUpdateSource"
 
-    if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]] ; then
-      selfUpdateSource=$(_inDir "$_bwDir" _gitBranch) || { returnCode=$?; break; }
-      _export_BW_SELF_UPDATE_SOURCE
+    if [[ -n $_isBwDevelop ]] ; then
+      true
+    elif [[ $selfUpdateSource =~ ^@ ]]; then
+      _isBwDevelop=true
     elif [[ -z $noSelfUpdate ]]; then
+      if [[ $selfUpdateSource == "$_defaultBwUpdateSource" ]]; then
+        export BW_SELF_UPDATE_SOURCE=
+      else
+        export BW_SELF_UPDATE_SOURCE="$selfUpdateSource"
+      fi
       _inDir --treatAsOK 3 --preserveReturnCode "$_bwDir" _selfUpdate "$selfUpdateSource"; local returnCode=$?
-      _export_BW_SELF_UPDATE_SOURCE
       if [[ $returnCode -eq 3 ]]; then
         . "$_bwFileSpec" "$@"; local returnCode=$?
         [[ $returnCode -eq 0 ]] && _ok "${_ansiFileSpec}$_bwFileName${_ansiOK} обновлен до версии ${_ansiPrimaryLiteral}$(bw_version)"
@@ -76,10 +77,12 @@ _bwMain() { eval "$_funcParams2"
     fi
 
     local exactLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
-    if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]]; then
+    if [[ -n $_isBwDevelop ]]; then
       exactLine+=" -p -"
     fi
+    exactLine+=" -u ${BW_SELF_UPDATE_SOURCE:--}"
     _setAtBashProfile "$exactLine" "$_bwMatchRegexp"
+    _exportVarAtBashProfile -u BW_SELF_UPDATE_SOURCE
 
     break
   done
@@ -89,14 +92,6 @@ _bwMain() { eval "$_funcParams2"
   elif [[ $# -gt 0 ]]; then
     eval "$@"
   fi
-}
-_export_BW_SELF_UPDATE_SOURCE() {
-  if [[ $selfUpdateSource == "$_defaultBwUpdateSource" ]]; then
-    export BW_SELF_UPDATE_SOURCE=
-  else
-    export BW_SELF_UPDATE_SOURCE="$selfUpdateSource"
-  fi
-  _exportVarAtBashProfile BW_SELF_UPDATE_SOURCE
 }
 
 _bwMainHelper() {

@@ -2,7 +2,7 @@
 
 {
   # shellcheck disable=SC2154
-  if [[ -n $shellcheck ]]; then 
+  if [[ -n $shellcheck ]]; then
     . bw.bash
     . core/profileSupport.bash
     . core/coreUtils.bash
@@ -49,7 +49,7 @@ _prepareCodeToParseFuncOptions2() {
     eval "$_funcOptions2Helper"
     eval "$_codeToCheckNoArgsInOpt"
   else
-    local varName 
+    local varName
     # shellcheck disable=SC2154
     for varName in "${_prepareCodeToParseFuncOptions2BoolOptions[@]}" "${_prepareCodeToParseFuncOptions2ScalarOptions[@]}"; do
       eval local "$varName="
@@ -64,7 +64,7 @@ _prepareCodeToParseFuncOptions2() {
 
   # shellcheck disable=SC2154
   if [[ -f $codeFileSpec ]]; then
-    if [[ -z $onlyPrepareCode && -z $_isBwDevelop && -z $_isBwDevelopInherited ]]; then
+    if [[ -z $onlyPrepareCode && -z $_isBwDevelop ]]; then
       return 0
     elif _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[@]::2}"; then
       if [[ -n $onlyPrepareCode ]]; then

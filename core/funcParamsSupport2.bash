@@ -104,7 +104,7 @@ _profileBegin
   while true; do
     if \
       [[ ! -f $codeFileSpec ]] || \
-      ( [[ -n $__thisOnlyPrepareCode || -n $_isBwDevelop || -n $_isBwDevelopInherited ]] \
+      ( [[ -n $__thisOnlyPrepareCode || -n $_isBwDevelop ]] \
         && ! _everyFileNotNewerThan "$codeFileSpec" "${BASH_SOURCE[@]::2}" "${additionalDependencies[@]}" \
       ) \
     ; then
@@ -360,7 +360,7 @@ _profileBegin
               if [[ $enumDef =~ \$ ]]; then
                 code+='eval "$_codeToPrepareEnumValues" || return $?; _hasItem "$__varValue" "${enumValues[@]}"'
               else
-                eval "$_codeToPrepareEnumValues" 
+                eval "$_codeToPrepareEnumValues"
                 local codeAccum=
                 local enumValue; for enumValue in "${enumValues[@]}"; do
                   [[ -z $codeAccum ]] || codeAccum+=' || '
@@ -828,8 +828,8 @@ _parseFuncParams2() {
           dstVarName=__subCommands srcVarName=${__funcName}_${__funcNameSuffix}Shortcuts eval "$_codeToInitLocalCopyOfArray"
           local subCommand; dstVarName=subCommand _upperCamelCaseToKebabCase $__funcNameSuffix
           local normalizedUsedSubCommand; dstVarName=normalizedUsedSubCommand _upperCamelCaseToKebabCase "$__usedSubCommand"
-          if _hasItem "$normalizedUsedSubCommand" "$subCommand" "${__subCommands[@]}"; then 
-            __funcSuffix="$__funcNameSuffix" 
+          if _hasItem "$normalizedUsedSubCommand" "$subCommand" "${__subCommands[@]}"; then
+            __funcSuffix="$__funcNameSuffix"
             break
           fi
         done; [[ -z $__err ]] || break
@@ -897,7 +897,7 @@ _parseFuncParams2() {
   if [[ -n $__isCompletionMode ]]; then
     _setCompReplyToHint "$__err"
   else
-    # errOriginName="$__thisFuncCommand" 
+    # errOriginName="$__thisFuncCommand"
     _throw "$__err"
   fi
 }
@@ -1176,7 +1176,7 @@ _postProcessVarNames() {
 
 _validateDefaultCalculatedValue() {
   local __varValue="$1"
-            
+
   _validateVarValue "$__varValue" && return 0
   local paramHolder="__PARAM_$__varName"
   [[ -n $infix3 ]] && infix3=" ${_ansiSecondaryLiteral}$infix3${_ansiErr}"
@@ -1300,7 +1300,7 @@ _prepareCodeOfAutoHelp2() {
     || [[ $__thisFuncName =~ [[:alnum:]]_[_[:alnum:]] ]] \
     || [[ ${#__inheritedOptVarNames[@]} -gt 0 ]] \
     || [[ ! -f $__helpCodeFileSpec ]] \
-    || ( [[ -n $__thisOnlyPrepareCode || -n $_isBwDevelop || -n $_isBwDevelopInherited ]] \
+    || ( [[ -n $__thisOnlyPrepareCode || -n $_isBwDevelop ]] \
         && ! _everyFileNotNewerThan "$__helpCodeFileSpec" "${BASH_SOURCE[0]}" "${BASH_SOURCE[2]}" "${additionalDependencies[@]}" \
         ) \
     || return 0
@@ -1541,7 +1541,7 @@ _prepareParamDescription2() {
     if [[ ${!__varValtypeHolder} == int ]]; then
     _prepareIntValudDescription2
   elif [[ ${!__varValtypeHolder} == enum ]]; then
-    
+
     valueDescription=
     if [[ -z $alwaysMultiline ]]; then
       valueDescription=\"$__helpCodeLineSuffix
