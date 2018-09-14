@@ -85,7 +85,7 @@ sub _getSubCommands($$$$) {
   my $allSubCommands;
   open(IN, $pmFileSpec);
   while (<IN>) {
-    next unless /^\s*sub\s+(${funcName}_([\w\d]+))/;
+    next unless /^\s*sub\s+(${funcName}_([a-zA-Z\d]+))/;
     no strict 'refs';
     my ($funcName, $cmdName) = ($1, camelCaseToKebabCase($2));
     my $def = ${$packageName . "::${funcName}Def"};
@@ -119,31 +119,41 @@ sub _getDescription($$) {
 sub _printHelp($$$) {
   my ($cnf, $def, $subCommands) = @_;
   # print Dumper({def => $def});
+  my $optionsTitle = $def->{options} ? 'Опции' : 'Опция';
+  my $argsTitle = $subCommands ? ' <ansiOutline>Команда<ansi>' : '';
   print ansi <<"HELP";
-<ansiHeader>Использование:<ansi> <ansiCmd>$cnf->{cmd}<ansi> [<ansiOutline>Опция<ansi>] <ansiOutline>Команда<ansi>
+<ansiHeader>Использование:<ansi> <ansiCmd>$cnf->{cmd}<ansi> [<ansiOutline>$optionsTitle<ansi>]$argsTitle
 <ansiHeader>Описание:<ansi> ${\_getDescription($def, $cnf)}
+HELP
+  if ( $subCommands ) {
+    print ansi <<"HELP";
 Команда - один из следующих вариантов: <ansiSecondaryLiteral>$subCommands->{cmdNameAndShortcuts}<ansiReset>
 HELP
-  foreach my $cmdName ($subCommands->{byName}->keys) {
-    my $cmd = $subCommands->{byName}->get($cmdName);
-    my @cmdNameAndShortcuts;
-    push @cmdNameAndShortcuts, @{$cmd->{def}->{shortcuts}} if $cmd->{def}->{shortcuts};
-    push @cmdNameAndShortcuts, $cmdName;
-    foreach my $cmdNameOrShortcut (@cmdNameAndShortcuts) {
-      print ansi <<"HELP";
+    foreach my $cmdName ($subCommands->{byName}->keys) {
+      my $cmd = $subCommands->{byName}->get($cmdName);
+      my @cmdNameAndShortcuts;
+      push @cmdNameAndShortcuts, @{$cmd->{def}->{shortcuts}} if $cmd->{def}->{shortcuts};
+      push @cmdNameAndShortcuts, $cmdName;
+      foreach my $cmdNameOrShortcut (@cmdNameAndShortcuts) {
+        print ansi <<"HELP";
     <ansiCmd>$cnf->{cmd} $cmdNameOrShortcut<ansi>
+HELP
+      }
+      print ansi <<"HELP";
+      ${\_getDescription($cmd->{def}, $cnf)}
 HELP
     }
     print ansi <<"HELP";
-      ${\_getDescription($cmd->{def}, $cnf)}
-HELP
-  }
-  print ansi <<"HELP";
 Подробнее см.
     <ansiCmd>$cnf->{cmd} <ansiOutline>Команда <ansiCmd>--help<ansi>
     <ansiCmd>$cnf->{cmd} <ansiOutline>Команда <ansiCmd>-?<ansi>
     <ansiCmd>$cnf->{cmd} <ansiOutline>Команда <ansiCmd>-h<ansi>
-Опция
+HELP
+  }
+  print ansi <<"HELP";
+$optionsTitle
+HELP
+  print ansi <<"HELP";
     <ansiCmd>--help<ansi> или <ansiCmd>-?<ansi> или <ansiCmd>-h<ansi>
         Выводит справку
 HELP
@@ -165,7 +175,6 @@ sub _processWrapper($$$$@) {
 
 sub processParams($@) {
   my $cnf = shift;
-  my $param = shift;
   # print Dumper($param);
 
   no strict 'refs';
@@ -179,8 +188,8 @@ sub processParams($@) {
     $subCommands = _getSubCommands $packageFileSpec, $packageName, $funcName, $cnf;
   }
 
+  my $param = shift;
   # if $def->{options}
-
 
   if ($param and ( $param eq '-?' || $param eq '-h' || $param eq '--help')) {
     _printHelp $cnf, $def, $subCommands;
