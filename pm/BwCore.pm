@@ -118,7 +118,6 @@ sub _getDescription($$) {
 
 sub _printHelp($$$) {
   my ($cnf, $def, $subCommands) = @_;
-  # print Dumper({def => $def});
   my $optionsTitle = $def->{options} ? 'Опции' : 'Опция';
   my $argsTitle = $subCommands ? ' <ansiOutline>Команда<ansi>' : '';
   print ansi <<"HELP";
@@ -153,6 +152,11 @@ HELP
   print ansi <<"HELP";
 $optionsTitle
 HELP
+  if ( $def->{options} ) {
+    for my $key ($def->{options}->keys) {
+
+    }
+  }
   print ansi <<"HELP";
     <ansiCmd>--help<ansi> или <ansiCmd>-?<ansi> или <ansiCmd>-h<ansi>
         Выводит справку
