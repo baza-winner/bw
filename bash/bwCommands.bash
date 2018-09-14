@@ -1273,7 +1273,7 @@ _initBwProjCmd() {
     eval "$bwProjShortcut()"' {
       local projDir
       _prepareProjDir '"$bwProjShortcut"' || return $?
-      _bwDir="$_bwDir" projDir="$projDir" "$projDir/bin/dip.pl" "$@"
+      _bwDir="$_bwDir" projDir="$projDir" OSTYPE="$OSTYPE" "$projDir/bin/dip.pl" "$@"
     }'
     return
   fi

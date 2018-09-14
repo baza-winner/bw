@@ -23,10 +23,32 @@ BEGIN {
     push @vars, $1 if /^\s*(\$\w[\w\d]*Def)\s*=/;
   }
   close(IN);
+  push @vars, '$defs';
 
   # @EXPORT = qw/cmd/;
 }
 use vars @vars;
+
+# =============================================================================
+
+sub preprocessCnf {
+  my $entry = shift;
+  my $cnf = shift;
+
+  if ( $entry eq 'cmd' ) {
+    if (!$cnf->{noDockerBuild}) {
+      my $dockerImageName = $cnf->{dockerImageName};
+      my $domain = 'bazawinner';
+      if (!$dockerImageName) {
+        $cnf->{dockerImageName} = "$domain/dev-$cnf->{projShortcut}"
+      } elsif ( index($dockerImageName, '/') == -1 ) {
+        $cnf->{dockerImageName} = "$domain/$cnf->{dockerImageName}"
+      }
+    }
+  }
+
+  $cnf;
+}
 
 # =============================================================================
 
@@ -37,23 +59,11 @@ $cmdDef = {
   },
   isWrapper => 1,
 };
-sub cmd($@) {
-  processParams(processCmdCnf(shift), @_);
+sub cmd {
+  &processParams;
 }
 
-sub processCmdCnf($) {
-  my $cnf = shift;
-  if (!$cnf->{noDockerBuild}) {
-    my $dockerImageName = $cnf->{dockerImageName};
-    my $domain = 'bazawinner';
-    if (!$dockerImageName) {
-      $cnf->{dockerImageName} = "$domain/dev-$cnf->{projShortcut}"
-    } elsif ( index($dockerImageName, '/') == -1 ) {
-      $cnf->{dockerImageName} = "$domain/$cnf->{dockerImageName}"
-    }
-  }
-  $cnf;
-}
+# =============================================================================
 
 # Команда - один из следующих вариантов: api docker mysql mysqldump prepare-local self-test st test update worker
 #     dip api
@@ -87,9 +97,8 @@ $cmd_dockerDef = {
   'description' => 'docker-операции',
   isWrapper => 1,
 };
-sub cmd_docker($@) {
-  # print Dumper({ '@_' => [ @_ ] });
-  processParams(shift, @_);
+sub cmd_docker {
+  &processParams;
 }
 
 # =============================================================================
@@ -97,7 +106,6 @@ sub cmd_docker($@) {
 $cmd_docker_buildDef = {
   condition => sub {
     my $cnf = shift;
-    # print Dumper( {cnf => } )
     !$cnf->{noDockerBuild};
   },
   description => sub {
@@ -105,14 +113,35 @@ $cmd_docker_buildDef = {
     "Собирает docker-образ <ansiPrimaryLiteral>$cnf->{dockerImageName}";
   },
   options => Hash::Ordered->new(
-    'force/f' => {
+    'force' => {
+      type => 'bool',
+      shortcut => 'f',
       description => 'Невзирая на возможное отсутствие изменений в <ansiFileSpec>docker/Dockerfile'
     },
   ),
 };
-sub cmd_docker_build($@) {
-  my $p = processParams(shift, @_);
-  print Dumper($p);
+sub cmd_docker_build {
+  my ($p, $cnf) = &processParams; $p || return;
+  my $Dockerfile = 'docker/Dockerfile';
+  if ( !$p->{force}->{value} && !gitIsChangedFile($Dockerfile, $ENV{projDir}) ) {
+    print ansi 'Warn', <<"MSG";
+Перед сборкой образа необходимо внести изменения в <ansiFileSpec>${\shortenFileSpec "$ENV{projDir}/$Dockerfile"}<ansi> или выполнить команду с опцией <ansiCmd>--force<ansi> ( <ansiCmd>-f<ansi> )"
+MSG
+  } else {
+    docker(qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker");
+
+    # _docker -v all build --pull -t "$dockerImageName" .; local returnCode=$?
+    # if [[ $returnCode -eq 0 ]]; then
+    #   local dockerImageIdFileName="dev-$bwProjShortcut.id"
+    #   _docker inspect --format "{{json .Id}}" "$dockerImageName:latest" > "$dockerImageIdFileName"
+    #   if _gitIsChangedFile "docker/$dockerImageIdFileName"; then
+    #     msg+="Обновлен docker-образ $dockerImageTitle${_ansiWarn}"$_nl
+    #     msg+="${_ansiWarn}Не забудьте поместить его в docker-репозиторий командой"$_nl
+    #     msg+="    ${_ansiCmd}$bwProjShortcut docker push${_ansiReset}"
+    #     _warn "$msg"
+    #   fi
+    # fi
+  }
 }
 
 # Использование: dip docker build [Опции]
@@ -137,8 +166,9 @@ $cmd_docker_pushDef = {
     "Пушит на <ansiUrl>https://hub.docker.com/<ansi> docker-образ <ansiPrimaryLiteral>$cnf->{dockerImageName}";
   },
 };
-sub cmd_docker_push($@) {
-  print Dumper(getFuncName(), shift, @_);
+sub cmd_docker_push {
+  my $p = &processParams;
+  print Dumper($p);
 }
 
 # =============================================================================
@@ -149,8 +179,9 @@ $cmd_docker_upDef = {
     "Поднимает командой <ansiCmd>docker-compose up<ansi> docker-приложение <ansiPrimaryLiteral>${\shortenFileSpec($cnf->{projDir})}";
   },
 };
-sub cmd_docker_up($@) {
-  print Dumper(getFuncName(), shift, @_);
+sub cmd_docker_up {
+  my $p = &processParams;
+  print Dumper($p);
 }
 
 # =============================================================================
@@ -161,8 +192,9 @@ $cmd_docker_shellDef = {
     "Запускает shell в docker-контейнере";
   },
 };
-sub cmd_docker_shell($@) {
-  print Dumper(getFuncName(), shift, @_);
+sub cmd_docker_shell {
+  my $p = &processParams;
+  print Dumper($p);
 }
 # Использование: dip docker [Опции] Команда
 # Описание: docker-операции
@@ -189,14 +221,14 @@ sub cmd_docker_shell($@) {
 
 $cmd_selfTestDef = {
   'description' => 'Самопроверка',
-  'shortcuts' => [ 'st' ],
+  'shortcut' => 'st',
 };
-sub cmd_selfTest($@) {
-  my $cnf = shift;
-  print Dumper(getFuncName(), $cnf, @_);
+sub cmd_selfTest {
+  my $p = &processParams;
+  print Dumper($p);
+  # my $cnf = shift;
+  # print Dumper(getFuncName(), $cnf, @_);
   # print "selfTest\n"
 }
 
-# print Dumper(@EXPORT);
-
-1;
+$defs = preprocessDefs;
