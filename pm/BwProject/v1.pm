@@ -128,19 +128,17 @@ sub cmd_docker_build {
 Перед сборкой образа необходимо внести изменения в <ansiFileSpec>${\shortenFileSpec "$ENV{projDir}/$Dockerfile"}<ansi> или выполнить команду с опцией <ansiCmd>--force<ansi> ( <ansiCmd>-f<ansi> )"
 MSG
   } else {
-    docker(qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker");
-
-    # _docker -v all build --pull -t "$dockerImageName" .; local returnCode=$?
-    # if [[ $returnCode -eq 0 ]]; then
-    #   local dockerImageIdFileName="dev-$bwProjShortcut.id"
-    #   _docker inspect --format "{{json .Id}}" "$dockerImageName:latest" > "$dockerImageIdFileName"
-    #   if _gitIsChangedFile "docker/$dockerImageIdFileName"; then
-    #     msg+="Обновлен docker-образ $dockerImageTitle${_ansiWarn}"$_nl
-    #     msg+="${_ansiWarn}Не забудьте поместить его в docker-репозиторий командой"$_nl
-    #     msg+="    ${_ansiCmd}$bwProjShortcut docker push${_ansiReset}"
-    #     _warn "$msg"
-    #   fi
-    # fi
+    if (docker(qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker")) {
+      my $dockerImageIdFileName="dev-$cnf->{projShortcut}.id";
+      docker(qw/inspect --format "{{json .Id}}"/, "$cnf->{dockerImageName}:latest", '>', "$dockerImageIdFileName");
+      if ( gitIsChangedFile("docker/$dockerImageIdFileName", $ENV{projDir}) ) {
+        print ansi 'Warn', <<"MSG";
+Обновлен docker-образ <ansiPrimaryLiteral>$cnf->{dockerImageName}<ansi>
+Не забудьте поместить его в docker-репозиторий командой
+    <ansiCmd>$cnf->{projShortcut} docker push
+MSG
+      }
+    }
   }
 }
 

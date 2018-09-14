@@ -45,6 +45,7 @@ BEGIN {
 # =============================================================================
 
 sub docker {
+  # TODO: bw_install docker --silentIfAlreadyInstalled || return $?
   unshift @_, 'docker';
   if ( $ENV{OSTYPE} =~ m/^linux/ ) {
     unshift @_, 'sudo';
@@ -55,11 +56,21 @@ sub docker {
 }
 
 sub execCmd {
-  print ansi "<ansiCmd>" . join(' ', @_) . "<ansi> . . .\n";
-  system(@_);
+  my $cmd;
+  foreach (@_) {
+    my $arg = $_;
+    if ( $arg =~ m/[\s"]/ ) {
+      $arg =~ s/"/\\"/g;
+      $arg = "\"$arg\"";
+    };
+    $cmd .= " " if length $cmd;
+    $cmd .= $arg;
+  }
+  print ansi "<ansiCmd>$cmd<ansi> . . .\n";
+  system($cmd);
   my $returnCode = ${^CHILD_ERROR_NATIVE} / 256;# https://stackoverflow.com/questions/3736320/executing-shell-script-with-system-returns-256-what-does-that-mean
   my ($ansi, $prefix) = $returnCode == 0 ? ('OK') x 2 : ('Err', 'ERR');
-  print ansi $ansi, "$prefix: <ansiCmd>" . join(' ', @_) . "\n";
+  print ansi $ansi, "$prefix: <ansiCmd>$cmd\n";
   return $returnCode;
 }
 

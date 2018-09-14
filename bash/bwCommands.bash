@@ -1269,11 +1269,11 @@ _completionOnly_description='Обновить только completion-опред
 _initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
-  if [[ $1 == perl ]]; then
+  if [[ -n $1 ]]; then
     eval "$bwProjShortcut()"' {
       local projDir
       _prepareProjDir '"$bwProjShortcut"' || return $?
-      _bwDir="$_bwDir" projDir="$projDir" OSTYPE="$OSTYPE" "$projDir/bin/dip.pl" "$@"
+      _bwDir="$_bwDir" projDir="$projDir" OSTYPE="$OSTYPE" bwProjectVersion="$1" "$projDir/bin/dip.pl" "$@"
     }'
     return
   fi

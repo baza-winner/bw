@@ -50,11 +50,7 @@ sub ansi($;$) {
   $_ = shift || die;
   no strict 'refs';
   s/<ansi([^>]*)>/ $1 ? _ansiHelper $1 : ( $ansiDefault || die "can not use 'ansi' for ansiDefault is not set" )/ge;
-  if ( $ansiDefault ) {
-    s/^/$ansiDefault/me;
-    s/$/$ansi->{Reset}/me;
-  }
-  $_;
+  "$ansiDefault$_$ansi->{Reset}";
 }
 
 # https://www.perlmonks.org/?node_id=509827
