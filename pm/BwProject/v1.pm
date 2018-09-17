@@ -125,7 +125,7 @@ sub cmd_docker_build {
   my $Dockerfile = 'docker/Dockerfile';
   if ( !$p->{force}->{value} && !gitIsChangedFile($Dockerfile, $ENV{projDir}) ) {
     print ansi 'Warn', <<"MSG";
-Перед сборкой образа необходимо внести изменения в <ansiFileSpec>${\shortenFileSpec "$ENV{projDir}/$Dockerfile"}<ansi> или выполнить команду с опцией <ansiCmd>--force<ansi> ( <ansiCmd>-f<ansi> )"
+Перед сборкой образа необходимо внести изменения в <ansiFileSpec>${\shortenFileSpec "$ENV{projDir}/$Dockerfile"}<ansi> или выполнить команду с опцией <ansiCmd>--force<ansi> ( <ansiCmd>-f<ansi> )
 MSG
   } else {
     if (docker(qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker")) {
