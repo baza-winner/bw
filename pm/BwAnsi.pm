@@ -2,26 +2,17 @@ package BwAnsi;
 use v5.18;
 use strict;
 use warnings;
+use Exporter;
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
+$VERSION = 1.00;
+@ISA = qw(Exporter);
+@EXPORT_OK = ();
+%EXPORT_TAGS = ();
+@EXPORT = qw/ ansi /;
 
-my $selfFileSpec;
-BEGIN {
-  use Data::Dumper;
-  use Exporter;
-  use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-  $VERSION = 1.00;
-  @ISA = qw(Exporter);
-  @EXPORT = ( );
-  @EXPORT_OK = ();
-  %EXPORT_TAGS = ();
+# =============================================================================
 
-  my @caller = caller(0);
-  $selfFileSpec = $caller[1];
-  open(IN, $selfFileSpec);
-  while (<IN>) {
-    push @EXPORT, $1 if /^\s*sub\s+([a-z][\w\d]*)/;
-  }
-  close(IN);
-}
+use Data::Dumper;
 
 # =============================================================================
 

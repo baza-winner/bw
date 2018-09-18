@@ -1,33 +1,27 @@
-package BwCore;
+package BwParams;
 use v5.18;
 use strict;
 use warnings;
+use Exporter;
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
+$VERSION = 1.00;
+@ISA = qw(Exporter);
+@EXPORT_OK = ();
+%EXPORT_TAGS = ();
+@EXPORT = ( qw/run processParams preprocessDefs/);
 
-my $selfFileSpec;
-BEGIN {
-  use Exporter;
-  use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-  $VERSION = 1.00;
-  @ISA = qw(Exporter);
-  @EXPORT = ( );
-  @EXPORT_OK = ();
-  %EXPORT_TAGS = ();
+# =============================================================================
 
-  my @caller = caller(0);
-  $selfFileSpec = $caller[1];
-  open(IN, $selfFileSpec);
-  while (<IN>) {
-    push @EXPORT, $1 if /^\s*sub\s+([a-z][\w\d]*)/;
-  }
-  close(IN);
-}
+use BwAnsi;
+use BwCore;
+use Data::Dumper;
 
 # =============================================================================
 
 sub run {
-  my $packageName = shift || die;
-  my $entry = shift || die;
-  my $cnf = shift || die;
+  my $packageName = shift or die;
+  my $entry = shift or die;
+  my $cnf = shift or die;
   my @argv = @_;
 
   my $fileSpec = $packageName;
@@ -38,9 +32,9 @@ sub run {
   my @splitted = split '::', $packageName;
   $packageName = pop @splitted;
   no strict 'refs';
-  my $defs = ${"$packageName::${entityName}"} || die;
+  my $defs = ${"$packageName::${entityName}"} or die;
 
-  my $def = $defs->{$entry} || die;
+  my $def = $defs->{$entry} or die;
 
   $entityName = 'preprocessCnf';
   if ( exists ${"${packageName}::"}{$entityName} ) {
@@ -51,16 +45,16 @@ sub run {
 }
 
 sub _getDescription($$$) {
-  my $descriptionContainer = shift || die;
-  my $cnf = shift || die;
-  my $deep = shift || die;
-  my $description = $descriptionContainer->{description} || die;
+  my $descriptionContainer = shift or die;
+  my $cnf = shift or die;
+  my $deep = shift or die;
+  my $description = $descriptionContainer->{description} or die;
   ansi ( ref $description ne 'CODE' ? $description : $description->($cnf));
 }
 
 sub _printHelp {
-  my $def = shift || die;
-  my $cnf = shift || die;
+  my $def = shift or die;
+  my $cnf = shift or die;
   my $subCommands = shift;
 
   my $optionsTitle = $def->{options} ? 'Опции' : 'Опция';
@@ -99,17 +93,41 @@ $optionsTitle
 HELP
   if ( $def->{options} ) {
     for my $optName ($def->{options}->keys) {
-      my $optTitle = "<ansiCmd>--$optName<ansi>";
       my $optDef = $def->{options}->get($optName);
+      my $optTitleSuffix = $optDef->{type} eq 'bool' ? '' : ' <ansiOutline>значение<ansi>';
+      my $optTitle = "<ansiCmd>--$optName<ansi>$optTitleSuffix";
       if ( $optDef->{shortcut} ) {
         foreach my $shortcut (@{$optDef->{shortcut}}) {
-          $optTitle .= " или <ansiCmd>-$shortcut<ansi>";
+          $optTitle .= " или <ansiCmd>-$shortcut<ansi>$optTitleSuffix";
         }
       }
       print ansi <<"HELP";
     $optTitle
         ${\_getDescription($optDef, $cnf, 2)}
 HELP
+      my $typeDescription;
+      if ($optDef->{type} eq 'int') {
+        $typeDescription = 'целое число';
+        if ( exists $optDef->{min} ) {
+          if ( exists $optDef->{max} ) {
+            $typeDescription .= " из диапазона <ansiSecondaryLiteral>$optDef->{min}<ansi>..<ansiSecondaryLiteral>$optDef->{max}<ansi>";
+          } else {
+            $typeDescription .= " не менее <ansiSecondaryLiteral>$optDef->{min}<ansi>";
+          }
+        } elsif ( exists $optDef->{max} ) {
+          $typeDescription .= " не более <ansiSecondaryLiteral>$optDef->{max}<ansi>";
+        }
+      }
+      if ($typeDescription) {
+        print ansi <<"HELP";
+        <ansiOutline>Значение<ansi> - $typeDescription
+HELP
+      }
+      if ( exists $optDef->{default} ) {
+        print ansi <<"HELP";
+        <ansiOutline>Значение<ansi> по умолчанию: <ansiPrimaryLiteral>$optDef->{default}
+HELP
+      }
     }
   }
   print ansi <<"HELP";
@@ -118,13 +136,47 @@ HELP
 HELP
 }
 
-sub _getEntity {
-  my $def = shift || die;
-  my $cnf = shift || die;
-  my $entityName = shift || die;
-  my $entity = $def->{$entityName} || return;
-  ref $entity eq 'Hash::Ordered' || die Dumper({ 'ref $entity' => ref $entity });
+sub _validateOptionDef {
+  my $optDef = _validateStruct('_validateOptionDef arg', shift, { type => 'hash' });
+  # TODO
+  return $optDef;
+}
 
+sub _getEntity {
+  my $def = shift or die;
+  my $cnf = shift or die;
+  my $entityName = shift or die;
+  my $entity = _validateStruct("\$def->{$entityName}", $def->{$entityName}, {
+    type => [ 'Hash::Ordered', 'undef' ],
+  }) or return;
+
+  if ($entityName eq 'options' && $cnf->{mixin}) {
+    my $funcName = getFuncName(2);
+    if ($cnf->{mixin}->{$funcName} && $cnf->{mixin}->{$funcName}->{options}) {
+      my $mixinOptions = _validateStruct(
+        "\$cnf->{mixin}->{$funcName}->{options}",
+        $cnf->{mixin}->{$funcName}->{options}, 
+        {
+          type => 'Hash::Ordered',
+          value => {
+            type => 'hash',
+            keys => {
+              default => {
+                type => 'scalar',
+              },
+            },
+          },
+        },
+      );
+      foreach my $key ($mixinOptions->keys) {
+        $entity->exists($key) or die Dumper({ err => '$key does not exist in $entity', '$key' => $key, '$entity' => $entity });
+        my $value = $entity->get($key);
+        my $mixin = $mixinOptions->get($key);
+        @{$value}{keys %{$mixin}} = values %{$mixin};
+        $entity->set($key, _validateOptionDef($value, $key, $funcName));
+      }
+    }
+  }
   my $result = {
     byName => Hash::Ordered->new(),
     byNameOrShortcut => Hash::Ordered->new(),
@@ -147,18 +199,16 @@ sub _getEntity {
       }
     }
   }
-  # $result->{nameAndShortcuts} = join " ", $result->{byNameOrShortcut}->keys;
-  # $result->{shortcuts} = join " ", $result->{byShortcut}->keys;
   $result;
 }
 
 sub processParams {
-  my $def = shift || die;
-  my $cnf = shift || die;
+  my $def = shift or die;
+  my $cnf = shift or die;
 
   my $subCommands = _getEntity($def, $cnf, 'subCommands');
   my $options = _getEntity($def, $cnf, 'options');
-  my $args = _getEntity($def, $cnf, 'args');
+  # my $args = _getEntity($def, $cnf, 'args');
   my $result = {};
 
   my $param = shift;
@@ -211,14 +261,15 @@ MSG
 }
 
 sub _validateStruct {
-  my $where = shift || die;
+  my $where = shift or die;
+    ref $where eq '' or die Dumper( { err => '$where is expected to be a scalar', '$where' => $where} );
   my $value = shift;
-  my $struct = shift || die Dumper({ where => $where });
-  ref $struct eq 'HASH' || die Dumper({ where => $where , 'ref $struct' => ref $struct });
-  my $type = $struct->{type} || die Dumper({ '$struct' => $struct });
-  hasItem(ref $type, '', 'ARRAY') || die Dumper({ 'ref $type' => ref $type });
+  my $struct = shift or die Dumper({ where => $where });
+  ref $struct eq 'HASH' or die Dumper({ where => $where , 'ref $struct' => ref $struct });
+  my $type = $struct->{type} or die Dumper({ '$struct' => $struct });
+  hasItem(ref $type, '', 'ARRAY') or die Dumper({ 'ref $type' => ref $type });
   my $types = ref $type eq 'ARRAY' ? $type : [ $type ];
-  my $valueType = ref $value;
+  my $valueType = defined $value ? ref $value : 'undef';
   my %normalizedValueTypes = (
     'HASH' => 'hash',
     'CODE' => 'sub',
@@ -226,23 +277,24 @@ sub _validateStruct {
     '' => 'scalar',
   );
   my $normalizedValueType = $normalizedValueTypes{$valueType} || $valueType;
-  hasItem($normalizedValueType, @{$types}) || die Dumper({ where => $where, '$normalizedValueType' => $normalizedValueType, '$struct->{type}' => $struct->{type} });
+  hasItem($normalizedValueType, @{$types}) or die Dumper({ err => '$normalizedValueType of $value is not expected by $struct->{type}', where => $where, '$normalizedValueType' => $normalizedValueType, '$struct->{type}' => $struct->{type}, '$value' => $value });
   if ( $normalizedValueType eq 'hash') {
     if ( $struct->{keys} ) {
       my $keys = $struct->{keys};
-      ref $keys eq 'HASH' || die Dumper({ 'ref $struct->{keys}' => ref $keys });
+      ref $keys eq 'HASH' or die Dumper({ 'ref $struct->{keys}' => ref $keys });
       my @validKeys;
       foreach my $key (keys %{$keys}) {
         my $keyDef = $keys->{$key};
-        ref $keyDef eq 'HASH' || die Dumper({ "ref \$keys->{$key}" => ref $keyDef });
-        !$keyDef->{isRequired} || exists $value->{$key} || die Dumper({ '$key' => $key, '$value' => $value });
-        if (exists $value->{$key}) {
+        ref $keyDef eq 'HASH' or die Dumper({ "ref \$keys->{$key}" => ref $keyDef });
+        next if $keyDef->{condition} && !$keyDef->{condition}->($value);
+        !$keyDef->{isRequired} or exists($value->{$key}) or die Dumper({ 'err' => 'required $key is absent in $value', '$key' => $key, '$value' => $value });
+        if ( exists($value->{ $key }) ) {
           $value->{$key} = _validateStruct("$where\->{$key}", $value->{$key}, $keyDef);
         }
         push @validKeys, $key;
       }
       foreach my $key (keys %{$value}) {
-        hasItem($key, @validKeys) || die Dumper({ where => $where, '$key' => $key, '@validKeys' => \@validKeys });
+        hasItem($key, @validKeys) or die Dumper({ where => $where, '$key' => $key, '@validKeys' => \@validKeys });
       }
     }
   } elsif ( $normalizedValueType eq 'array' ) {
@@ -261,19 +313,18 @@ sub _validateStruct {
     }
   } elsif ( $normalizedValueType eq 'scalar' ) {
     if ( $struct->{enum} ) {
-      ref $struct->{enum} eq 'ARRAY' || die Dumper({where => $where, 'ref $struct->{enum}' => ref $struct->{enum}});
-      hasItem($value, @{$struct->{enum}}) || die Dumper({ where => $where, value => $value, enum => $struct->{enum} });
+      ref $struct->{enum} eq 'ARRAY' or die Dumper({where => $where, 'ref $struct->{enum}' => ref $struct->{enum}});
+      hasItem($value, @{$struct->{enum}}) or die Dumper({ where => $where, err => '$enum has no $value', '$value' => $value, '$enum' => $struct->{enum} });
     }
-  } elsif ( ! hasItem($normalizedValueType, 'sub') ) {
-
-    die Dumper({ _ => 'TODO', types => $types, valueType => $valueType, value => $value });
+  } elsif ( ! hasItem($normalizedValueType, 'sub', 'undef') ) {
+    die Dumper({ err => 'unexpected $valueType', types => $types, '$valueType' => $valueType, value => $value });
   }
   if ( $struct->{validate} ) {
-    ref $struct->{validate} eq 'CODE' || die Dumper({ where => $where, 'ref $struct->{validate}' => ref $struct->{validate} });
+    ref $struct->{validate} eq 'CODE' or die Dumper({ where => $where, 'ref $struct->{validate}' => ref $struct->{validate} });
     $value = $struct->{validate}->($where, $value);
   }
   if ( $struct->{normalize} ) {
-    $struct->{normalize} eq 'to array' || die Dumper({ where => $where, '$struct->{normalize}' => $struct->{normalize} });
+    $struct->{normalize} eq 'to array' or die Dumper({ where => $where, '$struct->{normalize}' => $struct->{normalize} });
     if ( $normalizedValueType ne 'array' ) {
       $value = [ $value ];
     }
@@ -282,9 +333,9 @@ sub _validateStruct {
 }
 
 sub _preprocessDef {
-  my $packageName = shift || die;
-  my $allDefs = shift || die;
-  my $funcName = shift || die;
+  my $packageName = shift or die;
+  my $allDefs = shift or die;
+  my $funcName = shift or die;
   my $validateCmdShortcut = sub {
     my ($where, $value) = @_;
     if (ref $value eq '') {
@@ -295,7 +346,7 @@ sub _preprocessDef {
   my $validateOptionShortcut = sub {
     my ($where, $value) = @_;
     if (ref $value eq '') {
-      length $value == 1 || die Dumper({ where => $where, '$value' => $value,  'length $value' => length $value});
+      length $value == 1 or die Dumper({ where => $where, '$value' => $value,  'length $value' => length $value});
     }
     $value;
   };
@@ -330,7 +381,20 @@ sub _preprocessDef {
               type => {
                 isRequired => 1,
                 type => 'scalar',
-                enum => [ 'bool', 'scalar', 'list' ],
+                enum => [ 'bool', 'int', 'scalar', 'list' ],
+              },
+              min => {
+                condition => sub { $_[0]->{type} eq 'int' },
+                type => 'scalar',
+              },
+              max => {
+                condition => sub { $_[0]->{type} eq 'int' },
+                type => 'scalar',
+              },
+              itemType => {
+                condition => sub { $_[0]->{type} eq 'list' },
+                type => 'scalar',
+                enum => [ 'enum', 'int' ],
               },
               shortcut => {
                 type => [ 'scalar', 'array' ],
@@ -387,12 +451,23 @@ sub _preprocessDef {
     $def->{subCommands} = $subCommands;
   }
 
+  if ($def->{options}) {
+    ref $def->{options} eq 'Hash::Ordered' or die Dumper({ 'ref $def->{options}' => ref $def->{options} });
+    my $options = Hash::Ordered->new();
+    foreach my $key ($def->{options}->keys) {
+      my $value = $def->{options}->get($key);
+      my $key = camelCaseToKebabCase($key);
+      $options->set($key, $value);
+    }
+    $def->{options} = $options;
+  }
+
   $def;
 }
 
 sub preprocessDefs {
   my @caller = caller(1);
-  $caller[6] =~ m/([\w\d]+)\.pm$/ || die;
+  $caller[6] =~ m/([\w\d]+)\.pm$/ or die;
   my $packageName = $1;
   my $varName = "selfFileSpec";
   no strict 'refs';

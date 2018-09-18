@@ -2,49 +2,31 @@ package BwCore;
 use v5.18;
 use strict;
 use warnings;
+use Exporter;
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
+$VERSION = 1.00;
+@ISA = qw(Exporter);
+@EXPORT_OK = ();
+%EXPORT_TAGS = ();
+@EXPORT = qw/
+  docker 
+  execCmd 
+  gitIsChangedFile 
+  shortenFileSpec
+  hasItem
+  getFuncName
+  camelCaseToKebabCase
+/;
 
-my $selfFileSpec;
-BEGIN {
-  use File::Find qw/find/;
-  my $carpAlwaysIsInstalled;
-  no warnings 'File::Find';
-  find { wanted => sub { $carpAlwaysIsInstalled = 1 if /\/Carp\/Always(?:\.pm)?$/ }, no_chdir => 1 }, @INC;
-  if ( $carpAlwaysIsInstalled ) {
-    require Carp::Always;# https://metacpan.org/pod/Carp::Always
-    Carp::Always->import;
-  }
+# =============================================================================
 
-  use Exporter;
-  use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-  $VERSION = 1.00;
-  @ISA = qw(Exporter);
-  @EXPORT = ();
-  @EXPORT_OK = ();
-  %EXPORT_TAGS = ();
-
-  my @caller = caller(0);
-  $selfFileSpec = $caller[1];
-  open(IN, $selfFileSpec);
-  while (<IN>) {
-    push @EXPORT, $1 if /^\s*sub\s+([a-z][\w\d]*)/;
-  }
-  close(IN);
-
-  use Hash::Ordered; # https://metacpan.org/pod/Hash::Ordered
-
-  use Data::Dumper;
-  push @EXPORT, qw/Dumper/;
-
-  use BwAnsi;
-  push @EXPORT, qw/ansi/;
-
-  use BwParams;
-  push @EXPORT, qw/run preprocessDefs processParams/;
-}
+use BwAnsi;
 
 # =============================================================================
 
 sub docker {
+  my $opt = {};
+  $opt = shift if ref $_[0] eq 'HASH';
   # TODO: bw_install docker --silentIfAlreadyInstalled || return $?
   unshift @_, 'docker';
   if ( $ENV{OSTYPE} =~ m/^linux/ ) {
@@ -52,10 +34,13 @@ sub docker {
   } elsif ( $ENV{OSTYPE} !~ m/^darwin/ ) {
     die ansi 'Err', "ERR: Неожиданный тип OS <ansiPrimaryLiteral>$ENV{OSTYPE}";
   }
+  unshift @_, $opt;
   !&execCmd;
 }
 
 sub execCmd {
+  my $opt = {};
+  $opt = shift if ref $_[0] eq 'HASH';
   my $cmd;
   foreach (@_) {
     my $arg = $_;
@@ -66,11 +51,15 @@ sub execCmd {
     $cmd .= " " if length $cmd;
     $cmd .= $arg;
   }
-  print ansi "<ansiCmd>$cmd<ansi> . . .\n";
+  print ansi "<ansiCmd>$cmd<ansi> . . .\n" if $opt->{v} && $opt->{v} eq 'all';
   system($cmd);
   my $returnCode = ${^CHILD_ERROR_NATIVE} / 256;# https://stackoverflow.com/questions/3736320/executing-shell-script-with-system-returns-256-what-does-that-mean
   my ($ansi, $prefix) = $returnCode == 0 ? ('OK') x 2 : ('Err', 'ERR');
-  print ansi $ansi, "$prefix: <ansiCmd>$cmd\n";
+  print ansi $ansi, "$prefix: <ansiCmd>$cmd\n" if $opt->{v} && ( 
+    $opt->{v} =~ /^all/ ||
+    $opt->{v} eq 'ok' && $returnCode == 0 ||
+    $opt->{v} eq 'err' && $returnCode != 0 ||
+  0);
   return $returnCode;
 }
 

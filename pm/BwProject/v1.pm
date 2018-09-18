@@ -6,16 +6,6 @@ use warnings;
 my (@vars);
 use vars qw/$selfFileSpec/;
 BEGIN {
-  use BwCore;
-
-  # use Exporter;
-  # use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
-  # $VERSION = 1.00;
-  # @ISA = qw(Exporter);
-  # @EXPORT = ();
-  # @EXPORT_OK = ();
-  # %EXPORT_TAGS = ();
-
   my @caller = caller(0);
   $selfFileSpec = $caller[1];
   open(IN, $selfFileSpec);
@@ -25,9 +15,12 @@ BEGIN {
   close(IN);
   push @vars, '$defs';
 
-  # @EXPORT = qw/cmd/;
 }
 use vars @vars;
+
+# =============================================================================
+
+use Bw;
 
 # =============================================================================
 
@@ -113,7 +106,7 @@ $cmd_docker_buildDef = {
     "Собирает docker-образ <ansiPrimaryLiteral>$cnf->{dockerImageName}";
   },
   options => Hash::Ordered->new(
-    'force' => {
+    force => {
       type => 'bool',
       shortcut => 'f',
       description => 'Невзирая на возможное отсутствие изменений в <ansiFileSpec>docker/Dockerfile'
@@ -128,10 +121,12 @@ sub cmd_docker_build {
 Перед сборкой образа необходимо внести изменения в <ansiFileSpec>${\shortenFileSpec "$ENV{projDir}/$Dockerfile"}<ansi> или выполнить команду с опцией <ansiCmd>--force<ansi> ( <ansiCmd>-f<ansi> )
 MSG
   } else {
-    if (docker(qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker")) {
-      my $dockerImageIdFileName="dev-$cnf->{projShortcut}.id";
-      docker(qw/inspect --format "{{json .Id}}"/, "$cnf->{dockerImageName}:latest", '>', "$dockerImageIdFileName");
-      if ( gitIsChangedFile("docker/$dockerImageIdFileName", $ENV{projDir}) ) {
+    use File::Copy::Recursive qw(dircopy);
+    dircopy("$ENV{_bwDir}/pm/BwProject/$ENV{bwProjectVersion}/docker", "$ENV{projDir}/docker/.helper");
+    if (docker({ v => 'all' }, qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker")) {
+      my $dockerImageIdFileSpec="$ENV{projDir}/docker/dev-$cnf->{projShortcut}.id";
+      docker( { v => 'err' }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest", '>', "$dockerImageIdFileSpec");
+      if ( gitIsChangedFile("docker/$dockerImageIdFileSpec", $ENV{projDir}) ) {
         print ansi 'Warn', <<"MSG";
 Обновлен docker-образ <ansiPrimaryLiteral>$cnf->{dockerImageName}<ansi>
 Не забудьте поместить его в docker-репозиторий командой
@@ -176,11 +171,94 @@ $cmd_docker_upDef = {
     my $cnf = shift;
     "Поднимает командой <ansiCmd>docker-compose up<ansi> docker-приложение <ansiPrimaryLiteral>${\shortenFileSpec($cnf->{projDir})}";
   },
+  options => Hash::Ordered->new(
+    noCheck => {
+      type => 'bool',
+      shortcut => 'n',
+      description => sub { my $cnf = shift; "Не проверять актуальность docker-образа <ansiPrimaryLiteral>$cnf->{dockerImageName}" }
+    },
+    map({(
+      $_ => {
+        type => 'int',
+        min => 1024,
+        max => 65535,
+        description => "$_-порт по которому будет доступно docker-приложение" . ( 
+          $_ ne 'upstream' ? '' : ' для сервиса <ansiPrimaryLiteral>nginx<ansi>'
+        ),
+      }
+    )} qw/ssh http https mysql redis rabbitmq upstream/),
+    noTestAccessMessage => {
+      type => 'bool',
+      shortcut => 'm',
+      description => 'Не выводить сообщение о проверке доступности docker-приложения',
+    },
+    forceRecreate => {
+      type => 'bool',
+      shortcut => 'f',
+      description => 'Поднимает docker-приложение с опцией <ansiCmd>--force-recreate<ansi>, передаваемой <ansiCmd>docker-compose up'
+    },
+    restart => {
+      type => 'list',
+      itemType => 'enum',
+      enum => [ qw/main nginx/ ],
+      shortcut => 'r',
+      description => 'Останавливает и поднимает указанные сервисы',
+    },
+  ),
 };
 sub cmd_docker_up {
-  my $p = &processParams;
-  print Dumper($p);
+  my ($p, $cnf) = &processParams; $p || return;
+  # my $p = &processParams;
+  # print Dumper($p);
 }
+
+# Использование: dip docker up [Опции]
+# Описание: Поднимает (docker-compose up) следующие контейнеры: 
+# Опции
+#     --no-check или -n
+#         Не проверять актуальность docker-образа bazawinner/dev-dip
+#     --ssh значение
+#         ssh-порт по которому будет доступно docker-приложение
+#         Значение - целое число из диапазона 1024..65535
+#         Значение по умолчанию: 2208
+#     --http значение
+#         http-порт по которому будет доступно docker-приложение
+#         Значение - целое число из диапазона 1024..65535
+#         Значение по умолчанию: 8008
+#     --https значение
+#         https-порт по которому будет доступно docker-приложение
+#         Значение - целое число из диапазона 1024..65535
+#         Значение по умолчанию: 4408
+#     --mysql значение
+#         mysql-порт по которому будет доступно docker-приложение
+#         Значение - целое число из диапазона 1024..65535
+#         Значение по умолчанию: 3308
+#     --redis значение
+#         redis-порт по которому будет доступно docker-приложение
+#         Значение - целое число из диапазона 1024..65535
+#         Значение по умолчанию: 6308
+#     --rabbitmq значение
+#         rabbitmq-порт по которому будет доступно docker-приложение
+#         Значение - целое число из диапазона 1024..65535
+#         Значение по умолчанию: 5608
+#     --upstream значение
+#         upstream-порт по которому будет доступно docker-приложение для сервиса nginx
+#         Значение - целое число из диапазона 1024..65535
+#         Значение по умолчанию: 3000
+#     --no-test-access-message или -m
+#         Не выводить сообщение о проверке доступности docker-приложения
+#     --proj-dir значение или -p значение
+#         Папка проекта
+#     --force-recreate или -f
+#         Поднимает  с опцией --force-recreate, передаваемой docker-compose up
+#     --restart значение или -r значение
+#         Останавливает и поднимает указанные сервисы
+#         Варианты значения: 
+#         Опция предназначена для того, чтобы сформировать
+#         возможно пустой список значений
+#         путем eё многократного использования
+#     --help или -? или -h
+#         Выводит справку
 
 # =============================================================================
 
