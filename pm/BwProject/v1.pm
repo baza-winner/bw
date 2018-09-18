@@ -175,18 +175,43 @@ $cmd_docker_upDef = {
     noCheck => {
       type => 'bool',
       shortcut => 'n',
-      description => sub { my $cnf = shift; "Не проверять актуальность docker-образа <ansiPrimaryLiteral>$cnf->{dockerImageName}" }
-    },
-    map({(
-      $_ => {
-        type => 'int',
-        min => 1024,
-        max => 65535,
-        description => "$_-порт по которому будет доступно docker-приложение" . ( 
-          $_ ne 'upstream' ? '' : ' для сервиса <ansiPrimaryLiteral>nginx<ansi>'
-        ),
+      description => sub {
+        my $cnf = shift;
+        "Не проверять актуальность docker-образа <ansiPrimaryLiteral>$cnf->{dockerImageName}"
       }
-    )} qw/ssh http https mysql redis rabbitmq upstream/),
+    },
+    portIncrement => {
+      type => 'int',
+      min => 0,
+      default => 0,
+      shortcut => 'i',
+      description => sub {
+        my $cnf = shift;
+        "
+        Смещение относительно базовых значений для всех портов
+        Полезно для старта второго экземпляра docker-приложения <ansiPrimaryLiteral>${\shortenFileSpec($cnf->{projDir})}<ansi>
+        Примечание: второй экземпляр следует запускать из второй копии проекта, которую можно установить командой:
+          <ansiCmd>bw p $cnf->{projShortcut} -p <ansiOutline>Абсолютный-путь-к-папке-второй-копии-проекта
+        "
+      },
+    },
+    map({
+      my $key = $_;
+      (
+        $key => {
+          condition => sub {
+            my $cnf = shift;
+            $cnf->{mixin}->{scalar getFuncName(3)}->{options}->exists($key)
+          },
+          type => 'int',
+          min => 1024,
+          max => 65535,
+          description => "<ansiSecondaryLiteral>$key<ansi>-порт по которому будет доступно docker-приложение" . (
+            $key ne 'upstream' ? '' : ' для сервиса <ansiPrimaryLiteral>nginx<ansi>'
+          ),
+        }
+      )
+    } qw/ssh http https mysql redis rabbitmq upstream/),
     noTestAccessMessage => {
       type => 'bool',
       shortcut => 'm',
@@ -200,7 +225,7 @@ $cmd_docker_upDef = {
     restart => {
       type => 'list',
       itemType => 'enum',
-      enum => [ qw/main nginx/ ],
+      enum => sub { my $cnf = shift; [ qw/main nginx/ ] },
       shortcut => 'r',
       description => 'Останавливает и поднимает указанные сервисы',
     },
@@ -209,11 +234,11 @@ $cmd_docker_upDef = {
 sub cmd_docker_up {
   my ($p, $cnf) = &processParams; $p || return;
   # my $p = &processParams;
-  # print Dumper($p);
+  print Dumper($p);
 }
 
 # Использование: dip docker up [Опции]
-# Описание: Поднимает (docker-compose up) следующие контейнеры: 
+# Описание: Поднимает (docker-compose up) следующие контейнеры:
 # Опции
 #     --no-check или -n
 #         Не проверять актуальность docker-образа bazawinner/dev-dip
@@ -253,7 +278,7 @@ sub cmd_docker_up {
 #         Поднимает  с опцией --force-recreate, передаваемой docker-compose up
 #     --restart значение или -r значение
 #         Останавливает и поднимает указанные сервисы
-#         Варианты значения: 
+#         Варианты значения:
 #         Опция предназначена для того, чтобы сформировать
 #         возможно пустой список значений
 #         путем eё многократного использования

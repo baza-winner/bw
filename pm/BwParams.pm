@@ -41,23 +41,38 @@ sub run {
     my $preprocessCnf = \&{"$packageName::${entityName}"};
     $cnf = $preprocessCnf->($entry, $cnf);
   }
-  &{"$packageName::${entry}"}($def, $cnf, @argv);
+  &{"$packageName::${entry}"}({}, $cnf, $def, @argv);
 }
 
-sub _getDescription($$$) {
+sub _getDescription {
   my $descriptionContainer = shift or die;
   my $cnf = shift or die;
-  my $deep = shift or die;
-  my $description = $descriptionContainer->{description} or die;
-  ansi ( ref $description ne 'CODE' ? $description : $description->($cnf));
+  my $indentLevel = shift || 0;
+  my $outputIndentBase = shift || 4;
+  my $inputIndentBase = shift || 2;
+
+  my $description = $descriptionContainer->{description} || die;
+  $description = _validateStruct('$description->($cnf)', $description->($cnf), {type => 'scalar'})
+    if ref $description eq 'CODE';
+  if (index($description, "\n") >=0) {
+    my $firstIndentLevel=0;
+    use POSIX;
+    use List::Util qw/max/;
+    $description =~ s|^(?:[ ]*\n)*(\s*)| $firstIndentLevel = floor(length($1) / $inputIndentBase); ''|e;
+    $description =~ s|\s+$||;
+    $description =~ s|\n(\s*)| "\n" . ( ' ' x ($outputIndentBase * ( $indentLevel + max(0, floor(length($1) / $inputIndentBase) - $firstIndentLevel) )))|ge;
+  }
+  ansi ($description);
 }
 
 sub _printHelp {
+  my $p = shift or die;
   my $def = shift or die;
   my $cnf = shift or die;
+  my $options = shift;
   my $subCommands = shift;
 
-  my $optionsTitle = $def->{options} ? 'Опции' : 'Опция';
+  my $optionsTitle = $options ? 'Опции' : 'Опция';
   my $argsTitle = $subCommands ? ' <ansiOutline>Команда<ansi>' : '';
   print ansi <<"HELP";
 <ansiHeader>Использование:<ansi> <ansiCmd>$cnf->{cmd}<ansi> [<ansiOutline>$optionsTitle<ansi>]$argsTitle
@@ -91,9 +106,9 @@ HELP
   print ansi <<"HELP";
 $optionsTitle
 HELP
-  if ( $def->{options} ) {
-    for my $optName ($def->{options}->keys) {
-      my $optDef = $def->{options}->get($optName);
+  if ( $options ) {
+    for my $optName ($options->{byName}->keys) {
+      my $optDef = $options->{byName}->get($optName);
       my $optTitleSuffix = $optDef->{type} eq 'bool' ? '' : ' <ansiOutline>значение<ansi>';
       my $optTitle = "<ansiCmd>--$optName<ansi>$optTitleSuffix";
       if ( $optDef->{shortcut} ) {
@@ -107,7 +122,7 @@ HELP
 HELP
       my $typeDescription;
       if ($optDef->{type} eq 'int') {
-        $typeDescription = 'целое число';
+        $typeDescription = '<ansiOutline>Значение<ansi> - целое число';
         if ( exists $optDef->{min} ) {
           if ( exists $optDef->{max} ) {
             $typeDescription .= " из диапазона <ansiSecondaryLiteral>$optDef->{min}<ansi>..<ansiSecondaryLiteral>$optDef->{max}<ansi>";
@@ -117,13 +132,50 @@ HELP
         } elsif ( exists $optDef->{max} ) {
           $typeDescription .= " не более <ansiSecondaryLiteral>$optDef->{max}<ansi>";
         }
+      } elsif (exists $optDef->{enum}) {
+        my $enum = $optDef->{enum};
+        $enum = _validateStruct(
+          "\$def->{options}->get($optName)->{enum}->(\$cnf)",
+          $enum->($cnf),
+          {
+            type => [ 'array', 'Hash::Ordered' ],
+            value => { type => 'scalar' },
+          }
+        ) if ref $enum eq 'CODE';
+        if ( ref $enum eq 'ARRAY' ) {
+          $typeDescription = 'Варианты <ansiOutline>значения<ansi>: <ansiSecondaryLiteral>';
+          foreach my $item (@{$enum}) {
+            if ( $item =~ m/[\s"]/ ) {
+              $item =~ s/"/\\"/g;
+              $item = "\"$item\"";
+            }
+            $typeDescription .= " $item";
+          }
+        } else {
+          die Dumper({ err => 'TODO' });
+        }
       }
       if ($typeDescription) {
         print ansi <<"HELP";
-        <ansiOutline>Значение<ansi> - $typeDescription
+        $typeDescription
 HELP
       }
-      if ( exists $optDef->{default} ) {
+      if ($optDef->{type} eq 'list') {
+        print ansi <<"HELP";
+        Это <ansiOutline>списочная<ansi> опция. Она предназначена для того, чтобы сформировать
+        возможно пустой список <ansiOutline>значений<ansi>
+        путём её многократного использования
+HELP
+      }
+      if ( $optDef->{type} ne 'bool' && exists $optDef->{default} ) {
+        my $default = $optDef->{default};
+        $default = _validateStruct(
+          "\$options->{byName}->get($optName)->{default}->(\$cnf, \$p, \$def)",
+          $default->($cnf, $p, $def),
+          {
+            type => 'scalar'
+          }
+        ) if ref $default eq 'CODE';
         print ansi <<"HELP";
         <ansiOutline>Значение<ansi> по умолчанию: <ansiPrimaryLiteral>$optDef->{default}
 HELP
@@ -145,7 +197,10 @@ sub _validateOptionDef {
 sub _getEntity {
   my $def = shift or die;
   my $cnf = shift or die;
-  my $entityName = shift or die;
+  my $entityName = _validateStruct('3rd arg of _getEntity()', shift, {
+    type => 'scalar',
+    enum => [ 'options', 'subCommands' ],
+  });
   my $entity = _validateStruct("\$def->{$entityName}", $def->{$entityName}, {
     type => [ 'Hash::Ordered', 'undef' ],
   }) or return;
@@ -155,14 +210,14 @@ sub _getEntity {
     if ($cnf->{mixin}->{$funcName} && $cnf->{mixin}->{$funcName}->{options}) {
       my $mixinOptions = _validateStruct(
         "\$cnf->{mixin}->{$funcName}->{options}",
-        $cnf->{mixin}->{$funcName}->{options}, 
+        $cnf->{mixin}->{$funcName}->{options},
         {
           type => 'Hash::Ordered',
           value => {
             type => 'hash',
             keys => {
               default => {
-                type => 'scalar',
+                type => ['scalar', 'sub'],
               },
             },
           },
@@ -186,7 +241,8 @@ sub _getEntity {
   for my $name ($entity->keys) {
     no strict 'refs';
     my $value = $entity->get($name);
-    my $def = $value->{def};
+    my $def = $entityName ne 'subCommands' ? $value : $value->{def};
+    # print Dumper({ '$def' => $def }); #if exists $def->{condition};
     next if $def->{condition} && !$def->{condition}->($cnf);
     $value->{name} = $name;
     $result->{byName}->set($name => $value);
@@ -203,48 +259,50 @@ sub _getEntity {
 }
 
 sub processParams {
-  my $def = shift or die;
+  my $p = shift or die;
   my $cnf = shift or die;
+  my $def = shift or die;
 
   my $subCommands = _getEntity($def, $cnf, 'subCommands');
   my $options = _getEntity($def, $cnf, 'options');
   # my $args = _getEntity($def, $cnf, 'args');
-  my $result = {};
 
   my $param = shift;
   while (defined $param) {
-    my $optionDef;
+    my $optDef;
     if ($param eq '-?' || $param eq '-h' || $param eq '--help') {
-      _printHelp($def, $cnf, $subCommands);
+      $p = _postProcessParams($p, $cnf, $def, $options);
+      _printHelp($p, $def, $cnf, $options, $subCommands);
       return undef;
     } elsif ( $param =~ m/^--(.*)/ ) {
-      my $optionName = $1;
-      if ( !$options || !($optionDef = $options->{byName}->get($optionName))) {
-        die ansi 'Err', "<ansiCmd>$cnf->{cmd}<ansi> не ожидает опцию <ansiCmd>--$optionName";
-      } elsif ( $optionDef->{type} eq 'bool' ) {
-        $result->{$optionName}->{value} = 1;
-        $result->{$optionName}->{asis} = [ $param ];
+      my $optName = $1;
+      if ( !$options || !($optDef = $options->{byName}->get($optName))) {
+        die ansi 'Err', "<ansiCmd>$cnf->{cmd}<ansi> не ожидает опцию <ansiCmd>--$optName";
+      } elsif ( $optDef->{type} eq 'bool' ) {
+        $p->{$optName}->{value} = 1;
+        $p->{$optName}->{asis} = [ $param ];
       } else {
-        die Dumper({ _ => 'TODO', optionDef => $optionDef });
+        die Dumper({ _ => 'TODO', optDef => $optDef });
       }
     } elsif ( $param =~ m/^-(.*)/ ) {
       foreach (split //, $1) {
-        if ( !$options || !($optionDef = $options->{byShortcut}->get($_))) {
+        if ( !$options || !($optDef = $options->{byShortcut}->get($_))) {
           die ansi 'Err', "<ansiCmd>$cnf->{cmd}<ansi> не ожидает опцию <ansiCmd>-$_";
         } else {
-          my $optionName = $optionDef->{name};
-          if ( $optionDef->{type} eq 'bool' ) {
-            $result->{$optionName}->{value} = 1;
-            $result->{$optionName}->{asis} = [ $param ];
+          my $optName = $optDef->{name};
+          if ( $optDef->{type} eq 'bool' ) {
+            $p->{$optName}->{value} = 1;
+            $p->{$optName}->{asis} = [ $param ];
           }
         }
       }
     } elsif ( $subCommands ) {
+      $p = _postProcessParams($p, $cnf, $def, $options);
       my $subCommand = !$param ? undef : $subCommands->{byNameOrShortcut}->get($param);
       if ( $subCommand ) {
         $cnf->{cmd} .= " $param";
         no strict 'refs';
-        &{$subCommand->{funcName}}($subCommand->{def}, $cnf, @_);
+        &{$subCommand->{funcName}}($p, $cnf, $subCommand->{def}, @_);
         return undef;
       } else {
         my $prefix = !$param ? 'в качесте первого аргумента' : "вместо <ansiPrimaryLiteral>$param<ansi>";
@@ -253,11 +311,32 @@ ERR: <ansiCmd>$cnf->{cmd}<ansi> ${prefix} ожидает одну из след�
 MSG
       }
     } else {
-
+      die Dumper({err => 'TODO', param => $param});
     }
     $param = shift;
   }
-  return wantarray ? ($result, $cnf) : $result;
+  $p = _postProcessParams($p, $cnf, $def, $options);
+  return !wantarray ? $p : ($p, $cnf, $def);
+}
+
+sub _postProcessParams {
+  my $result = shift or die;
+  my $cnf = shift or die;
+  my $def = shift or die;
+  my $options = shift;
+  if ($options) {
+    # print Dumper({options => $options});
+    foreach my $optName ($options->{byName}->keys) {
+      my $optDef = $options->{byName}->get($optName);
+      if ( ! exists $result->{$optName} && exists $optDef->{default} ) {
+        my $default = $optDef->{default};
+        $result->{$optName}->{value} = $optDef->{default};
+        $result->{$optName}->{asis} = [ "--$optName", $result->{$optName}->{value} ];
+      }
+      # $optName
+    }
+  }
+  $result;
 }
 
 sub _validateStruct {
@@ -267,7 +346,13 @@ sub _validateStruct {
   my $struct = shift or die Dumper({ where => $where });
   ref $struct eq 'HASH' or die Dumper({ where => $where , 'ref $struct' => ref $struct });
   my $type = $struct->{type} or die Dumper({ '$struct' => $struct });
-  hasItem(ref $type, '', 'ARRAY') or die Dumper({ 'ref $type' => ref $type });
+  my $typeTitle = '$struct->{type}';
+  if ( ref $type eq 'CODE' ) {
+    $type = $type->($struct);
+    $typeTitle .= '->($struct)';
+  }
+  defined $type or die Dumper({ err => "$typeTitle is undef", '$struct' => $struct });
+  hasItem(ref $type, '', 'ARRAY') or die Dumper({ "ref $typeTitle" => ref $type });
   my $types = ref $type eq 'ARRAY' ? $type : [ $type ];
   my $valueType = defined $value ? ref $value : 'undef';
   my %normalizedValueTypes = (
@@ -303,6 +388,7 @@ sub _validateStruct {
       my $i = 0;
       while ($i < scalar @{$value}) {
         $value->[$i] = _validateStruct("$where\->[$i]", $value->[$i], $valueStruct);
+        $i += 1;
       }
     }
   } elsif ( $normalizedValueType eq 'Hash::Ordered' ) {
@@ -378,10 +464,13 @@ sub _preprocessDef {
           value => {
             type => 'hash',
             keys => {
+              condition => {
+                type => 'sub',
+              },
               type => {
                 isRequired => 1,
                 type => 'scalar',
-                enum => [ 'bool', 'int', 'scalar', 'list' ],
+                enum => [ 'bool', 'scalar', 'int', 'enum', 'list' ],
               },
               min => {
                 condition => sub { $_[0]->{type} eq 'int' },
@@ -391,10 +480,28 @@ sub _preprocessDef {
                 condition => sub { $_[0]->{type} eq 'int' },
                 type => 'scalar',
               },
+              default => {
+                type => sub {
+                  my $struct = shift or die;
+                  if ($struct->{type} eq 'bool') {
+                    die Dumper({ err => 'bool can not has default'});
+                  } else {
+                    $struct->{type};
+                  }
+                },
+              },
               itemType => {
                 condition => sub { $_[0]->{type} eq 'list' },
                 type => 'scalar',
                 enum => [ 'enum', 'int' ],
+              },
+              enum => {
+                condition => sub {
+                  $_[0]->{type} eq 'enum' ||
+                  $_[0]->{type} eq 'list' && $_[0]->{itemType} && $_[0]->{enum}
+                },
+                type => [ 'array', 'Hash::Ordered', 'sub' ],
+                value => 'scalar',
               },
               shortcut => {
                 type => [ 'scalar', 'array' ],
