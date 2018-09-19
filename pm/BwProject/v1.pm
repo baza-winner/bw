@@ -297,10 +297,6 @@ MSG
     }
   }
 
-
-# die Dumper({ gitIsChangedFile => gitIsChangedFile( 'bin/dip.pl', $cnf->{projDir} ) });
-die Dumper({ gitIsChangedFile => gitIsChangedFile( 'bin/dip.pl', "$ENV{HOME}/bw" ) });
-
   # TODO:
   #  bw_install --silentIfAlreadyInstalled docker || { errorCode=$?; break; }
 
@@ -310,12 +306,27 @@ die Dumper({ gitIsChangedFile => gitIsChangedFile( 'bin/dip.pl', "$ENV{HOME}/bw"
     if (!$dockerImageLs) {
       my $errorCode = docker({v => 'all'}, qw/image pull/, "$cnf->{dockerImageName}:latest"); exit $errorCode if $errorCode;
     }
-    my $tstImageIdFileSpec = "/tmp/$cnf->{projShortcut}.image.id";
-    use File::Compare;
-    if (compare($tstImageIdFileSpec, "$cnf->{dockerImageIdFileSpec}")) {
-      # gitIsChangedFile
+    # my $tstImageIdFileSpec = "/tmp/$cnf->{projShortcut}.image.id";
+    my $imageId;
+    ($imageId, $errorCode) = docker({ v => 'err', return => 'stdout' }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest"); exit $errorCode if $errorCode;
+    my $/ = undef;
+    open IN, $cnf->{dockerImageIdFileSpec} or die;
+    $etaImageId = <IN>;
+    close IN;
+    die Dumper({etaImageId => $etaImageId});
 
-    }
+    # use File::Compare;
+    # if (compare($tstImageIdFileSpec, "$cnf->{dockerImageIdFileSpec}")) {
+    #   # gitIsChangedFile
+    #   my $needWarn = 0;
+    #   if ( gitIsChangedFile('docker/Dockerfile', $cnf->{projDir}) ) {
+    #     $needWarn = 1;
+    #   } else {
+    #     my $errorCode = docker({v => 'all'}, qw/image pull/, "$cnf->{dockerImageName}:latest"); exit $errorCode if $errorCode;
+    #     my $errorCode = docker(qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest", '>', $tstImageIdFileSpec); exit $errorCode if $errorCode;
+
+    #   }
+    # }
     # my $errorCode = execCmd('cmp', );
   }
 }
