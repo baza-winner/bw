@@ -2,6 +2,14 @@ package v1;
 use v5.18;
 use strict;
 use warnings;
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
+$VERSION = 1.00;
+@ISA = qw(Exporter);
+@EXPORT_OK = qw/getBasePort/;
+%EXPORT_TAGS = ();
+@EXPORT = ();
+
+# =============================================================================
 
 my (@vars);
 use vars qw/$selfFileSpec/;
@@ -20,7 +28,24 @@ use vars @vars;
 
 # =============================================================================
 
+use Data::Dumper;
 use Bw;
+
+# =============================================================================
+
+my %basePorts = (
+  ssh => 2200,
+  http => 8000,
+  https => 4400,
+  mysql => 3300,
+  redis => 6300,
+  rabbitmq => 5600,
+);
+
+sub getBasePort($) {
+  my $key = shift;
+  return $basePorts{$key} || die;
+}
 
 # =============================================================================
 
@@ -37,6 +62,7 @@ sub preprocessCnf {
       } elsif ( index($dockerImageName, '/') == -1 ) {
         $cnf->{dockerImageName} = "$domain/$cnf->{dockerImageName}"
       }
+      $cnf->{dockerImageIdFileSpec} = "$ENV{projDir}/docker/dev-$cnf->{projShortcut}.id";
     }
   }
 
@@ -122,11 +148,11 @@ sub cmd_docker_build {
 MSG
   } else {
     use File::Copy::Recursive qw(dircopy);
-    dircopy("$ENV{_bwDir}/pm/BwProject/$ENV{bwProjectVersion}/docker", "$ENV{projDir}/docker/.helper");
-    if (docker({ v => 'all' }, qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker")) {
-      my $dockerImageIdFileSpec="$ENV{projDir}/docker/dev-$cnf->{projShortcut}.id";
-      docker( { v => 'err' }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest", '>', "$dockerImageIdFileSpec");
-      if ( gitIsChangedFile("docker/$dockerImageIdFileSpec", $ENV{projDir}) ) {
+    dircopy("$ENV{_bwDir}/pm/BwProject/$ENV{bwProjectVersion}/docker", "$ENV{projDir}/docker/.helper") or die;
+    my $errorCode = docker({ v => 'all' }, qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker");
+    if (!$errorCode) {
+      $errorCode = docker( { v => 'err' }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest", '>', "$cnf->{dockerImageIdFileSpec}"); exit $errorCode if $errorCode;
+      if ( gitIsChangedFile("docker/$cnf->{dockerImageIdFileSpec}", $ENV{projDir}) ) {
         print ansi 'Warn', <<"MSG";
 Обновлен docker-образ <ansiPrimaryLiteral>$cnf->{dockerImageName}<ansi>
 Не забудьте поместить его в docker-репозиторий командой
@@ -222,19 +248,76 @@ $cmd_docker_upDef = {
       shortcut => 'f',
       description => 'Поднимает docker-приложение с опцией <ansiCmd>--force-recreate<ansi>, передаваемой <ansiCmd>docker-compose up'
     },
-    restart => {
-      type => 'list',
-      itemType => 'enum',
-      enum => sub { my $cnf = shift; [ qw/main nginx/ ] },
-      shortcut => 'r',
-      description => 'Останавливает и поднимает указанные сервисы',
-    },
+    # restart => {
+    #   type => 'list',
+    #   itemType => 'enum',
+    #   enum => sub { my $cnf = shift; [ qw/main nginx/ ] },
+    #   shortcut => 'r',
+    #   description => 'Останавливает и поднимает указанные сервисы',
+    # },
   ),
 };
 sub cmd_docker_up {
   my ($p, $cnf) = &processParams; $p || return;
   # my $p = &processParams;
-  print Dumper($p);
+  # print Dumper($p);
+
+  # TODO:
+  # if [[ -n $https ]]; then
+  #   bw_install --silentIfAlreadyInstalled root-cert || { errorCode=$?; break; }
+  # fi
+
+  if ( $ENV{OSTYPE} =~ /^linux/ ) {
+    my $line='fs.inotify.max_user_watches=524288';
+    my $fileSpec='/etc/sysctl.conf';
+    my $found = 0;
+    # https://perlmaven.com/how-to-grep-a-file-using-perl
+    open IN, '<:encoding(UTF-8)', $fileSpec or die;
+    while (<IN>) {
+      next unless $_ eq $line;
+      $found = 1;
+      last;
+    }
+    close IN;
+    if (!$found) {
+      my $errorCode = execCmd({ v => 'all' }, 'echo', $line, ' | sudo tee -a ', $fileSpec, ' && sudo sysctl -p'); exit $errorCode if $errorCode;
+    }
+  }
+
+  my %portNameByValue = ();
+  foreach my $portName (keys %basePorts) {
+    if ( exists $p->{$portName} ) {
+      my $portValue = $p->{$portName}->{value};
+      if ( exists $portNameByValue{$portValue} ) {
+        die ansi 'Err', <<"MSG";
+<ansiCmd>$cnf->{cmd}<ansi> обнаружил, что <ansiSecondaryLiteral>$portName<ansi>-порт и <ansiSecondaryLiteral>$portNameByValue{$portValue}<ansi>-порт имеют одинаковое значение <ansiPrimaryLiteral>$portValue
+MSG
+      }
+      $portNameByValue{$portValue} = $portName;
+    }
+  }
+
+
+# die Dumper({ gitIsChangedFile => gitIsChangedFile( 'bin/dip.pl', $cnf->{projDir} ) });
+die Dumper({ gitIsChangedFile => gitIsChangedFile( 'bin/dip.pl', "$ENV{HOME}/bw" ) });
+
+  # TODO:
+  #  bw_install --silentIfAlreadyInstalled docker || { errorCode=$?; break; }
+
+  if ($cnf->{dockerImageName} && !$p->{noCheck}->{value}) {
+    my ($dockerImageLs, $errorCode) = docker({return => 'stdout', v => 'all'}, qw/image ls/, "$cnf->{dockerImageName}:latest", qw/-q/); exit $errorCode if $errorCode;
+    # print Dumper({stdout => $stdout});
+    if (!$dockerImageLs) {
+      my $errorCode = docker({v => 'all'}, qw/image pull/, "$cnf->{dockerImageName}:latest"); exit $errorCode if $errorCode;
+    }
+    my $tstImageIdFileSpec = "/tmp/$cnf->{projShortcut}.image.id";
+    use File::Compare;
+    if (compare($tstImageIdFileSpec, "$cnf->{dockerImageIdFileSpec}")) {
+      # gitIsChangedFile
+
+    }
+    # my $errorCode = execCmd('cmp', );
+  }
 }
 
 # Использование: dip docker up [Опции]

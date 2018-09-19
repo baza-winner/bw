@@ -10,16 +10,16 @@ $VERSION = 1.00;
 %EXPORT_TAGS = ();
 @EXPORT = ();
 
-# BEGIN {
-  use File::Find qw/find/;
-  my $carpAlwaysIsInstalled;
-  no warnings 'File::Find';
-  find { wanted => sub { $carpAlwaysIsInstalled = 1 if /\/Carp\/Always(?:\.pm)?$/ }, no_chdir => 1 }, @INC;
-  if ( $carpAlwaysIsInstalled ) {
-    require Carp::Always;# https://metacpan.org/pod/Carp::Always
-    Carp::Always->import;
-  }
-# }
+# =============================================================================
+
+use File::Find qw/find/;
+my $carpAlwaysIsInstalled;
+no warnings 'File::Find';
+find { wanted => sub { $carpAlwaysIsInstalled = 1 if /\/Carp\/Always(?:\.pm)?$/ }, no_chdir => 1 }, @INC;
+if ( $carpAlwaysIsInstalled ) {
+require Carp::Always;# https://metacpan.org/pod/Carp::Always
+Carp::Always->import;
+}
 
 use Hash::Ordered; # https://metacpan.org/pod/Hash::Ordered
 
@@ -34,5 +34,7 @@ push @EXPORT, @BwAnsi::EXPORT;
 
 use BwParams;
 push @EXPORT, @BwParams::EXPORT;
+
+# =============================================================================
 
 1;

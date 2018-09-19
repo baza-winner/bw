@@ -12,9 +12,9 @@ $VERSION = 1.00;
 
 # =============================================================================
 
+use Data::Dumper;
 use BwAnsi;
 use BwCore;
-use Data::Dumper;
 
 # =============================================================================
 
@@ -177,7 +177,7 @@ HELP
           }
         ) if ref $default eq 'CODE';
         print ansi <<"HELP";
-        <ansiOutline>Значение<ansi> по умолчанию: <ansiPrimaryLiteral>$optDef->{default}
+        <ansiOutline>Значение<ansi> по умолчанию: <ansiPrimaryLiteral>$default
 HELP
       }
     }
@@ -233,18 +233,22 @@ sub _getEntity {
     }
   }
   my $result = {
+    byVarName => Hash::Ordered->new(),
     byName => Hash::Ordered->new(),
     byNameOrShortcut => Hash::Ordered->new(),
     byShortcut => Hash::Ordered->new(),
   };
   my $all;
   for my $name ($entity->keys) {
-    no strict 'refs';
     my $value = $entity->get($name);
+    my $varName = kebabCaseToCamelCase($name);
+    $name = camelCaseToKebabCase($name);
+    no strict 'refs';
     my $def = $entityName ne 'subCommands' ? $value : $value->{def};
-    # print Dumper({ '$def' => $def }); #if exists $def->{condition};
     next if $def->{condition} && !$def->{condition}->($cnf);
+    $value->{varName} = $varName;
     $value->{name} = $name;
+    $result->{byVarName}->set($varName => $value);
     $result->{byName}->set($name => $value);
     $result->{byNameOrShortcut}->set($name => $value);
     my $shortcuts = $value->{shortcut};
@@ -277,12 +281,50 @@ sub processParams {
     } elsif ( $param =~ m/^--(.*)/ ) {
       my $optName = $1;
       if ( !$options || !($optDef = $options->{byName}->get($optName))) {
-        die ansi 'Err', "<ansiCmd>$cnf->{cmd}<ansi> не ожидает опцию <ansiCmd>--$optName";
-      } elsif ( $optDef->{type} eq 'bool' ) {
-        $p->{$optName}->{value} = 1;
-        $p->{$optName}->{asis} = [ $param ];
-      } else {
-        die Dumper({ _ => 'TODO', optDef => $optDef });
+        die ansi 'Err', <<"MSG";
+<ansiCmd>$cnf->{cmd}<ansi> не ожидает опцию <ansiCmd>$param
+MSG
+      } {
+        my $varName = $optDef->{varName};
+        if ( $optDef->{type} eq 'bool' ) {
+          $p->{$varName}->{value} = 1;
+          $p->{$varName}->{asis} = [ $param ];
+        } else {
+          die ansi 'Err', <<"MSG" unless scalar @_;
+<ansiCmd>$cnf->{cmd}<ansi> ожидает <ansiOutline>значение<ansi> для опции <ansiCmd>$param
+MSG
+          my $optValue = shift;
+          die ansi 'Err', <<"MSG" if $optDef->{type} ne 'list' && exists $p->{$varName} && $p->{$varName}->{value} ne $optValue;
+<ansiCmd>$cnf->{cmd}<ansi> не ожидает повторное упоминание опции <ansiCmd>$param<ansi> ( была упомянута как <ansiCmd>@{$p->{$varName}->{asis}}<ansi> )
+MSG
+          if ( $optDef->{type} eq 'int' ) {
+            my $expects;
+            unless ( $optValue =~ /^-?\d+$/ ) {
+              $expects = '<ansiOutline>целое число' ;
+            } elsif (
+              exists $optDef->{min} && $optValue < $optDef->{min} ||
+              exists $optDef->{max} && $optValue > $optDef->{max} ||
+              0
+            ) {
+              if (exists $optDef->{min}) {
+                if (exists $optDef->{max}) {
+                  $expects = "целое число <ansiOutline>из диапазона <ansiSecondaryLiteral>$optDef->{min}..$optDef->{max}" ;
+                } else {
+                  $expects = "целое число <ansiOutline>не менее <ansiPrimaryLiteral>$optDef->{min}" ;
+                }
+              } elsif (exists $optDef->{max}) {
+                $expects = "целое число <ansiOutline>не более <ansiPrimaryLiteral>$optDef->{max}" ;
+              }
+            }
+            die ansi 'Err', <<"MSG" if $expects;
+<ansiCmd>$cnf->{cmd}<ansi> ожидает в качесте значения опции <ansiCmd>$param<ansi> $expects
+MSG
+            $p->{$optDef->{varName}}->{value} = $optValue;
+            $p->{$optDef->{varName}}->{asis} = [ $param, $optValue ];
+          } else {
+            die Dumper({ _ => 'TODO', optDef => $optDef });
+          }
+        }
       }
     } elsif ( $param =~ m/^-(.*)/ ) {
       foreach (split //, $1) {
@@ -291,8 +333,8 @@ sub processParams {
         } else {
           my $optName = $optDef->{name};
           if ( $optDef->{type} eq 'bool' ) {
-            $p->{$optName}->{value} = 1;
-            $p->{$optName}->{asis} = [ $param ];
+            $p->{$optDef->{varName}}->{value} = 1;
+            $p->{$optDef->{varName}}->{asis} = [ $param ];
           }
         }
       }
@@ -320,7 +362,7 @@ MSG
 }
 
 sub _postProcessParams {
-  my $result = shift or die;
+  my $p = shift or die;
   my $cnf = shift or die;
   my $def = shift or die;
   my $options = shift;
@@ -328,15 +370,19 @@ sub _postProcessParams {
     # print Dumper({options => $options});
     foreach my $optName ($options->{byName}->keys) {
       my $optDef = $options->{byName}->get($optName);
-      if ( ! exists $result->{$optName} && exists $optDef->{default} ) {
+      if ( ! exists $p->{$optName} && exists $optDef->{default} ) {
         my $default = $optDef->{default};
-        $result->{$optName}->{value} = $optDef->{default};
-        $result->{$optName}->{asis} = [ "--$optName", $result->{$optName}->{value} ];
+        if (ref $default eq 'CODE') {
+          $default = $default->($cnf, $p);
+        }
+        my $varName = $optDef->{varName};
+        $p->{$optDef->{varName}}->{value} = $default;
+        $p->{$optDef->{varName}}->{asis} = [ "--$optName", $default ];
       }
       # $optName
     }
   }
-  $result;
+  $p;
 }
 
 sub _validateStruct {
@@ -346,13 +392,15 @@ sub _validateStruct {
   my $struct = shift or die Dumper({ where => $where });
   ref $struct eq 'HASH' or die Dumper({ where => $where , 'ref $struct' => ref $struct });
   my $type = $struct->{type} or die Dumper({ '$struct' => $struct });
-  my $typeTitle = '$struct->{type}';
+  my $typeSuffix = '';
   if ( ref $type eq 'CODE' ) {
+    print Dumper({type => $type, struct => $struct, value => $value});
     $type = $type->($struct);
-    $typeTitle .= '->($struct)';
+    print Dumper({type => $type});
+    $typeSuffix = '->($struct)';
   }
-  defined $type or die Dumper({ err => "$typeTitle is undef", '$struct' => $struct });
-  hasItem(ref $type, '', 'ARRAY') or die Dumper({ "ref $typeTitle" => ref $type });
+  defined $type or die Dumper({ err => "\$struct->{type}$typeSuffix is undef", '$struct' => $struct});
+  hasItem(ref $type, '', 'ARRAY') or die Dumper({ "ref \$struct->{type}$typeSuffix" => ref $type, type => $type });
   my $types = ref $type eq 'ARRAY' ? $type : [ $type ];
   my $valueType = defined $value ? ref $value : 'undef';
   my %normalizedValueTypes = (
@@ -370,7 +418,12 @@ sub _validateStruct {
       my @validKeys;
       foreach my $key (keys %{$keys}) {
         my $keyDef = $keys->{$key};
-        ref $keyDef eq 'HASH' or die Dumper({ "ref \$keys->{$key}" => ref $keyDef });
+        my $keyDefSuffix = '';
+        if ( ref $keyDef eq 'CODE' ) {
+          $keyDef = $keyDef->($struct);
+          $keyDefSuffix = '->($struct)';
+        }
+        ref $keyDef eq 'HASH' or die Dumper({ "ref \$keys->{$key}$keyDefSuffix" => ref $keyDef });
         next if $keyDef->{condition} && !$keyDef->{condition}->($value);
         !$keyDef->{isRequired} or exists($value->{$key}) or die Dumper({ 'err' => 'required $key is absent in $value', '$key' => $key, '$value' => $value });
         if ( exists($value->{ $key }) ) {
@@ -480,15 +533,18 @@ sub _preprocessDef {
                 condition => sub { $_[0]->{type} eq 'int' },
                 type => 'scalar',
               },
-              default => {
-                type => sub {
-                  my $struct = shift or die;
-                  if ($struct->{type} eq 'bool') {
-                    die Dumper({ err => 'bool can not has default'});
-                  } else {
-                    $struct->{type};
-                  }
-                },
+              default => sub {
+                my $struct = shift or die;
+                if ($struct->{keys}->{type}->{type} eq 'bool') {
+                  die Dumper({ err => 'bool can not have default'});
+                } else {
+                  # print Dumper({struct => $struct});
+                  my $result = {
+                    type => $struct->{keys}->{type}->{type},
+                  };
+                  # die Dumper({result => $result});
+                  return $result;
+                }
               },
               itemType => {
                 condition => sub { $_[0]->{type} eq 'list' },
@@ -563,7 +619,6 @@ sub _preprocessDef {
     my $options = Hash::Ordered->new();
     foreach my $key ($def->{options}->keys) {
       my $value = $def->{options}->get($key);
-      my $key = camelCaseToKebabCase($key);
       $options->set($key, $value);
     }
     $def->{options} = $options;
