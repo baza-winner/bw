@@ -16,36 +16,38 @@ use Data::Dumper;
 
 # =============================================================================
 
-my $ansi;
+my %ansi;
 
 sub _ansiHelper($) {
   my $key = shift;
-  if (!$ansi->{$key}) {
+  if (!$ansi{$key}) {
     die "ansi '${key}' not found";
-  } elsif (ref $ansi->{$key} eq 'CODE') {
-    $ansi->{$key} = _ansi $ansi->{$key}();
+  } elsif (ref $ansi{$key} eq 'CODE') {
+    $ansi{$key} = &_ansi($ansi{$key}->());
   } else {
-    $ansi->{$key};
+    $ansi{$key};
   }
 }
 
 sub _ansi($) {
-  join '', $ansi->{Reset},
+  join '', $ansi{Reset},
   map { _ansiHelper $_ }
   grep { $_ }
   split /[^\w\d]+/, shift
 }
 
 sub ansi($;$) {
-  my $ansiDefault = 2 == scalar @_ ? _ansi shift : $ansi->{Reset};
+  my $ansiDefault = 2 == scalar @_ ? _ansi shift : $ansi{Reset};
   $_ = shift || die;
   no strict 'refs';
   s/<ansi([^>]*)>/ $1 ? _ansiHelper $1 : ( $ansiDefault || die "can not use 'ansi' for ansiDefault is not set" )/ge;
-  "$ansiDefault$_$ansi->{Reset}";
+  s/^(\s*)/$1$ansiDefault/;
+  s/(\s*)$/$ansi{Reset}$1/;
+  $_;
 }
 
 # https://www.perlmonks.org/?node_id=509827
-$ansi = {
+%ansi = (
   Reset => "\e[0m", # https://superuser.com/questions/33914/why-doesnt-echo-support-e-escape-when-using-the-e-argument-in-macosx/33950#33950
   Bold => "\e[1m",
   Dim => "\e[2m",
@@ -108,11 +110,11 @@ $ansi = {
   Debug => sub { "Blue;ResetBold" },
   PrimaryLiteral => sub { "Cyan;Bold" },
   SecondaryLiteral => sub { "Cyan;ResetBold" },
-};
+);
 
-foreach my $key (keys %$ansi) {
-  if (ref $ansi->{$key} eq 'CODE') {
-    $ansi->{$key} = _ansi $ansi->{$key}();
+foreach my $key (keys %ansi) {
+  if (ref $ansi{$key} eq 'CODE') {
+    $ansi{$key} = _ansi $ansi{$key}();
   }
 }
 

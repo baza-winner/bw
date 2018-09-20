@@ -9,14 +9,15 @@ $VERSION = 1.00;
 @EXPORT_OK = ();
 %EXPORT_TAGS = ();
 @EXPORT = qw/
-  docker
-  execCmd
-  gitIsChangedFile
-  shortenFileSpec
-  hasItem
   getFuncName
   camelCaseToKebabCase
   kebabCaseToCamelCase
+  hasItem
+  shortenFileSpec
+  execCmd
+  docker
+  gitIsChangedFile
+  mkFileFromTemplate
 /;
 
 # =============================================================================
@@ -66,7 +67,7 @@ sub shortenFileSpec($) {
   $fileSpec;
 }
 
-sub getAsArrayRef($) {
+sub _getAsArrayRef($) {
   my $value = shift;
   my $result = [];
   if ( defined $value ) {
@@ -76,8 +77,7 @@ sub getAsArrayRef($) {
 }
 
 sub execCmd {
-  my $opt = {};
-  $opt = shift if ref $_[0] eq 'HASH';
+  my $opt = ref $_[0] eq 'HASH' ? shift : {};
   my $cmd;
   foreach (@_) {
     my $arg = $_;
@@ -90,7 +90,7 @@ sub execCmd {
   }
   print ansi "<ansiCmd>$cmd<ansi> . . .\n" if $opt->{v} && $opt->{v} eq 'all';
   my $stdout;
-  if (hasItem 'stdout', @{getAsArrayRef($opt->{return})}) {
+  if (hasItem 'stdout', @{_getAsArrayRef($opt->{return})}) {
     $stdout = qx/$cmd/;
   } else {
     system($cmd);
@@ -103,7 +103,7 @@ sub execCmd {
     $opt->{v} eq 'ok' && $errorCode == 0 ||
     $opt->{v} eq 'err' && $errorCode != 0 ||
   0);
-  my @optReturn = @{getAsArrayRef($opt->{return})};
+  my @optReturn = @{_getAsArrayRef($opt->{return})};
   if ( !wantarray ) {
     my $item = shift @optReturn;
     if (defined $item) {
@@ -127,8 +127,7 @@ sub execCmd {
 }
 
 sub docker {
-  my $opt = {};
-  $opt = shift if ref $_[0] eq 'HASH';
+  my $opt = ref $_[0] eq 'HASH' ? shift : {};
   # TODO: bw_install docker --silentIfAlreadyInstalled || return $?
   unshift @_, 'docker';
   if ( $ENV{OSTYPE} =~ m/^linux/ ) {
@@ -148,6 +147,51 @@ sub gitIsChangedFile($;$) {
   push @command, qw/git update-index -q --refresh && git diff-index --name-only HEAD --/; #" | grep -Fx \"$fileName\" >/dev/null 2>&1";
   my ($stdout, $errorCode) = execCmd({ return => 'stdout', v => 'err' }, @command); exit $errorCode if $errorCode;
   scalar grep { $_ eq $fileName } split /\n/, $stdout;
+}
+
+sub mkFileFromTemplate {
+  my $opt = ref $_[0] eq 'HASH' ? shift : {};
+  my $fileSpec = shift or die;
+  my $templateFileSpec = shift or die;
+  my $varSubstSub = shift or die;
+    ref $varSubstSub eq 'CODE' or die Dumper({varSubstSub => $varSubstSub});
+
+  {
+    local $/ = undef;
+    open my $fh, $templateFileSpec or die;
+    $_ = <$fh>;
+    close $fh;
+  }
+
+  s(\${([^}]+)})( $varSubstSub->($1) )egm;
+
+  {
+    open my $fh, '>', $fileSpec or die;
+    my ($commentPrefix, $commentSuffix, $commentPreLine, $commentPostLine) = ('') x 4;
+    if ($fileSpec =~ m/\.html$/) {
+      ($commentPreLine, $commentPostLine) = ( '<!--', '-->' );
+    } elsif ($fileSpec =~ m/\.conf$/) {
+      $commentPrefix = ('# ');
+    } else {
+      die Dumper({fileSpec => $fileSpec});
+    }
+
+    unless ( exists $opt->{noNotice} or $opt->{noNotice} ) {
+      print $fh <<"HEADER" if $commentPreLine;
+${commentPreLine}
+HEADER
+      print $fh <<"HEADER";
+${commentPrefix}ВНИМАНИЕ!!!${commentSuffix}
+${commentPrefix}    Этот файл создан автоматически из \"$templateFileSpec\"${commentSuffix}
+${commentPrefix}    Поэтому изменения нужно вносить именно туда${commentSuffix}
+HEADER
+      print $fh <<"HEADER" if $commentPostLine;
+${commentPostLine}
+HEADER
+    }
+    print $fh $_;
+    close $fh;
+  }
 }
 
 # =============================================================================

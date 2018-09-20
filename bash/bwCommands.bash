@@ -1274,7 +1274,7 @@ _initBwProjCmd() {
       [[ $1 == update ]] && return
       local projDir
       _prepareProjDir '"$bwProjShortcut"' || return $?
-      _bwDir="$_bwDir" projDir="$projDir" OSTYPE="$OSTYPE" bwProjectVersion="'"$1"'" "$projDir/bin/dip.pl" "$@"
+      _bwDir="$_bwDir" projDir="$projDir" OSTYPE="$OSTYPE" bwProjectVersion="'"$1"'" BW_SELF_UPDATE_SOURCE="$BW_SELF_UPDATE_SOURCE" hostUser="$(whoami)" "$projDir/bin/dip.pl" "$@"
     }'
     return
   fi
