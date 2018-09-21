@@ -38,7 +38,7 @@ sub _ansi($) {
 
 sub ansi($;$) {
   my $ansiDefault = 2 == scalar @_ ? _ansi shift : $ansi{Reset};
-  $_ = shift || die;
+  $_ = shift || '';
   no strict 'refs';
   s/<ansi([^>]*)>/ $1 ? _ansiHelper $1 : ( $ansiDefault || die "can not use 'ansi' for ansiDefault is not set" )/ge;
   s/^(\s*)/$1$ansiDefault/;

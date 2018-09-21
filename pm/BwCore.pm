@@ -14,8 +14,10 @@ $VERSION = 1.00;
   kebabCaseToCamelCase
   hasItem
   shortenFileSpec
+  validateStruct
   execCmd
   docker
+  dockerCompose
   gitIsChangedFile
   mkFileFromTemplate
 /;
@@ -76,8 +78,163 @@ sub _getAsArrayRef($) {
   return $result;
 }
 
+sub typeOfValue($) {
+  my $value = shift;
+  my $result = defined $value ? ref $value : 'undef';
+  my %normalizedValueTypes = (
+    'HASH' => 'hash',
+    'CODE' => 'sub',
+    'ARRAY' => 'array',
+    '' => 'scalar',
+  );
+  $normalizedValueTypes{$valueType} || $result;
+}
+
+sub
+sub validateStruct {
+  my $where = shift or die;
+    typeOfValue $where eq 'scalar'
+      or die Dumper( { err => '$where is expected to be a scalar', where => $where} );
+  my $value = shift;
+  my $struct = shift or die Dumper({ where => $where });
+  my $whereStruct = shift || '';
+
+  typeOfValue $struct eq 'hash'
+    or die Dumper({ err => 'typeOfValue $struct is expected to be a hash', whereStruct => $whereStruct , 'typeOfValue $struct' => typeOfValue $struct, struct => $struct });
+
+  my @validFields = qw/type/;
+  exists $struct->{type}
+    or die Dumper({ err => '$struct->{type} is expected to exists', whereStruct => $whereStruct, struct => $struct });
+  my $type = $struct->{type};
+
+  my $typeSuffix = '';
+  if ( typeOfValue $type eq 'sub' ) {
+    $type = $type->($struct);
+    $typeSuffix = '->($struct)';
+  }
+  hasItem(typeOfValue $type, 'scalar', 'array')
+    or die Dumper({ err => "\$struct->{type}$typeSuffix is expected to be a sclar or an array",  whereStruct => $whereStruct, "typeOfValue \$struct->{type}$typeSuffix" => typeOfValue $type, type => $type, struct => $struct });
+
+  my $valueType = typeOfValue $value;
+  if ( typeOfValue $type eq 'scalar' && $type eq 'scalarOrArrayOfScalars' ) {
+    hasItem($valueType, 'scalar', 'array')
+      or die Dumper({ err => 'typeOfValue $value is not expected by $struct->{type}', where => $where, 'typeOfValue $value' => $valueType, '$struct->{type}' => $struct->{type}, '$value' => $value });
+  } else {
+    my $types = typeOfValue($type) eq 'array' ? $type : [ $type ];
+    hasItem($valueType, @{$types}) or die Dumper({ err => '$valueType of $value is not expected by $struct->{type}', where => $where, 'typeOfValue $value' => $valueType, '$struct->{type}' => $struct->{type}, '$value' => $value });
+  }
+
+  if ( $valueType eq 'hash') {
+    if ( $struct->{keys} ) {
+      push @validFields, qw/keys/;
+      my $keys = $struct->{keys};
+      ref $keys eq 'HASH' or die Dumper({ 'ref $struct->{keys}' => ref $keys });
+      my @validKeys;
+      foreach my $key (keys %{$keys}) {
+        my $keyDef = $keys->{$key};
+
+        my $keyDefSuffix = '';
+        if ( typeOfValue $keyDef eq 'sub' ) {
+          $keyDef = $keyDef->($struct);
+          $keyDefSuffix = '->($struct)';
+        }
+        typeOfValue $keyDef eq 'hash' or die Dumper({ "typeOfValue \$keys->{$key}$keyDefSuffix" => typeOfValue $keyDef });
+
+        next if $keyDef->{condition} && !$keyDef->{condition}->($value);
+        !$keyDef->{isRequired} or exists($value->{$key}) or die Dumper({ 'err' => 'required $key is absent in $value', '$key' => $key, '$value' => $value });
+        if ( exists($value->{ $key }) ) {
+          $value->{$key} = validateStruct("$where\->{$key}", $value->{$key}, $keyDef);
+        }
+        push @validKeys, $key;
+      }
+      foreach my $key (keys %{$value}) {
+        hasItem($key, @validKeys) or die Dumper({ where => $where, '$key' => $key, '@validKeys' => \@validKeys });
+      }
+    }
+  } elsif ( $valueType eq 'scalar' ) {
+    if ( $struct->{enum} ) {
+      push @validFields, qw/enum/;
+      typeOfValue $struct->{enum} eq 'array' or die Dumper({where => $where, 'ref $struct->{enum}' => ref $struct->{enum}});
+      hasItem($value, @{$struct->{enum}}) or die Dumper({ where => $where, err => '$enum has no $value', '$value' => $value, '$enum' => $struct->{enum} });
+    }
+  } elsif ( $valueType eq 'array' ) {
+    if ($type eq 'scalarOrArrayOfScalars') {
+      if ( $struct->{enum} ) {
+        push @validFields, qw/enum/;
+        ref $struct->{enum} eq 'ARRAY' or die Dumper({where => $where, 'ref $struct->{enum}' => ref $struct->{enum}});
+        hasItem($value, @{$struct->{enum}}) or die Dumper({ where => $where, err => '$enum has no $value', '$value' => $value, '$enum' => $struct->{enum} });
+      }
+    } else {
+      my $valueStruct;
+      if ( exists $struct->{arrayItem} ) {
+        push @validFields, qw/arrayItem/;
+        $valueStruct = $struct->{arrayItem};
+      } elsif ( exists $struct->{value} ) {
+        push @validFields, qw/value/;
+        $valueStruct = $struct->{value};
+      } else {
+        die Dumper({ where => $where, err => 'expects arrayItem or value field'});
+      }
+      if ( $valueStruct ) {
+        my $i = 0;
+        while ($i < scalar @{$value}) {
+          $value->[$i] = validateStruct("$where\->[$i]", $value->[$i], $valueStruct);
+          $i += 1;
+        }
+      }
+    }
+  } elsif ( $valueType eq 'Hash::Ordered' ) {
+    if ( exists $struct->{value} ) {
+      push @validFields, qw/value/;
+      foreach my $key ($value->keys) {
+        $value->set($key, validateStruct("$where\->get($key)", $value->get($key), $struct->{value}));
+      }
+    }
+  } elsif ( ! hasItem($valueType, 'sub', 'undef') ) {
+    die Dumper({ err => 'unexpected $valueType', types => $types, '$valueType' => $valueType, value => $value });
+  }
+  if ( exists $struct->{validate} ) {
+    push @validFields, qw/validate/;
+    ref $struct->{validate} eq 'CODE' or die Dumper({ where => $where, 'ref $struct->{validate}' => ref $struct->{validate} });
+    $value = $struct->{validate}->($where, $value);
+  }
+  if ( exists $struct->{normalize} ) {
+    push @validFields, qw/normalize/;
+    $struct->{normalize} eq 'to array' or die Dumper({ where => $where, '$struct->{normalize}' => $struct->{normalize} });
+    if ( $valueType ne 'array' ) {
+      $value = [ $value ];
+    }
+  }
+  return $value;
+}
+
 sub execCmd {
-  my $opt = ref $_[0] eq 'HASH' ? shift : {};
+  # my $validateStdStream = sub {
+  #   my ($where, $value) = @_;
+  #   if (typeOfValue($value) eq 'scalar') {
+
+
+  #   }
+  #   return $value;
+  # };
+  my $opt = ref $_[0] ne 'HASH' ? {} : _validateStruct('execCmd first param', shift, {
+    type => 'hash',
+    keys => {
+      v => {
+        type => 'scalar',
+        enum => [ 'all', 'allBrief', 'err', 'ok' ],
+      },
+      stdout => {
+        type => [ 'scalar', 'array'],
+        enum => [],
+        arrayItem => {
+          type => 'scalar'
+        },
+        validate =>
+        normalize => 'to array',
+      },
+    },
+  });
   my $cmd;
   foreach (@_) {
     my $arg = $_;
@@ -89,12 +246,25 @@ sub execCmd {
     $cmd .= $arg;
   }
   print ansi "<ansiCmd>$cmd<ansi> . . .\n" if $opt->{v} && $opt->{v} eq 'all';
-  my $stdout;
-  if (hasItem 'stdout', @{_getAsArrayRef($opt->{return})}) {
-    $stdout = qx/$cmd/;
-  } else {
-    system($cmd);
-  }
+  my ($stdout, $stderr) = ('') x 2;
+  use IPC::Run3;
+  run3($cmd, undef,
+    sub {
+      my $line = shift;
+      $stdout .= $line;
+      print $line;
+    },
+    sub {
+      my $line = shift;
+      $stderr .= $line;
+      print $line;
+    }
+  );
+  # if (hasItem 'stdout', @{_getAsArrayRef($opt->{return})}) {
+  #   $stdout = qx/$cmd/;
+  # } else {
+  #   system($cmd);
+  # }
   my $errorCode = ${^CHILD_ERROR_NATIVE} / 256;# https://stackoverflow.com/questions/3736320/executing-shell-script-with-system-returns-256-what-does-that-mean
   # print Dumper($errorCode);
   my ($ansi, $prefix) = $errorCode == 0 ? ('OK') x 2 : ('Err', 'ERR');
@@ -109,6 +279,8 @@ sub execCmd {
     if (defined $item) {
       if ($item eq 'stdout') {
         return $stdout;
+      } elsif ($item eq 'stderr') {
+        return $stderr;
       }
     }
     return $errorCode;
@@ -118,6 +290,8 @@ sub execCmd {
       if (defined $item) {
         if ($item eq 'stdout') {
           push @result, $stdout;
+        } elsif ($item eq 'stderr') {
+          push @result, $stderr;
         }
       }
     }
@@ -130,6 +304,19 @@ sub docker {
   my $opt = ref $_[0] eq 'HASH' ? shift : {};
   # TODO: bw_install docker --silentIfAlreadyInstalled || return $?
   unshift @_, 'docker';
+  if ( $ENV{OSTYPE} =~ m/^linux/ ) {
+    unshift @_, 'sudo';
+  } elsif ( $ENV{OSTYPE} !~ m/^darwin/ ) {
+    die ansi 'Err', "ERR: Неожиданный тип OS <ansiPrimaryLiteral>$ENV{OSTYPE}";
+  }
+  unshift @_, $opt;
+  &execCmd;
+}
+
+sub dockerCompose {
+  my $opt = ref $_[0] eq 'HASH' ? shift : {};
+  # TODO: bw_install docker-compose --silentIfAlreadyInstalled || return $?
+  unshift @_, 'docker-compose';
   if ( $ENV{OSTYPE} =~ m/^linux/ ) {
     unshift @_, 'sudo';
   } elsif ( $ENV{OSTYPE} !~ m/^darwin/ ) {
@@ -167,16 +354,15 @@ sub mkFileFromTemplate {
 
   {
     open my $fh, '>', $fileSpec or die;
-    my ($commentPrefix, $commentSuffix, $commentPreLine, $commentPostLine) = ('') x 4;
-    if ($fileSpec =~ m/\.html$/) {
-      ($commentPreLine, $commentPostLine) = ( '<!--', '-->' );
-    } elsif ($fileSpec =~ m/\.conf$/) {
-      $commentPrefix = ('# ');
-    } else {
-      die Dumper({fileSpec => $fileSpec});
-    }
-
     unless ( exists $opt->{noNotice} or $opt->{noNotice} ) {
+      my ($commentPrefix, $commentSuffix, $commentPreLine, $commentPostLine) = ('') x 4;
+      if ($fileSpec =~ m/\.html$/) {
+        ($commentPreLine, $commentPostLine) = ( '<!--', '-->' );
+      } elsif ($fileSpec =~ m/\.conf$/) {
+        $commentPrefix = ('# ');
+      } else {
+        die Dumper({fileSpec => $fileSpec});
+      }
       print $fh <<"HEADER" if $commentPreLine;
 ${commentPreLine}
 HEADER

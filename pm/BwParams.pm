@@ -52,7 +52,7 @@ sub _getDescription {
   my $inputIndentBase = shift || 2;
 
   my $description = $descriptionContainer->{description} || die;
-  $description = _validateStruct('$description->($cnf)', $description->($cnf), {type => 'scalar'})
+  $description = validateStruct('$description->($cnf)', $description->($cnf), {type => 'scalar'})
     if ref $description eq 'CODE';
   if (index($description, "\n") >=0) {
     my $firstIndentLevel=0;
@@ -134,7 +134,7 @@ HELP
         }
       } elsif (exists $optDef->{enum}) {
         my $enum = $optDef->{enum};
-        $enum = _validateStruct(
+        $enum = validateStruct(
           "\$def->{options}->get($optName)->{enum}->(\$cnf)",
           $enum->($cnf),
           {
@@ -169,7 +169,7 @@ HELP
       }
       if ( $optDef->{type} ne 'bool' && exists $optDef->{default} ) {
         my $default = $optDef->{default};
-        $default = _validateStruct(
+        $default = validateStruct(
           "\$options->{byName}->get($optName)->{default}->(\$cnf, \$p, \$def)",
           $default->($cnf, $p, $def),
           {
@@ -189,7 +189,7 @@ HELP
 }
 
 sub _validateOptionDef {
-  my $optDef = _validateStruct('_validateOptionDef arg', shift, { type => 'hash' });
+  my $optDef = validateStruct('_validateOptionDef arg', shift, { type => 'hash' });
   # TODO
   return $optDef;
 }
@@ -197,18 +197,18 @@ sub _validateOptionDef {
 sub _getEntity {
   my $def = shift or die;
   my $cnf = shift or die;
-  my $entityName = _validateStruct('3rd arg of _getEntity()', shift, {
+  my $entityName = validateStruct('3rd arg of _getEntity()', shift, {
     type => 'scalar',
     enum => [ 'options', 'subCommands' ],
   });
-  my $entity = _validateStruct("\$def->{$entityName}", $def->{$entityName}, {
+  my $entity = validateStruct("\$def->{$entityName}", $def->{$entityName}, {
     type => [ 'Hash::Ordered', 'undef' ],
   }) or return;
 
   if ($entityName eq 'options' && $cnf->{mixin}) {
     my $funcName = getFuncName(2);
     if ($cnf->{mixin}->{$funcName} && $cnf->{mixin}->{$funcName}->{options}) {
-      my $mixinOptions = _validateStruct(
+      my $mixinOptions = validateStruct(
         "\$cnf->{mixin}->{$funcName}->{options}",
         $cnf->{mixin}->{$funcName}->{options},
         {
@@ -385,92 +385,6 @@ sub _postProcessParams {
   $p;
 }
 
-sub _validateStruct {
-  my $where = shift or die;
-    ref $where eq '' or die Dumper( { err => '$where is expected to be a scalar', '$where' => $where} );
-  my $value = shift;
-  my $struct = shift or die Dumper({ where => $where });
-  ref $struct eq 'HASH' or die Dumper({ where => $where , 'ref $struct' => ref $struct });
-  my $type = $struct->{type} or die Dumper({ '$struct' => $struct });
-  my $typeSuffix = '';
-  if ( ref $type eq 'CODE' ) {
-    print Dumper({type => $type, struct => $struct, value => $value});
-    $type = $type->($struct);
-    print Dumper({type => $type});
-    $typeSuffix = '->($struct)';
-  }
-  defined $type or die Dumper({ err => "\$struct->{type}$typeSuffix is undef", '$struct' => $struct});
-  hasItem(ref $type, '', 'ARRAY') or die Dumper({ "ref \$struct->{type}$typeSuffix" => ref $type, type => $type });
-  my $types = ref $type eq 'ARRAY' ? $type : [ $type ];
-  my $valueType = defined $value ? ref $value : 'undef';
-  my %normalizedValueTypes = (
-    'HASH' => 'hash',
-    'CODE' => 'sub',
-    'ARRAY' => 'array',
-    '' => 'scalar',
-  );
-  my $normalizedValueType = $normalizedValueTypes{$valueType} || $valueType;
-  hasItem($normalizedValueType, @{$types}) or die Dumper({ err => '$normalizedValueType of $value is not expected by $struct->{type}', where => $where, '$normalizedValueType' => $normalizedValueType, '$struct->{type}' => $struct->{type}, '$value' => $value });
-  if ( $normalizedValueType eq 'hash') {
-    if ( $struct->{keys} ) {
-      my $keys = $struct->{keys};
-      ref $keys eq 'HASH' or die Dumper({ 'ref $struct->{keys}' => ref $keys });
-      my @validKeys;
-      foreach my $key (keys %{$keys}) {
-        my $keyDef = $keys->{$key};
-        my $keyDefSuffix = '';
-        if ( ref $keyDef eq 'CODE' ) {
-          $keyDef = $keyDef->($struct);
-          $keyDefSuffix = '->($struct)';
-        }
-        ref $keyDef eq 'HASH' or die Dumper({ "ref \$keys->{$key}$keyDefSuffix" => ref $keyDef });
-        next if $keyDef->{condition} && !$keyDef->{condition}->($value);
-        !$keyDef->{isRequired} or exists($value->{$key}) or die Dumper({ 'err' => 'required $key is absent in $value', '$key' => $key, '$value' => $value });
-        if ( exists($value->{ $key }) ) {
-          $value->{$key} = _validateStruct("$where\->{$key}", $value->{$key}, $keyDef);
-        }
-        push @validKeys, $key;
-      }
-      foreach my $key (keys %{$value}) {
-        hasItem($key, @validKeys) or die Dumper({ where => $where, '$key' => $key, '@validKeys' => \@validKeys });
-      }
-    }
-  } elsif ( $normalizedValueType eq 'array' ) {
-    my $valueStruct = $struct->{arrayItem} || $struct->{value};
-    if ( $valueStruct ) {
-      my $i = 0;
-      while ($i < scalar @{$value}) {
-        $value->[$i] = _validateStruct("$where\->[$i]", $value->[$i], $valueStruct);
-        $i += 1;
-      }
-    }
-  } elsif ( $normalizedValueType eq 'Hash::Ordered' ) {
-    if ( $struct->{value} ) {
-      foreach my $key ($value->keys) {
-        $value->set($key, _validateStruct("$where\->get($key)", $value->get($key), $struct->{value}));
-      }
-    }
-  } elsif ( $normalizedValueType eq 'scalar' ) {
-    if ( $struct->{enum} ) {
-      ref $struct->{enum} eq 'ARRAY' or die Dumper({where => $where, 'ref $struct->{enum}' => ref $struct->{enum}});
-      hasItem($value, @{$struct->{enum}}) or die Dumper({ where => $where, err => '$enum has no $value', '$value' => $value, '$enum' => $struct->{enum} });
-    }
-  } elsif ( ! hasItem($normalizedValueType, 'sub', 'undef') ) {
-    die Dumper({ err => 'unexpected $valueType', types => $types, '$valueType' => $valueType, value => $value });
-  }
-  if ( $struct->{validate} ) {
-    ref $struct->{validate} eq 'CODE' or die Dumper({ where => $where, 'ref $struct->{validate}' => ref $struct->{validate} });
-    $value = $struct->{validate}->($where, $value);
-  }
-  if ( $struct->{normalize} ) {
-    $struct->{normalize} eq 'to array' or die Dumper({ where => $where, '$struct->{normalize}' => $struct->{normalize} });
-    if ( $normalizedValueType ne 'array' ) {
-      $value = [ $value ];
-    }
-  }
-  return $value;
-}
-
 sub _preprocessDef {
   my $packageName = shift or die;
   my $allDefs = shift or die;
@@ -489,7 +403,7 @@ sub _preprocessDef {
     }
     $value;
   };
-  my $def = _validateStruct("\$allDefs->{$funcName}", $allDefs->{$funcName},
+  my $def = validateStruct("\$allDefs->{$funcName}", $allDefs->{$funcName},
     {
       type => 'hash',
       keys => {

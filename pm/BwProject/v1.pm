@@ -39,7 +39,9 @@ my %basePorts = (
   https => 4400,
   mysql => 3300,
   redis => 6300,
+  webdis => 7300,
   rabbitmq => 5600,
+  rabbitmqManagement => 15600,
 );
 
 sub getBasePort($) {
@@ -240,7 +242,7 @@ $cmd_docker_upDef = {
           ),
         }
       )
-    } qw/ssh http https mysql redis rabbitmq upstream/),
+    } keys %basePorts, 'upstream'),
     noTestAccessMessage => {
       type => 'bool',
       shortcut => 'm',
@@ -342,6 +344,13 @@ MSG
     # my $errorCode = execCmd('cmp', );
   }
   _prepareDockerComposeYml($p, $cnf, $def);
+  {
+    my @dockerComposeParams=('-p', _getDockerComposeProjectName($cnf), '-f', "$cnf->{projDir}/docker/docker-compose.yml", qw/up -d --remove-orphans/);
+    push @dockerComposeParams, '--force-recreate' if $p->{forceRecreate};
+    my ($stderr, $errorCode) = dockerCompose({ v => 'all', return => 'stderr'}, @dockerComposeParams);#, qw/3>&2 2>&1 1>&3/);
+    print ansi 'Err', $stderr;
+    # my $errorCode = dockerCompose({ v => 'all'}, @dockerComposeParams);
+  }
 }
 
 sub _prepareDockerComposeYml {
@@ -424,11 +433,54 @@ FILE
     push @dockerComposeFileNames, '.helper/docker-compose.main.yml'
   }
   push @dockerComposeFileNames, 'docker-compose.proj.yml';
+  my @dockerComposeFileSpecs;
   foreach my $dockerComposeFileName (@dockerComposeFileNames) {
     my $templateFileSpec = "$cnf->{projDir}/docker/$dockerComposeFileName";
-    my ( $fileSpec = $templateFileSpec ) =~ s/\.yml$//;
-
+    my $fileName = $dockerComposeFileName;
+    $fileName =~ s|^\.helper/||;
+    $fileName =~ s|\.yml$||;
+    my $fileSpec = "$cnf->{projDir}/docker/$fileName";
+    mkFileFromTemplate({ noNotice => 1 }, $fileSpec, $templateFileSpec, sub {
+      my $varName = shift;
+      my $result = '';
+      if ($varName eq 'nginxContainerName') {
+        $result = _getDockerMainContainerName($cnf) . '-nginx';
+      } elsif ($varName eq 'mainContainerName') {
+        $result = _getDockerMainContainerName($cnf);
+      } elsif ($varName eq 'mainImageName' && exists $cnf->{dockerImageName}) {
+        $result = $cnf->{dockerImageName};
+      } elsif (hasItem $varName, qw/_bwDir _bwSslFileSpecPrefix _bwFileSpec/) {
+        $result = $ENV{$varName};
+      } elsif (hasItem $varName, keys %basePorts, 'upstream' and exists $p->{$varName}) {
+        $result = $p->{$varName}->{value};
+      } else {
+        die Dumper({varName => $varName});
+      }
+      $result;
+    });
+    push @dockerComposeFileSpecs, $fileSpec;
   }
+  {
+    my ($stdout, $errorCode) = dockerCompose({v => 'all', return => 'stdout'}, map({ ( '-f', $_ ) } @dockerComposeFileSpecs), 'config'); exit $errorCode if $errorCode;
+    open my $fh, '>', "$cnf->{projDir}/docker/docker-compose.yml" or die;
+    print $fh $stdout;
+    close $fh;
+  }
+}
+
+sub _getDockerComposeProjectName($) {
+  my $cnf = shift;
+  my $result = "${\shortenFileSpec $cnf->{projDir}}";
+  $result =~ s|[^a-zA-Z0-9_\.-]||g;
+  $result;
+}
+
+sub _getDockerMainContainerName($) {
+  # my $cnf = shift;
+  my $result = &_getDockerComposeProjectName;
+  # my $result = "dev-${\shortenFileSpec $cnf->{projDir}}";
+  # $result =~ s|[^a-zA-Z0-9_\.-]||g;
+  "dev-$result";
 }
 
 sub _getImageId($) {
