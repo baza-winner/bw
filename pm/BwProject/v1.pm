@@ -156,7 +156,7 @@ MSG
     dircopy("$ENV{_bwDir}/pm/BwProject/$ENV{bwProjectVersion}/docker", "$ENV{projDir}/docker/.helper") or die;
     my $errorCode = docker({ v => 'all' }, qw/build --pull -t/, $cnf->{dockerImageName}, "$ENV{projDir}/docker");
     if (!$errorCode) {
-      $errorCode = docker( { v => 'err' }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest", '>', "$cnf->{dockerImageIdFileSpec}"); exit $errorCode if $errorCode;
+      docker( { v => 'err', exitOnError => 1 }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest", '>', "$cnf->{dockerImageIdFileSpec}");
       if ( gitIsChangedFile("docker/$cnf->{dockerImageIdFileSpec}", $ENV{projDir}) ) {
         print ansi 'Warn', <<"MSG";
 Обновлен docker-образ <ansiPrimaryLiteral>$cnf->{dockerImageName}<ansi>
@@ -264,8 +264,9 @@ $cmd_docker_upDef = {
 };
 sub cmd_docker_up {
   my ($p, $cnf, $def) = &processParams; $p || return;
-  # my $p = &processParams;
-  # print Dumper($p);
+
+  # my $regexp = qr/some/;
+  # die Dumper( { typeOfValue => typeOfValue qr/some/, regexp => qr/some/ } );
 
   # TODO:
   # if [[ -n $https ]]; then
@@ -285,7 +286,7 @@ sub cmd_docker_up {
     }
     close IN;
     if (!$found) {
-      my $errorCode = execCmd({ v => 'all' }, 'echo', $line, ' | sudo tee -a ', $fileSpec, ' && sudo sysctl -p'); exit $errorCode if $errorCode;
+      execCmd({ v => 'all', exitOnError => 1 }, 'echo', $line, ' | sudo tee -a ', $fileSpec, ' && sudo sysctl -p');
     }
   }
 
@@ -306,9 +307,9 @@ MSG
   #  bw_install --silentIfAlreadyInstalled docker || { errorCode=$?; break; }
 
   if ($cnf->{dockerImageName} && !$p->{noCheck}->{value}) {
-    my ($dockerImageLs, $errorCode) = docker({return => 'stdout', v => 'err'}, qw/image ls/, "$cnf->{dockerImageName}:latest", qw/-q/); exit $errorCode if $errorCode;
+    my $dockerImageLs = docker({ v => 'err', return => 'stdout', silent => 'stdout', exitOnError => 1 }, qw/image ls/, "$cnf->{dockerImageName}:latest", qw/-q/);
     if (!$dockerImageLs) {
-      my $errorCode = docker({v => 'all'}, qw/image pull/, "$cnf->{dockerImageName}:latest"); exit $errorCode if $errorCode;
+      docker({ v => 'all', exitOnError => 1 }, qw/image pull/, "$cnf->{dockerImageName}:latest");
     }
 
     my $imageId = _getImageId($cnf);
@@ -320,7 +321,7 @@ MSG
       if ( gitIsChangedFile('docker/Dockerfile', $cnf->{projDir}) ) {
         $needWarn = 1;
       } else {
-        my $errorCode = docker({v => 'all'}, qw/image pull/, "$cnf->{dockerImageName}:latest"); exit $errorCode if $errorCode;
+        docker({ v => 'all', exitOnError => 1 }, qw/image pull/, "$cnf->{dockerImageName}:latest");
         $imageId = _getImageId($cnf);
         if ( $imageId ne $etaImageId ) {
           $needWarn = 1;
@@ -347,10 +348,61 @@ MSG
   {
     my @dockerComposeParams=('-p', _getDockerComposeProjectName($cnf), '-f', "$cnf->{projDir}/docker/docker-compose.yml", qw/up -d --remove-orphans/);
     push @dockerComposeParams, '--force-recreate' if $p->{forceRecreate};
-    my ($stderr, $errorCode) = dockerCompose({ v => 'all', return => 'stderr'}, @dockerComposeParams);#, qw/3>&2 2>&1 1>&3/);
-    print ansi 'Err', $stderr;
+    my ($stderr, $errorCode) = dockerCompose({ v => 'all', return => 'stderr' }, @dockerComposeParams);
+    if ($errorCode && $stderr =~ m/:([0-9]+) failed: port is already allocated/m) {
+      my $portValue = $1;
+      foreach my $portName (keys %basePorts) {
+        next unless exists $p->{$portName};
+        next unless $p->{$portName}->{value} == $portValue;
+        print ansi 'Warn', <<"MSG";
+ВНИМАНИЕ!
+  $portName-порт <ansiPrimaryLiteral>$portValue<ansi> занят
+  Пользуясь опцией <ansiCmd>--$portName<ansi>, укажите другой порт:
+    <ansiCmd>--$portName <ansiOutline>Число-из-диапазона <ansiSecondaryLiteral>1024..65535<ansi>
+  Или, пользуясь опцией <ansiCmd>--portIncremant<ansi> (<ansiCmd>-i<ansi>), задайте смещение для всех портов относительно значений по умолчанию:
+    <ansiCmd>-i <ansiOutline>Положительное-целое-число<ansi>
+MSG
+      }
+    }
+    # print ansi 'Err', $stderr;
     # my $errorCode = dockerCompose({ v => 'all'}, @dockerComposeParams);
   }
+}
+
+
+sub _cleanTempDockerFiles($) {
+  my $cnf = shift or die;
+  # use File::Find qw/find/;
+  # no warnings 'File::Find';
+  # find { wanted => sub { push @templateFileSpecs, $_ if /\.template$/ }, no_chdir => 1 }, $nginxDir;
+  {
+    my $dir = "$cnf->{projDir}/docker";
+    opendir my $dh, $dir or die;
+    my @enitiesToRemove = grep { /\.(?:pid|queue)$/ } readdir $dh;
+    closedir $dh;
+    unlink map { "$dir/$_" } @enitiesToRemove;
+  }
+
+  # {
+  #   my $dir = "$cnf->{projDir}/docker";
+  #   opendir my $dh, $dir or die;
+  #   my @enitiesToRemove = grep { /\.(?:pid|queue)$/ } readdir $dh;
+  #   closedir;
+  #   unlink map { "$dir/$_" } @enitiesToRemove;
+  # }
+
+  use File::Path qw/remove_tree/;
+  remove_tree("$cnf->{projDir}/docker/whoami");
+
+  # execCmd(qw/rm -f *.pid *.queue/)
+  # rm -rf whoami
+  # rm -f mysql/*.temp.sql
+}
+
+sub removeFilesByTemplate($$) {
+  my $qr = validateStruct('removeFilesByTemplate first arg', shift, { type => 'regexp' });
+  my $dir = validateStruct('removeFilesByTemplate second arg', shift, { type => 'scalar' });
+
 }
 
 sub _prepareDockerComposeYml {
@@ -461,7 +513,7 @@ FILE
     push @dockerComposeFileSpecs, $fileSpec;
   }
   {
-    my ($stdout, $errorCode) = dockerCompose({v => 'all', return => 'stdout'}, map({ ( '-f', $_ ) } @dockerComposeFileSpecs), 'config'); exit $errorCode if $errorCode;
+    my $stdout = dockerCompose({ v => 'err', return => 'stdout', silent => 'stdout', exitOnError => 1 }, map({ ( '-f', $_ ) } @dockerComposeFileSpecs), 'config');
     open my $fh, '>', "$cnf->{projDir}/docker/docker-compose.yml" or die;
     print $fh $stdout;
     close $fh;
@@ -485,7 +537,7 @@ sub _getDockerMainContainerName($) {
 
 sub _getImageId($) {
   my $cnf = shift or die;
-  my ($imageId, $errorCode) = docker({ v => 'err', return => 'stdout' }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest"); exit $errorCode if $errorCode;
+  my $imageId = docker({ v => 'err', return => 'stdout', silent => 'stdout', exitOnError => 1 }, qw/inspect --format/, '{{json .Id}}', "$cnf->{dockerImageName}:latest");
   $imageId =~ s/^\s+//;
   $imageId =~ s/\s+$//;
   return $imageId;

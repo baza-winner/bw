@@ -12,8 +12,8 @@ $VERSION = 1.00;
 
 # =============================================================================
 
-use File::Find qw/find/;
 my $carpAlwaysIsInstalled;
+use File::Find qw/find/;
 no warnings 'File::Find';
 find { wanted => sub { $carpAlwaysIsInstalled = 1 if /\/Carp\/Always(?:\.pm)?$/ }, no_chdir => 1 }, @INC;
 if ( $carpAlwaysIsInstalled ) {

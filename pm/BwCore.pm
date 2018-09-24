@@ -14,6 +14,7 @@ $VERSION = 1.00;
   kebabCaseToCamelCase
   hasItem
   shortenFileSpec
+  typeOfValue
   validateStruct
   execCmd
   docker
@@ -85,153 +86,238 @@ sub typeOfValue($) {
     'HASH' => 'hash',
     'CODE' => 'sub',
     'ARRAY' => 'array',
+    'Regexp' => 'regexp',
     '' => 'scalar',
   );
-  $normalizedValueTypes{$valueType} || $result;
+  $normalizedValueTypes{$result} || $result;
 }
 
-sub
+sub _getSubableValue($$@) {
+  my $value = shift;
+  my $subParamsDescription = shift or die;
+  my $suffix = '';
+  if ( typeOfValue $value eq 'sub' ) {
+    $value = &{$value};
+    $suffix = "->($subParamsDescription)";
+  }
+  return ($value, $suffix);
+}
+
+sub _getValidatedTypeValue {
+  my $opt = typeOfValue $_[0] eq 'hash' ? shift : {};
+  my $where = shift;
+  my $value = shift;
+  my @expectedTypes = @_;
+
+  my $valueType = typeOfValue $value;
+
+  my $suffix = '';
+  if ($valueType eq 'sub' && exists $opt->{sub} && defined $opt->{sub}) {
+    my $subType = typeOfValue $opt->{sub};
+    die Dumper({
+      err => '_getValidatedTypeValue $opt->{sub} is expected to be an empty string or ref to array with at least two items, where first item is scalar',
+      opt => $opt,
+    }) unless $subType eq 'scalar' && length $opt->{sub} || $subType eq 'array' && scalar @{$opt->{sub}} >= 2 && typeOfValue $opt->{sub}->[0] eq 'scalar';
+    my $subParamsDescription = '';
+    if ($subType eq 'scalar') {
+      $value = $value->();
+    } else {
+      my @params = @{$opt->{sub}};
+      $subParamsDescription = shift @params;
+      $value = $value->(@params);
+    }
+    $suffix = "->($subParamsDescription)";
+  }
+
+  die Dumper({
+    where => $where,
+    err => 'typeOfValue $value$suffix is not of expectedTypes',
+    'typeOfValue $value$suffix' => $valueType,
+    expectedTypes => \@expectedTypes,
+    "value$suffix" => $value
+  }) unless scalar @expectedTypes == 0 || hasItem $valueType, @expectedTypes;
+
+  return !wantarray ? $value : ($value, $valueType);
+}
+
+sub _getValidatedTypeValueOfHashKey {
+  my $opt = typeOfValue $_[0] eq 'hash' ? shift : {};
+  my $whereHash = shift;
+  my $hash = _getValidatedTypeValue($whereHash, shift, 'hash');
+  my $key = _getValidatedTypeValue('_validateTypeOfHashKeyValue $key', shift, 'scalar');
+  my @expectedTypes = @_;
+
+  if (exists $hash->{$key}) {
+    _getValidatedTypeValue({ sub => exists $opt->{sub} ? $opt->{sub} : undef }, "$whereHash->{$key}", $hash->{$key}, @expectedTypes);
+  } elsif (exists $opt->{isRequired} && $opt->{isRequired}) {
+    die Dumper({
+      where => $whereHash,
+      err => '$key is expected to exist in $hash',
+      key => $key,
+      hash => $hash,
+    });
+  } else {
+    return !wantarray ? undef : (undef) x 2;
+  }
+}
+
+sub _checkHashHasOnlyExpectedKeys {
+  my $whereHash = shift;
+  my $hash = _getValidatedTypeValue($whereHash, shift, 'hash');
+  my $expectedKeys = _getValidatedTypeValue('_checkHashHasOnlyExpectedKeys $expectedKeys', shift, 'hash');
+
+  foreach my $key (keys %{$hash}) {
+    die Dumper({
+      where => $whereHash,
+      err => '$hash has non expected $key'
+      key => $key,
+      expectedKeys => \@expectedKeys,
+      hash => $hash,
+    }) unless hasItem($key, keys %{$expectedKeys});
+  }
+}
+
+sub _validateScalar {
+  my $where = shift;
+  my $value = shift;
+  my $struct = shift;
+  my $whereStruct = shift;
+
+  my ($enum, $enumType) = _getValidatedTypeValueOfHashKey($whereStruct, $struct, 'enum', 'array');
+  if ( $enumType ) {
+    die Dumper({
+      where => $where,
+      err => '$enum has no $value',
+      value => $value,
+      enum => $struct->{enum}
+    })
+      unless hasItem($value, @{$struct->{enum}});
+  } else {
+    my ($nonFalse, $nonFalseType) = _getValidatedTypeValueOfHashKey($whereStruct, $struct, 'noFalse', 'scalar');
+    if ($nonFalseType) {
+      die Dumper({
+        where => $where,
+        err => '$value can not be false',
+        value => $value,
+      }) if $nonFalse && !$value;
+    }
+  }
+}
+
 sub validateStruct {
   my $where = shift or die;
     typeOfValue $where eq 'scalar'
       or die Dumper( { err => '$where is expected to be a scalar', where => $where} );
   my $value = shift;
-  my $struct = shift or die Dumper({ where => $where });
+  my $struct = shift;
   my $whereStruct = shift || '';
 
-  typeOfValue $struct eq 'hash'
-    or die Dumper({ err => 'typeOfValue $struct is expected to be a hash', whereStruct => $whereStruct , 'typeOfValue $struct' => typeOfValue $struct, struct => $struct });
+  _getValidatedTypeValue($whereStruct, $struct, 'hash');
 
-  my @validFields = qw/type/;
-  exists $struct->{type}
-    or die Dumper({ err => '$struct->{type} is expected to exists', whereStruct => $whereStruct, struct => $struct });
-  my $type = $struct->{type};
+  my ($type, $typeType) = _getValidatedTypeValueOfHashKey({ isRequired => 1, sub => [ '$struct', $struct ] }, $whereStruct, $struct, 'type', 'scalar', 'array');
 
-  my $typeSuffix = '';
-  if ( typeOfValue $type eq 'sub' ) {
-    $type = $type->($struct);
-    $typeSuffix = '->($struct)';
+  my @types =
+    $typeType eq 'scalar' && $type eq 'scalarOrArrayOfScalars' ? ('scalar', 'array') :
+    $typeType eq 'array' ? @{$type} : ( $type )
+  ;
+
+  my $expectedFields = {
+    type => 1,
+    validate => 1,
+  };
+  if (hasItem 'hash', @types) {
+    $expectedFields->{keys} = 1;
   }
-  hasItem(typeOfValue $type, 'scalar', 'array')
-    or die Dumper({ err => "\$struct->{type}$typeSuffix is expected to be a sclar or an array",  whereStruct => $whereStruct, "typeOfValue \$struct->{type}$typeSuffix" => typeOfValue $type, type => $type, struct => $struct });
-
-  my $valueType = typeOfValue $value;
-  if ( typeOfValue $type eq 'scalar' && $type eq 'scalarOrArrayOfScalars' ) {
-    hasItem($valueType, 'scalar', 'array')
-      or die Dumper({ err => 'typeOfValue $value is not expected by $struct->{type}', where => $where, 'typeOfValue $value' => $valueType, '$struct->{type}' => $struct->{type}, '$value' => $value });
-  } else {
-    my $types = typeOfValue($type) eq 'array' ? $type : [ $type ];
-    hasItem($valueType, @{$types}) or die Dumper({ err => '$valueType of $value is not expected by $struct->{type}', where => $where, 'typeOfValue $value' => $valueType, '$struct->{type}' => $struct->{type}, '$value' => $value });
+  if ($type eq 'scalarOrArrayOfScalars' || hasItem 'scalar', $types) {
+    $expectedFields->{enum} = 1;
+    $expectedFields->{nonFalse} = 1;
   }
+  if (hasItem 'array', $types) {
+    if (exists $struct->{arrayItem}) {
+      $expectedFields->{arrayItem} = 1;
+    } else {
+      $expectedFields->{value} = 1;
+    }
+  }
+  if (hasItem 'Hash::Ordered', $types) {
+    $expectedFields->{value} = 1;
+  }
+  _checkHashHasOnlyExpectedKeys($whereStruct, $struct, $expectedFields);
+
+  ($value, my $valueType) = _getValidatedTypeValue($where, $value, @types);
 
   if ( $valueType eq 'hash') {
-    if ( $struct->{keys} ) {
-      push @validFields, qw/keys/;
-      my $keys = $struct->{keys};
-      ref $keys eq 'HASH' or die Dumper({ 'ref $struct->{keys}' => ref $keys });
-      my @validKeys;
+    my ($keys, $keysType) = _getValidatedTypeValueOfHashKey($whereStruct, $struct, 'keys', 'hash');
+    if ($keysType) {
+      my %validKeys;
       foreach my $key (keys %{$keys}) {
-        my $keyDef = $keys->{$key};
-
-        my $keyDefSuffix = '';
-        if ( typeOfValue $keyDef eq 'sub' ) {
-          $keyDef = $keyDef->($struct);
-          $keyDefSuffix = '->($struct)';
-        }
-        typeOfValue $keyDef eq 'hash' or die Dumper({ "typeOfValue \$keys->{$key}$keyDefSuffix" => typeOfValue $keyDef });
-
+        my $keyDef = _getValidatedTypeValueOfHashKey({ sub => ['$struct', $struct] }, "$whereStruct\->{keys}", $keys, $key, 'hash');
         next if $keyDef->{condition} && !$keyDef->{condition}->($value);
-        !$keyDef->{isRequired} or exists($value->{$key}) or die Dumper({ 'err' => 'required $key is absent in $value', '$key' => $key, '$value' => $value });
-        if ( exists($value->{ $key }) ) {
-          $value->{$key} = validateStruct("$where\->{$key}", $value->{$key}, $keyDef);
+
+        my ($keyValue, $keyValueType) = _getValidatedTypeValueOfHashKey({ isRequired => $keyDef->{isRequired} }, "$where\->{$key}", $value, $key);
+        if ($keyValueType) {
+          $value->{$key} = validateStruct($where . "->{$key}", $value->{$key}, $keyDef);
+          $validKeys{$key} = 1;
         }
-        push @validKeys, $key;
       }
-      foreach my $key (keys %{$value}) {
-        hasItem($key, @validKeys) or die Dumper({ where => $where, '$key' => $key, '@validKeys' => \@validKeys });
-      }
+      _checkHashHasOnlyExpectedKeys($where, $value, \%validKeys);
     }
   } elsif ( $valueType eq 'scalar' ) {
-    if ( $struct->{enum} ) {
-      push @validFields, qw/enum/;
-      typeOfValue $struct->{enum} eq 'array' or die Dumper({where => $where, 'ref $struct->{enum}' => ref $struct->{enum}});
-      hasItem($value, @{$struct->{enum}}) or die Dumper({ where => $where, err => '$enum has no $value', '$value' => $value, '$enum' => $struct->{enum} });
-    }
+    _validateScalar($where, $value, $struct, $whereStruct);
   } elsif ( $valueType eq 'array' ) {
     if ($type eq 'scalarOrArrayOfScalars') {
-      if ( $struct->{enum} ) {
-        push @validFields, qw/enum/;
-        ref $struct->{enum} eq 'ARRAY' or die Dumper({where => $where, 'ref $struct->{enum}' => ref $struct->{enum}});
-        hasItem($value, @{$struct->{enum}}) or die Dumper({ where => $where, err => '$enum has no $value', '$value' => $value, '$enum' => $struct->{enum} });
+      for (my $i = 0; $i < scalar @{$value}; $i++) {
+        _validateScalar($where . "->[$i]", $value->[$i], $struct, $whereStruct);
       }
     } else {
-      my $valueStruct;
-      if ( exists $struct->{arrayItem} ) {
-        push @validFields, qw/arrayItem/;
-        $valueStruct = $struct->{arrayItem};
-      } elsif ( exists $struct->{value} ) {
-        push @validFields, qw/value/;
-        $valueStruct = $struct->{value};
-      } else {
-        die Dumper({ where => $where, err => 'expects arrayItem or value field'});
+      my ($valueStruct, $valueStructType) = _getValidatedTypeValueOfHashKey($whereStruct, $struct, 'arrayItem', 'hash');
+      if (!$valueStructType) {
+        ($valueStruct, $valueStructType) = _getValidatedTypeValueOfHashKey($whereStruct, $struct, 'value', 'hash');
       }
-      if ( $valueStruct ) {
-        my $i = 0;
-        while ($i < scalar @{$value}) {
-          $value->[$i] = validateStruct("$where\->[$i]", $value->[$i], $valueStruct);
-          $i += 1;
-        }
+      die Dumper({
+        where => $whereStruct,
+        err => 'one of $keys is expected to exist in $struct',
+        keys => [ qw/arrayItem value/ ],
+        struct => $struct,
+      }) unless $valueStructType;
+
+      for (my $i = 0; $i < scalar @{$value}; $i++) {
+        $value->[$i] = validateStruct($where . "->[$i]", $value->[$i], $valueStruct);
       }
     }
   } elsif ( $valueType eq 'Hash::Ordered' ) {
-    if ( exists $struct->{value} ) {
-      push @validFields, qw/value/;
-      foreach my $key ($value->keys) {
-        $value->set($key, validateStruct("$where\->get($key)", $value->get($key), $struct->{value}));
-      }
+    my ($valueStruct, $valueStructType) = _getValidatedTypeValueOfHashKey({ isRequired => 1 }, $whereStruct, $struct, 'value', 'hash');
+    foreach my $key ($value->keys) {
+      $value->set($key, validateStruct($where . "->get($key)", $value->get($key), $valueStruct));
     }
   } elsif ( ! hasItem($valueType, 'sub', 'undef') ) {
     die Dumper({ err => 'unexpected $valueType', types => $types, '$valueType' => $valueType, value => $value });
   }
-  if ( exists $struct->{validate} ) {
-    push @validFields, qw/validate/;
-    ref $struct->{validate} eq 'CODE' or die Dumper({ where => $where, 'ref $struct->{validate}' => ref $struct->{validate} });
-    $value = $struct->{validate}->($where, $value);
-  }
-  if ( exists $struct->{normalize} ) {
-    push @validFields, qw/normalize/;
-    $struct->{normalize} eq 'to array' or die Dumper({ where => $where, '$struct->{normalize}' => $struct->{normalize} });
-    if ( $valueType ne 'array' ) {
-      $value = [ $value ];
-    }
-  }
+
+  my ($validate, $validateType) = _getValidatedTypeValueOfHashKey($whereStruct, $struct, 'validate', 'sub');
+  $value = $validate->($where, $value, $struct, $whereStruct) if $validateType;
+
   return $value;
 }
 
 sub execCmd {
-  # my $validateStdStream = sub {
-  #   my ($where, $value) = @_;
-  #   if (typeOfValue($value) eq 'scalar') {
-
-
-  #   }
-  #   return $value;
-  # };
-  my $opt = ref $_[0] ne 'HASH' ? {} : _validateStruct('execCmd first param', shift, {
+  my $opt = ref $_[0] ne 'HASH' ? {} : validateStruct('execCmd first param', shift, {
     type => 'hash',
     keys => {
       v => {
         type => 'scalar',
         enum => [ 'all', 'allBrief', 'err', 'ok' ],
       },
-      stdout => {
-        type => [ 'scalar', 'array'],
-        enum => [],
-        arrayItem => {
-          type => 'scalar'
-        },
-        validate =>
-        normalize => 'to array',
+      return => {
+        type => 'scalar',
+        enum => [ 'stdout', 'stderr', 'allSeparate', 'allTogether' ],
+      },
+      silent => {
+        type => 'scalar',
+        enum => [ 'stdout', 'stderr', 'all' ],
+      },
+      exitOnError => {
+        type => [ 'scalar', 'sub' ],
       },
     },
   });
@@ -246,56 +332,63 @@ sub execCmd {
     $cmd .= $arg;
   }
   print ansi "<ansiCmd>$cmd<ansi> . . .\n" if $opt->{v} && $opt->{v} eq 'all';
-  my ($stdout, $stderr) = ('') x 2;
+  my ($stdout, $stderr, $output) = ('') x 2;
   use IPC::Run3;
   run3($cmd, undef,
     sub {
       my $line = shift;
-      $stdout .= $line;
-      print $line;
+      if ( exists $opt->{return} ) {
+        if (hasItem($opt->{return}, qw/stdout allSeparate/)) {
+          $stdout .= $line;
+        } else {
+          $output .= $line;
+        }
+      }
+      print $line unless exists $opt->{silent} && hasItem($opt->{silent}, qw/stdout all/);
     },
     sub {
       my $line = shift;
-      $stderr .= $line;
-      print $line;
+      if ( exists $opt->{return} ) {
+        if (hasItem($opt->{return}, qw/stderr allSeparate/)) {
+          $stderr .= $line;
+        } else {
+          $output .= $line;
+        }
+      }
+      print $line unless exists $opt->{silent} && hasItem($opt->{silent}, qw/stderr all/);
     }
   );
-  # if (hasItem 'stdout', @{_getAsArrayRef($opt->{return})}) {
-  #   $stdout = qx/$cmd/;
-  # } else {
-  #   system($cmd);
-  # }
   my $errorCode = ${^CHILD_ERROR_NATIVE} / 256;# https://stackoverflow.com/questions/3736320/executing-shell-script-with-system-returns-256-what-does-that-mean
-  # print Dumper($errorCode);
   my ($ansi, $prefix) = $errorCode == 0 ? ('OK') x 2 : ('Err', 'ERR');
   print ansi $ansi, "$prefix: <ansiCmd>$cmd\n" if $opt->{v} && (
     $opt->{v} =~ /^all/ ||
     $opt->{v} eq 'ok' && $errorCode == 0 ||
     $opt->{v} eq 'err' && $errorCode != 0 ||
   0);
-  my @optReturn = @{_getAsArrayRef($opt->{return})};
-  if ( !wantarray ) {
-    my $item = shift @optReturn;
-    if (defined $item) {
-      if ($item eq 'stdout') {
-        return $stdout;
-      } elsif ($item eq 'stderr') {
-        return $stderr;
-      }
-    }
+  my $exitOnError = exists $opt->{exitOnError} && $opt->{exitOnError};
+  exit $errorCode if $exitOnError && (
+    typeOfValue $exitOnError eq 'sub' ? $exitOnError->($errorCode) : $errorCode
+  );
+  if (!exists $opt->{return}) {
+    die Dumper({err => 'wantarray while $opt->{return} not exists', opt => $opt}) if wantarray;
     return $errorCode;
   } else {
-    my @result = ();
-    foreach my $item (@optReturn) {
-      if (defined $item) {
-        if ($item eq 'stdout') {
-          push @result, $stdout;
-        } elsif ($item eq 'stderr') {
-          push @result, $stderr;
-        }
-      }
+    my @result;
+    if ($opt->{return} eq 'stdout') {
+      push @result, $stdout;
+    } elsif ($opt->{return} eq 'stderr') {
+      push @result, $stderr;
+    } elsif ($opt->{return} eq 'allSeparate') {
+      push @result, $stdout, $stderr;
+    } else {
+      push @result, $output;
     }
-    push @result, $errorCode;
+    push @result, $errorCode unless $exitOnError;
+    if ( scalar @result == 1 ) {
+      return wantarray ? @result : $result[0];
+    } else {
+      die Dumper({err => '!wantarray while $opt->{return}' . ($exitOnError ? '' : ' and no $opt->{exitOnError}') , opt => $opt}) unless wantarray;
+    }
     return @result;
   }
 }
@@ -332,7 +425,7 @@ sub gitIsChangedFile($;$) {
 
   my @command = ! $dir ? () : ('cd', $dir, '&&');
   push @command, qw/git update-index -q --refresh && git diff-index --name-only HEAD --/; #" | grep -Fx \"$fileName\" >/dev/null 2>&1";
-  my ($stdout, $errorCode) = execCmd({ return => 'stdout', v => 'err' }, @command); exit $errorCode if $errorCode;
+  my $stdout = execCmd({ v => 'err', return => 'stdout', silent => 'stdout', exitOnError => 1 }, @command);
   scalar grep { $_ eq $fileName } split /\n/, $stdout;
 }
 
