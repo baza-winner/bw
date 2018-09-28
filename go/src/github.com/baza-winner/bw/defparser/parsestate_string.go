@@ -4,9 +4,9 @@ package defparser
 
 import "strconv"
 
-const _ParseState_name = "expectSpaceOrValueexpectSpaceOrArrayItemexpectDigitexpectDigitOrUnderscoreOrDotexpectDigitOrUnderscoreexpectDoubleQuotedStringContentexpectSingleQuotedStringContentexpectDoubleQuotedStringEscapedContentexpectSingleQuotedStringEscapedContentexpectWordexpectKeytokenFinishedunexpectedCharexpectArrayItemSeparatorOrSpaceOrArrayValueexpectMapKeySeparatorOrSpaceexpectMapKeySeparatorOrSpaceOrMapValueexpectSpaceOrMapValueexpectRocketexpectMapValueSeparatorOrSpaceOrMapValueexpectSpaceOrMapKeyexpectMapValueSeparatorOrSpaceOrMapKeyexpectDoubleQuotedKeyContentexpectSingleQuotedKeyContentexpectDoubleQuotedKeyEscapedContentexpectSingleQuotedKeyEscapedContent"
+const _ParseState_name = "expectSpaceOrValueexpectSpaceOrArrayItemexpectDigitexpectDigitOrUnderscoreOrDotexpectDigitOrUnderscoreexpectDoubleQuotedStringContentexpectSingleQuotedStringContentexpectDoubleQuotedStringEscapedContentexpectSingleQuotedStringEscapedContentexpectWordexpectKeytokenFinishedunexpectedCharexpectArrayItemSeparatorOrSpaceOrArrayValueexpectMapKeySeparatorOrSpaceexpectMapKeySeparatorOrSpaceOrMapValueexpectSpaceOrMapValueexpectRocketexpectMapValueSeparatorOrSpaceOrMapValueexpectSpaceOrMapKeyexpectMapValueSeparatorOrSpaceOrMapKeyexpectDoubleQuotedKeyContentexpectSingleQuotedKeyContentexpectDoubleQuotedKeyEscapedContentexpectSingleQuotedKeyEscapedContentexpectSpaceOrQwItemOrDelimiterexpectEndOfQwItemexpectArrayItemSeparatorOrSpace"
 
-var _ParseState_index = [...]uint16{0, 18, 40, 51, 79, 102, 133, 164, 202, 240, 250, 259, 272, 286, 329, 357, 395, 416, 428, 468, 487, 525, 553, 581, 616, 651}
+var _ParseState_index = [...]uint16{0, 18, 40, 51, 79, 102, 133, 164, 202, 240, 250, 259, 272, 286, 329, 357, 395, 416, 428, 468, 487, 525, 553, 581, 616, 651, 681, 698, 729}
 
 func (i ParseState) String() string {
 	if i >= ParseState(len(_ParseState_index)-1) {

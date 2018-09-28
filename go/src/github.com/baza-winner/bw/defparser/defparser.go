@@ -1,8 +1,11 @@
 package defparser
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/baza-winner/bw/ansi"
 	"github.com/baza-winner/bw/core"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -37,6 +40,10 @@ const (
 	expectSingleQuotedKeyContent
 	expectDoubleQuotedKeyEscapedContent
 	expectSingleQuotedKeyEscapedContent
+	// expectQwStartDelimiter
+	expectSpaceOrQwItemOrDelimiter
+	expectEndOfQwItem
+	expectArrayItemSeparatorOrSpace
 )
 
 //go:generate stringer -type=ParseState
@@ -46,6 +53,7 @@ type ParseStackItemType uint16
 const (
 	parseStackItemArray ParseStackItemType = iota
 	parseStackItemQw
+	parseStackItemQwItem
 	parseStackItemMap
 	parseStackItemNumber
 	parseStackItemString
@@ -60,9 +68,41 @@ type ParseStackItem struct {
 	pos        int
 	itemArray  []interface{}
 	itemMap    map[string]interface{}
+	delimiter  rune
 	currentKey string
 	itemString string
 	value      interface{}
+}
+
+func (self ParseStackItem) map4Json() (result map[string]interface{}) {
+	result = map[string]interface{}{}
+	result["itemType"] = self.itemType.String()
+	result["pos"] = self.pos
+	switch self.itemType {
+	case parseStackItemArray:
+		result["itemArray"] = self.itemArray
+		result["value"] = self.value
+	case parseStackItemQw:
+		result["delimiter"] = string(self.delimiter)
+		result["itemArray"] = self.itemArray
+		result["value"] = self.value
+	case parseStackItemQwItem:
+		result["delimiter"] = string(self.delimiter)
+		result["itemString"] = self.itemString
+	case parseStackItemMap:
+		result["itemMap"] = self.itemMap
+		result["value"] = self.value
+	case parseStackItemNumber, parseStackItemString, parseStackItemWord, parseStackItemKey:
+		result["itemString"] = self.itemString
+		result["value"] = self.value
+	}
+	return
+}
+
+func (self ParseStackItem) String() (result string) {
+	bytes, _ := json.MarshalIndent(self.map4Json(), ``, `  `)
+	result = string(bytes[:]) // https://stackoverflow.com/questions/14230145/what-is-the-best-way-to-convert-byte-array-to-string/18615786#18615786
+	return
 }
 
 func getPosTitle(pos int) (posTitle string) {
@@ -74,24 +114,65 @@ func getPosTitle(pos int) (posTitle string) {
 	return
 }
 
-func getTopStackItem(stack []ParseStackItem, itemType ParseStackItemType, pos int, state ParseState) (stackItem *ParseStackItem, err error) {
+func getTopStackItem(stack []ParseStackItem, itemType ParseStackItemType, pos int, state ParseState) (stackItem *ParseStackItem) {
 	if !(len(stack) >= 1 && stack[len(stack)-1].itemType == itemType) {
-		return nil, core.Error("<ansiOutline>stack<ansi> (<ansiSecondaryLiteral>%v<ansi>) expects to have top item of type <ansiPrimaryLiteral>%s<ansi> while at "+getPosTitle(pos)+" and <ansiOutline>state <ansiSecondaryLiteral>%s", stack, itemType, state)
+		log.Panicf(ansi.Ansi(`Err`, "<ansiOutline>stack<ansi> (<ansiSecondaryLiteral>%+v<ansi>) expects to have top item of type <ansiPrimaryLiteral>%s<ansi> while at "+getPosTitle(pos)+" and <ansiOutline>state <ansiSecondaryLiteral>%s"), stack, itemType, state)
 	}
 	stackItem = &stack[len(stack)-1]
 	return
 }
 
+type ParseStack []ParseStackItem
+
+func (self ParseStack) String() (result string) {
+	array4Json := []map[string]interface{}{}
+	for _, item := range self {
+		array4Json = append(array4Json, item.map4Json())
+	}
+	bytes, _ := json.MarshalIndent(array4Json, ``, `  `)
+	result = string(bytes[:]) // https://stackoverflow.com/questions/14230145/what-is-the-best-way-to-convert-byte-array-to-string/18615786#18615786
+	return
+}
+
 func Parse(source string) (result interface{}, err error) {
 	state := expectSpaceOrValue
-	stack := []ParseStackItem{}
+	stack := ParseStack{}
 	var stackItem *ParseStackItem
 	var pos int
 	var char rune
 	var wasState ParseState
 	for pos, char = range source {
+
+		needFinishTopStackItem := false
 		wasState = state
 		switch state {
+		case expectSpaceOrQwItemOrDelimiter:
+			stackItem = getTopStackItem(stack, parseStackItemQw, pos, state)
+			switch {
+			case unicode.IsSpace(char):
+			case char == stackItem.delimiter:
+				needFinishTopStackItem = true
+			default:
+				stack = append(stack, ParseStackItem{itemType: parseStackItemQwItem, pos: pos, itemString: string(char), delimiter: stackItem.delimiter})
+				state = expectEndOfQwItem
+			}
+		case expectEndOfQwItem:
+			stackItem = getTopStackItem(stack, parseStackItemQwItem, pos, state)
+			switch {
+			case unicode.IsSpace(char) || char == stackItem.delimiter:
+				needFinishTopStackItem = true
+			default:
+				stackItem.itemString += string(char)
+			}
+		case expectArrayItemSeparatorOrSpace:
+			switch {
+			case unicode.IsSpace(char):
+				state = expectArrayItemSeparatorOrSpaceOrArrayValue
+			case char == ',':
+				state = expectSpaceOrArrayItem
+			default:
+				state = unexpectedChar
+			}
 		case expectSpaceOrMapKey, expectMapValueSeparatorOrSpaceOrMapKey:
 			switch {
 			case unicode.IsSpace(char):
@@ -107,11 +188,8 @@ func Parse(source string) (result interface{}, err error) {
 			case char == ',' && state == expectMapValueSeparatorOrSpaceOrMapKey:
 				state = expectSpaceOrMapKey
 			case char == '}':
-				if stackItem, err = getTopStackItem(stack, parseStackItemMap, pos, state); err != nil {
-					return nil, err
-				} else if err = finishTopStackItem(&stack, &state); err != nil {
-					return nil, err
-				}
+				stackItem = getTopStackItem(stack, parseStackItemMap, pos, state)
+				needFinishTopStackItem = true
 			default:
 				state = unexpectedChar
 			}
@@ -134,11 +212,8 @@ func Parse(source string) (result interface{}, err error) {
 				stack = append(stack, ParseStackItem{itemType: parseStackItemArray, pos: pos, itemArray: []interface{}{}})
 				state = expectSpaceOrArrayItem
 			case char == ']' && (state == expectSpaceOrArrayItem || state == expectArrayItemSeparatorOrSpaceOrArrayValue):
-				if stackItem, err = getTopStackItem(stack, parseStackItemArray, pos, state); err != nil {
-					return nil, err
-				} else if err = finishTopStackItem(&stack, &state); err != nil {
-					return nil, err
-				}
+				stackItem = getTopStackItem(stack, parseStackItemArray, pos, state)
+				needFinishTopStackItem = true
 			case char == '-' || char == '+' || unicode.IsNumber(char):
 				stack = append(stack, ParseStackItem{itemType: parseStackItemNumber, pos: pos, itemString: string(char)})
 				if unicode.IsNumber(char) {
@@ -163,29 +238,23 @@ func Parse(source string) (result interface{}, err error) {
 			}
 
 		case expectWord:
-			if stackItem, err = getTopStackItem(stack, parseStackItemWord, pos, state); err != nil {
-				return nil, err
-			}
+			stackItem = getTopStackItem(stack, parseStackItemWord, pos, state)
 			if unicode.IsLetter(char) {
 				stackItem.itemString = stackItem.itemString + string(char)
-			} else if err = finishTopStackItem(&stack, &state); err != nil {
-				return nil, err
+			} else {
+				needFinishTopStackItem = true
 			}
 
 		case expectKey:
-			if stackItem, err = getTopStackItem(stack, parseStackItemKey, pos, state); err != nil {
-				return nil, err
-			}
+			stackItem = getTopStackItem(stack, parseStackItemKey, pos, state)
 			if unicode.IsLetter(char) {
 				stackItem.itemString = stackItem.itemString + string(char)
-			} else if err = finishTopStackItem(&stack, &state); err != nil {
-				return nil, err
+			} else {
+				needFinishTopStackItem = true
 			}
 
 		case expectDigit, expectDigitOrUnderscore, expectDigitOrUnderscoreOrDot:
-			if stackItem, err = getTopStackItem(stack, parseStackItemNumber, pos, state); err != nil {
-				return nil, err
-			}
+			stackItem = getTopStackItem(stack, parseStackItemNumber, pos, state)
 			if state == expectDigitOrUnderscoreOrDot {
 				switch {
 				case char == '.':
@@ -194,9 +263,7 @@ func Parse(source string) (result interface{}, err error) {
 				case unicode.IsNumber(char) || char == '_':
 					stackItem.itemString = stackItem.itemString + string(char)
 				default:
-					if err = finishTopStackItem(&stack, &state); err != nil {
-						return nil, err
-					}
+					needFinishTopStackItem = true
 				}
 			} else {
 				if unicode.IsDigit(char) || (state == expectDigitOrUnderscore) && char == '_' {
@@ -206,7 +273,6 @@ func Parse(source string) (result interface{}, err error) {
 					}
 				} else {
 					state = unexpectedChar
-					// return nil, core.Error("unexpected <ansiOutline>char <ansiPrimaryLiteral>%+q<ansi> (code <ansiSecondaryLiteral>%v<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>%d while <ansiOutline>state <ansiSecondaryLiteral>%s", char, char, pos, state)
 				}
 			}
 
@@ -224,13 +290,9 @@ func Parse(source string) (result interface{}, err error) {
 				expectDoubleQuotedStringEscapedContent,
 				expectSingleQuotedStringContent,
 				expectSingleQuotedStringEscapedContent:
-				if stackItem, err = getTopStackItem(stack, parseStackItemString, pos, state); err != nil {
-					return nil, err
-				}
+				stackItem = getTopStackItem(stack, parseStackItemString, pos, state)
 			default:
-				if stackItem, err = getTopStackItem(stack, parseStackItemKey, pos, state); err != nil {
-					return nil, err
-				}
+				stackItem = getTopStackItem(stack, parseStackItemKey, pos, state)
 			}
 			switch state {
 			case
@@ -240,9 +302,7 @@ func Parse(source string) (result interface{}, err error) {
 				expectSingleQuotedStringContent:
 				if (state == expectDoubleQuotedStringContent || state == expectDoubleQuotedKeyContent) && char == '"' ||
 					(state == expectSingleQuotedStringContent || state == expectSingleQuotedKeyContent) && char == '\'' {
-					if err = finishTopStackItem(&stack, &state); err != nil {
-						return nil, err
-					}
+					needFinishTopStackItem = true
 				} else if char == '\\' {
 					switch state {
 					case expectDoubleQuotedStringContent:
@@ -327,60 +387,22 @@ func Parse(source string) (result interface{}, err error) {
 			}
 
 		default:
-			return nil, core.Error("unexpected <ansiOutline>state<ansi> <ansiPrimaryLiteral>%s<ansi> while at pos <ansiSecondaryLiteral>%d", state, pos)
+			log.Panicf(ansi.Ansi(`Err`, "unexpected <ansiOutline>state <ansiSecondaryLiteral>%s<ansi> <ansiOutline>pos <ansiSecondaryLiteral>%d <ansiOutline>stack <ansiSecondaryLiteral>%s"), state, pos, stack)
 		}
 
-		if state == tokenFinished && len(stack) > 1 {
-			var stackSubItem ParseStackItem
-			stackSubItem, stack = stack[len(stack)-1], stack[:len(stack)-1] // https://github.com/golang/go/wiki/SliceTricks
-			stackItem = &stack[len(stack)-1]
-			switch stackItem.itemType {
-			case parseStackItemArray:
-				stackItem.itemArray = append(stackItem.itemArray, stackSubItem.value)
-				switch stackSubItem.itemType {
-				case parseStackItemNumber, parseStackItemWord:
-					switch {
-					case unicode.IsSpace(char):
-						state = expectArrayItemSeparatorOrSpaceOrArrayValue
-					case char == ',':
-						state = expectSpaceOrArrayItem
-					default:
-						state = unexpectedChar
-					}
-				default:
-					state = expectArrayItemSeparatorOrSpaceOrArrayValue
-				}
-			case parseStackItemMap:
-				switch stackSubItem.itemType {
-				case parseStackItemKey:
-					stackItem.currentKey = stackSubItem.itemString
-					state = expectMapKeySeparatorOrSpace
-				default:
-					stackItem.itemMap[stackItem.currentKey] = stackSubItem.value
-					switch stackSubItem.itemType {
-					case parseStackItemNumber, parseStackItemWord:
-						switch {
-						case unicode.IsSpace(char):
-							state = expectMapValueSeparatorOrSpaceOrMapKey
-						case char == ',':
-							state = expectSpaceOrMapKey
-						default:
-							state = unexpectedChar
-						}
-					default:
-						state = expectMapValueSeparatorOrSpaceOrMapKey
-					}
-				}
-			default:
-				return nil, core.Error("unexpected <ansiOutline>stackItem <ansiSecondaryLiteral>%v<ansi> can not have subitem %v", stackItem, stackSubItem)
+		if needFinishTopStackItem {
+			log.Printf(ansi.Ansi(`Err`, `needFinishTopStackItem: <ansiOutline>stack <ansiSecondaryLiteral>%s`), stack)
+			if stack, state, err = finishTopStackItem(stack, state, &char); err != nil {
+				return nil, err
 			}
 		}
+
 		if state == unexpectedChar {
 			break
 		}
 	}
 	if state == unexpectedChar {
-		return nil, core.Error("unexpected <ansiOutline>char <ansiPrimaryLiteral>%+q<ansi> (code <ansiSecondaryLiteral>%v<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>%d while <ansiOutline>state <ansiSecondaryLiteral>%s", char, char, pos, wasState)
+		return nil, core.Error("unexpected <ansiOutline>char <ansiPrimaryLiteral>%+q<ansi> (code <ansiSecondaryLiteral>%v<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>%d<ansi> while <ansiOutline>state <ansiSecondaryLiteral>%s", char, char, pos, wasState)
 	}
 
 	switch len(stack) {
@@ -389,7 +411,7 @@ func Parse(source string) (result interface{}, err error) {
 	case 1:
 		switch state {
 		case expectDigitOrUnderscore, expectDigitOrUnderscoreOrDot, expectWord:
-			if err = finishTopStackItem(&stack, &state); err != nil {
+			if stack, state, err = finishTopStackItem(stack, state, nil); err != nil {
 				return nil, err
 			}
 		}
@@ -401,9 +423,13 @@ func Parse(source string) (result interface{}, err error) {
 			return
 		}
 	default:
-		return nil, core.Error("<ansiOutline>stack<ansi> (<ansiSecondaryLiteral>%v<ansi>) expects to have one item at end of source and while <ansiOutline>state<ansi> <ansiSecondaryLiteral>%s", stack, state)
+		return nil, core.Error("<ansiOutline>stack<ansi> (<ansiSecondaryLiteral>%+v<ansi>) expects to have one item at end of source and while <ansiOutline>state<ansi> <ansiSecondaryLiteral>%s", stack, state)
 	}
 
+	return
+}
+
+func processCharAtPos(stack *ParseStack, pos int, char rune, state ParseState) (newState ParseState, err error) {
 	return
 }
 
@@ -414,8 +440,40 @@ const MinInt = -MaxInt - 1
 
 var underscoreRegexp = regexp.MustCompile("[_]+")
 
-func finishTopStackItem(stackItem *ParseStackItem, state *ParseState) (err error) {
+func finishTopStackItem(stack ParseStack, state ParseState, charPtr *rune) (newStack ParseStack, newState ParseState, err error) {
+	if len(stack) < 1 {
+		log.Panic(`stack should have at least one item`)
+	}
+	newStack = stack
+	newState = tokenFinished
+	stackItem := &stack[len(stack)-1]
 	switch stackItem.itemType {
+
+	case parseStackItemQwItem:
+		if len(stack) < 2 {
+			log.Panicf("len(stack) < 2")
+		}
+		stackSubItem := stack[len(stack)-1]
+		newStack = stack[:len(stack)-1]
+		stackItem = getTopStackItem(newStack, parseStackItemQw, stackSubItem.pos, state)
+		stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemString)
+		if charPtr == nil {
+			log.Panicf("charPtr == nil")
+		}
+		if unicode.IsSpace(*charPtr) {
+			newState = expectSpaceOrQwItemOrDelimiter
+		} else {
+			stack = newStack
+			if len(stack) < 2 {
+				log.Panicf("len(stack) < 2")
+			}
+			stackSubItem := stack[len(stack)-1]
+			newStack = stack[:len(stack)-1]
+			stackItem = getTopStackItem(newStack, parseStackItemArray, stackSubItem.pos, state)
+			stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
+			newState = expectArrayItemSeparatorOrSpace
+		}
+		return
 
 	case parseStackItemNumber:
 		source := underscoreRegexp.ReplaceAllLiteralString(stackItem.itemString, ``)
@@ -449,9 +507,36 @@ func finishTopStackItem(stackItem *ParseStackItem, state *ParseState) (err error
 			stackItem.value = false
 		case "nil":
 			stackItem.value = nil
-		// case "qw":
+		case "qw":
+			if len(stack) >= 2 && stack[len(stack)-2].itemType == parseStackItemArray && charPtr != nil {
+				newState = expectSpaceOrQwItemOrDelimiter
+				switch *charPtr {
+				case '<':
+					stackItem.delimiter = '>'
+				case '[':
+					stackItem.delimiter = ']'
+				case '(':
+					stackItem.delimiter = ')'
+				case '{':
+					stackItem.delimiter = '}'
+				default:
+					switch {
+					case unicode.IsPunct(*charPtr) || unicode.IsSymbol(*charPtr):
+						stackItem.delimiter = *charPtr
+					default:
+						newState = unexpectedChar
+					}
+				}
+				if newState == expectSpaceOrQwItemOrDelimiter {
+					stackItem.itemType = parseStackItemQw
+					stackItem.itemArray = []interface{}{}
+				}
+			} else {
+				err = core.Error("unexpected word <ansiPrimaryLiteral>%s<ansi> in non array context at "+getPosTitle(stackItem.pos), stackItem.itemString)
+			}
+			return
 		default:
-			err = core.Error("unexpected word <ansiPrimaryLiteral>%s<ansi> at "+getPosTitle(stackItem.pos), stackItem.itemString)
+			err = core.Error("unexpected word <ansiPrimaryLiteral>%s<ansi> at "+getPosTitle(stackItem.pos)+" <ansiOutline>stack <ansiSecondaryLiteral>%s", stackItem.itemString, stack)
 		}
 
 	case parseStackItemArray:
@@ -465,5 +550,63 @@ func finishTopStackItem(stackItem *ParseStackItem, state *ParseState) (err error
 	default:
 		err = core.Error("can not finish item of type <ansiPrimaryLiteral>%s<ansi> at "+getPosTitle(stackItem.pos), stackItem.itemType)
 	}
+	if err != nil {
+		return
+	}
+
+	stack = newStack
+	if len(stack) > 1 && charPtr != nil {
+		var stackSubItem ParseStackItem
+		stackSubItem, newStack = stack[len(stack)-1], stack[:len(stack)-1] // https://github.com/golang/go/wiki/SliceTricks
+		stackItem = &newStack[len(newStack)-1]
+		switch stackItem.itemType {
+		case parseStackItemArray:
+			stackItem.itemArray = append(stackItem.itemArray, stackSubItem.value)
+			switch stackSubItem.itemType {
+			case parseStackItemNumber, parseStackItemWord:
+				switch {
+				case unicode.IsSpace(*charPtr):
+					newState = expectArrayItemSeparatorOrSpaceOrArrayValue
+				case *charPtr == ',':
+					newState = expectSpaceOrArrayItem
+				default:
+					newState = unexpectedChar
+				}
+			default:
+				newState = expectArrayItemSeparatorOrSpaceOrArrayValue
+			}
+
+		case parseStackItemMap:
+			switch stackSubItem.itemType {
+			case parseStackItemKey:
+				stackItem.currentKey = stackSubItem.itemString
+				newState = expectMapKeySeparatorOrSpace
+			default:
+				stackItem.itemMap[stackItem.currentKey] = stackSubItem.value
+				switch stackSubItem.itemType {
+				case parseStackItemNumber, parseStackItemWord:
+					switch {
+					case unicode.IsSpace(*charPtr):
+						newState = expectMapValueSeparatorOrSpaceOrMapKey
+					case *charPtr == ',':
+						newState = expectSpaceOrMapKey
+					default:
+						newState = unexpectedChar
+					}
+				default:
+					newState = expectMapValueSeparatorOrSpaceOrMapKey
+				}
+			}
+		default:
+			err = core.Error("<ansiOutline>stackItem <ansiSecondaryLiteral>%s<ansi> can not have subitem <ansiSecondaryLiteral>%s<ansiOutline>stack<ansiSecondaryLiteral>%s", stackItem, stackSubItem, stack)
+		}
+	} else {
+		charPtrTitle := ``
+		if charPtr != nil {
+			charPtrTitle = fmt.Sprintf(` <ansiOutline>*charPtr <ansiSecondaryLiteral>%v`, *charPtr)
+		}
+		log.Printf(ansi.Ansi(`Err`, `finishTopStackItem: <ansiOutline>stack <ansiSecondaryLiteral>%s <ansiOutline>charPtr <ansiSecondaryLiteral>%v`+charPtrTitle), stack, charPtr)
+	}
+
 	return
 }

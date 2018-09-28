@@ -84,41 +84,27 @@ func TestParse(t *testing.T) {
 			result: []interface{}{0, "so'me", "so\"me"},
 			err:    nil,
 		},
-		"qw/": {
-			source: `[ qw/one two tree/ ]`,
-			result: []interface{}{"one", "two", "tree"},
-			err:    nil,
+		"qw": {
+			source: `[ 
+				qw/one two tree/ 
+				qw|one two tree| 
+				qw#one two tree# 
+				qw[one two tree]
+				qw<one two tree>
+				qw(one two tree)
+				qw{one two tree}
+			]`,
+			result: []interface{}{
+				"one", "two", "tree",
+				"one", "two", "tree",
+				"one", "two", "tree",
+				"one", "two", "tree",
+				"one", "two", "tree",
+				"one", "two", "tree",
+				"one", "two", "tree",
+			},
+			err: nil,
 		},
-		// "qw|": {
-		// 	source: `[ qw|one two tree| ]`,
-		// 	result: []interface{}{"one", "two", "tree"},
-		// 	err:    nil,
-		// },
-		// "qw#": {
-		// 	source: `[ qw#one two tree# ]`,
-		// 	result: []interface{}{"one", "two", "tree"},
-		// 	err:    nil,
-		// },
-		// "qw[": {
-		// 	source: `[ qw[one two tree] ]`,
-		// 	result: []interface{}{"one", "two", "tree"},
-		// 	err:    nil,
-		// },
-		// "qw<": {
-		// 	source: `[ qw<one two tree> ]`,
-		// 	result: []interface{}{"one", "two", "tree"},
-		// 	err:    nil,
-		// },
-		// "qw(": {
-		// 	source: `[ qw(one two tree) ]`,
-		// 	result: []interface{}{"one", "two", "tree"},
-		// 	err:    nil,
-		// },
-		// "qw{": {
-		// 	source: `[ qw{one two tree} ]`,
-		// 	result: []interface{}{"one", "two", "tree"},
-		// 	err:    nil,
-		// },
 		"map": {
 			source: `{
 				some => 0,
@@ -137,7 +123,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for testName, test := range tests {
-		t.Logf("Running test case %s", testName)
+		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)
 		if err != nil {
 			if err != test.err {
