@@ -75,7 +75,8 @@ func GetValidVal(whereVal string, val interface{}, def map[string]interface{}, w
 				var defKeys map[string]interface{}
 				if defKeys, err = GetMapKeyIfExists(whereDef, def, `keys`); defKeys != nil && err == nil {
 					for key := range valMap {
-						if keyVal, ok := defKeys[key]; !ok {
+						// if keyVal, ok := defKeys[key]; !ok {
+						if _, ok := defKeys[key]; !ok {
 							err = Error(`<ansiOutline>%s<ansi> (<ansiSecondaryLiteral>%v<ansi>) has unexpected key <ansiPrimaryLiteral>%s`, whereVal, val, key)
 							return
 						}

@@ -1,1 +1,4 @@
 pkg
+bin
+src/github.com/iancoleman
+src/golang.org
