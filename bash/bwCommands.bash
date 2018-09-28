@@ -1282,6 +1282,17 @@ _completionOnly_description='Обновить только completion-опред
 _initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
+  if [[ -n $1 ]]; then
+    eval "$bwProjShortcut()"' {
+      [[ $1 == update ]] && return
+      local projDir
+      _prepareProjDir '"$bwProjShortcut"' || return $?
+      _bwDir="$_bwDir" _bwFileSpec="$_bwFileSpec" _bwSslFileSpecPrefix="$_bwSslFileSpecPrefix" projDir="$projDir" OSTYPE="$OSTYPE" bwProjectVersion="'"$1"'" BW_SELF_UPDATE_SOURCE="$BW_SELF_UPDATE_SOURCE" hostUser="$(whoami)" "$projDir/bin/dip.pl" "$@"
+    }'
+    return
+  fi
+  # local fileSpec; fileSpec=$(_getSelfFileSpec 2)
+  # local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
   eval "$_codeToDeclareLocalBwProjVars" && _prepareBwProjVars || return $?
   eval export "_$bwProjShortcut"'DockerImageName="${bwProjDockerImageName:-bazawinner/dev-$bwProjShortcut}"'
   local -a funcNamesToRegen=()
