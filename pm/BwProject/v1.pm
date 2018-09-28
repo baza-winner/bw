@@ -402,7 +402,13 @@ sub _cleanTempDockerFiles($) {
 sub removeFilesByTemplate($$) {
   my $qr = validateStruct('removeFilesByTemplate first arg', shift, { type => 'regexp' });
   my $dir = validateStruct('removeFilesByTemplate second arg', shift, { type => 'scalar' });
-
+  {
+    my $dir = "$cnf->{projDir}/docker";
+    opendir my $dh, $dir or die;
+    my @enitiesToRemove = grep { /\.(?:pid|queue)$/ } readdir $dh;
+    closedir $dh;
+    unlink map { "$dir/$_" } @enitiesToRemove;
+  }
 }
 
 sub _prepareDockerComposeYml {

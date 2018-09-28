@@ -1269,6 +1269,25 @@ _completionOnly_description='Обновить только completion-опред
 _initBwProjCmd() {
   local fileSpec; fileSpec=$(_getSelfFileSpec 2)
   local bwProjShortcut; bwProjShortcut=$(basename "$fileSpec" .bash)
+  if [[ $1 == go ]]; then
+    eval "$bwProjShortcut()"' {
+      [[ $1 == update ]] && return
+      local projDir
+      _prepareProjDir '"$bwProjShortcut"' || return $?
+      if ! _isInDocker; then
+        if [[ $OSTYPE =~ ^darwin ]]; then
+          GOOS=darwin GOARCH=amd64 GOPATH="$_bwDir/go" go build -o "$projDir/bin/'"$bwProjShortcut"'.darwin.amd64" "$projDir/bin/'"$bwProjShortcut"'.go" || return $?
+        fi
+        GOOS=linux GOARCH=amd64 GOPATH="$_bwDir/go" go build -o "$projDir/bin/'"$bwProjShortcut"'.linux.amd64" "$projDir/bin/'"$bwProjShortcut"'.go" || return $?
+      fi
+      local goos=linux
+      if [[ $OSTYPE =~ ^darwin ]]; then
+        goos=darwin
+      fi
+      _bwDir="$_bwDir" _bwFileSpec="$_bwFileSpec" _bwSslFileSpecPrefix="$_bwSslFileSpecPrefix" projDir="$projDir" OSTYPE="$OSTYPE" bwProjectVersion="'"$1"'" BW_SELF_UPDATE_SOURCE="$BW_SELF_UPDATE_SOURCE" hostUser="$(whoami)" "$projDir/bin/'"$bwProjShortcut"'.${goos}.amd64" "$@"
+    }'
+    return
+  fi
   if [[ -n $1 ]]; then
     eval "$bwProjShortcut()"' {
       [[ $1 == update ]] && return
