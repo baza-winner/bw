@@ -55,7 +55,67 @@ func (pfa *pfaStruct) getTopStackItem(itemType parseStackItemType, pos int) (sta
 
 type pfaPrimaryStateMethod func(*pfaStruct, *rune, int) error
 
-var pfaPrimaryStateMethods map[parsePrimaryState]pfaPrimaryStateMethod
+func _expectEOF(pfa *pfaStruct, charPtr *rune, pos int) error {
+	if charPtr == nil {
+		pfa.state.setPrimary(expectEOF)
+	} else if pfa.state.secondary != orSpace || !unicode.IsSpace(*charPtr) {
+		return unexpectedCharError{}
+	}
+	return nil
+}
+
+func _expectValueOrSpace(pfa *pfaStruct, charPtr *rune, pos int) error {
+	if charPtr == nil && len(pfa.stack) == 0 {
+		pfa.state.setPrimary(expectEOF)
+	} else {
+		switch {
+		case *charPtr == '=' && pfa.state.secondary == orMapKeySeparator:
+			pfa.state.setPrimary(expectRocket)
+		case *charPtr == ':' && pfa.state.secondary == orMapKeySeparator:
+			pfa.state.setPrimary(expectValueOrSpace)
+		case *charPtr == ',' && pfa.state.secondary == orArrayItemSeparator:
+			pfa.state.setPrimary(expectValueOrSpace)
+
+		case unicode.IsSpace(*charPtr):
+		case *charPtr == '{':
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemMap, pos: pos, itemMap: map[string]interface{}{}})
+			pfa.state.setPrimary(expectSpaceOrMapKey)
+		case *charPtr == '[':
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, pos: pos, itemArray: []interface{}{}})
+			pfa.state.setPrimary(expectValueOrSpace)
+
+		case *charPtr == ']' && (len(pfa.stack) > 0 && pfa.stack[len(pfa.stack)-1].itemType == parseStackItemArray):
+			_ = pfa.getTopStackItem(parseStackItemArray, pos)
+			pfa.needFinishTopStackItem = true
+
+		case *charPtr == '-' || *charPtr == '+' || unicode.IsDigit(*charPtr):
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, pos: pos, itemString: string(*charPtr)})
+			if unicode.IsDigit(*charPtr) {
+				pfa.state.setSecondary(expectDigit, orUnderscoreOrDot)
+			} else {
+				pfa.state.setPrimary(expectDigit)
+			}
+		case *charPtr == '"' || *charPtr == '\'':
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemString, pos: pos + 1, itemString: ``})
+			if *charPtr == '"' {
+				pfa.state.setTertiary(expectContentOf, doubleQuoted, stringToken)
+			} else {
+				pfa.state.setTertiary(expectContentOf, singleQuoted, stringToken)
+			}
+		case unicode.IsLetter(*charPtr):
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, pos: pos, itemString: string(*charPtr)})
+			pfa.state.setPrimary(expectWord)
+		default:
+			return unexpectedCharError{}
+		}
+	}
+	return nil
+}
+
+var pfaPrimaryStateMethods = map[parsePrimaryState]pfaPrimaryStateMethod{
+	expectEOF:          _expectEOF,
+	expectValueOrSpace: _expectValueOrSpace,
+}
 
 func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 	var stackItem *parseStackItem
@@ -63,58 +123,59 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 	switch pfa.state.primary {
 
 	case expectEOF:
-		if charPtr == nil {
-			pfa.state.setPrimary(expectEOF)
-		} else if pfa.state.secondary != orSpace || !unicode.IsSpace(*charPtr) {
-			return unexpectedCharError{}
-		}
+		err = pfaPrimaryStateMethods[pfa.state.primary](pfa, charPtr, pos)
+		// if charPtr == nil {
+		// 	pfa.state.setPrimary(expectEOF)
+		// } else if pfa.state.secondary != orSpace || !unicode.IsSpace(*charPtr) {
+		// 	return unexpectedCharError{}
+		// }
 
-	case
-		expectValueOrSpace:
-		if charPtr == nil && len(pfa.stack) == 0 {
-			pfa.state.setPrimary(expectEOF)
-		} else {
-			switch {
-			case *charPtr == '=' && pfa.state.secondary == orMapKeySeparator:
-				pfa.state.setPrimary(expectRocket)
-			case *charPtr == ':' && pfa.state.secondary == orMapKeySeparator:
-				pfa.state.setPrimary(expectValueOrSpace)
-			case *charPtr == ',' && pfa.state.secondary == orArrayItemSeparator:
-				pfa.state.setPrimary(expectValueOrSpace)
+	case expectValueOrSpace:
+		err = pfaPrimaryStateMethods[pfa.state.primary](pfa, charPtr, pos)
+		// if charPtr == nil && len(pfa.stack) == 0 {
+		// 	pfa.state.setPrimary(expectEOF)
+		// } else {
+		// 	switch {
+		// 	case *charPtr == '=' && pfa.state.secondary == orMapKeySeparator:
+		// 		pfa.state.setPrimary(expectRocket)
+		// 	case *charPtr == ':' && pfa.state.secondary == orMapKeySeparator:
+		// 		pfa.state.setPrimary(expectValueOrSpace)
+		// 	case *charPtr == ',' && pfa.state.secondary == orArrayItemSeparator:
+		// 		pfa.state.setPrimary(expectValueOrSpace)
 
-			case unicode.IsSpace(*charPtr):
-			case *charPtr == '{':
-				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemMap, pos: pos, itemMap: map[string]interface{}{}})
-				pfa.state.setPrimary(expectSpaceOrMapKey)
-			case *charPtr == '[':
-				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, pos: pos, itemArray: []interface{}{}})
-				pfa.state.setPrimary(expectValueOrSpace)
+		// 	case unicode.IsSpace(*charPtr):
+		// 	case *charPtr == '{':
+		// 		pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemMap, pos: pos, itemMap: map[string]interface{}{}})
+		// 		pfa.state.setPrimary(expectSpaceOrMapKey)
+		// 	case *charPtr == '[':
+		// 		pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, pos: pos, itemArray: []interface{}{}})
+		// 		pfa.state.setPrimary(expectValueOrSpace)
 
-			case *charPtr == ']' && (len(pfa.stack) > 0 && pfa.stack[len(pfa.stack)-1].itemType == parseStackItemArray):
-				stackItem = pfa.getTopStackItem(parseStackItemArray, pos)
-				pfa.needFinishTopStackItem = true
+		// 	case *charPtr == ']' && (len(pfa.stack) > 0 && pfa.stack[len(pfa.stack)-1].itemType == parseStackItemArray):
+		// 		stackItem = pfa.getTopStackItem(parseStackItemArray, pos)
+		// 		pfa.needFinishTopStackItem = true
 
-			case *charPtr == '-' || *charPtr == '+' || unicode.IsDigit(*charPtr):
-				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, pos: pos, itemString: string(*charPtr)})
-				if unicode.IsDigit(*charPtr) {
-					pfa.state.setSecondary(expectDigit, orUnderscoreOrDot)
-				} else {
-					pfa.state.setPrimary(expectDigit)
-				}
-			case *charPtr == '"' || *charPtr == '\'':
-				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemString, pos: pos + 1, itemString: ``})
-				if *charPtr == '"' {
-					pfa.state.setTertiary(expectContentOf, doubleQuoted, stringToken)
-				} else {
-					pfa.state.setTertiary(expectContentOf, singleQuoted, stringToken)
-				}
-			case unicode.IsLetter(*charPtr):
-				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, pos: pos, itemString: string(*charPtr)})
-				pfa.state.setPrimary(expectWord)
-			default:
-				return unexpectedCharError{}
-			}
-		}
+		// 	case *charPtr == '-' || *charPtr == '+' || unicode.IsDigit(*charPtr):
+		// 		pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, pos: pos, itemString: string(*charPtr)})
+		// 		if unicode.IsDigit(*charPtr) {
+		// 			pfa.state.setSecondary(expectDigit, orUnderscoreOrDot)
+		// 		} else {
+		// 			pfa.state.setPrimary(expectDigit)
+		// 		}
+		// 	case *charPtr == '"' || *charPtr == '\'':
+		// 		pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemString, pos: pos + 1, itemString: ``})
+		// 		if *charPtr == '"' {
+		// 			pfa.state.setTertiary(expectContentOf, doubleQuoted, stringToken)
+		// 		} else {
+		// 			pfa.state.setTertiary(expectContentOf, singleQuoted, stringToken)
+		// 		}
+		// 	case unicode.IsLetter(*charPtr):
+		// 		pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, pos: pos, itemString: string(*charPtr)})
+		// 		pfa.state.setPrimary(expectWord)
+		// 	default:
+		// 		return unexpectedCharError{}
+		// 	}
+		// }
 
 	case expectArrayItemSeparatorOrSpace:
 		switch {
