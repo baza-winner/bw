@@ -15,8 +15,8 @@ type parseStackItem struct {
 	value      interface{}
 }
 
-func (self parseStackItem) map4Json() (result map[string]interface{}) {
-	result = map[string]interface{}{}
+func (self *parseStackItem) getDataForJson() interface{} {
+	result := map[string]interface{}{}
 	result["itemType"] = self.itemType.String()
 	result["pos"] = self.pos
 	switch self.itemType {
@@ -37,11 +37,11 @@ func (self parseStackItem) map4Json() (result map[string]interface{}) {
 		result["itemString"] = self.itemString
 		result["value"] = self.value
 	}
-	return
+	return result
 }
 
-func (self parseStackItem) String() (result string) {
-	bytes, _ := json.MarshalIndent(self.map4Json(), ``, `  `)
+func (stackItem *parseStackItem) String() (result string) {
+	bytes, _ := json.MarshalIndent(stackItem.getDataForJson(), ``, `  `)
 	result = string(bytes[:]) // https://stackoverflow.com/questions/14230145/what-is-the-best-way-to-convert-byte-array-to-string/18615786#18615786
 	return
 }

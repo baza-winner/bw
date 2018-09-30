@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/baza-winner/bw/ansi"
 	"github.com/iancoleman/strcase"
+	"github.com/jimlawless/whereami"
 	"log"
 	"os"
 	"os/exec"
@@ -281,3 +282,19 @@ func ExitWithError(exitCode int, fmtString string, fmtArgs ...interface{}) {
 func Error(msgFmt string, args ...interface{}) error {
 	return errors.New(fmt.Sprintf(ansi.Ansi(`Err`, msgFmt), args...))
 }
+
+func Panic(msgFmt string, args ...interface{}) {
+	log.Panicf(ansi.Ansi(`Err`, msgFmt+` <ansiCmd>at `+whereami.WhereAmI(2)), args...)
+}
+
+// // https://lawlessguy.wordpress.com/2016/04/17/display-file-function-and-line-number-in-go-golang/
+// func WhereAmI(depthList ...int) string {
+// 	var depth int
+// 	if depthList == nil {
+// 		depth = 1
+// 	} else {
+// 		depth = depthList[0]
+// 	}
+// 	function, file, line, _ := runtime.Caller(depth)
+// 	return fmt.Sprintf("File: %s  Function: %s Line: %d", chopPath(file), runtime.FuncForPC(function).Name(), line)
+// }

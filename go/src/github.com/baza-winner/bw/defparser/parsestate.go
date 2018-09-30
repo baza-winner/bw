@@ -14,7 +14,6 @@ const (
 	expectSingleQuotedStringEscapedContent
 	expectWord
 	expectKey
-	tokenFinished
 	unexpectedChar
 	expectArrayItemSeparatorOrSpaceOrArrayValue
 	expectMapKeySeparatorOrSpace
@@ -31,6 +30,8 @@ const (
 	expectSpaceOrQwItemOrDelimiter
 	expectEndOfQwItem
 	expectArrayItemSeparatorOrSpace
+	expectEOF
+	expectSpaceOrEOF
 )
 
 //go:generate stringer -type=parseState

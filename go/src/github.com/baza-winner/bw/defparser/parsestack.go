@@ -6,12 +6,16 @@ import (
 
 type parseStack []parseStackItem
 
-func (stack parseStack) String() (result string) {
-	array4Json := []map[string]interface{}{}
-	for _, item := range stack {
-		array4Json = append(array4Json, item.map4Json())
+func (stack *parseStack) getDataForJson() interface{} {
+	result := []interface{}{}
+	for _, item := range *stack {
+		result = append(result, item.getDataForJson())
 	}
-	bytes, _ := json.MarshalIndent(array4Json, ``, `  `)
+	return result
+}
+
+func (stack *parseStack) String() (result string) {
+	bytes, _ := json.MarshalIndent(stack.getDataForJson(), ``, `  `)
 	result = string(bytes[:]) // https://stackoverflow.com/questions/14230145/what-is-the-best-way-to-convert-byte-array-to-string/18615786#18615786
 	return
 }

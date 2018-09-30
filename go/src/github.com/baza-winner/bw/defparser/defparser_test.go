@@ -8,13 +8,15 @@ import (
 	"testing"
 )
 
+type testParseStruct struct {
+	source string
+	result interface{}
+	err    error
+}
+
 func TestParse(t *testing.T) {
 
-	tests := map[string]struct {
-		source string
-		result interface{}
-		err    error
-	}{
+	tests := map[string]testParseStruct{
 		"unexpected char": {
 			source: `*`,
 			result: nil,
@@ -22,6 +24,11 @@ func TestParse(t *testing.T) {
 		},
 		"zero number": {
 			source: `0`,
+			result: 0,
+			err:    nil,
+		},
+		"zero number space surrounded": {
+			source: ` 0 `,
 			result: 0,
 			err:    nil,
 		},
@@ -55,9 +62,14 @@ func TestParse(t *testing.T) {
 			result: "some",
 			err:    nil,
 		},
+		"double quoted string space surrounded": {
+			source: ` "some" `,
+			result: "some",
+			err:    nil,
+		},
 		"double quoted string with escapes": {
-			source: `"so\"me\nthing"`,
-			result: "so\"me\nthing",
+			source: `"so\"me\n\a\b\f\r\t\vthing"`,
+			result: "so\"me\n\a\b\f\r\t\vthing",
 			err:    nil,
 		},
 		"single quoted string": {
@@ -75,8 +87,13 @@ func TestParse(t *testing.T) {
 			result: true,
 			err:    nil,
 		},
+		"true space surrounded": {
+			source: ` true `,
+			result: true,
+			err:    nil,
+		},
 		"false": {
-			source: `false'`,
+			source: `false`,
 			result: false,
 			err:    nil,
 		},
@@ -91,10 +108,10 @@ func TestParse(t *testing.T) {
 			err:    nil,
 		},
 		"qw": {
-			source: `[ 
-				qw/one two tree/ 
-				qw|one two tree| 
-				qw#one two tree# 
+			source: `[
+				qw/one two tree/
+				qw|one two tree|
+				qw#one two tree#
 				qw[one two tree]
 				qw<one two tree>
 				qw(one two tree)
@@ -113,13 +130,13 @@ func TestParse(t *testing.T) {
 		},
 		"map": {
 			source: `{
-				some => 0,
+				some => [ 0, 100_000, 5_000.5, -3.14 ],
 				thing: true
 				'go\'od' "str\ning"
 				"go\"od" nil
 			}`,
 			result: map[string]interface{}{
-				"some":   0,
+				"some":   []interface{}{0, 100000, 5000.5, -3.14},
 				"thing":  true,
 				"go'od":  "str\ning",
 				"go\"od": nil,
@@ -128,12 +145,14 @@ func TestParse(t *testing.T) {
 		},
 	}
 
-	for testName, test := range tests {
+	testsToRun := tests
+	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
+	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)
 		if err != test.err {
 			if err == nil || test.err == nil || err.Error() != test.err.Error() {
-				fmt.Println(reflect.TypeOf(err), reflect.TypeOf(test.err))
+				// fmt.Println(reflect.TypeOf(err), reflect.TypeOf(test.err))
 				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), test.source, err, test.err)
 			}
 		} else if !reflect.DeepEqual(result, test.result) {

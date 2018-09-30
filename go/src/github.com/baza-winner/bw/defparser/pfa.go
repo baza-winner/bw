@@ -1,10 +1,9 @@
 package defparser
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/baza-winner/bw/ansi"
 	"github.com/baza-winner/bw/core"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,8 +11,22 @@ import (
 )
 
 type pfaStruct struct {
-	stack parseStack
-	state parseState
+	stack  parseStack
+	state  parseState
+	result interface{}
+}
+
+func (pfa *pfaStruct) getDataForJson() interface{} {
+	result := map[string]interface{}{}
+	result["stack"] = pfa.stack.getDataForJson()
+	result["state"] = pfa.state.String()
+	return result
+}
+
+func (pfa *pfaStruct) String() (result string) {
+	bytes, _ := json.MarshalIndent(pfa.getDataForJson(), ``, `  `)
+	result = string(bytes[:]) // https://stackoverflow.com/questions/14230145/what-is-the-best-way-to-convert-byte-array-to-string/18615786#18615786
+	return
 }
 
 type unexpectedCharError struct{}
@@ -31,150 +44,220 @@ func getPosTitle(pos int) (posTitle string) {
 	return
 }
 
-func getTopStackItem(stack []parseStackItem, itemType parseStackItemType, pos int, state parseState) (stackItem *parseStackItem) {
-	if !(len(stack) >= 1 && stack[len(stack)-1].itemType == itemType) {
-		log.Panicf(ansi.Ansi(`Err`, "<ansiOutline>stack<ansi> (<ansiSecondaryLiteral>%+v<ansi>) expects to have top item of type <ansiPrimaryLiteral>%s<ansi> while at "+getPosTitle(pos)+" and <ansiOutline>state <ansiSecondaryLiteral>%s"), stack, itemType, state)
+func (pfa *pfaStruct) getTopStackItem(itemType parseStackItemType, pos int) (stackItem *parseStackItem) {
+	if !(len(pfa.stack) >= 1 && pfa.stack[len(pfa.stack)-1].itemType == itemType) {
+		core.Panic("<ansiOutline>stack<ansi> (<ansiSecondaryLiteral>%+v<ansi>) expects to have top item of type <ansiPrimaryLiteral>%s<ansi> while at "+getPosTitle(pos)+" and <ansiOutline>state <ansiSecondaryLiteral>%s", pfa.stack, itemType, pfa.state)
 	}
-	stackItem = &stack[len(stack)-1]
+	stackItem = &pfa.stack[len(pfa.stack)-1]
 	return
 }
 
-func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
+func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 	var stackItem *parseStackItem
 	needFinishTopStackItem := false
 	switch pfa.state {
+
+	case expectRocket:
+		if charPtr != nil && *charPtr == '>' {
+			pfa.state = expectSpaceOrMapValue
+		} else {
+			return unexpectedCharError{}
+		}
+
+	case expectSpaceOrEOF:
+		if charPtr == nil {
+			pfa.state = expectEOF
+		} else if !unicode.IsSpace(*charPtr) {
+			return unexpectedCharError{}
+		}
+
 	case expectSpaceOrQwItemOrDelimiter:
-		stackItem = getTopStackItem(pfa.stack, parseStackItemQw, pos, pfa.state)
+		stackItem = pfa.getTopStackItem(parseStackItemQw, pos)
 		switch {
-		case unicode.IsSpace(char):
-		case char == stackItem.delimiter:
+		case charPtr == nil:
+			return unexpectedCharError{}
+		case unicode.IsSpace(*charPtr):
+		case *charPtr == stackItem.delimiter:
 			needFinishTopStackItem = true
 		default:
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemQwItem, pos: pos, itemString: string(char), delimiter: stackItem.delimiter})
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemQwItem, pos: pos, itemString: string(*charPtr), delimiter: stackItem.delimiter})
 			pfa.state = expectEndOfQwItem
 		}
+
 	case expectEndOfQwItem:
-		stackItem = getTopStackItem(pfa.stack, parseStackItemQwItem, pos, pfa.state)
+		stackItem = pfa.getTopStackItem(parseStackItemQwItem, pos)
 		switch {
-		case unicode.IsSpace(char) || char == stackItem.delimiter:
+		case charPtr == nil:
+			return unexpectedCharError{}
+		case unicode.IsSpace(*charPtr) || *charPtr == stackItem.delimiter:
 			needFinishTopStackItem = true
 		default:
-			stackItem.itemString += string(char)
+			stackItem.itemString += string(*charPtr)
 		}
+
 	case expectArrayItemSeparatorOrSpace:
 		switch {
-		case unicode.IsSpace(char):
+		case charPtr == nil:
+			return unexpectedCharError{}
+		case unicode.IsSpace(*charPtr):
 			pfa.state = expectArrayItemSeparatorOrSpaceOrArrayValue
-		case char == ',':
+		case *charPtr == ',':
 			pfa.state = expectSpaceOrArrayItem
 		default:
-			err = unexpectedCharError{}
-			return
+			return unexpectedCharError{}
 		}
+
 	case expectSpaceOrMapKey, expectMapValueSeparatorOrSpaceOrMapKey:
 		switch {
-		case unicode.IsSpace(char):
-		case unicode.IsLetter(char):
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, pos: pos, itemString: string(char)})
+		case charPtr == nil:
+			return unexpectedCharError{}
+		case unicode.IsSpace(*charPtr):
+		case unicode.IsLetter(*charPtr):
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, pos: pos, itemString: string(*charPtr)})
 			pfa.state = expectKey
-		case char == '"':
+		case *charPtr == '"':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, pos: pos, itemString: ``})
 			pfa.state = expectDoubleQuotedKeyContent
-		case char == '\'':
+		case *charPtr == '\'':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, pos: pos, itemString: ``})
 			pfa.state = expectSingleQuotedKeyContent
-		case char == ',' && pfa.state == expectMapValueSeparatorOrSpaceOrMapKey:
+		case *charPtr == ',' && pfa.state == expectMapValueSeparatorOrSpaceOrMapKey:
 			pfa.state = expectSpaceOrMapKey
-		case char == '}':
-			stackItem = getTopStackItem(pfa.stack, parseStackItemMap, pos, pfa.state)
+		case *charPtr == '}':
+			stackItem = pfa.getTopStackItem(parseStackItemMap, pos)
 			needFinishTopStackItem = true
 		default:
-			err = unexpectedCharError{}
-			return
+			return unexpectedCharError{}
 		}
+
+	case expectMapKeySeparatorOrSpace:
+		switch {
+		case charPtr == nil:
+			return unexpectedCharError{}
+		case unicode.IsSpace(*charPtr):
+			pfa.state = expectMapKeySeparatorOrSpaceOrMapValue
+		case *charPtr == ':':
+			pfa.state = expectSpaceOrMapValue
+		case *charPtr == '=':
+			pfa.state = expectRocket
+		default:
+			return unexpectedCharError{}
+		}
+
 	case
 		expectMapKeySeparatorOrSpaceOrMapValue,
 		expectSpaceOrMapValue,
 		expectSpaceOrValue,
 		expectSpaceOrArrayItem,
 		expectArrayItemSeparatorOrSpaceOrArrayValue:
+		if charPtr == nil {
+			if pfa.state == expectSpaceOrValue {
+				if len(pfa.stack) == 0 {
+					pfa.result = nil
+					pfa.state = expectEOF
+					return
+				} else {
+					return unexpectedCharError{}
+				}
+			} else {
+				return unexpectedCharError{}
+			}
+		}
 		switch {
-		case pfa.state == expectMapKeySeparatorOrSpaceOrMapValue && char == '=':
+		case pfa.state == expectMapKeySeparatorOrSpaceOrMapValue && *charPtr == '=':
 			pfa.state = expectRocket
-		case pfa.state == expectMapKeySeparatorOrSpaceOrMapValue && char == ':':
+		case pfa.state == expectMapKeySeparatorOrSpaceOrMapValue && *charPtr == ':':
 			pfa.state = expectSpaceOrMapValue
-		case unicode.IsSpace(char):
-		case char == '{':
+
+		case unicode.IsSpace(*charPtr):
+		case *charPtr == '{':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemMap, pos: pos, itemMap: map[string]interface{}{}})
 			pfa.state = expectSpaceOrMapKey
-		case char == '[':
+		case *charPtr == '[':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, pos: pos, itemArray: []interface{}{}})
 			pfa.state = expectSpaceOrArrayItem
-		case char == ']' && (pfa.state == expectSpaceOrArrayItem || pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue):
-			stackItem = getTopStackItem(pfa.stack, parseStackItemArray, pos, pfa.state)
+
+		case *charPtr == ']' && (pfa.state == expectSpaceOrArrayItem || pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue):
+			stackItem = pfa.getTopStackItem(parseStackItemArray, pos)
 			needFinishTopStackItem = true
-		case char == '-' || char == '+' || unicode.IsNumber(char):
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, pos: pos, itemString: string(char)})
-			if unicode.IsNumber(char) {
+
+		case *charPtr == '-' || *charPtr == '+' || unicode.IsDigit(*charPtr):
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, pos: pos, itemString: string(*charPtr)})
+			if unicode.IsDigit(*charPtr) {
 				pfa.state = expectDigitOrUnderscoreOrDot
 			} else {
 				pfa.state = expectDigit
 			}
-		case char == '"' || char == '\'':
+		case *charPtr == '"' || *charPtr == '\'':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemString, pos: pos + 1, itemString: ``})
-			if char == '"' {
+			if *charPtr == '"' {
 				pfa.state = expectDoubleQuotedStringContent
 			} else {
 				pfa.state = expectSingleQuotedStringContent
 			}
-		case unicode.IsLetter(char):
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, pos: pos, itemString: string(char)})
+		case unicode.IsLetter(*charPtr):
+			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, pos: pos, itemString: string(*charPtr)})
 			pfa.state = expectWord
-		case char == ',' && pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue:
+		case *charPtr == ',' && pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue:
 			pfa.state = expectSpaceOrArrayItem
 		default:
-			err = unexpectedCharError{}
-			return
+			return unexpectedCharError{}
 		}
 
 	case expectWord:
-		stackItem = getTopStackItem(pfa.stack, parseStackItemWord, pos, pfa.state)
-		if unicode.IsLetter(char) {
-			stackItem.itemString = stackItem.itemString + string(char)
-		} else {
+		stackItem = pfa.getTopStackItem(parseStackItemWord, pos)
+		switch {
+		case charPtr != nil && unicode.IsLetter(*charPtr):
+			stackItem.itemString = stackItem.itemString + string(*charPtr)
+		default:
 			needFinishTopStackItem = true
 		}
 
 	case expectKey:
-		stackItem = getTopStackItem(pfa.stack, parseStackItemKey, pos, pfa.state)
-		if unicode.IsLetter(char) {
-			stackItem.itemString = stackItem.itemString + string(char)
-		} else {
+		stackItem = pfa.getTopStackItem(parseStackItemKey, pos)
+		switch {
+		case charPtr == nil:
+			return unexpectedCharError{}
+		case unicode.IsLetter(*charPtr):
+			stackItem.itemString = stackItem.itemString + string(*charPtr)
+		default:
 			needFinishTopStackItem = true
 		}
 
-	case expectDigit, expectDigitOrUnderscore, expectDigitOrUnderscoreOrDot:
-		stackItem = getTopStackItem(pfa.stack, parseStackItemNumber, pos, pfa.state)
-		if pfa.state == expectDigitOrUnderscoreOrDot {
-			switch {
-			case char == '.':
-				pfa.state = expectDigitOrUnderscore
-				fallthrough
-			case unicode.IsNumber(char) || char == '_':
-				stackItem.itemString = stackItem.itemString + string(char)
-			default:
-				needFinishTopStackItem = true
+	case expectDigit:
+		stackItem = pfa.getTopStackItem(parseStackItemNumber, pos)
+		switch {
+		case charPtr != nil && unicode.IsDigit(*charPtr):
+			stackItem.itemString = stackItem.itemString + string(*charPtr)
+			if pfa.state == expectDigit {
+				pfa.state = expectDigitOrUnderscoreOrDot
 			}
-		} else {
-			if unicode.IsDigit(char) || (pfa.state == expectDigitOrUnderscore) && char == '_' {
-				stackItem.itemString = stackItem.itemString + string(char)
-				if pfa.state == expectDigit {
-					pfa.state = expectDigitOrUnderscoreOrDot
-				}
-			} else {
-				err = unexpectedCharError{}
-				return
+		default:
+			return unexpectedCharError{}
+		}
+
+	case expectDigitOrUnderscore:
+		stackItem = pfa.getTopStackItem(parseStackItemNumber, pos)
+		switch {
+		case charPtr != nil && (unicode.IsDigit(*charPtr) || *charPtr == '_'):
+			stackItem.itemString = stackItem.itemString + string(*charPtr)
+			if pfa.state == expectDigit {
+				pfa.state = expectDigitOrUnderscoreOrDot
 			}
+		default:
+			needFinishTopStackItem = true
+		}
+
+	case expectDigitOrUnderscoreOrDot:
+		stackItem = pfa.getTopStackItem(parseStackItemNumber, pos)
+		switch {
+		case charPtr != nil && *charPtr == '.':
+			pfa.state = expectDigitOrUnderscore
+			fallthrough
+		case charPtr != nil && (unicode.IsDigit(*charPtr) || *charPtr == '_'):
+			stackItem.itemString = stackItem.itemString + string(*charPtr)
+		default:
+			needFinishTopStackItem = true
 		}
 
 	case
@@ -186,14 +269,17 @@ func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
 		expectDoubleQuotedStringEscapedContent,
 		expectSingleQuotedStringContent,
 		expectSingleQuotedStringEscapedContent:
+		if charPtr == nil {
+			return unexpectedCharError{}
+		}
 		switch pfa.state {
 		case expectDoubleQuotedStringContent,
 			expectDoubleQuotedStringEscapedContent,
 			expectSingleQuotedStringContent,
 			expectSingleQuotedStringEscapedContent:
-			stackItem = getTopStackItem(pfa.stack, parseStackItemString, pos, pfa.state)
+			stackItem = pfa.getTopStackItem(parseStackItemString, pos)
 		default:
-			stackItem = getTopStackItem(pfa.stack, parseStackItemKey, pos, pfa.state)
+			stackItem = pfa.getTopStackItem(parseStackItemKey, pos)
 		}
 		switch pfa.state {
 		case
@@ -201,10 +287,10 @@ func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
 			expectSingleQuotedKeyContent,
 			expectDoubleQuotedStringContent,
 			expectSingleQuotedStringContent:
-			if (pfa.state == expectDoubleQuotedStringContent || pfa.state == expectDoubleQuotedKeyContent) && char == '"' ||
-				(pfa.state == expectSingleQuotedStringContent || pfa.state == expectSingleQuotedKeyContent) && char == '\'' {
+			if (pfa.state == expectDoubleQuotedStringContent || pfa.state == expectDoubleQuotedKeyContent) && *charPtr == '"' ||
+				(pfa.state == expectSingleQuotedStringContent || pfa.state == expectSingleQuotedKeyContent) && *charPtr == '\'' {
 				needFinishTopStackItem = true
-			} else if char == '\\' {
+			} else if *charPtr == '\\' {
 				switch pfa.state {
 				case expectDoubleQuotedStringContent:
 					pfa.state = expectDoubleQuotedStringEscapedContent
@@ -216,7 +302,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
 					pfa.state = expectSingleQuotedKeyEscapedContent
 				}
 			} else {
-				stackItem.itemString = stackItem.itemString + string(char)
+				stackItem.itemString = stackItem.itemString + string(*charPtr)
 			}
 		case
 			expectDoubleQuotedKeyEscapedContent,
@@ -224,7 +310,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
 			expectDoubleQuotedStringEscapedContent,
 			expectSingleQuotedStringEscapedContent:
 			var actualVal string
-			switch char {
+			switch *charPtr {
 			case '"':
 				actualVal = "\""
 			case '\'':
@@ -234,7 +320,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
 			default:
 				switch pfa.state {
 				case expectDoubleQuotedStringEscapedContent, expectDoubleQuotedKeyEscapedContent:
-					switch char {
+					switch *charPtr {
 					case 'a':
 						actualVal = "\a"
 					case 'b':
@@ -253,8 +339,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
 				}
 			}
 			if len(actualVal) == 0 {
-				err = unexpectedCharError{}
-				return
+				return unexpectedCharError{}
 			}
 			stackItem.itemString = stackItem.itemString + actualVal
 			switch pfa.state {
@@ -269,35 +354,18 @@ func (pfa *pfaStruct) processCharAtPos(pos int, char rune) (err error) {
 			}
 		}
 
-	case expectMapKeySeparatorOrSpace:
-		switch {
-		case unicode.IsSpace(char):
-			pfa.state = expectMapKeySeparatorOrSpaceOrMapValue
-		case char == ':':
-			pfa.state = expectSpaceOrMapValue
-		case char == '=':
-			pfa.state = expectRocket
-		default:
-			err = unexpectedCharError{}
-			return
-		}
-
-	case expectRocket:
-		if char == '>' {
-			pfa.state = expectSpaceOrMapValue
-		} else {
-			err = unexpectedCharError{}
-			return
-		}
-
 	default:
-		log.Panicf(ansi.Ansi(`Err`, "unexpected <ansiOutline>pfa.state <ansiSecondaryLiteral>%s<ansi> <ansiOutline>pos <ansiSecondaryLiteral>%d <ansiOutline>pfa.stack <ansiSecondaryLiteral>%s"), pfa.state, pos, pfa.stack)
+		core.Panic("<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
 	}
 
 	if needFinishTopStackItem {
-		if err = pfa.finishTopStackItem(&char); err != nil {
+		if err = pfa.finishTopStackItem(charPtr); err != nil {
 			return
 		}
+	}
+
+	if charPtr == nil && !(pfa.state == expectEOF || pfa.state == expectSpaceOrEOF) {
+		core.Panic("<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
 	}
 
 	return
@@ -312,39 +380,34 @@ var underscoreRegexp = regexp.MustCompile("[_]+")
 
 func (pfa *pfaStruct) finishTopStackItem(charPtr *rune) (err error) {
 	if len(pfa.stack) < 1 {
-		log.Panic(`pfa.stack should have at least one item`)
+		core.Panic("<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
 	}
-	newStack := pfa.stack
-	newState := tokenFinished
 	stackItem := &pfa.stack[len(pfa.stack)-1]
 	switch stackItem.itemType {
 
 	case parseStackItemQwItem:
 		if len(pfa.stack) < 2 {
-			log.Panicf("len(pfa.stack) < 2")
+			core.Panic("len(pfa.stack) < 2")
 		}
 		stackSubItem := pfa.stack[len(pfa.stack)-1]
-		newStack = pfa.stack[:len(pfa.stack)-1]
-		stackItem = getTopStackItem(newStack, parseStackItemQw, stackSubItem.pos, pfa.state)
+		pfa.stack = pfa.stack[:len(pfa.stack)-1]
+		stackItem = pfa.getTopStackItem(parseStackItemQw, stackSubItem.pos)
 		stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemString)
 		if charPtr == nil {
-			log.Panicf("charPtr == nil")
+			core.Panic("charPtr == nil")
 		}
 		if unicode.IsSpace(*charPtr) {
-			newState = expectSpaceOrQwItemOrDelimiter
+			pfa.state = expectSpaceOrQwItemOrDelimiter
 		} else {
-			pfa.stack = newStack
 			if len(pfa.stack) < 2 {
-				log.Panicf("len(pfa.stack) < 2")
+				core.Panic("len(pfa.stack) < 2")
 			}
 			stackSubItem := pfa.stack[len(pfa.stack)-1]
-			newStack = pfa.stack[:len(pfa.stack)-1]
-			stackItem = getTopStackItem(newStack, parseStackItemArray, stackSubItem.pos, pfa.state)
+			pfa.stack = pfa.stack[:len(pfa.stack)-1]
+			stackItem = pfa.getTopStackItem(parseStackItemArray, stackSubItem.pos)
 			stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
-			newState = expectArrayItemSeparatorOrSpace
+			pfa.state = expectArrayItemSeparatorOrSpace
 		}
-		pfa.state = newState
-		pfa.stack = newStack
 		return
 
 	case parseStackItemNumber:
@@ -381,7 +444,7 @@ func (pfa *pfaStruct) finishTopStackItem(charPtr *rune) (err error) {
 			stackItem.value = nil
 		case "qw":
 			if len(pfa.stack) >= 2 && pfa.stack[len(pfa.stack)-2].itemType == parseStackItemArray && charPtr != nil {
-				newState = expectSpaceOrQwItemOrDelimiter
+				pfa.state = expectSpaceOrQwItemOrDelimiter
 				switch *charPtr {
 				case '<':
 					stackItem.delimiter = '>'
@@ -396,19 +459,17 @@ func (pfa *pfaStruct) finishTopStackItem(charPtr *rune) (err error) {
 					case unicode.IsPunct(*charPtr) || unicode.IsSymbol(*charPtr):
 						stackItem.delimiter = *charPtr
 					default:
-						err = unexpectedCharError{}
-						return
+						return unexpectedCharError{}
 					}
 				}
-				if newState == expectSpaceOrQwItemOrDelimiter {
+				if pfa.state == expectSpaceOrQwItemOrDelimiter {
 					stackItem.itemType = parseStackItemQw
 					stackItem.itemArray = []interface{}{}
 				}
 			} else {
 				err = core.Error("unexpected word <ansiPrimaryLiteral>%s<ansi> in non array context at "+getPosTitle(stackItem.pos), stackItem.itemString)
 			}
-			pfa.state = newState
-			pfa.stack = newStack
+
 			return
 		default:
 			err = core.Error("unexpected word <ansiPrimaryLiteral>%s<ansi> at "+getPosTitle(stackItem.pos)+" <ansiOutline>pfa.stack <ansiSecondaryLiteral>%s", stackItem.itemString, pfa.stack)
@@ -429,11 +490,14 @@ func (pfa *pfaStruct) finishTopStackItem(charPtr *rune) (err error) {
 		return
 	}
 
-	pfa.stack = newStack
-	if len(pfa.stack) > 1 && charPtr != nil {
+	if len(pfa.stack) == 1 {
+		pfa.result = stackItem.value
+		pfa.state = expectSpaceOrEOF
+		return
+	} else if len(pfa.stack) > 1 && charPtr != nil {
 		var stackSubItem parseStackItem
-		stackSubItem, newStack = pfa.stack[len(pfa.stack)-1], pfa.stack[:len(pfa.stack)-1] // https://github.com/golang/go/wiki/SliceTricks
-		stackItem = &newStack[len(newStack)-1]
+		stackSubItem, pfa.stack = pfa.stack[len(pfa.stack)-1], pfa.stack[:len(pfa.stack)-1] // https://github.com/golang/go/wiki/SliceTricks
+		stackItem = &pfa.stack[len(pfa.stack)-1]
 		switch stackItem.itemType {
 		case parseStackItemArray:
 			stackItem.itemArray = append(stackItem.itemArray, stackSubItem.value)
@@ -441,45 +505,41 @@ func (pfa *pfaStruct) finishTopStackItem(charPtr *rune) (err error) {
 			case parseStackItemNumber, parseStackItemWord:
 				switch {
 				case unicode.IsSpace(*charPtr):
-					newState = expectArrayItemSeparatorOrSpaceOrArrayValue
+					pfa.state = expectArrayItemSeparatorOrSpaceOrArrayValue
 				case *charPtr == ',':
-					newState = expectSpaceOrArrayItem
+					pfa.state = expectSpaceOrArrayItem
 				default:
-					err = unexpectedCharError{}
-					return
+					return unexpectedCharError{}
 				}
 			default:
-				newState = expectArrayItemSeparatorOrSpaceOrArrayValue
+				pfa.state = expectArrayItemSeparatorOrSpaceOrArrayValue
 			}
 
 		case parseStackItemMap:
 			switch stackSubItem.itemType {
 			case parseStackItemKey:
 				stackItem.currentKey = stackSubItem.itemString
-				newState = expectMapKeySeparatorOrSpace
+				pfa.state = expectMapKeySeparatorOrSpace
 			default:
 				stackItem.itemMap[stackItem.currentKey] = stackSubItem.value
 				switch stackSubItem.itemType {
 				case parseStackItemNumber, parseStackItemWord:
 					switch {
 					case unicode.IsSpace(*charPtr):
-						newState = expectMapValueSeparatorOrSpaceOrMapKey
+						pfa.state = expectMapValueSeparatorOrSpaceOrMapKey
 					case *charPtr == ',':
-						newState = expectSpaceOrMapKey
+						pfa.state = expectSpaceOrMapKey
 					default:
-						err = unexpectedCharError{}
-						return
+						return unexpectedCharError{}
 					}
 				default:
-					newState = expectMapValueSeparatorOrSpaceOrMapKey
+					pfa.state = expectMapValueSeparatorOrSpaceOrMapKey
 				}
 			}
 		default:
 			err = core.Error("<ansiOutline>stackItem <ansiSecondaryLiteral>%s<ansi> can not have subitem <ansiSecondaryLiteral>%s<ansiOutline>pfa.stack<ansiSecondaryLiteral>%s", stackItem, stackSubItem, pfa.stack)
 		}
 	}
-	pfa.state = newState
-	pfa.stack = newStack
 
 	return
 }
