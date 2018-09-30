@@ -8,7 +8,7 @@ import (
 func Parse(source string) (result interface{}, err error) {
 	var pos int
 	var char rune
-	pfa := pfaStruct{stack: parseStack{}, state: expectValueOrSpace}
+	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}}
 	for pos, char = range source {
 		if err = pfa.processCharAtPos(pos, &char); err != nil {
 			if _, ok := err.(unexpectedCharError); ok {
