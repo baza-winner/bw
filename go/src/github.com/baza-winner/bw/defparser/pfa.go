@@ -220,7 +220,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		expectContentOfDoubleQuotedString,
 		expectEscapedContentOfDoubleQuotedString,
 		expectContentOfSingleQuotedString,
-		expectSingleQuotedStringEscapedContent:
+		expectEscapedContentOfSingleQuotedString:
 		if charPtr == nil {
 			return unexpectedCharError{}
 		}
@@ -228,7 +228,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case expectContentOfDoubleQuotedString,
 			expectEscapedContentOfDoubleQuotedString,
 			expectContentOfSingleQuotedString,
-			expectSingleQuotedStringEscapedContent:
+			expectEscapedContentOfSingleQuotedString:
 			stackItem = pfa.getTopStackItem(parseStackItemString, pos)
 		default:
 			stackItem = pfa.getTopStackItem(parseStackItemKey, pos)
@@ -247,7 +247,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				case expectContentOfDoubleQuotedString:
 					pfa.state = expectEscapedContentOfDoubleQuotedString
 				case expectContentOfSingleQuotedString:
-					pfa.state = expectSingleQuotedStringEscapedContent
+					pfa.state = expectEscapedContentOfSingleQuotedString
 				case expectContentOfDoubleQuotedKey:
 					pfa.state = expectEscapedContentOfDoubleQuotedKey
 				case expectContentOfSingleQuotedKey:
@@ -260,7 +260,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			expectEscapedContentOfDoubleQuotedKey,
 			expectEscapedContentOfSingleQuotedKey,
 			expectEscapedContentOfDoubleQuotedString,
-			expectSingleQuotedStringEscapedContent:
+			expectEscapedContentOfSingleQuotedString:
 			var actualVal string
 			switch *charPtr {
 			case '"':
@@ -297,7 +297,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			switch pfa.state {
 			case expectEscapedContentOfDoubleQuotedString:
 				pfa.state = expectContentOfDoubleQuotedString
-			case expectSingleQuotedStringEscapedContent:
+			case expectEscapedContentOfSingleQuotedString:
 				pfa.state = expectContentOfSingleQuotedString
 			case expectEscapedContentOfDoubleQuotedKey:
 				pfa.state = expectContentOfDoubleQuotedKey

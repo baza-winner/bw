@@ -27,7 +27,7 @@ const (
 	expectContentOfDoubleQuotedString
 	expectContentOfSingleQuotedString
 	expectEscapedContentOfDoubleQuotedString
-	expectSingleQuotedStringEscapedContent
+	expectEscapedContentOfSingleQuotedString
 
 	expectContentOfDoubleQuotedKey
 	expectContentOfSingleQuotedKey
