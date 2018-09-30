@@ -4,7 +4,6 @@ type parseState uint16
 
 const (
 	expectSpaceOrValue parseState = iota
-	expectSpaceOrArrayItem
 	expectDigit
 	expectDigitOrUnderscoreOrDot
 	expectDigitOrUnderscore

@@ -102,7 +102,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case unicode.IsSpace(*charPtr):
 			pfa.state = expectArrayItemSeparatorOrSpaceOrArrayValue
 		case *charPtr == ',':
-			pfa.state = expectSpaceOrArrayItem
+			pfa.state = expectSpaceOrValue
 		default:
 			return unexpectedCharError{}
 		}
@@ -147,17 +147,12 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 	case
 		expectMapKeySeparatorOrSpaceOrMapValue,
 		expectSpaceOrValue,
-		expectSpaceOrArrayItem,
 		expectArrayItemSeparatorOrSpaceOrArrayValue:
 		if charPtr == nil {
-			if pfa.state == expectSpaceOrValue {
-				if len(pfa.stack) == 0 {
-					pfa.result = nil
-					pfa.state = expectEOF
-					return
-				} else {
-					return unexpectedCharError{}
-				}
+			if len(pfa.stack) == 0 {
+				pfa.result = nil
+				pfa.state = expectEOF
+				return
 			} else {
 				return unexpectedCharError{}
 			}
@@ -167,6 +162,8 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			pfa.state = expectRocket
 		case pfa.state == expectMapKeySeparatorOrSpaceOrMapValue && *charPtr == ':':
 			pfa.state = expectSpaceOrValue
+		case *charPtr == ',' && pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue:
+			pfa.state = expectSpaceOrValue
 
 		case unicode.IsSpace(*charPtr):
 		case *charPtr == '{':
@@ -174,7 +171,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			pfa.state = expectSpaceOrMapKey
 		case *charPtr == '[':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, pos: pos, itemArray: []interface{}{}})
-			pfa.state = expectSpaceOrArrayItem
+			pfa.state = expectSpaceOrValue
 
 		// case *charPtr == ']' && (pfa.state == expectSpaceOrArrayItem || pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue):
 		case *charPtr == ']' && (len(pfa.stack) > 0 && pfa.stack[len(pfa.stack)-1].itemType == parseStackItemArray):
@@ -198,8 +195,6 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case unicode.IsLetter(*charPtr):
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, pos: pos, itemString: string(*charPtr)})
 			pfa.state = expectWord
-		case *charPtr == ',' && pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue:
-			pfa.state = expectSpaceOrArrayItem
 		default:
 			return unexpectedCharError{}
 		}
@@ -507,7 +502,7 @@ func (pfa *pfaStruct) finishTopStackItem(charPtr *rune) (err error) {
 				case unicode.IsSpace(*charPtr):
 					pfa.state = expectArrayItemSeparatorOrSpaceOrArrayValue
 				case *charPtr == ',':
-					pfa.state = expectSpaceOrArrayItem
+					pfa.state = expectSpaceOrValue
 				default:
 					return unexpectedCharError{}
 				}
