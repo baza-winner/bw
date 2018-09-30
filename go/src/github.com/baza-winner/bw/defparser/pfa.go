@@ -11,9 +11,10 @@ import (
 )
 
 type pfaStruct struct {
-	stack  parseStack
-	state  parseState
-	result interface{}
+	stack                  parseStack
+	state                  parseState
+	result                 interface{}
+	needFinishTopStackItem bool
 }
 
 func (pfa *pfaStruct) getDataForJson() interface{} {
@@ -52,9 +53,13 @@ func (pfa *pfaStruct) getTopStackItem(itemType parseStackItemType, pos int) (sta
 	return
 }
 
+type pfaPrimaryStateMethod func(*pfaStruct, *rune, int) error
+
+var pfaPrimaryStateMethods map[parsePrimaryState]pfaPrimaryStateMethod
+
 func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 	var stackItem *parseStackItem
-	needFinishTopStackItem := false
+	pfa.needFinishTopStackItem = false
 	switch pfa.state.primary {
 
 	case expectEOF:
@@ -87,7 +92,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 
 			case *charPtr == ']' && (len(pfa.stack) > 0 && pfa.stack[len(pfa.stack)-1].itemType == parseStackItemArray):
 				stackItem = pfa.getTopStackItem(parseStackItemArray, pos)
-				needFinishTopStackItem = true
+				pfa.needFinishTopStackItem = true
 
 			case *charPtr == '-' || *charPtr == '+' || unicode.IsDigit(*charPtr):
 				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, pos: pos, itemString: string(*charPtr)})
@@ -162,7 +167,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			pfa.state.setPrimary(expectSpaceOrMapKey)
 		case *charPtr == '}':
 			stackItem = pfa.getTopStackItem(parseStackItemMap, pos)
-			needFinishTopStackItem = true
+			pfa.needFinishTopStackItem = true
 		default:
 			return unexpectedCharError{}
 		}
@@ -175,7 +180,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case unicode.IsLetter(*charPtr):
 			stackItem.itemString = stackItem.itemString + string(*charPtr)
 		default:
-			needFinishTopStackItem = true
+			pfa.needFinishTopStackItem = true
 		}
 
 	case expectWord:
@@ -184,7 +189,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case charPtr != nil && unicode.IsLetter(*charPtr):
 			stackItem.itemString = stackItem.itemString + string(*charPtr)
 		default:
-			needFinishTopStackItem = true
+			pfa.needFinishTopStackItem = true
 		}
 
 	case expectDigit:
@@ -205,7 +210,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			case charPtr != nil && (unicode.IsDigit(*charPtr) || *charPtr == '_'):
 				stackItem.itemString = stackItem.itemString + string(*charPtr)
 			default:
-				needFinishTopStackItem = true
+				pfa.needFinishTopStackItem = true
 			}
 		}
 
@@ -220,7 +225,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		stackItem = pfa.getTopStackItem(itemType, pos)
 		if pfa.state.secondary == doubleQuoted && *charPtr == '"' ||
 			pfa.state.secondary == singleQuoted && *charPtr == '\'' {
-			needFinishTopStackItem = true
+			pfa.needFinishTopStackItem = true
 		} else if *charPtr == '\\' {
 			pfa.state.primary = expectEscapedContentOf
 		} else {
@@ -277,7 +282,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			return unexpectedCharError{}
 		case unicode.IsSpace(*charPtr):
 		case *charPtr == stackItem.delimiter:
-			needFinishTopStackItem = true
+			pfa.needFinishTopStackItem = true
 		default:
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemQwItem, pos: pos, itemString: string(*charPtr), delimiter: stackItem.delimiter})
 			pfa.state.setPrimary(expectEndOfQwItem)
@@ -289,7 +294,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case charPtr == nil:
 			return unexpectedCharError{}
 		case unicode.IsSpace(*charPtr) || *charPtr == stackItem.delimiter:
-			needFinishTopStackItem = true
+			pfa.needFinishTopStackItem = true
 		default:
 			stackItem.itemString += string(*charPtr)
 		}
@@ -298,7 +303,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		core.Panic("<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
 	}
 
-	if needFinishTopStackItem {
+	if pfa.needFinishTopStackItem {
 		if err = pfa.finishTopStackItem(charPtr); err != nil {
 			return
 		}
