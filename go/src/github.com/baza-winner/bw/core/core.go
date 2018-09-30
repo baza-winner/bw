@@ -287,6 +287,10 @@ func Panic(msgFmt string, args ...interface{}) {
 	log.Panicf(ansi.Ansi(`Err`, msgFmt+` <ansiCmd>at `+whereami.WhereAmI(2)), args...)
 }
 
+func Panicd(depth uint, msgFmt string, args ...interface{}) {
+	log.Panicf(ansi.Ansi(`Err`, msgFmt+` <ansiCmd>at `+whereami.WhereAmI(int(depth)+2)), args...)
+}
+
 // // https://lawlessguy.wordpress.com/2016/04/17/display-file-function-and-line-number-in-go-golang/
 // func WhereAmI(depthList ...int) string {
 // 	var depth int
