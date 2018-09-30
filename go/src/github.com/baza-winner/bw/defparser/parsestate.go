@@ -11,6 +11,7 @@ const (
 	expectValueOrSpaceOrMapKeySeparator
 
 	expectArrayItemSeparatorOrSpace
+
 	expectMapKeySeparatorOrSpace
 
 	expectRocket
@@ -28,7 +29,7 @@ const (
 	expectDoubleQuotedStringEscapedContent
 	expectSingleQuotedStringEscapedContent
 
-	expectDoubleQuotedKeyContent
+	expectContentOfDoubleQuotedKey
 	expectSingleQuotedKeyContent
 	expectDoubleQuotedKeyEscapedContent
 	expectSingleQuotedKeyEscapedContent

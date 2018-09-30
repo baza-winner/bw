@@ -157,7 +157,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			pfa.state = expectMapKey
 		case *charPtr == '"':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, pos: pos, itemString: ``})
-			pfa.state = expectDoubleQuotedKeyContent
+			pfa.state = expectContentOfDoubleQuotedKey
 		case *charPtr == '\'':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, pos: pos, itemString: ``})
 			pfa.state = expectSingleQuotedKeyContent
@@ -213,7 +213,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		}
 
 	case
-		expectDoubleQuotedKeyContent,
+		expectContentOfDoubleQuotedKey,
 		expectSingleQuotedKeyContent,
 		expectDoubleQuotedKeyEscapedContent,
 		expectSingleQuotedKeyEscapedContent,
@@ -235,11 +235,11 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		}
 		switch pfa.state {
 		case
-			expectDoubleQuotedKeyContent,
+			expectContentOfDoubleQuotedKey,
 			expectSingleQuotedKeyContent,
 			expectDoubleQuotedStringContent,
 			expectSingleQuotedStringContent:
-			if (pfa.state == expectDoubleQuotedStringContent || pfa.state == expectDoubleQuotedKeyContent) && *charPtr == '"' ||
+			if (pfa.state == expectDoubleQuotedStringContent || pfa.state == expectContentOfDoubleQuotedKey) && *charPtr == '"' ||
 				(pfa.state == expectSingleQuotedStringContent || pfa.state == expectSingleQuotedKeyContent) && *charPtr == '\'' {
 				needFinishTopStackItem = true
 			} else if *charPtr == '\\' {
@@ -248,7 +248,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 					pfa.state = expectDoubleQuotedStringEscapedContent
 				case expectSingleQuotedStringContent:
 					pfa.state = expectSingleQuotedStringEscapedContent
-				case expectDoubleQuotedKeyContent:
+				case expectContentOfDoubleQuotedKey:
 					pfa.state = expectDoubleQuotedKeyEscapedContent
 				case expectSingleQuotedKeyContent:
 					pfa.state = expectSingleQuotedKeyEscapedContent
@@ -300,7 +300,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			case expectSingleQuotedStringEscapedContent:
 				pfa.state = expectSingleQuotedStringContent
 			case expectDoubleQuotedKeyEscapedContent:
-				pfa.state = expectDoubleQuotedKeyContent
+				pfa.state = expectContentOfDoubleQuotedKey
 			case expectSingleQuotedKeyEscapedContent:
 				pfa.state = expectSingleQuotedKeyContent
 			}
