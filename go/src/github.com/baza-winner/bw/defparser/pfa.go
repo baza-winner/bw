@@ -87,9 +87,15 @@ func (pfa *pfaStruct) panic(args ...interface{}) {
 func (pfa *pfaStruct) getTopStackItemOfType(itemType parseStackItemType, ofsList ...int) (stackItem *parseStackItem) {
 	stackItem = pfa.getTopStackItem(ofsList...)
 	if stackItem.itemType != itemType {
-		pfa.panic("<ansiOutline>itemType<ansiSecondaryLiteral", itemType)
+		pfa.panic("<ansiOutline>itemType<ansiSecondaryLiteral>%s", itemType)
 	}
 	return
+}
+
+func (pfa *pfaStruct) checkStackLen(minLen int) {
+	if len(pfa.stack) < minLien {
+		pfa.panic("<ansiOutline>minLen<ansiSecondaryLiteral>%d", minLen)
+	}
 }
 
 func (pfa *pfaStruct) getTopStackItem(ofsList ...int) (stackItem *parseStackItem) {
@@ -97,17 +103,13 @@ func (pfa *pfaStruct) getTopStackItem(ofsList ...int) (stackItem *parseStackItem
 	if ofsList != nil && ofsList[0] < 0 {
 		ofs = ofsList[0]
 	}
-	if len(pfa.stack) < -ofs {
-		pfa.panic()
-	}
+	pfa.checkStackLen(-ofs)
 	stackItem = &pfa.stack[len(pfa.stack)+ofs]
 	return
 }
 
 func (pfa *pfaStruct) popStackItem() (stackItem parseStackItem) {
-	if !(len(pfa.stack) >= 1) {
-		pfa.panic()
-	}
+	pfa.checkStackLen(1)
 	stackItem = pfa.stack[len(pfa.stack)-1]
 	pfa.stack = pfa.stack[:len(pfa.stack)-1]
 	return
@@ -182,6 +184,5 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 			}
 		}
 	}
-
 	return
 }
