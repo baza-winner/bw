@@ -2,18 +2,24 @@ package defparser
 
 import (
 	"encoding/json"
-	// "fmt"
+	"fmt"
 	"github.com/baza-winner/bw/ansi"
 	"reflect"
 	"testing"
 )
 
 func TestParse(t *testing.T) {
+
 	tests := map[string]struct {
 		source string
 		result interface{}
 		err    error
 	}{
+		"unexpected char": {
+			source: `*`,
+			result: nil,
+			err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectSpaceOrValue`)),
+		},
 		"zero number": {
 			source: `0`,
 			result: 0,
@@ -125,17 +131,14 @@ func TestParse(t *testing.T) {
 	for testName, test := range tests {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)
-		if err != nil {
-			if err != test.err {
-				// t.Fatalf("Parse(%s) => err %v, want: %v", test.source, err, test.err)
-				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err:<ansiErr> %v<ansi>\n, want err:<ansiOK>%v"), test.source, err, test.err)
+		if err != test.err {
+			if err == nil || test.err == nil || err.Error() != test.err.Error() {
+				fmt.Println(reflect.TypeOf(err), reflect.TypeOf(test.err))
+				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), test.source, err, test.err)
 			}
 		} else if !reflect.DeepEqual(result, test.result) {
-			// fmt.Printf("%v %v\n", result, test.result)
-			// fmt.Println(reflect.TypeOf(result), reflect.TypeOf(test.result))
 			tstJson, _ := json.MarshalIndent(result, ``, `  `)
 			etaJson, _ := json.MarshalIndent(test.result, ``, `  `)
-			// t.Fatalf("Parse(%s) => %s, want: %s", test.source, tstJson, etaJson)
 			t.Errorf(ansi.Ansi("", "Parse(%s)\n    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), test.source, tstJson, etaJson)
 		}
 	}
