@@ -216,7 +216,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		expectContentOfDoubleQuotedKey,
 		expectContentOfSingleQuotedKey,
 		expectEscapedContentOfDoubleQuotedKey,
-		expectSingleQuotedKeyEscapedContent,
+		expectOfEscapedContentSingleQuotedKey,
 		expectDoubleQuotedStringContent,
 		expectDoubleQuotedStringEscapedContent,
 		expectSingleQuotedStringContent,
@@ -251,14 +251,14 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				case expectContentOfDoubleQuotedKey:
 					pfa.state = expectEscapedContentOfDoubleQuotedKey
 				case expectContentOfSingleQuotedKey:
-					pfa.state = expectSingleQuotedKeyEscapedContent
+					pfa.state = expectOfEscapedContentSingleQuotedKey
 				}
 			} else {
 				stackItem.itemString = stackItem.itemString + string(*charPtr)
 			}
 		case
 			expectEscapedContentOfDoubleQuotedKey,
-			expectSingleQuotedKeyEscapedContent,
+			expectOfEscapedContentSingleQuotedKey,
 			expectDoubleQuotedStringEscapedContent,
 			expectSingleQuotedStringEscapedContent:
 			var actualVal string
@@ -301,7 +301,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				pfa.state = expectSingleQuotedStringContent
 			case expectEscapedContentOfDoubleQuotedKey:
 				pfa.state = expectContentOfDoubleQuotedKey
-			case expectSingleQuotedKeyEscapedContent:
+			case expectOfEscapedContentSingleQuotedKey:
 				pfa.state = expectContentOfSingleQuotedKey
 			}
 		}

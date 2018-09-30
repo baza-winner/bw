@@ -32,7 +32,7 @@ const (
 	expectContentOfDoubleQuotedKey
 	expectContentOfSingleQuotedKey
 	expectEscapedContentOfDoubleQuotedKey
-	expectSingleQuotedKeyEscapedContent
+	expectOfEscapedContentSingleQuotedKey
 
 	expectSpaceOrMapKey
 	expectSpaceOrMapKeyOrMapValueSeparator
