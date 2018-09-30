@@ -8,28 +8,17 @@ type parsePrimaryState uint16
 
 const (
 	expectEOF parsePrimaryState = iota
-
 	expectValueOrSpace
-
 	expectArrayItemSeparatorOrSpace
-
 	expectMapKeySeparatorOrSpace
-
 	expectRocket
-
 	expectMapKey
-
 	expectWord
-
 	expectDigit
-
 	expectContentOf
 	expectEscapedContentOf
-
 	expectSpaceOrMapKey
-
 	expectSpaceOrQwItemOrDelimiter
-
 	expectEndOfQwItem
 )
 
