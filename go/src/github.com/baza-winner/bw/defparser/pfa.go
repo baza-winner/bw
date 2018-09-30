@@ -215,7 +215,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 	case
 		expectContentOfDoubleQuotedKey,
 		expectContentOfSingleQuotedKey,
-		expectDoubleQuotedKeyEscapedContent,
+		expectEscapedContentOfDoubleQuotedKey,
 		expectSingleQuotedKeyEscapedContent,
 		expectDoubleQuotedStringContent,
 		expectDoubleQuotedStringEscapedContent,
@@ -249,7 +249,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				case expectSingleQuotedStringContent:
 					pfa.state = expectSingleQuotedStringEscapedContent
 				case expectContentOfDoubleQuotedKey:
-					pfa.state = expectDoubleQuotedKeyEscapedContent
+					pfa.state = expectEscapedContentOfDoubleQuotedKey
 				case expectContentOfSingleQuotedKey:
 					pfa.state = expectSingleQuotedKeyEscapedContent
 				}
@@ -257,7 +257,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				stackItem.itemString = stackItem.itemString + string(*charPtr)
 			}
 		case
-			expectDoubleQuotedKeyEscapedContent,
+			expectEscapedContentOfDoubleQuotedKey,
 			expectSingleQuotedKeyEscapedContent,
 			expectDoubleQuotedStringEscapedContent,
 			expectSingleQuotedStringEscapedContent:
@@ -271,7 +271,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				actualVal = "\\"
 			default:
 				switch pfa.state {
-				case expectDoubleQuotedStringEscapedContent, expectDoubleQuotedKeyEscapedContent:
+				case expectDoubleQuotedStringEscapedContent, expectEscapedContentOfDoubleQuotedKey:
 					switch *charPtr {
 					case 'a':
 						actualVal = "\a"
@@ -299,7 +299,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				pfa.state = expectDoubleQuotedStringContent
 			case expectSingleQuotedStringEscapedContent:
 				pfa.state = expectSingleQuotedStringContent
-			case expectDoubleQuotedKeyEscapedContent:
+			case expectEscapedContentOfDoubleQuotedKey:
 				pfa.state = expectContentOfDoubleQuotedKey
 			case expectSingleQuotedKeyEscapedContent:
 				pfa.state = expectContentOfSingleQuotedKey
