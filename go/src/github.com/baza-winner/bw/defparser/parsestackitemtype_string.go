@@ -4,9 +4,9 @@ package defparser
 
 import "strconv"
 
-const _parseStackItemType_name = "parseStackItemArrayparseStackItemQwparseStackItemQwItemparseStackItemMapparseStackItemNumberparseStackItemStringparseStackItemWordparseStackItemKey"
+const _parseStackItemType_name = "_parseStackItemBelowparseStackItemKeyparseStackItemStringparseStackItemMapparseStackItemArrayparseStackItemQwparseStackItemQwItemparseStackItemNumberparseStackItemWord_parseStackItemAbove"
 
-var _parseStackItemType_index = [...]uint8{0, 19, 35, 55, 72, 92, 112, 130, 147}
+var _parseStackItemType_index = [...]uint8{0, 20, 37, 57, 74, 93, 109, 129, 149, 167, 187}
 
 func (i parseStackItemType) String() string {
 	if i >= parseStackItemType(len(_parseStackItemType_index)-1) {

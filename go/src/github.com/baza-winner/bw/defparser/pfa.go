@@ -3,9 +3,26 @@ package defparser
 import (
 	"encoding/json"
 	"github.com/baza-winner/bw/core"
-	"regexp"
 	"unicode"
 )
+
+func init() {
+	expect := _expectBelow + 1
+	for expect < _expectAbove {
+		if _, ok := pfaPrimaryStateMethods[expect]; !ok {
+			panic(expect)
+		}
+		expect += 1
+	}
+
+	itemType := _parseStackItemBelow + 1
+	for itemType < _parseStackItemAbove {
+		if _, ok := pfaItemFinishMethods[itemType]; !ok {
+			panic(itemType)
+		}
+		itemType += 1
+	}
+}
 
 type pfaStruct struct {
 	stack                  parseStack
@@ -40,26 +57,50 @@ func (pfa *pfaStruct) String() (result string) {
 type unexpectedCharError struct{}
 
 func (e unexpectedCharError) Error() string {
-	return `unexpected char`
+	return `unexpectedCharError`
 }
 
-func (pfa *pfaStruct) getTopStackItemOfType(itemType parseStackItemType) (stackItem *parseStackItem) {
-	if !(len(pfa.stack) >= 1 && pfa.stack[len(pfa.stack)-1].itemType == itemType) {
-		pfa.panic()
+type failedToGetNumberError struct{}
+
+func (e failedToGetNumberError) Error() string {
+	return `failedToGetNumberError`
+}
+
+type unexpectedWordError struct{}
+
+func (e unexpectedWordError) Error() string {
+	return `unexpectedWordError`
+}
+
+func (pfa *pfaStruct) panic(args ...interface{}) {
+	fmtString := "<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>"
+	if args != nil {
+		fmtString += " " + args[0].(string)
 	}
-	stackItem = &pfa.stack[len(pfa.stack)-1]
+	fmtArgs := []interface{}{pfa}
+	if args != nil && len(args) > 1 {
+		fmtArgs = append(fmtArgs, args[1:])
+	}
+	core.Panicd(1, fmtString, fmtArgs)
+}
+
+func (pfa *pfaStruct) getTopStackItemOfType(itemType parseStackItemType, ofsList ...int) (stackItem *parseStackItem) {
+	stackItem = pfa.getTopStackItem(ofsList...)
+	if stackItem.itemType != itemType {
+		pfa.panic("<ansiOutline>itemType<ansiSecondaryLiteral", itemType)
+	}
 	return
 }
 
-func (pfa *pfaStruct) panic() {
-	core.Panicd(1, "<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
-}
-
-func (pfa *pfaStruct) getTopStackItem() (stackItem *parseStackItem) {
-	if !(len(pfa.stack) >= 1) {
+func (pfa *pfaStruct) getTopStackItem(ofsList ...int) (stackItem *parseStackItem) {
+	ofs := -1
+	if ofsList != nil && ofsList[0] < 0 {
+		ofs = ofsList[0]
+	}
+	if len(pfa.stack) < -ofs {
 		pfa.panic()
 	}
-	stackItem = &pfa.stack[len(pfa.stack)-1]
+	stackItem = &pfa.stack[len(pfa.stack)+ofs]
 	return
 }
 
@@ -74,92 +115,71 @@ func (pfa *pfaStruct) popStackItem() (stackItem parseStackItem) {
 
 func (pfa *pfaStruct) processCharAtPos() (err error) {
 	pfa.needFinishTopStackItem = false
-	if method, ok := pfaPrimaryStateMethods[pfa.state.primary]; ok {
-		err = method(pfa)
-	} else {
-		pfa.panic()
-	}
+	pfaPrimaryStateMethods[pfa.state.primary](pfa)
 	if pfa.needFinishTopStackItem {
-		if err = pfa.finishTopStackItem(); err != nil {
-			return
-		}
+		err = pfa.finishTopStackItem()
 	}
-
-	if pfa.charPtr == nil && pfa.state.primary != expectEOF {
+	if err == nil && pfa.charPtr == nil && pfa.state.primary != expectEOF {
 		pfa.panic()
 	}
-
 	return
 }
 
-const MaxUint = ^uint(0)
-const MinUint = 0
-const MaxInt = int(MaxUint >> 1)
-const MinInt = -MaxInt - 1
-
-var underscoreRegexp = regexp.MustCompile("[_]+")
-
 func (pfa *pfaStruct) finishTopStackItem() (err error) {
-	if len(pfa.stack) < 1 {
-		core.Panic("<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
-	}
-	stackItem := &pfa.stack[len(pfa.stack)-1]
-	if method, ok := pfaItemFinishMethods[stackItem.itemType]; ok {
-		var skipPostProcess bool
-		if skipPostProcess, err = method(pfa); err != nil || skipPostProcess {
-			return err
-		}
-	} else {
-		core.Panic("<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
-	}
-
-	if len(pfa.stack) == 1 {
-		pfa.result = stackItem.value
-		pfa.state.setSecondary(expectEOF, orSpace)
-		return
-	} else if len(pfa.stack) > 1 && pfa.charPtr != nil {
-		stackSubItem := pfa.popStackItem()
-		stackItem = pfa.getTopStackItem()
-		switch stackItem.itemType {
-		case parseStackItemArray:
-			stackItem.itemArray = append(stackItem.itemArray, stackSubItem.value)
-			switch stackSubItem.itemType {
-			case parseStackItemNumber, parseStackItemWord:
-				switch {
-				case unicode.IsSpace(*pfa.charPtr):
-					pfa.state.setSecondary(expectValueOrSpace, orArrayItemSeparator)
-				case *pfa.charPtr == ',':
-					pfa.state.setPrimary(expectValueOrSpace)
-				default:
-					return unexpectedCharError{}
-				}
-			default:
-				pfa.state.setSecondary(expectValueOrSpace, orArrayItemSeparator)
-			}
-
-		case parseStackItemMap:
-			switch stackSubItem.itemType {
-			case parseStackItemKey:
-				stackItem.currentKey = stackSubItem.itemString
-				pfa.state.setPrimary(expectMapKeySeparatorOrSpace)
-			default:
-				stackItem.itemMap[stackItem.currentKey] = stackSubItem.value
-				switch stackSubItem.itemType {
-				case parseStackItemNumber, parseStackItemWord:
-					switch {
-					case unicode.IsSpace(*pfa.charPtr):
-						pfa.state.setSecondary(expectSpaceOrMapKey, orMapValueSeparator)
-					case *pfa.charPtr == ',':
-						pfa.state.setPrimary(expectSpaceOrMapKey)
+	stackItem := pfa.getTopStackItem()
+	var skipPostProcess bool
+	if skipPostProcess, err = pfaItemFinishMethods[stackItem.itemType](pfa); err == nil && !skipPostProcess {
+		if len(pfa.stack) == 1 {
+			pfa.result = stackItem.value
+			pfa.state.setSecondary(expectEOF, orSpace)
+		} else if len(pfa.stack) > 1 {
+			if pfa.charPtr == nil {
+				err = unexpectedCharError{}
+			} else {
+				stackSubItem := pfa.popStackItem()
+				stackItem = pfa.getTopStackItem()
+				switch stackItem.itemType {
+				case parseStackItemArray:
+					stackItem.itemArray = append(stackItem.itemArray, stackSubItem.value)
+					switch stackSubItem.itemType {
+					case parseStackItemNumber, parseStackItemWord:
+						switch {
+						case unicode.IsSpace(*pfa.charPtr):
+							pfa.state.setSecondary(expectValueOrSpace, orArrayItemSeparator)
+						case *pfa.charPtr == ',':
+							pfa.state.setPrimary(expectValueOrSpace)
+						default:
+							err = unexpectedCharError{}
+						}
 					default:
-						return unexpectedCharError{}
+						pfa.state.setSecondary(expectValueOrSpace, orArrayItemSeparator)
+					}
+
+				case parseStackItemMap:
+					switch stackSubItem.itemType {
+					case parseStackItemKey:
+						stackItem.currentKey = stackSubItem.itemString
+						pfa.state.setPrimary(expectMapKeySeparatorOrSpace)
+					default:
+						stackItem.itemMap[stackItem.currentKey] = stackSubItem.value
+						switch stackSubItem.itemType {
+						case parseStackItemNumber, parseStackItemWord:
+							switch {
+							case unicode.IsSpace(*pfa.charPtr):
+								pfa.state.setSecondary(expectSpaceOrMapKey, orMapValueSeparator)
+							case *pfa.charPtr == ',':
+								pfa.state.setPrimary(expectSpaceOrMapKey)
+							default:
+								err = unexpectedCharError{}
+							}
+						default:
+							pfa.state.setSecondary(expectSpaceOrMapKey, orMapValueSeparator)
+						}
 					}
 				default:
-					pfa.state.setSecondary(expectSpaceOrMapKey, orMapValueSeparator)
+					pfa.panic()
 				}
 			}
-		default:
-			core.Panic("<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>", pfa)
 		}
 	}
 

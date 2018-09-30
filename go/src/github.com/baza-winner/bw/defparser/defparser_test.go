@@ -2,7 +2,7 @@ package defparser
 
 import (
 	"encoding/json"
-	"fmt"
+	// "fmt"
 	"github.com/baza-winner/bw/ansi"
 	"reflect"
 	"testing"
@@ -17,11 +17,11 @@ type testParseStruct struct {
 func TestParse(t *testing.T) {
 
 	tests := map[string]testParseStruct{
-		"unexpected char": {
-			source: `*`,
-			result: nil,
-			err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectValueOrSpace`)),
-		},
+		// "unexpected char": {
+		// 	source: `*`,
+		// 	result: nil,
+		// 	err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectValueOrSpace`)),
+		// },
 		"zero number": {
 			source: `0`,
 			result: 0,
@@ -133,7 +133,7 @@ func TestParse(t *testing.T) {
 				some => [ 0, 100_000, 5_000.5, -3.14 ],
 				thing: true
 				'go\'od' "str\ning"
-				"go\"od" nil
+				"go\"od" nil,
 			}`,
 			result: map[string]interface{}{
 				"some":   []interface{}{0, 100000, 5000.5, -3.14},
@@ -148,6 +148,7 @@ func TestParse(t *testing.T) {
 	testsToRun := tests
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"]}
+	// testsToRun = map[string]testParseStruct{"qw": tests["qw"]}
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)

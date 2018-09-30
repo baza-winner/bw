@@ -3,14 +3,16 @@ package defparser
 type parseStackItemType uint16
 
 const (
-	parseStackItemArray parseStackItemType = iota
+	_parseStackItemBelow parseStackItemType = iota
+	parseStackItemKey
+	parseStackItemString
+	parseStackItemMap
+	parseStackItemArray
 	parseStackItemQw
 	parseStackItemQwItem
-	parseStackItemMap
 	parseStackItemNumber
-	parseStackItemString
 	parseStackItemWord
-	parseStackItemKey
+	_parseStackItemAbove
 )
 
 //go:generate stringer -type=parseStackItemType
