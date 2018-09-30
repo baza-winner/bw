@@ -102,9 +102,9 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			case *charPtr == '"' || *charPtr == '\'':
 				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemString, pos: pos + 1, itemString: ``})
 				if *charPtr == '"' {
-					pfa.state = expectDoubleQuotedStringContent
+					pfa.state = expectContentOfDoubleQuotedString
 				} else {
-					pfa.state = expectSingleQuotedStringContent
+					pfa.state = expectContentOfSingleQuotedString
 				}
 			case unicode.IsLetter(*charPtr):
 				pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, pos: pos, itemString: string(*charPtr)})
@@ -216,18 +216,18 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		expectContentOfDoubleQuotedKey,
 		expectContentOfSingleQuotedKey,
 		expectEscapedContentOfDoubleQuotedKey,
-		expectOfEscapedContentSingleQuotedKey,
-		expectDoubleQuotedStringContent,
-		expectDoubleQuotedStringEscapedContent,
-		expectSingleQuotedStringContent,
+		expectEscapedContentOfSingleQuotedKey,
+		expectContentOfDoubleQuotedString,
+		expectEscapedContentOfDoubleQuotedString,
+		expectContentOfSingleQuotedString,
 		expectSingleQuotedStringEscapedContent:
 		if charPtr == nil {
 			return unexpectedCharError{}
 		}
 		switch pfa.state {
-		case expectDoubleQuotedStringContent,
-			expectDoubleQuotedStringEscapedContent,
-			expectSingleQuotedStringContent,
+		case expectContentOfDoubleQuotedString,
+			expectEscapedContentOfDoubleQuotedString,
+			expectContentOfSingleQuotedString,
 			expectSingleQuotedStringEscapedContent:
 			stackItem = pfa.getTopStackItem(parseStackItemString, pos)
 		default:
@@ -237,29 +237,29 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case
 			expectContentOfDoubleQuotedKey,
 			expectContentOfSingleQuotedKey,
-			expectDoubleQuotedStringContent,
-			expectSingleQuotedStringContent:
-			if (pfa.state == expectDoubleQuotedStringContent || pfa.state == expectContentOfDoubleQuotedKey) && *charPtr == '"' ||
-				(pfa.state == expectSingleQuotedStringContent || pfa.state == expectContentOfSingleQuotedKey) && *charPtr == '\'' {
+			expectContentOfDoubleQuotedString,
+			expectContentOfSingleQuotedString:
+			if (pfa.state == expectContentOfDoubleQuotedString || pfa.state == expectContentOfDoubleQuotedKey) && *charPtr == '"' ||
+				(pfa.state == expectContentOfSingleQuotedString || pfa.state == expectContentOfSingleQuotedKey) && *charPtr == '\'' {
 				needFinishTopStackItem = true
 			} else if *charPtr == '\\' {
 				switch pfa.state {
-				case expectDoubleQuotedStringContent:
-					pfa.state = expectDoubleQuotedStringEscapedContent
-				case expectSingleQuotedStringContent:
+				case expectContentOfDoubleQuotedString:
+					pfa.state = expectEscapedContentOfDoubleQuotedString
+				case expectContentOfSingleQuotedString:
 					pfa.state = expectSingleQuotedStringEscapedContent
 				case expectContentOfDoubleQuotedKey:
 					pfa.state = expectEscapedContentOfDoubleQuotedKey
 				case expectContentOfSingleQuotedKey:
-					pfa.state = expectOfEscapedContentSingleQuotedKey
+					pfa.state = expectEscapedContentOfSingleQuotedKey
 				}
 			} else {
 				stackItem.itemString = stackItem.itemString + string(*charPtr)
 			}
 		case
 			expectEscapedContentOfDoubleQuotedKey,
-			expectOfEscapedContentSingleQuotedKey,
-			expectDoubleQuotedStringEscapedContent,
+			expectEscapedContentOfSingleQuotedKey,
+			expectEscapedContentOfDoubleQuotedString,
 			expectSingleQuotedStringEscapedContent:
 			var actualVal string
 			switch *charPtr {
@@ -271,7 +271,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 				actualVal = "\\"
 			default:
 				switch pfa.state {
-				case expectDoubleQuotedStringEscapedContent, expectEscapedContentOfDoubleQuotedKey:
+				case expectEscapedContentOfDoubleQuotedString, expectEscapedContentOfDoubleQuotedKey:
 					switch *charPtr {
 					case 'a':
 						actualVal = "\a"
@@ -295,13 +295,13 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			}
 			stackItem.itemString = stackItem.itemString + actualVal
 			switch pfa.state {
-			case expectDoubleQuotedStringEscapedContent:
-				pfa.state = expectDoubleQuotedStringContent
+			case expectEscapedContentOfDoubleQuotedString:
+				pfa.state = expectContentOfDoubleQuotedString
 			case expectSingleQuotedStringEscapedContent:
-				pfa.state = expectSingleQuotedStringContent
+				pfa.state = expectContentOfSingleQuotedString
 			case expectEscapedContentOfDoubleQuotedKey:
 				pfa.state = expectContentOfDoubleQuotedKey
-			case expectOfEscapedContentSingleQuotedKey:
+			case expectEscapedContentOfSingleQuotedKey:
 				pfa.state = expectContentOfSingleQuotedKey
 			}
 		}

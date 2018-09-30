@@ -24,15 +24,15 @@ const (
 	expectDigitOrUnderscoreOrDot
 	expectDigitOrUnderscore
 
-	expectDoubleQuotedStringContent
-	expectSingleQuotedStringContent
-	expectDoubleQuotedStringEscapedContent
+	expectContentOfDoubleQuotedString
+	expectContentOfSingleQuotedString
+	expectEscapedContentOfDoubleQuotedString
 	expectSingleQuotedStringEscapedContent
 
 	expectContentOfDoubleQuotedKey
 	expectContentOfSingleQuotedKey
 	expectEscapedContentOfDoubleQuotedKey
-	expectOfEscapedContentSingleQuotedKey
+	expectEscapedContentOfSingleQuotedKey
 
 	expectSpaceOrMapKey
 	expectSpaceOrMapKeyOrMapValueSeparator
