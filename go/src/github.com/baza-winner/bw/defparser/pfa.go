@@ -59,7 +59,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 
 	case expectRocket:
 		if charPtr != nil && *charPtr == '>' {
-			pfa.state = expectSpaceOrMapValue
+			pfa.state = expectSpaceOrValue
 		} else {
 			return unexpectedCharError{}
 		}
@@ -137,7 +137,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case unicode.IsSpace(*charPtr):
 			pfa.state = expectMapKeySeparatorOrSpaceOrMapValue
 		case *charPtr == ':':
-			pfa.state = expectSpaceOrMapValue
+			pfa.state = expectSpaceOrValue
 		case *charPtr == '=':
 			pfa.state = expectRocket
 		default:
@@ -146,7 +146,6 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 
 	case
 		expectMapKeySeparatorOrSpaceOrMapValue,
-		expectSpaceOrMapValue,
 		expectSpaceOrValue,
 		expectSpaceOrArrayItem,
 		expectArrayItemSeparatorOrSpaceOrArrayValue:
@@ -167,7 +166,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		case pfa.state == expectMapKeySeparatorOrSpaceOrMapValue && *charPtr == '=':
 			pfa.state = expectRocket
 		case pfa.state == expectMapKeySeparatorOrSpaceOrMapValue && *charPtr == ':':
-			pfa.state = expectSpaceOrMapValue
+			pfa.state = expectSpaceOrValue
 
 		case unicode.IsSpace(*charPtr):
 		case *charPtr == '{':
@@ -177,7 +176,8 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, pos: pos, itemArray: []interface{}{}})
 			pfa.state = expectSpaceOrArrayItem
 
-		case *charPtr == ']' && (pfa.state == expectSpaceOrArrayItem || pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue):
+		// case *charPtr == ']' && (pfa.state == expectSpaceOrArrayItem || pfa.state == expectArrayItemSeparatorOrSpaceOrArrayValue):
+		case *charPtr == ']' && (len(pfa.stack) > 0 && pfa.stack[len(pfa.stack)-1].itemType == parseStackItemArray):
 			stackItem = pfa.getTopStackItem(parseStackItemArray, pos)
 			needFinishTopStackItem = true
 

@@ -18,7 +18,6 @@ const (
 	expectArrayItemSeparatorOrSpaceOrArrayValue
 	expectMapKeySeparatorOrSpace
 	expectMapKeySeparatorOrSpaceOrMapValue
-	expectSpaceOrMapValue
 	expectRocket
 	expectMapValueSeparatorOrSpaceOrMapValue
 	expectSpaceOrMapKey

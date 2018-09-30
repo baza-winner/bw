@@ -4,9 +4,9 @@ package defparser
 
 import "strconv"
 
-const _parseState_name = "expectSpaceOrValueexpectSpaceOrArrayItemexpectDigitexpectDigitOrUnderscoreOrDotexpectDigitOrUnderscoreexpectDoubleQuotedStringContentexpectSingleQuotedStringContentexpectDoubleQuotedStringEscapedContentexpectSingleQuotedStringEscapedContentexpectWordexpectKeyunexpectedCharexpectArrayItemSeparatorOrSpaceOrArrayValueexpectMapKeySeparatorOrSpaceexpectMapKeySeparatorOrSpaceOrMapValueexpectSpaceOrMapValueexpectRocketexpectMapValueSeparatorOrSpaceOrMapValueexpectSpaceOrMapKeyexpectMapValueSeparatorOrSpaceOrMapKeyexpectDoubleQuotedKeyContentexpectSingleQuotedKeyContentexpectDoubleQuotedKeyEscapedContentexpectSingleQuotedKeyEscapedContentexpectSpaceOrQwItemOrDelimiterexpectEndOfQwItemexpectArrayItemSeparatorOrSpaceexpectEOFexpectSpaceOrEOF"
+const _parseState_name = "expectSpaceOrValueexpectSpaceOrArrayItemexpectDigitexpectDigitOrUnderscoreOrDotexpectDigitOrUnderscoreexpectDoubleQuotedStringContentexpectSingleQuotedStringContentexpectDoubleQuotedStringEscapedContentexpectSingleQuotedStringEscapedContentexpectWordexpectKeyunexpectedCharexpectArrayItemSeparatorOrSpaceOrArrayValueexpectMapKeySeparatorOrSpaceexpectMapKeySeparatorOrSpaceOrMapValueexpectRocketexpectMapValueSeparatorOrSpaceOrMapValueexpectSpaceOrMapKeyexpectMapValueSeparatorOrSpaceOrMapKeyexpectDoubleQuotedKeyContentexpectSingleQuotedKeyContentexpectDoubleQuotedKeyEscapedContentexpectSingleQuotedKeyEscapedContentexpectSpaceOrQwItemOrDelimiterexpectEndOfQwItemexpectArrayItemSeparatorOrSpaceexpectEOFexpectSpaceOrEOF"
 
-var _parseState_index = [...]uint16{0, 18, 40, 51, 79, 102, 133, 164, 202, 240, 250, 259, 273, 316, 344, 382, 403, 415, 455, 474, 512, 540, 568, 603, 638, 668, 685, 716, 725, 741}
+var _parseState_index = [...]uint16{0, 18, 40, 51, 79, 102, 133, 164, 202, 240, 250, 259, 273, 316, 344, 382, 394, 434, 453, 491, 519, 547, 582, 617, 647, 664, 695, 704, 720}
 
 func (i parseState) String() string {
 	if i >= parseState(len(_parseState_index)-1) {
