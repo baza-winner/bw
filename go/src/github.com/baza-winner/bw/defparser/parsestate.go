@@ -30,7 +30,7 @@ const (
 	expectSingleQuotedStringEscapedContent
 
 	expectContentOfDoubleQuotedKey
-	expectSingleQuotedKeyContent
+	expectContentOfSingleQuotedKey
 	expectDoubleQuotedKeyEscapedContent
 	expectSingleQuotedKeyEscapedContent
 

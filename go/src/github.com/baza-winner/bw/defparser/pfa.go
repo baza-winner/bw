@@ -160,7 +160,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			pfa.state = expectContentOfDoubleQuotedKey
 		case *charPtr == '\'':
 			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, pos: pos, itemString: ``})
-			pfa.state = expectSingleQuotedKeyContent
+			pfa.state = expectContentOfSingleQuotedKey
 		case *charPtr == ',' && pfa.state == expectSpaceOrMapKeyOrMapValueSeparator:
 			pfa.state = expectSpaceOrMapKey
 		case *charPtr == '}':
@@ -214,7 +214,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 
 	case
 		expectContentOfDoubleQuotedKey,
-		expectSingleQuotedKeyContent,
+		expectContentOfSingleQuotedKey,
 		expectDoubleQuotedKeyEscapedContent,
 		expectSingleQuotedKeyEscapedContent,
 		expectDoubleQuotedStringContent,
@@ -236,11 +236,11 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 		switch pfa.state {
 		case
 			expectContentOfDoubleQuotedKey,
-			expectSingleQuotedKeyContent,
+			expectContentOfSingleQuotedKey,
 			expectDoubleQuotedStringContent,
 			expectSingleQuotedStringContent:
 			if (pfa.state == expectDoubleQuotedStringContent || pfa.state == expectContentOfDoubleQuotedKey) && *charPtr == '"' ||
-				(pfa.state == expectSingleQuotedStringContent || pfa.state == expectSingleQuotedKeyContent) && *charPtr == '\'' {
+				(pfa.state == expectSingleQuotedStringContent || pfa.state == expectContentOfSingleQuotedKey) && *charPtr == '\'' {
 				needFinishTopStackItem = true
 			} else if *charPtr == '\\' {
 				switch pfa.state {
@@ -250,7 +250,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 					pfa.state = expectSingleQuotedStringEscapedContent
 				case expectContentOfDoubleQuotedKey:
 					pfa.state = expectDoubleQuotedKeyEscapedContent
-				case expectSingleQuotedKeyContent:
+				case expectContentOfSingleQuotedKey:
 					pfa.state = expectSingleQuotedKeyEscapedContent
 				}
 			} else {
@@ -302,7 +302,7 @@ func (pfa *pfaStruct) processCharAtPos(pos int, charPtr *rune) (err error) {
 			case expectDoubleQuotedKeyEscapedContent:
 				pfa.state = expectContentOfDoubleQuotedKey
 			case expectSingleQuotedKeyEscapedContent:
-				pfa.state = expectSingleQuotedKeyContent
+				pfa.state = expectContentOfSingleQuotedKey
 			}
 		}
 
