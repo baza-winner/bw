@@ -20,7 +20,7 @@ func TestParse(t *testing.T) {
 		"unexpected char": {
 			source: `*`,
 			result: nil,
-			err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectSpaceOrValue`)),
+			err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectValueOrSpace`)),
 		},
 		"zero number": {
 			source: `0`,
@@ -147,6 +147,7 @@ func TestParse(t *testing.T) {
 
 	testsToRun := tests
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
+	// testsToRun = map[string]testParseStruct{"empty": tests["empty"]}
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)

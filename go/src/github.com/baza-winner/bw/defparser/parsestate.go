@@ -3,33 +3,42 @@ package defparser
 type parseState uint16
 
 const (
-	expectSpaceOrValue parseState = iota
+	expectEOF parseState = iota
+	expectEOFOrSpace
+
+	expectValueOrSpace
+	expectValueOrSpaceOrArrayItemSeparator
+	expectValueOrSpaceOrMapKeySeparator
+
+	expectArrayItemSeparatorOrSpace
+	expectMapKeySeparatorOrSpace
+
+	expectRocket
+
+	expectMapKey
+
+	expectWord
+
 	expectDigit
 	expectDigitOrUnderscoreOrDot
 	expectDigitOrUnderscore
+
 	expectDoubleQuotedStringContent
 	expectSingleQuotedStringContent
 	expectDoubleQuotedStringEscapedContent
 	expectSingleQuotedStringEscapedContent
-	expectWord
-	expectKey
-	unexpectedChar
-	expectArrayItemSeparatorOrSpaceOrArrayValue
-	expectMapKeySeparatorOrSpace
-	expectMapKeySeparatorOrSpaceOrMapValue
-	expectRocket
-	expectMapValueSeparatorOrSpaceOrMapValue
-	expectSpaceOrMapKey
-	expectMapValueSeparatorOrSpaceOrMapKey
+
 	expectDoubleQuotedKeyContent
 	expectSingleQuotedKeyContent
 	expectDoubleQuotedKeyEscapedContent
 	expectSingleQuotedKeyEscapedContent
+
+	expectSpaceOrMapKey
+	expectSpaceOrMapKeyOrMapValueSeparator
+
 	expectSpaceOrQwItemOrDelimiter
+
 	expectEndOfQwItem
-	expectArrayItemSeparatorOrSpace
-	expectEOF
-	expectSpaceOrEOF
 )
 
 //go:generate stringer -type=parseState
