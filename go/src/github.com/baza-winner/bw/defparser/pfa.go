@@ -2,7 +2,9 @@ package defparser
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/baza-winner/bw/core"
+	"strconv"
 	"unicode"
 )
 
@@ -25,12 +27,11 @@ func init() {
 }
 
 type pfaStruct struct {
-	stack                  parseStack
-	state                  parseState
-	result                 interface{}
-	needFinishTopStackItem bool
-	pos                    int
-	charPtr                *rune
+	stack   parseStack
+	state   parseState
+	result  interface{}
+	pos     int
+	charPtr *rune
 }
 
 func (pfa *pfaStruct) getDataForJson() interface{} {
@@ -38,8 +39,7 @@ func (pfa *pfaStruct) getDataForJson() interface{} {
 	result["stack"] = pfa.stack.getDataForJson()
 	result["state"] = pfa.state.String()
 	result["result"] = pfa.result
-	result["needFinishTopStackItem"] = pfa.needFinishTopStackItem
-	result["pos"] = string(pfa.pos)
+	result["pos"] = strconv.FormatInt(int64(pfa.pos), 10)
 	if pfa.charPtr == nil {
 		result["charPtr"] = nil
 	} else {
@@ -48,28 +48,10 @@ func (pfa *pfaStruct) getDataForJson() interface{} {
 	return result
 }
 
-func (pfa *pfaStruct) String() (result string) {
+func (pfa pfaStruct) String() (result string) {
 	bytes, _ := json.MarshalIndent(pfa.getDataForJson(), ``, `  `)
 	result = string(bytes[:]) // https://stackoverflow.com/questions/14230145/what-is-the-best-way-to-convert-byte-array-to-string/18615786#18615786
 	return
-}
-
-type unexpectedCharError struct{}
-
-func (e unexpectedCharError) Error() string {
-	return `unexpectedCharError`
-}
-
-type failedToGetNumberError struct{}
-
-func (e failedToGetNumberError) Error() string {
-	return `failedToGetNumberError`
-}
-
-type unexpectedWordError struct{}
-
-func (e unexpectedWordError) Error() string {
-	return `unexpectedWordError`
 }
 
 func (pfa *pfaStruct) panic(args ...interface{}) {
@@ -81,7 +63,32 @@ func (pfa *pfaStruct) panic(args ...interface{}) {
 	if args != nil && len(args) > 1 {
 		fmtArgs = append(fmtArgs, args[1:])
 	}
-	core.Panicd(1, fmtString, fmtArgs)
+	fmt.Println(fmtString, fmtArgs)
+	core.Panicd(1, fmtString, fmtArgs...)
+}
+
+func (pfa *pfaStruct) ifStackLen(minLen int) bool {
+	if len(pfa.stack) < minLen {
+		return false
+	}
+	return true
+}
+
+func (pfa *pfaStruct) mustStackLen(minLen int) {
+	if !pfa.ifStackLen(minLen) {
+		pfa.panic("<ansiOutline>minLen <ansiSecondaryLiteral>%d", minLen)
+	}
+}
+
+func (pfa *pfaStruct) isTopStackItemOfType(itemType parseStackItemType, ofsList ...int) bool {
+	ofs := -1
+	if ofsList != nil && ofsList[0] < 0 {
+		ofs = ofsList[0]
+	}
+	if pfa.ifStackLen(-ofs) && pfa.getTopStackItem().itemType == itemType {
+		return true
+	}
+	return false
 }
 
 func (pfa *pfaStruct) getTopStackItemOfType(itemType parseStackItemType, ofsList ...int) (stackItem *parseStackItem) {
@@ -92,37 +99,42 @@ func (pfa *pfaStruct) getTopStackItemOfType(itemType parseStackItemType, ofsList
 	return
 }
 
-func (pfa *pfaStruct) checkStackLen(minLen int) {
-	if len(pfa.stack) < minLien {
-		pfa.panic("<ansiOutline>minLen<ansiSecondaryLiteral>%d", minLen)
-	}
-}
-
 func (pfa *pfaStruct) getTopStackItem(ofsList ...int) (stackItem *parseStackItem) {
 	ofs := -1
 	if ofsList != nil && ofsList[0] < 0 {
 		ofs = ofsList[0]
 	}
-	pfa.checkStackLen(-ofs)
+	pfa.mustStackLen(-ofs)
 	stackItem = &pfa.stack[len(pfa.stack)+ofs]
 	return
 }
 
 func (pfa *pfaStruct) popStackItem() (stackItem parseStackItem) {
-	pfa.checkStackLen(1)
+	pfa.mustStackLen(1)
 	stackItem = pfa.stack[len(pfa.stack)-1]
 	pfa.stack = pfa.stack[:len(pfa.stack)-1]
 	return
 }
 
-func (pfa *pfaStruct) processCharAtPos() (err error) {
-	pfa.needFinishTopStackItem = false
-	pfaPrimaryStateMethods[pfa.state.primary](pfa)
-	if pfa.needFinishTopStackItem {
-		err = pfa.finishTopStackItem()
-	}
-	if err == nil && pfa.charPtr == nil && pfa.state.primary != expectEOF {
+func (pfa *pfaStruct) processCharAtPos(char rune, pos int) error {
+	pfa.pos = pos
+	pfa.charPtr = &char
+	return pfa.doProcessCharAtPos()
+}
+
+func (pfa *pfaStruct) processEOF() (err error) {
+	pfa.pos = -1
+	pfa.charPtr = nil
+	if err = pfa.doProcessCharAtPos(); err == nil && pfa.state.primary != expectEOF {
 		pfa.panic()
+	}
+	return err
+}
+
+func (pfa *pfaStruct) doProcessCharAtPos() (err error) {
+	var needFinishTopStackItem bool
+	if needFinishTopStackItem, err = pfaPrimaryStateMethods[pfa.state.primary](pfa); err == nil && needFinishTopStackItem {
+		err = pfa.finishTopStackItem()
 	}
 	return
 }

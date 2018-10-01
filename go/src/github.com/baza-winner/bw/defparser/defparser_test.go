@@ -2,7 +2,7 @@ package defparser
 
 import (
 	"encoding/json"
-	// "fmt"
+	"fmt"
 	"github.com/baza-winner/bw/ansi"
 	"reflect"
 	"testing"
@@ -17,11 +17,6 @@ type testParseStruct struct {
 func TestParse(t *testing.T) {
 
 	tests := map[string]testParseStruct{
-		// "unexpected char": {
-		// 	source: `*`,
-		// 	result: nil,
-		// 	err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectValueOrSpace`)),
-		// },
 		"zero number": {
 			source: `0`,
 			result: 0,
@@ -62,6 +57,12 @@ func TestParse(t *testing.T) {
 			result: "some",
 			err:    nil,
 		},
+		"double quoted string with newline inside": {
+			source: `"so
+me"`,
+			result: "so\nme",
+			err:    nil,
+		},
 		"double quoted string space surrounded": {
 			source: ` "some" `,
 			result: "some",
@@ -75,6 +76,12 @@ func TestParse(t *testing.T) {
 		"single quoted string": {
 			source: `'some'`,
 			result: "some",
+			err:    nil,
+		},
+		"single quoted string with newline inside": {
+			source: `'so
+me'`,
+			result: "so\nme",
 			err:    nil,
 		},
 		"single quoted string with escapes": {
@@ -143,18 +150,40 @@ func TestParse(t *testing.T) {
 			},
 			err: nil,
 		},
+		// "unexpected word": {
+		// 	source: `[ qw/abc def/ some ]`,
+		// 	result: nil,
+		// 	err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectValueOrSpace`)),
+		// },
+
+		"unexpected word": {
+			source: `
+ qw/abc def/  `,
+			result: nil,
+			err:    fmt.Errorf(ansi.Ansi(`Err`, "unexpected word <ansiPrimaryLiteral>qw<ansi> at line <ansiCmd>2<ansi>, col <ansiCmd>2<ansi> (pos <ansiCmd>2<ansi>):\n<ansiOK>\n <ansiErr>qw<ansiReset>/abc def/ ")),
+		},
+
+		"unknown word": {
+			source: ` [ qw/one two three/ def qw/four five six/ ] `,
+			result: nil,
+			err:    fmt.Errorf(ansi.Ansi(`Err`, `unknown word <ansiPrimaryLiteral>def<ansi> at pos <ansiSecondaryLiteral>3`)),
+		},
+		"unexpected char": {
+			source: `*`,
+			result: nil,
+			err:    fmt.Errorf(ansi.Ansi(`Err`, `unexpected <ansiOutline>char <ansiPrimaryLiteral>'*'<ansi> (code <ansiSecondaryLiteral>42<ansi>) at <ansiOutline>pos <ansiSecondaryLiteral>0<ansi> while <ansiOutline>state <ansiSecondaryLiteral>expectValueOrSpace`)),
+		},
 	}
 
 	testsToRun := tests
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"]}
-	// testsToRun = map[string]testParseStruct{"qw": tests["qw"]}
+	testsToRun = map[string]testParseStruct{"unknown word": tests["unknown word"]}
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)
 		if err != test.err {
 			if err == nil || test.err == nil || err.Error() != test.err.Error() {
-				// fmt.Println(reflect.TypeOf(err), reflect.TypeOf(test.err))
 				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), test.source, err, test.err)
 			}
 		} else if !reflect.DeepEqual(result, test.result) {
