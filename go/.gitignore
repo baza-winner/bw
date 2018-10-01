@@ -1,4 +1,2 @@
 pkg
 bin
-src
-!src/github.com/baza-winner/bw
