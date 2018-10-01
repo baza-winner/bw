@@ -280,7 +280,7 @@ func ExitWithError(exitCode int, fmtString string, fmtArgs ...interface{}) {
 }
 
 func Error(msgFmt string, args ...interface{}) error {
-	return errors.New(fmt.Sprintf(ansi.Ansi(`Err`, msgFmt), args...))
+	return errors.New(fmt.Sprintf(ansi.Ansi(`Err`, "ERR: "+msgFmt), args...))
 }
 
 func Panic(msgFmt string, args ...interface{}) {

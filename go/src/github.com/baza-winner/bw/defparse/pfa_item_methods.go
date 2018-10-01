@@ -1,4 +1,4 @@
-package defparser
+package defparse
 
 import (
 	"regexp"
@@ -112,7 +112,7 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		stackItem.value = true
 	case "false":
 		stackItem.value = false
-	case "nil":
+	case "nil", "null":
 		stackItem.value = nil
 	case "qw":
 		if len(pfa.stack) < 2 || pfa.getTopStackItem(-2).itemType != parseStackItemArray {

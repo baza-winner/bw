@@ -1,4 +1,4 @@
-package defparser
+package defparse
 
 type parseStackItemType uint16
 

@@ -1,4 +1,4 @@
-package defparser
+package defparse
 
 import (
 	// "fmt"
@@ -159,7 +159,8 @@ func _expectMapKey(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
 	switch {
 	case pfa.charPtr == nil:
 		err = unexpectedCharError{}
-	case unicode.IsLetter(*pfa.charPtr):
+	// case unicode.IsLetter(*pfa.charPtr):
+	case !(unicode.IsSpace(*pfa.charPtr) || *pfa.charPtr == ':' || *pfa.charPtr == '='):
 		stackItem.itemString = stackItem.itemString + string(*pfa.charPtr)
 	default:
 		needFinishTopStackItem = true

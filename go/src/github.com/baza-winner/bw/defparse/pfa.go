@@ -1,4 +1,4 @@
-package defparser
+package defparse
 
 import (
 	"encoding/json"
@@ -173,7 +173,14 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 					switch stackSubItem.itemType {
 					case parseStackItemKey:
 						stackItem.currentKey = stackSubItem.itemString
-						pfa.state.setPrimary(expectMapKeySeparatorOrSpace)
+						switch {
+						case unicode.IsSpace(*pfa.charPtr):
+							pfa.state.setSecondary(expectValueOrSpace, orMapKeySeparator)
+						case *pfa.charPtr == ':' || *pfa.charPtr == '=':
+							pfa.state.setPrimary(expectValueOrSpace)
+						default:
+							pfa.state.setPrimary(expectMapKeySeparatorOrSpace)
+						}
 					default:
 						stackItem.itemMap[stackItem.currentKey] = stackSubItem.value
 						switch stackSubItem.itemType {

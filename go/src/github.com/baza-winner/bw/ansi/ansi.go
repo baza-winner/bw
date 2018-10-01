@@ -34,6 +34,7 @@ var ansiMap = map[string]string{
 	"Black":        escape + "[30m",
 	"Red":          escape + "[31m",
 	"Green":        escape + "[32m",
+	"DarkGreen":    escape + "[38;5;28m",
 	"Yellow":       escape + "[33m",
 	"Blue":         escape + "[34m",
 	"Magenta":      escape + "[38;5;201m", // "Magenta": escape + "[35m",

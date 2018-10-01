@@ -1,4 +1,4 @@
-*
-!.gitignore
-!github.com
+/*
+!/.gitignore
+!/github.com
 
