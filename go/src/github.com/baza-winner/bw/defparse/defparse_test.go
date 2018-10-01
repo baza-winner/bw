@@ -190,19 +190,42 @@ me'`,
 			result: nil,
 			err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unexpected end of string (pfa.state: expectValueOrSpace)"+ansi.Ansi("Reset", " at pos <ansiCmd>22<ansi>: <ansiDarkGreen> [1000, true 'value', \n"))),
 		},
+		"non map": {
+			source: `
+        type: 'map',
+        keys: {
+          v: {
+            type: enum
+            enum: qw/all err ok none/
+            default: none
+          }
+          s: {
+            type: enum
+            enum: qw/none stderr stdout all/
+            default: all
+          }
+          exitOnError: {
+            type: bool
+            default: false
+          }
+        }
+      `,
+			result: nil,
+      err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
+		},
 	}
 
 	testsToRun := tests
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"]}
-	// testsToRun = map[string]testParseStruct{"unexpectedCharError(EOF)": tests["unexpectedCharError(EOF)"]}
+	testsToRun = map[string]testParseStruct{"non map": tests["non map"]}
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)
 		if err != test.err {
 			if err == nil || test.err == nil || err.Error() != test.err.Error() {
 				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), test.source, err, test.err)
-				fmt.Printf("eta: %q\ntst: %q\n", err, test.err)
+				fmt.Printf("tst: %q\neta: %q\n", err, test.err)
 			}
 		} else if !reflect.DeepEqual(result, test.result) {
 			tstJson, _ := json.MarshalIndent(result, ``, `  `)
@@ -575,4 +598,63 @@ func ExampleParse_7() {
 	//     "keyOfNull": null
 	//   }
 	// ]
+}
+
+type testParseMapStruct struct {
+	source string
+	result map[string]interface{}
+	err    error
+}
+
+func TestParseMap(t *testing.T) {
+	tests := map[string]testParseStruct{
+		"map": {
+			source: `{ some: "thing" }`,
+			result: map[string]interface{}{
+				"some": "thing",
+			},
+			err: nil,
+		},
+		"non map": {
+			source: `
+        type: 'map',
+        keys: {
+          v: {
+            type: enum
+            enum: qw/all err ok none/
+            default: none
+          }
+          s: {
+            type: enum
+            enum: qw/none stderr stdout all/
+            default: all
+          }
+          exitOnError: {
+            type: bool
+            default: false
+          }
+        }
+      `,
+			result: nil,
+      err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
+		},
+	}
+	testsToRun := tests
+	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
+	// testsToRun = map[string]testParseStruct{"empty": tests["empty"]}
+	// testsToRun = map[string]testParseStruct{"unexpectedCharError(EOF)": tests["unexpectedCharError(EOF)"]}
+	for testName, test := range testsToRun {
+		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
+		result, err := ParseMap(test.source)
+		if err != test.err {
+			if err == nil || test.err == nil || err.Error() != test.err.Error() {
+				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), test.source, err, test.err)
+				fmt.Printf("eta: %q\ntst: %q\n", err, test.err)
+			}
+		} else if !reflect.DeepEqual(result, test.result) {
+			tstJson, _ := json.MarshalIndent(result, ``, `  `)
+			etaJson, _ := json.MarshalIndent(test.result, ``, `  `)
+			t.Errorf(ansi.Ansi("", "Parse(%s)\n    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), test.source, tstJson, etaJson)
+		}
+	}
 }

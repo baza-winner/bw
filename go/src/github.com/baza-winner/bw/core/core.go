@@ -66,33 +66,6 @@ func SmartQuote(ss ...string) (result string) {
 // 	return
 // }
 
-func GetValidVal(whereVal string, val interface{}, def map[string]interface{}, whereDef string) (result interface{}, err error) {
-	var defType string
-	var ok bool
-	if defType, err = GetStringKey(whereDef, def, `type`); err == nil {
-		if defType == `map` {
-			var valMap map[string]interface{}
-			if valMap, ok = val.(map[string]interface{}); ok {
-				var defKeys map[string]interface{}
-				if defKeys, err = GetMapKeyIfExists(whereDef, def, `keys`); defKeys != nil && err == nil {
-					for key := range valMap {
-						// if keyVal, ok := defKeys[key]; !ok {
-						if _, ok := defKeys[key]; !ok {
-							err = Error(`<ansiOutline>%s<ansi> (<ansiSecondaryLiteral>%v<ansi>) has unexpected key <ansiPrimaryLiteral>%s`, whereVal, val, key)
-							return
-						}
-					}
-				}
-			} else {
-				err = Error(`<ansiOutline>%s<ansi> (<ansiSecondaryLiteral>%v<ansi>) is not of type <ansiPrimaryLiteral>%s`, whereVal, val, `map`)
-			}
-		} else {
-			err = Error(`<ansiOutline>%s<ansi>[<ansiSecondaryLiteral>%s<ansi>] has non supported value <ansiPrimaryLiteral>%s`, whereDef, `type`, defType)
-		}
-	}
-	return val, err
-}
-
 func GetMapKeyIfExists(where string, m map[string]interface{}, keyName string) (result map[string]interface{}, err error) {
 	if m != nil {
 		if val, ok := m[keyName]; ok {
