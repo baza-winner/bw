@@ -173,7 +173,7 @@
 package defparse
 
 import (
-	"github.com/baza-winner/bw/core"
+	"github.com/baza-winner/bw/bwerror"
 )
 
 /*
@@ -184,7 +184,7 @@ func ParseMap(source string) (result map[string]interface{}, err error) {
 	if _result, err = Parse(source); err == nil {
 		var ok bool
 		if result, ok = _result.(map[string]interface{}); !ok {
-			err = core.Error("is not Map definition: <ansiSecondaryLiteral>%s", source)
+			err = bwerror.Error("is not Map definition: <ansiSecondaryLiteral>%s", source)
 		}
 	}
 	return result, err
@@ -197,7 +197,7 @@ It simplifies safe initialization of global variables holding parsed values.
 func MustParseMap(source string) (result map[string]interface{}) {
 	var err error
 	if result, err = ParseMap(source); err != nil {
-		core.Panic(err.Error())
+		bwerror.Panic(err.Error())
 	}
 	return result
 }
@@ -229,7 +229,7 @@ It simplifies safe initialization of global variables holding parsed values.
 func MustParse(source string) (result interface{}) {
 	var err error
 	if result, err = Parse(source); err != nil {
-		core.Panic(err.Error())
+		bwerror.Panic(err.Error())
 	}
 	return result
 }

@@ -2,8 +2,7 @@ package defparse
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/baza-winner/bw/core"
+	"github.com/baza-winner/bw/bwerror"
 	"strconv"
 	"unicode"
 )
@@ -63,8 +62,7 @@ func (pfa *pfaStruct) panic(args ...interface{}) {
 	if args != nil && len(args) > 1 {
 		fmtArgs = append(fmtArgs, args[1:])
 	}
-	fmt.Println(fmtString, fmtArgs)
-	core.Panicd(1, fmtString, fmtArgs...)
+	bwerror.Panicd(1, fmtString, fmtArgs...)
 }
 
 func (pfa *pfaStruct) ifStackLen(minLen int) bool {

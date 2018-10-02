@@ -37,14 +37,14 @@ func TestGetValidVal(t *testing.T) {
 			val:      defparse.MustParseMap(`{ }`),
 			def:      nil,
 			whereDef: "<ansiOutline>somewhere::def<ansiCmd>",
-			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansi> is <ansiPrimaryLiteral>nil")),
+			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd><ansi> is <ansiPrimaryLiteral>nil")),
 		},
 		"no type": {
 			where:    "<ansiOutline>somewhere<ansiCmd>",
 			val:      defparse.MustParseMap(`{ }`),
 			def:      defparse.MustParseMap(`{ }`),
 			whereDef: "<ansiOutline>somewhere::def<ansiCmd>",
-			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansi> has no key <ansiPrimaryLiteral>type")),
+			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd><ansi> has no key <ansiPrimaryLiteral>type")),
 		},
 		"type is not string": {
 			where:    "<ansiOutline>somewhere<ansiCmd>",
@@ -65,7 +65,7 @@ func TestGetValidVal(t *testing.T) {
 			val:      defparse.MustParseMap(`{ some: true }`),
 			def:      defparse.MustParseMap(`{ type: 'map', keys: {} }`),
 			whereDef: "<ansiOutline>somewhere::def<ansiCmd>",
-			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere<ansi> (<ansiSecondaryLiteral>"+core.PrettyJson(defparse.MustParseMap("{some: true}"))+"<ansi>) has unexpected key <ansiPrimaryLiteral>some")),
+			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere<ansiCmd><ansi> (<ansiSecondaryLiteral>"+core.PrettyJson(defparse.MustParseMap("{some: true}"))+"<ansi>) has unexpected key <ansiPrimaryLiteral>some")),
 		},
 		"keys.KEY is not map": {
 			where:    "<ansiOutline>somewhere<ansiCmd>",
@@ -103,13 +103,11 @@ func TestGetValidVal(t *testing.T) {
 		// },
 	}
 	testsToRun := tests
+	testsToRun = map[string]testGetValidValStruct{"wrong type": tests["wrong type"]}
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := GetValidVal(test.where, test.val, test.def, test.whereDef)
 		testTitle := fmt.Sprintf("GetValidVal(%s, %+s, %+s, %s)\n", test.where, core.PrettyJson(test.val), core.PrettyJson(test.def), test.whereDef)
 		bwtesting.CheckTestErrResult(t, err, test.err, result, test.result, testTitle)
-		//   if bwtesting.CompareErrors(t, err, test.err, testTitle) && !reflect.DeepEqual(result, test.result) { // https://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
-		// 	t.Errorf(ansi.Ansi("", testTitle + "    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), core.PrettyJson(result), core.PrettyJson(test.result))
-		// }
 	}
 }

@@ -3,7 +3,7 @@ package defparse
 import (
 	"fmt"
 	"github.com/baza-winner/bw/ansi"
-	"github.com/baza-winner/bw/core"
+	"github.com/baza-winner/bw/bwerror"
 )
 
 type unexpectedCharError struct{}
@@ -35,23 +35,23 @@ func (pfa *pfaStruct) arrangeError(err error, source string) error {
 		if _, ok := err.(unexpectedCharError); ok {
 			if pfa.charPtr == nil {
 				suffix := getSuffix(source, 0, 0)
-				err = core.Error("<ansiReset>unexpected end of string (pfa.state: %s)"+suffix, pfa.state)
+				err = bwerror.Error("<ansiReset>unexpected end of string (pfa.state: %s)"+suffix, pfa.state)
 			} else {
 				suffix := getSuffix(source, uint(pfa.pos), 1)
-				err = core.Error("<ansiReset>unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %v, pfa.state: %s)"+suffix, *pfa.charPtr, *pfa.charPtr, pfa.state)
+				err = bwerror.Error("<ansiReset>unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %v, pfa.state: %s)"+suffix, *pfa.charPtr, *pfa.charPtr, pfa.state)
 			}
 		} else if _, ok := err.(failedToGetNumberError); ok {
 			stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
 			suffix := getSuffix(source, uint(stackItem.pos), uint(len(stackItem.itemString)))
-			err = core.Error("<ansiReset>failed to get number from string <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
+			err = bwerror.Error("<ansiReset>failed to get number from string <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
 		} else if _, ok := err.(unknownWordError); ok {
 			stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
 			suffix := getSuffix(source, uint(stackItem.pos), uint(len(stackItem.itemString)))
-			err = core.Error("<ansiReset>unknown word <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
+			err = bwerror.Error("<ansiReset>unknown word <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
 		} else if _, ok := err.(unexpectedWordError); ok {
 			stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
 			suffix := getSuffix(source, uint(stackItem.pos), uint(len(stackItem.itemString)))
-			err = core.Error("<ansiReset>unexpected word <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
+			err = bwerror.Error("<ansiReset>unexpected word <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
 		}
 	}
 	return err

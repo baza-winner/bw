@@ -4,7 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/baza-winner/bw/ansi"
-	"github.com/baza-winner/bw/core"
+	"github.com/baza-winner/bw/bwerror"
+	"github.com/baza-winner/bw/bwexec"
 	"strings"
 )
 
@@ -16,7 +17,7 @@ func main() {
 	noColorFlag := flag.Bool("n", false, "no color")
 	flag.Parse()
 	if flag.NArg() < 1 {
-		core.ExitWithError(1, `<ansiCmd>bwcoretestinghelper2<ansi> expects at least one arg`)
+		bwerror.ExitWithError(1, `<ansiCmd>bwexectesthelper2<ansi> expects at least one arg`)
 	}
 	argsWithoutProg := flag.Args()
 
@@ -26,7 +27,7 @@ func main() {
 	display := *displayFlag
 	ansi.NoColor = *noColorFlag
 
-	ret := core.ExecCmd(map[string]interface{}{`v`: verbosity, `s`: silent, `exitOnError`: exitOnError}, argsWithoutProg[0], argsWithoutProg[1:]...)
+	ret := bwexec.ExecCmd(map[string]interface{}{`v`: verbosity, `s`: silent, `exitOnError`: exitOnError}, argsWithoutProg[0], argsWithoutProg[1:]...)
 	if display {
 		exitCode := ret[`exitCode`].(int)
 		ansiExitCode := `<ansiOK>`

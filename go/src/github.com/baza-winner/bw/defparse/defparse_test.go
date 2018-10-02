@@ -3,9 +3,9 @@ package defparse
 import (
 	"fmt"
 	"github.com/baza-winner/bw/ansi"
-  "github.com/baza-winner/bw/core"
+	"github.com/baza-winner/bw/bwjson"
+	"github.com/baza-winner/bw/bwtesting"
 	"testing"
-  "github.com/baza-winner/bw/bwtesting"
 )
 
 type testParseStruct struct {
@@ -211,20 +211,20 @@ me'`,
         }
       `,
 			result: nil,
-      err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
+			err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
 		},
-    "{some: true}": {
-      source: "{some: true}",
-      result: map[string]interface{}{
-        "some": true,
-      },
-      err: nil,
-    },
-    "[true]": {
-      source: "[true]",
-      result: []interface{}{ true },
-      err: nil,
-    },
+		"{some: true}": {
+			source: "{some: true}",
+			result: map[string]interface{}{
+				"some": true,
+			},
+			err: nil,
+		},
+		"[true]": {
+			source: "[true]",
+			result: []interface{}{true},
+			err:    nil,
+		},
 	}
 
 	testsToRun := tests
@@ -234,8 +234,8 @@ me'`,
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)
-    testTitle := fmt.Sprintf("Parse(%s)\n", test.source)
-    bwtesting.CheckTestErrResult(t, err, test.err, result, test.result, testTitle)
+		testTitle := fmt.Sprintf("Parse(%s)\n", test.source)
+		bwtesting.CheckTestErrResult(t, err, test.err, result, test.result, testTitle)
 	}
 
 }
@@ -259,7 +259,7 @@ func ExampleParse_1() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -310,7 +310,7 @@ func ExampleParse_2() {
      }
    }
   ]`)
-		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -361,7 +361,7 @@ func ExampleParse_3() {
      }
    }
   ]`)
-		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -412,7 +412,7 @@ func ExampleParse_4() {
      }
    }
   ]`)
-		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -463,7 +463,7 @@ func ExampleParse_5() {
      }
    }
   ]`)
-		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -514,7 +514,7 @@ func ExampleParse_6() {
      }
    }
   ]`)
-		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -565,7 +565,7 @@ func ExampleParse_7() {
      }
    }
   ]`)
-		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -632,8 +632,8 @@ func TestParseMap(t *testing.T) {
           }
         }
       `,
-      result: nil,
-      err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
+			result: nil,
+			err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
 		},
 	}
 	testsToRun := tests
@@ -643,7 +643,7 @@ func TestParseMap(t *testing.T) {
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := ParseMap(test.source)
-    testTitle := fmt.Sprintf("ParseMap(%s)\n", test.source)
-    bwtesting.CheckTestErrResult(t, err, test.err, result, test.result, testTitle)
+		testTitle := fmt.Sprintf("ParseMap(%s)\n", test.source)
+		bwtesting.CheckTestErrResult(t, err, test.err, result, test.result, testTitle)
 	}
 }
