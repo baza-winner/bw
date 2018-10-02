@@ -1,11 +1,11 @@
 package defparse
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/baza-winner/bw/ansi"
-	"reflect"
+  "github.com/baza-winner/bw/core"
 	"testing"
+  "github.com/baza-winner/bw/bwtesting"
 )
 
 type testParseStruct struct {
@@ -213,25 +213,29 @@ me'`,
 			result: nil,
       err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
 		},
+    "{some: true}": {
+      source: "{some: true}",
+      result: map[string]interface{}{
+        "some": true,
+      },
+      err: nil,
+    },
+    "[true]": {
+      source: "[true]",
+      result: []interface{}{ true },
+      err: nil,
+    },
 	}
 
 	testsToRun := tests
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"]}
-	testsToRun = map[string]testParseStruct{"non map": tests["non map"]}
+	// testsToRun = map[string]testParseStruct{"non map": tests["non map"]}
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)
-		if err != test.err {
-			if err == nil || test.err == nil || err.Error() != test.err.Error() {
-				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), test.source, err, test.err)
-				fmt.Printf("tst: %q\neta: %q\n", err, test.err)
-			}
-		} else if !reflect.DeepEqual(result, test.result) {
-			tstJson, _ := json.MarshalIndent(result, ``, `  `)
-			etaJson, _ := json.MarshalIndent(test.result, ``, `  `)
-			t.Errorf(ansi.Ansi("", "Parse(%s)\n    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), test.source, tstJson, etaJson)
-		}
+    testTitle := fmt.Sprintf("Parse(%s)\n", test.source)
+    bwtesting.CheckTestErrResult(t, err, test.err, result, test.result, testTitle)
 	}
 
 }
@@ -255,8 +259,7 @@ func ExampleParse_1() {
      }
    }
   ]`)
-	resultJson, _ := json.MarshalIndent(result, ``, `  `)
-	fmt.Printf("err: %v\nresult: %s", err, resultJson)
+	fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -307,8 +310,7 @@ func ExampleParse_2() {
      }
    }
   ]`)
-	resultJson, _ := json.MarshalIndent(result, ``, `  `)
-	fmt.Printf("err: %v\nresult: %s", err, resultJson)
+		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -359,8 +361,7 @@ func ExampleParse_3() {
      }
    }
   ]`)
-	resultJson, _ := json.MarshalIndent(result, ``, `  `)
-	fmt.Printf("err: %v\nresult: %s", err, resultJson)
+		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -411,8 +412,7 @@ func ExampleParse_4() {
      }
    }
   ]`)
-	resultJson, _ := json.MarshalIndent(result, ``, `  `)
-	fmt.Printf("err: %v\nresult: %s", err, resultJson)
+		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -463,8 +463,7 @@ func ExampleParse_5() {
      }
    }
   ]`)
-	resultJson, _ := json.MarshalIndent(result, ``, `  `)
-	fmt.Printf("err: %v\nresult: %s", err, resultJson)
+		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -515,8 +514,7 @@ func ExampleParse_6() {
      }
    }
   ]`)
-	resultJson, _ := json.MarshalIndent(result, ``, `  `)
-	fmt.Printf("err: %v\nresult: %s", err, resultJson)
+		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -567,8 +565,7 @@ func ExampleParse_7() {
      }
    }
   ]`)
-	resultJson, _ := json.MarshalIndent(result, ``, `  `)
-	fmt.Printf("err: %v\nresult: %s", err, resultJson)
+		fmt.Printf("err: %v\nresult: %s", err, core.PrettyJson(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -635,7 +632,7 @@ func TestParseMap(t *testing.T) {
           }
         }
       `,
-			result: nil,
+      result: nil,
       err:    fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiReset>unknown word <ansiPrimaryLiteral>type"+ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"))),
 		},
 	}
@@ -646,15 +643,7 @@ func TestParseMap(t *testing.T) {
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := ParseMap(test.source)
-		if err != test.err {
-			if err == nil || test.err == nil || err.Error() != test.err.Error() {
-				t.Errorf(ansi.Ansi("", "Parse(%s)\n    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), test.source, err, test.err)
-				fmt.Printf("eta: %q\ntst: %q\n", err, test.err)
-			}
-		} else if !reflect.DeepEqual(result, test.result) {
-			tstJson, _ := json.MarshalIndent(result, ``, `  `)
-			etaJson, _ := json.MarshalIndent(test.result, ``, `  `)
-			t.Errorf(ansi.Ansi("", "Parse(%s)\n    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), test.source, tstJson, etaJson)
-		}
+    testTitle := fmt.Sprintf("ParseMap(%s)\n", test.source)
+    bwtesting.CheckTestErrResult(t, err, test.err, result, test.result, testTitle)
 	}
 }

@@ -3,7 +3,7 @@ package core
 
 import (
 	"bufio"
-	// "encoding/json"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/baza-winner/bw/ansi"
@@ -65,41 +65,6 @@ func SmartQuote(ss ...string) (result string) {
 // 	}
 // 	return
 // }
-
-func GetMapKeyIfExists(where string, m map[string]interface{}, keyName string) (result map[string]interface{}, err error) {
-	if m != nil {
-		if val, ok := m[keyName]; ok {
-			if typedVal, ok := val.(map[string]interface{}); ok {
-				result = typedVal
-			} else {
-				err = Error(`<ansiOutline>%s<ansi>[<ansiSecondaryLiteral>%s<ansi>] (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteral>%s`, where, keyName, val, `map`)
-			}
-		} else {
-			result = nil
-			err = nil
-		}
-	} else {
-		err = Error(`<ansiOutline>%s<ansi> is not <ansiPrimaryLiteral>map`, where)
-	}
-	return
-}
-
-func GetStringKey(where string, m map[string]interface{}, keyName string) (result string, err error) {
-	if m != nil {
-		if val, ok := m[keyName]; ok {
-			if typedVal, ok := val.(string); ok {
-				result = typedVal
-			} else {
-				err = Error(`<ansiOutline>%s<ansi>[<ansiSecondaryLiteral>%s<ansi>] (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteral>%s`, where, keyName, val, `string`)
-			}
-		} else {
-			err = Error(`<ansiOutline>%s<ansi> has not key <ansiPrimaryLiteral>%s`, where, keyName)
-		}
-	} else {
-		err = Error(`<ansiOutline>%s<ansi> is not <ansiPrimaryLiteral>map`, where)
-	}
-	return
-}
 
 const defaultFailedCode = 1
 
@@ -257,11 +222,24 @@ func Error(msgFmt string, args ...interface{}) error {
 }
 
 func Panic(msgFmt string, args ...interface{}) {
-	log.Panicf(ansi.Ansi(`Err`, msgFmt+` <ansiCmd>at `+whereami.WhereAmI(2)), args...)
+	log.Panicf(ansi.Ansi(`Err`, "ERR: "+msgFmt+` <ansiCmd>at `+whereami.WhereAmI(2)), args...)
 }
 
 func Panicd(depth uint, msgFmt string, args ...interface{}) {
-	log.Panicf(ansi.Ansi(`Err`, msgFmt+` <ansiCmd>at `+whereami.WhereAmI(int(depth)+2)), args...)
+	log.Panicf(ansi.Ansi(`Err`, "ERR: "+msgFmt+` <ansiCmd>at `+whereami.WhereAmI(int(depth)+2)), args...)
+}
+
+func PrettyJson(v interface{}) (result string) {
+	if bytes, err := json.MarshalIndent(v, "", "  "); err != nil {
+		Panic("failed to encode to json value %+v", v)
+	} else {
+		result = string(bytes[:])
+	}
+	return
+}
+
+func Noop(v ...interface{}) {
+
 }
 
 // // https://lawlessguy.wordpress.com/2016/04/17/display-file-function-and-line-number-in-go-golang/

@@ -60,7 +60,6 @@ func _expectValueOrSpace(pfa *pfaStruct) (needFinishTopStackItem bool, err error
 			pfa.state.setPrimary(expectValueOrSpace)
 
 		case *pfa.charPtr == ']' && pfa.isTopStackItemOfType(parseStackItemArray):
-			_ = pfa.getTopStackItemOfType(parseStackItemArray)
 			needFinishTopStackItem = true
 
 		case *pfa.charPtr == '-' || *pfa.charPtr == '+' || unicode.IsDigit(*pfa.charPtr):

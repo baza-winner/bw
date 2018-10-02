@@ -6,7 +6,7 @@ import (
 	// "errors"
 	// "fmt"
 	"github.com/baza-winner/bw/core"
-  "encoding/json"
+	// "encoding/json"
 	// "github.com/iancoleman/strcase"
 	// "github.com/jimlawless/whereami"
 	// "log"
@@ -20,60 +20,73 @@ func GetValidVal(whereVal string, val interface{}, def map[string]interface{}, w
 	var defType string
 	var ok bool
 	if defType, err = GetStringKey(whereDef, def, `type`); err == nil {
-		if defType == `map` {
+		switch defType {
+		case "map":
 			var valMap map[string]interface{}
-			if valMap, ok = val.(map[string]interface{}); ok {
+			if valMap, ok = val.(map[string]interface{}); !ok {
+				err = core.Error(`<ansiOutline>%s<ansi> (<ansiSecondaryLiteral>%v<ansi>) is not of type <ansiPrimaryLiteral>%s`, whereVal, core.PrettyJson(val), `map`)
+			} else {
 				var defKeys map[string]interface{}
-				if defKeys, err = GetMapKeyIfExists(whereDef, def, `keys`); defKeys != nil && err == nil {
+				if defKeys, err = GetMapKey(whereDef, def, `keys`, true); defKeys != nil && err == nil {
 					for key := range valMap {
 						if _, ok := defKeys[key]; !ok {
-              valJson, _ := json.MarshalIndent(val, "", "  ")
-							err = core.Error(`<ansiOutline>%s<ansi> (<ansiSecondaryLiteral>%s<ansi>) has unexpected key <ansiPrimaryLiteral>%s`, whereVal, valJson, key)
+							err = core.Error(`<ansiOutline>%s<ansi> (<ansiSecondaryLiteral>%s<ansi>) has unexpected key <ansiPrimaryLiteral>%s`, whereVal, core.PrettyJson(val), key)
 							return
 						}
 					}
+					for defKeysKey, _ := range defKeys {
+						var defKeysKeyValue map[string]interface{}
+						if defKeysKeyValue, err = GetMapKey(whereDef+".keys", defKeys, defKeysKey); err == nil {
+							core.Noop(defKeysKeyValue)
+						}
+					}
 				}
-			} else {
-				err = core.Error(`<ansiOutline>%s<ansi> (<ansiSecondaryLiteral>%v<ansi>) is not of type <ansiPrimaryLiteral>%s`, whereVal, val, `map`)
 			}
-		} else {
-			err = core.Error(`<ansiOutline>%s<ansi>[<ansiSecondaryLiteral>%s<ansi>] has non supported value <ansiPrimaryLiteral>%s`, whereDef, `type`, defType)
+		default:
+			err = core.Error(`<ansiOutline>%s<ansiCmd>.type<ansi> has non supported value <ansiPrimaryLiteral>%s`, whereDef, defType)
 		}
 	}
 	return val, err
 }
 
-func GetStringKey(where string, m map[string]interface{}, keyName string) (result string, err error) {
-	if m != nil {
-		if val, ok := m[keyName]; ok {
-			if typedVal, ok := val.(string); ok {
-				result = typedVal
-			} else {
-				err = core.Error(`<ansiOutline>%s<ansi>[<ansiSecondaryLiteral>%s<ansi>] (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteral>%s`, where, keyName, val, `string`)
-			}
-		} else {
-			err = core.Error(`<ansiOutline>%s<ansi> has not key <ansiPrimaryLiteral>%s`, where, keyName)
-		}
+func GetKey(where string, m map[string]interface{}, keyName string, returnNilIfKeyNotExists ...bool) (result interface{}, err error) {
+	if m == nil {
+		err = core.Error(`<ansiOutline>%s<ansi> is <ansiPrimaryLiteral>nil`, where)
 	} else {
-		err = core.Error(`<ansiOutline>%s<ansi> is not <ansiPrimaryLiteral>map`, where)
+		var ok bool
+		if result, ok = m[keyName]; !ok {
+			if returnNilIfKeyNotExists == nil || !returnNilIfKeyNotExists[0] {
+				err = core.Error(`<ansiOutline>%s<ansi> has no key <ansiPrimaryLiteral>%s`, where, keyName)
+			}
+		}
 	}
 	return
 }
 
-func GetMapKeyIfExists(where string, m map[string]interface{}, keyName string) (result map[string]interface{}, err error) {
-	if m != nil {
-		if val, ok := m[keyName]; ok {
-			if typedVal, ok := val.(map[string]interface{}); ok {
-				result = typedVal
-			} else {
-				err = core.Error(`<ansiOutline>%s<ansi>[<ansiSecondaryLiteral>%s<ansi>] (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteral>%s`, where, keyName, val, `map`)
-			}
+func errorKeyValueIsNot(typeName string, where string, keyName string, keyValue interface{}) error {
+	return core.Error(`<ansiOutline>%s<ansiCmd>.%s<ansi> (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteral>%s`, where, keyName, keyValue, typeName)
+}
+
+func GetStringKey(where string, m map[string]interface{}, keyName string, returnNilIfKeyNotExists ...bool) (result string, err error) {
+	var val interface{}
+	if val, err = GetKey(where, m, keyName, returnNilIfKeyNotExists...); err == nil {
+		if typedVal, ok := val.(string); ok {
+			result = typedVal
 		} else {
-			result = nil
-			err = nil
+			err = errorKeyValueIsNot("string", where, keyName, val)
 		}
-	} else {
-		err = core.Error(`<ansiOutline>%s<ansi> is not <ansiPrimaryLiteral>map`, where)
+	}
+	return
+}
+
+func GetMapKey(where string, m map[string]interface{}, keyName string, returnNilIfKeyNotExists ...bool) (result map[string]interface{}, err error) {
+	var val interface{}
+	if val, err = GetKey(where, m, keyName, returnNilIfKeyNotExists...); err == nil {
+		if typedVal, ok := val.(map[string]interface{}); ok {
+			result = typedVal
+		} else {
+			err = errorKeyValueIsNot("map", where, keyName, val)
+		}
 	}
 	return
 }

@@ -162,6 +162,8 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 							pfa.state.setSecondary(expectValueOrSpace, orArrayItemSeparator)
 						case *pfa.charPtr == ',':
 							pfa.state.setPrimary(expectValueOrSpace)
+						case *pfa.charPtr == ']':
+							err = pfa.finishTopStackItem()
 						default:
 							err = unexpectedCharError{}
 						}
@@ -190,6 +192,8 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 								pfa.state.setSecondary(expectSpaceOrMapKey, orMapValueSeparator)
 							case *pfa.charPtr == ',':
 								pfa.state.setPrimary(expectSpaceOrMapKey)
+							case *pfa.charPtr == '}':
+								err = pfa.finishTopStackItem()
 							default:
 								err = unexpectedCharError{}
 							}
