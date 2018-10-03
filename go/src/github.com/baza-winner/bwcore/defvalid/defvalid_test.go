@@ -40,7 +40,7 @@ func TestGetValidVal(t *testing.T) {
 			val:      defparse.MustParseMap(`{ }`),
 			def:      defparse.MustParseMap(`{ type: false }`),
 			whereDef: "<ansiOutline>somewhere::def<ansiCmd>",
-			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>false<ansi>) is not <ansiPrimaryLiteral>string")),
+			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>string")),
 		},
 		"wrong type": {
 			where:    "<ansiOutline>somewhere<ansiCmd>",
@@ -54,14 +54,21 @@ func TestGetValidVal(t *testing.T) {
 			val:      defparse.MustParseMap(`{ some: true }`),
 			def:      defparse.MustParseMap(`{ type: 'map', keys: {} }`),
 			whereDef: "<ansiOutline>somewhere::def<ansiCmd>",
-			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere<ansiCmd><ansi> (<ansiSecondaryLiteral>"+bwjson.PrettyJson(defparse.MustParseMap("{some: true}"))+"<ansi>) has unexpected key <ansiPrimaryLiteral>some")),
+			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere<ansiCmd><ansi> (<ansiSecondaryLiteral>"+bwjson.PrettyJson(defparse.MustParseMap("{some: true}"))+"<ansi>) has unexpected keys <ansiSecondaryLiteral>[some]")),
 		},
 		"keys.KEY is not map": {
 			where:    "<ansiOutline>somewhere<ansiCmd>",
 			val:      defparse.MustParseMap(`{  }`),
 			def:      defparse.MustParseMap(`{ type: 'map', keys: { some: true } }`),
 			whereDef: "<ansiOutline>somewhere::def<ansiCmd>",
-			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.keys.some<ansi> (<ansiSecondaryLiteral>true<ansi>) is not <ansiPrimaryLiteral>map")),
+			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.keys.some<ansi> (<ansiSecondaryLiteral>true<ansi>) is not of type <ansiPrimaryLiteral>map")),
+		},
+		"current": {
+			where:    "<ansiOutline>somewhere<ansiCmd>",
+			val:      defparse.MustParseMap(`{  some: 0 }`),
+			def:      defparse.MustParseMap(`{ type: 'map', keys: { some: { type: 'bool' } } }`),
+			err:      fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere<ansiCmd>.some<ansi> (<ansiSecondaryLiteral>0<ansi>) is not of type <ansiPrimaryLiteral>bool")),
+			whereDef: "<ansiOutline>somewhere::def<ansiCmd>",
 		},
 		// ""
 		// where: "<ansiOutline>somewhere<ansiCmd>",
@@ -92,8 +99,9 @@ func TestGetValidVal(t *testing.T) {
 		// },
 	}
 	testsToRun := tests
-	bwmap.CropMap(testsToRun, "wrong type")
-	testsToRun = map[string]testGetValidValStruct{"wrong type": tests["wrong type"]}
+	bwmap.CropMap(testsToRun, nil)
+	// bwmap.CropMap(testsToRun, "wrong type")
+	// testsToRun = map[string]testGetValidValStruct{"wrong type": tests["wrong type"]}
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := GetValidVal(test.where, test.val, test.def, test.whereDef)

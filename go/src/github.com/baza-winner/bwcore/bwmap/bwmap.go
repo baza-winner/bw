@@ -9,6 +9,9 @@ import (
 )
 
 func GetUnexpectedKeys(m interface{}, expected interface{}) []string {
+  if expected == nil {
+    return nil
+  }
   v := reflect.ValueOf(m)
   if v.Kind() != reflect.Map {
     bwerror.Panic("<ansiOutline>m<ansi> (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteral>map", m)
