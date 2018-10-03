@@ -9,35 +9,43 @@ import (
 	"github.com/baza-winner/bwcore/bwmap"
 )
 
-type Value struct {
-	val interface{}
-	where string
-}
+// func getStringKey(where string, m map[string]interface{}, keyName string, defaultValue ...string) (result string, err error) {
+// 	var val interface{}
+// 	if val, err = getKey(where, m, keyName); err == nil {
+// 		if typedVal, ok := val.(string); ok {
+// 			result = typedVal
+// 		} else {
+// 			// err = errorKeyValueIsNot("string", where, keyName, val)
+// 			err = errorValueIsNotOfType("string", val, where +"." +keyName )
+// 		}
+// 			} else if defaultValue != nil {
+// 		result = defaultValue[0]
+// 		err = nil
+// 	}
+// 	return
+// }
 
-type Def struct {
-	def map[string]interface{}
-	where string
-}
-
-func GetValidVal(whereVal string, val interface{}, def map[string]interface{}, whereDef string) (result interface{}, err error) {
-	var defType string
+func GetValidVal(val, def value) (result interface{}, err error) {
+	var defType value
 	var ok bool
-	if defType, err = getStringKey(whereDef, def, `type`); err == nil {
-		switch defType {
+	// if defType, err = getStringKey(whereDef, def, `type`); err == nil {
+	if defType, err = def.getKey(`type`, `string`); err == nil {
+		switch defType.mustBeString() {
 		case "map":
-			var valMap map[string]interface{}
-			if valMap, ok = val.(map[string]interface{}); !ok {
-				err = errorValueIsNotOfType(`map[string]interface{}`, val, whereVal)
-			} else {
-				var defKeys map[string]interface{}
-				if defKeys, err = getMapKey(whereDef, def, `keys`, nil); defKeys != nil && err == nil {
-					if nonExpectedKeys := bwmap.GetUnexpectedKeys(valMap, defKeys); nonExpectedKeys != nil {
-						err = bwerror.Error(whereVal+`<ansi> (<ansiSecondaryLiteral>%s<ansi>) has unexpected keys <ansiSecondaryLiteral>%v`, bwjson.PrettyJson(val), nonExpectedKeys)
+			var valAsMap map[string]interface{}
+			if valAsMap, err = val.asMap(); err == nil {
+				var defKeys value
+				if defKeys, err = def.getKey(`keys`, `map`, nil); defKeys.value != nil && err == nil {
+					if nonExpectedKeys := bwmap.GetUnexpectedKeys(valAsMap, defKeys); nonExpectedKeys != nil {
+						err = valueHasUnexpectedKeysError{val, nonExpectedKeys}
+						// err = bwerror.Error(whereVal+`<ansi> (<ansiSecondaryLiteral>%s<ansi>) has unexpected keys <ansiSecondaryLiteral>%v`, bwjson.PrettyJson(val.value), nonExpectedKeys)
 					}
-					for defKeysKey, _ := range defKeys {
-						var defKeysKeyValue map[string]interface{}
-						if defKeysKeyValue, err = getMapKey(whereDef+".keys", defKeys, defKeysKey); err == nil {
-							 if valMap[defKeysKey], err = GetValidVal(whereVal+"."+defKeysKey, valMap[defKeysKey], defKeysKeyValue, whereDef+".keys."+defKeysKey); err != nil {
+					for defKeysKey, _ := range defKeys.mustBeMap() {
+						var defKeysKeyValue value
+						if defKeysKeyValue, err = defKeys.getKey(defKeysKey, `map`); err == nil {
+	 						  if valAsMap[defKeysKey], err = GetValidVal(defKeysKeyValue,
+	 						  	value{}
+	 						  	whereVal+"."+defKeysKey, valMap[defKeysKey], defKeysKeyValue, whereDef+".keys."+defKeysKey); err != nil {
 							 	break
  						 }
 						}

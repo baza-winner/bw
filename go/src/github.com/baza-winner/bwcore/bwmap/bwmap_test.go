@@ -65,17 +65,3 @@ func TestCropMap(t *testing.T) {
     bwtesting.DeepEqual(t, result, test.result, testTitle)
   }
 }
-
-
-// // https://stackoverflow.com/questions/51459083/deep-copying-maps-in-golang/51684750#51684750
-// func copyMap(src interface{}, dest interface{}) {
-//   for key, value := range src {
-//     switch src[key].(type) {
-//     case map[string]interface{}:
-//       dest[key] = map[string]interface{}{}
-//       copyMap(src[key].(map[string]interface{}), dest[key].(map[string]interface{}))
-//     default:
-//       dest[key] = value
-//     }
-//   }
-// }
