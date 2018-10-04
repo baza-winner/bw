@@ -21,6 +21,10 @@ func Error(msgFmt string, args ...interface{}) error {
 	return errors.New(fmt.Sprintf(ansi.Ansi(`Err`, "ERR: "+msgFmt), args...))
 }
 
+func PanicErr(err error) {
+	log.Panic(err.Error() + ansi.Ansi("Cmd", " at "+whereami.WhereAmI(2)))
+}
+
 func Panic(msgFmt string, args ...interface{}) {
 	log.Panicf(ansi.Ansi(`Err`, "ERR: "+msgFmt+` <ansiCmd>at `+whereami.WhereAmI(2)), args...)
 }

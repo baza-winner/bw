@@ -8,7 +8,7 @@ import (
   "reflect"
 )
 
-func GetUnexpectedKeys(m interface{}, expected interface{}) []string {
+func GetUnexpectedKeys(m interface{}, expected ...interface{})  []string {
   if expected == nil {
     return nil
   }
@@ -22,34 +22,31 @@ func GetUnexpectedKeys(m interface{}, expected interface{}) []string {
     }
     break
   }
+  expectedKeys := map[string]struct{}{}
+  for _, item := range expected {
+    if item == nil { continue }
+    if s, ok := item.(string); ok {
+      expectedKeys[s] = struct{}{}
+    } else if ss, ok := item.([]string); ok {
+      for _, k := range ss {
+        expectedKeys[k] = struct{}{}
+      }
+    } else if reflect.TypeOf(item).Kind() == reflect.Map {
+      v := reflect.ValueOf(item)
+      for _, vk := range v.MapKeys() {
+        k := vk.String()
+        expectedKeys[k] = struct{}{}
+      }
+    } else {
+      bwerror.Panic("<ansiOutline>expected<ansi> (<ansiPrimaryLiteral>%+v<ansi>) neither <ansiSecondaryLiteral>string<ansi>, nor <ansiSecondaryLiteral>[]string<ansi>, nor <ansiSecondaryLiteral>map[string]interface", expected)
+    }
+  }
   var unexpectedKeys = []string{}
-  if keyName, ok := expected.(string); ok {
-    for _, vk := range v.MapKeys() {
-      k := vk.String()
-      if k != keyName {
-        unexpectedKeys = append(unexpectedKeys, k)
-      }
+  for _, vk := range v.MapKeys() {
+    k := vk.String()
+    if _, ok := expectedKeys[k]; !ok {
+      unexpectedKeys = append(unexpectedKeys, k)
     }
-  } else if keyNames, ok := expected.([]string); ok {
-    keyNameMap := map[string]struct{}{}
-    for _, k := range keyNames {
-      keyNameMap[k] = struct{}{}
-    }
-    for _, vk := range v.MapKeys() {
-      k := vk.String()
-      if _, ok := keyNameMap[k]; !ok {
-        unexpectedKeys = append(unexpectedKeys, k)
-      }
-    }
-  } else if keyNameMap, ok := expected.(map[string]interface{}); ok {
-    for _, vk := range v.MapKeys() {
-      k := vk.String()
-      if _, ok := keyNameMap[k]; !ok {
-        unexpectedKeys = append(unexpectedKeys, k)
-      }
-    }
-  } else {
-    bwerror.Panic("<ansiOutline>expected<ansi> (<ansiPrimaryLiteral>%+v<ansi>) neither <ansiSecondaryLiteral>string<ansi>, nor <ansiSecondaryLiteral>[]string<ansi>, nor <ansiSecondaryLiteral>map[string]interface", expected)
   }
   if len(unexpectedKeys) == 0 {
     return nil
@@ -58,8 +55,8 @@ func GetUnexpectedKeys(m interface{}, expected interface{}) []string {
   }
 }
 
-func CropMap(m interface{}, crop interface{}) {
-  if unexpectedKeys := GetUnexpectedKeys(m, crop); unexpectedKeys != nil {
+func CropMap(m interface{}, crop ...interface{}) {
+  if unexpectedKeys := GetUnexpectedKeys(m, crop...); unexpectedKeys != nil {
     for _, k := range unexpectedKeys {
       v := reflect.ValueOf(m)
       v.SetMapIndex(reflect.ValueOf(k), reflect.Value{})

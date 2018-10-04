@@ -8,21 +8,8 @@ import (
 )
 
 func init() {
-	expect := _expectBelow + 1
-	for expect < _expectAbove {
-		if _, ok := pfaPrimaryStateMethods[expect]; !ok {
-			panic(expect)
-		}
-		expect += 1
-	}
-
-	itemType := _parseStackItemBelow + 1
-	for itemType < _parseStackItemAbove {
-		if _, ok := pfaItemFinishMethods[itemType]; !ok {
-			panic(itemType)
-		}
-		itemType += 1
-	}
+	pfaPrimaryStateMethodsCheck()
+	pfaItemFinishMethodsCheck()
 }
 
 type pfaStruct struct {

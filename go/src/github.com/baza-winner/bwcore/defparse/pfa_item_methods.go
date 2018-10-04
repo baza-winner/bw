@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+  "github.com/baza-winner/bwcore/bwerror"
 )
 
 type pfaItemFinishMethod func(*pfaStruct) (bool, error)
@@ -18,6 +19,16 @@ var pfaItemFinishMethods = map[parseStackItemType]pfaItemFinishMethod{
 	parseStackItemQwItem: _parseStackItemQwItem,
 	parseStackItemNumber: _parseStackItemNumber,
 	parseStackItemWord:   _parseStackItemWord,
+}
+
+func pfaItemFinishMethodsCheck() {
+	itemType := _parseStackItemBelow + 1
+	for itemType < _parseStackItemAbove {
+		if _, ok := pfaItemFinishMethods[itemType]; !ok {
+      bwerror.Panic("not defined <ansiOutline>pfaItemFinishMethods<ansi>[<ansiPrimaryLiteral>%s<ansi>]", itemType)
+		}
+		itemType += 1
+	}
 }
 
 func _parseStackItemKey(pfa *pfaStruct) (skipPostProcess bool, err error) {

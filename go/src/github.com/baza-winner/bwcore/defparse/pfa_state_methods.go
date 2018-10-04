@@ -1,8 +1,8 @@
 package defparse
 
 import (
-	// "fmt"
 	"unicode"
+  "github.com/baza-winner/bwcore/bwerror"
 )
 
 type pfaPrimaryStateMethod func(*pfaStruct) (bool, error)
@@ -21,6 +21,16 @@ var pfaPrimaryStateMethods = map[parsePrimaryState]pfaPrimaryStateMethod{
 	expectEscapedContentOf:          _expectEscapedContentOf,
 	expectSpaceOrQwItemOrDelimiter:  _expectSpaceOrQwItemOrDelimiter,
 	expectEndOfQwItem:               _expectEndOfQwItem,
+}
+
+func pfaPrimaryStateMethodsCheck() {
+	expect := _expectBelow + 1
+	for expect < _expectAbove {
+		if _, ok := pfaPrimaryStateMethods[expect]; !ok {
+      bwerror.Panic("not defined <ansiOutline>pfaPrimaryStateMethods<ansi>[<ansiPrimaryLiteral>%s<ansi>]", expect)
+		}
+		expect += 1
+	}
 }
 
 func _expectEOF(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {

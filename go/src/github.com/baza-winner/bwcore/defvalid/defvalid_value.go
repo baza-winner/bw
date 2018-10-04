@@ -1,89 +1,139 @@
 package defvalid
 
 import (
-  // "github.com/baza-winner/bwcore/bwerror"
-  // "github.com/baza-winner/bwcore/bwjson"
-  // "github.com/baza-winner/bwcore/bwmap"
-  "go/types"
+	"fmt"
+	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwjson"
+	"reflect"
 )
 
 type value struct {
-  value interface{}
-  where string
+	where string
+	value interface{}
+	error *valueError
+}
+
+func (v value) String() string {
+	return fmt.Sprintf(v.where+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
 }
 
 func (v *value) asMap() (result map[string]interface{}, err error) {
-  var ok bool
-  if result, ok = v.value.(map[string]interface{}); !ok {
-    err = valueIsNotOfTypeError{v: v, ofType: map[string]interface{}}
-  }
-  return
+	var ok bool
+	if result, ok = v.value.(map[string]interface{}); !ok {
+		err = v.err(valueErrorIsNotOfTypes, "map")
+	}
+	return
 }
 
 func (v *value) mustBeMap() (result map[string]interface{}) {
-  if result, err = v.asMap(); err != nil {
-    bwerror.Panic(err.Error())
-  }
-  return
+	var err error
+	if result, err = v.asMap(); err != nil {
+		bwerror.Panic(err.Error())
+	}
+	return
 }
 
 func (v *value) asString() (result string, err error) {
-  var ok bool
-  if asMap, ok = v.value.(map[string]interface{}); !ok {
-    err = v.errorIsNot(string)
-  }
-  return
+	var ok bool
+	if result, ok = v.value.(string); !ok {
+		err = v.err(valueErrorIsNotOfTypes, "string")
+	}
+	return
 }
 
 func (v *value) mustBeString() (result string) {
-  if result, err = v.asString(); err != nil {
-    bwerror.Panic(err.Error())
-  }
-  return
+	var err error
+	if result, err = v.asString(); err != nil {
+		bwerror.Panic(err.Error())
+	}
+	return
 }
 
-func (v *value) getKey(keyName string, ofType string, defaultValue ...interface{}) (result value, err error) {
-  m := v.mustBeMap()
-  var ok bool
-  result.where += "." + keyName
-  if result.value, ok = m[keyName]; !ok {
-    if defaultValue == nil {
-      err = valueHasNoKeyError(v, keyName)
-    } else {
-      result.value = defaultValue[0]
-    }
-  } else if ! v.is(ofType) {
-    err = result.errorIsNot(ofType)
-  }
-  return
+func (v *value) asBool() (result bool, err error) {
+	var ok bool
+	if result, ok = v.value.(bool); !ok {
+		err = v.err(valueErrorIsNotOfTypes, "bool")
+	}
+	return
 }
 
-func (v *value) is(ofType string) (ok bool) {
-  switch ofType {
-  case "string":
-    _, ok = v.value.(string)
-  case "map":
-    _, ok = v.value.(map[string]interface{})
-  default:
-    bwerror.Panic("unsupported type <ansiPrimaryLiteral>%s", ofType)
-  }
+func (v *value) getKey(keyName string, opts ...interface{}) (result value, err error) {
+	var ofTypes *[]string
+	var defaultValue *interface{}
+	var ofTypeStrings []string
+	if opts != nil {
+		if _isOfType(opts[0], "string") {
+			ofTypeStrings = []string{_mustBeString(opts[0])}
+		} else if _isOfType(opts[0], "[]string") {
+			ofTypeStrings = _mustBeSliceOfStrings(opts[0])
+		} else {
+			_ = _mustBeOfTypes(opts[0], "string", "[]string")
+		}
+		ofTypes = &ofTypeStrings
+		if len(opts) > 1 {
+			defaultValueIntf := opts[1]
+			defaultValue = &defaultValueIntf
+		}
+		if len(opts) > 2 {
+			bwerror.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiSecondaryLiteral>%v", opts)
+		}
+	}
+	var m map[string]interface{}
+	if m, err = v.asMap(); err == nil {
+		var ok bool
+		result.where = v.where + "." + keyName
+		if result.value, ok = m[keyName]; !ok {
+			if defaultValue == nil {
+				err = v.err(valueErrorHasNoKey, keyName)
+			} else {
+				result.value = *defaultValue
+			}
+		} else if ofTypes != nil && !_isOfType(result.value, (*ofTypes)...) {
+			var ofTypeIntfs = []interface{}{}
+			for _, i := range ofTypeStrings {
+				ofTypeIntfs = append(ofTypeIntfs, i)
+			}
+			err = result.err(valueErrorIsNotOfTypes, ofTypeIntfs...)
+		}
+	}
+	return
 }
 
-// func (v *value) getStringKey(keyName string) (result value, err error) {
-//   var kv value
-//   if kv, err = v.getKey(keyName); err == nil {
-//     result, err = kv.asString()
-//   }
-//   return
-// }
+func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
+	vType := reflect.TypeOf(v)
+	for _, ofType := range ofTypes {
+		switch ofType {
+		case "string":
+			ok = vType.Kind() == reflect.String
+		case "[]string":
+			ok = vType.Kind() == reflect.Slice && vType.Elem().Kind() == reflect.String
+		case "map":
+			ok = vType.Kind() == reflect.Map && vType.Key().Kind() == reflect.String && vType.Elem().Kind() == reflect.Interface
+		case "bool":
+			ok = vType.Kind() == reflect.Bool
+		default:
+			bwerror.Panic("unsupported type <ansiPrimaryLiteral>%s", ofType)
+		}
+		if ok {
+			break
+		}
+	}
+	return
+}
 
-// func (v *value) getMapKey(keyName string, defaultValue ...map[string]interface{}) (result value, err error) {
-//   var kv value
-//   if kv, err = v.getKey(keyName); err == nil {
-//     result, err = kv.asMap()
-//   } else if defaultValue != nil {
-//     result = defaultValue[0]
-//     err = nil
-//   }
-//   return
-// }
+func _mustBeOfTypes(v interface{}, ofTypes ...string) (result interface{}) {
+	if !_isOfType(v, ofTypes...) {
+		bwerror.Panic("<ansiSecondaryLiteral>%+v<ansi> is not of types <ansiSecondaryLiteral>%v", v, ofTypes)
+	}
+	return v
+}
+
+func _mustBeString(v interface{}) (result string) {
+	result, _ = _mustBeOfTypes(v, "string").(string)
+	return
+}
+
+func _mustBeSliceOfStrings(v interface{}) (result []string) {
+	result, _ = _mustBeOfTypes(v, "[]string").([]string)
+	return
+}
