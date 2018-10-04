@@ -23,7 +23,7 @@ func (test testGetValidValStruct) GetTstResultErr() (interface{}, error) {
 }
 
 func (test testGetValidValStruct) GetTitle() string {
-	return fmt.Sprintf("GetValidVal(%s, %+s)\n", test.val, test.def)
+	return fmt.Sprintf("GetValidVal(%s, %s)\n", bwjson.PrettyJsonOf(test.val), bwjson.PrettyJsonOf(test.def))
 }
 
 func (test testGetValidValStruct) GetEtaErr() interface{} {
@@ -151,6 +151,24 @@ func TestGetValidVal(t *testing.T) {
 				return
 			},
 		},
+		"type: []string": {
+			val: value{
+				where: "<ansiOutline>somewhere<ansiCmd>",
+				value: defparse.MustParse(`true`),
+			},
+			def: value{
+				value: defparse.MustParseMap(`{ type: [ 'map', 'bool' ] }`),
+				where: "<ansiOutline>somewhere::def<ansiCmd>",
+			},
+			// err: func(testIntf interface{}) (err error) {
+			// 	if test, ok := testIntf.(testGetValidValStruct); !ok {
+			// 		bwerror.Panic("<ansiOutline>testIntf<ansi> (<ansiSecondaryLiteral>%+v<ansi>) expected to be <ansiPrimaryLiteral>testGetValidValStruct")
+			// 	} else {
+			// 		err = fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.keys.keyOne<ansi> (<ansiSecondaryLiteral>"+bwjson.PrettyJson(MustValOfPath(test.def.value, ".keys.keyOne"))+"<ansi>) has unexpected key <ansiPrimaryLiteral>some"))
+			// 	}
+			// 	return
+			// },
+		},
 		// ""
 		// where: "<ansiOutline>somewhere<ansiCmd>",
 		// // val: defparse.MustParseMap(`{ exitCode: nil, s: 1, v: "ALL", some: 0 }`),
@@ -182,10 +200,11 @@ func TestGetValidVal(t *testing.T) {
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
 	// bwmap.CropMap(testsToRun, "def nil", "no type", "type is not string", ".type has non supported value", "unexpected keys", "keys.KEY is not map", "current")
-	// bwmap.CropMap(testsToRun, "def nil")
+	bwmap.CropMap(testsToRun, "type: []string")
 	// bwmap.CropMap(testsToRun, "some == 0 is not bool")
 	// testsToRun = map[string]testGetValidValStruct{"wrong type": tests["wrong type"]}
 	for testName, test := range testsToRun {
+		bwtesting.Debug(test)
 		bwtesting.BtRunTest(t, testName, test)
 	}
 }

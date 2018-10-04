@@ -6,7 +6,6 @@ import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwjson"
 	"sort"
-  // "log"
 )
 
 type valueErrorType uint16
@@ -93,13 +92,19 @@ type valueError struct {
 	args      []interface{}
 }
 
-func (v value) Error() string {
-	if v.error == nil {
-		bwerror.Panic(v.String() + " v.error == nil")
+func (v valueError) GetDataForJson() interface{} {
+  result := map[string]interface{}{}
+  result["errorType"] = v.errorType.String()
+  result["fmtString"] = v.fmtString
+  result["args"] = v.args
+  return result
+}
+
+func (v value) Error() (result string) {
+	if v.error != nil {
+    result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(v.String()+` `+v.error.fmtString, v.error.args...))
 	}
-  // log.Printf("%s", v)
-  // log.Println(v)
-	return ansi.Ansi("Err", "ERR: "+fmt.Sprintf(v.String()+` `+v.error.fmtString, v.error.args...))
+	return
 }
 
 func (v *value) err(errorType valueErrorType, args ...interface{}) error {

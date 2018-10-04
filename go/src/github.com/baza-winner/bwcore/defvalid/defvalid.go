@@ -8,28 +8,57 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/defparse"
+	"github.com/baza-winner/bwcore/bwset"
 )
+
+// func stringsAsSet(ss []string) (result map[string]struct{}) {
+// 	result = map[string]struct{}{}
+// 	for _, s := range ss {
+// 		result[s] = struct{}{}
+// 	}
+// 	return result
+// }
+
+// func
 
 func GetValidVal(val, def value) (result interface{}, err error) {
 	var defType value
-	if defType, err = def.getKey(`type`, `string`); err == nil {
+	if defType, err = def.getKey("type", []string{ "string", "[]string" }); err == nil {
+		var expectedTypes bwset.Strings
+		if _isOfType(defType.value, "string") {
+			expectedTypes = bwset.getStrings( []string{ _mustBeString(defType.value)} )
+			// expectedTypes = stringsAsSet( []string{ _mustBeString(defType.value)} )
+		} else {
+			expectedTypes = bwset.getStrings( _mustBeSliceOfStrings(defType.value) )
+			// expectedTypes = stringsAsSet( _mustBeSliceOfStrings(defType.value) )
+		}
+		valType = reflect.TypeOf(val)
+		switch valType.Kind() {
+			case reflect.Bool:
+				expectedTypes
+
+
+
+		}
+
+
 		switch defType.mustBeString() {
 		case "map":
 			var valAsMap map[string]interface{}
 			if valAsMap, err = val.asMap(); err == nil {
 				var defKeys value
-				if defKeys, err = def.getKey(`keys`, `map`, nil); defKeys.value != nil && err == nil {
+				if defKeys, err = def.getKey("keys", "map", nil); defKeys.value != nil && err == nil {
 					if unexpectedKeys := bwmap.GetUnexpectedKeys(valAsMap, defKeys.mustBeMap()); unexpectedKeys != nil {
 						err = val.err(valueErrorHasUnexpectedKeys, unexpectedKeys)
 					} else {
 						for defKeysKey, _ := range defKeys.mustBeMap() {
 							var defKeysKeyVal, valMapKeyValTypeVal, valMapKeyDefaultVal, valMapKeyVal value
-							if defKeysKeyVal, err = defKeys.getKey(defKeysKey, `map`); err == nil {
+							if defKeysKeyVal, err = defKeys.getKey(defKeysKey, "map"); err == nil {
 								var defKeysKeyValValidKeys = []string{"type", "default"}
-								if valMapKeyValTypeVal, err = defKeysKeyVal.getKey(`type`, []string{`string`, `[]string`}); err != nil {
+								if valMapKeyValTypeVal, err = defKeysKeyVal.getKey("type", []string{"string", "[]string"}); err != nil {
 									break
 								} else {
-									valMapKeyDefaultVal, err = defKeysKeyVal.getKey(`default`, valMapKeyValTypeVal.value)
+									valMapKeyDefaultVal, err = defKeysKeyVal.getKey("default", valMapKeyValTypeVal.value)
 									if err != nil {
 										if valErr, ok := err.(*value); ok && valErr.error.errorType == valueErrorHasNoKey {
 											valMapKeyDefaultVal.value = nil
@@ -71,7 +100,7 @@ func GetValidVal(val, def value) (result interface{}, err error) {
 }
 
 func GetValOfPath(val interface{}, path string) (result interface{}, valueError error) {
-	result = defparse.MustParse(`{ type: 'bool', default: false, some: "thing" }`)
+	result = defparse.MustParse("{ type: 'bool', default: false, some: "thing" }")
 	return
 }
 

@@ -57,3 +57,28 @@ func ExamplePrettyJson_5() {
   //   "string": "something"
   // }
 }
+
+type someStruct struct {
+  boolField bool
+  numField int
+  strField string
+}
+
+func (v someStruct) GetDataForJson() interface{} {
+  result := map[string]interface{}{}
+  result["boolField"] = v.boolField
+  result["numField"] = v.numField
+  result["strField"] = v.strField
+  return result
+}
+
+func ExamplePrettyJson_6() {
+  v := someStruct{boolField: true, numField: 273, strField: "something"}
+  fmt.Println(PrettyJsonOf(v))
+  // Output:
+  // {
+  //   "boolField": true,
+  //   "numField": 273,
+  //   "strField": "something"
+  // }
+}

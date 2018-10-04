@@ -7,12 +7,20 @@ package bwtesting
 
 import (
 	"fmt"
+	"log"
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwerror"
 	"reflect"
 	"testing"
 )
+
+func Debug(args ...interface{}) {
+	for _, arg := range args {
+		log.Printf("%s ", bwjson.PrettyJson(arg))
+	}
+	log.Println()
+}
 
 type GetEtaErr func (testIntf interface{}) (err error)
 

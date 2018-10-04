@@ -1,7 +1,7 @@
 package defparse
 
 import (
-	"encoding/json"
+	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwerror"
 	"strconv"
 	"unicode"
@@ -20,9 +20,9 @@ type pfaStruct struct {
 	charPtr *rune
 }
 
-func (pfa *pfaStruct) getDataForJson() interface{} {
+func (pfa pfaStruct) GetDataForJson() interface{} {
 	result := map[string]interface{}{}
-	result["stack"] = pfa.stack.getDataForJson()
+	result["stack"] = pfa.stack.GetDataForJson()
 	result["state"] = pfa.state.String()
 	result["result"] = pfa.result
 	result["pos"] = strconv.FormatInt(int64(pfa.pos), 10)
@@ -34,10 +34,8 @@ func (pfa *pfaStruct) getDataForJson() interface{} {
 	return result
 }
 
-func (pfa pfaStruct) String() (result string) {
-	bytes, _ := json.MarshalIndent(pfa.getDataForJson(), ``, `  `)
-	result = string(bytes[:]) // https://stackoverflow.com/questions/14230145/what-is-the-best-way-to-convert-byte-array-to-string/18615786#18615786
-	return
+func (pfa pfaStruct) String() string {
+	return bwjson.PrettyJsonOf(pfa)
 }
 
 func (pfa *pfaStruct) panic(args ...interface{}) {

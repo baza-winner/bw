@@ -13,6 +13,16 @@ type value struct {
 	error *valueError
 }
 
+func (v value) GetDataForJson() interface{} {
+  result := map[string]interface{}{}
+  result["where"] = v.where
+  result["value"] = v.value
+  if v.error != nil {
+    result["error"] = v.error.GetDataForJson()
+  }
+  return result
+}
+
 func (v value) String() string {
 	return fmt.Sprintf(v.where+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
 }
@@ -56,6 +66,14 @@ func (v *value) asBool() (result bool, err error) {
 	}
 	return
 }
+
+// func (v *value) is(ofType string) {
+//   return _isOfType(v.value, ofType)
+// }
+
+// func (v *value) mustBeSliceOfStrings() []string {
+//   return _isOfType(v.value, ofType)
+// }
 
 func (v *value) getKey(keyName string, opts ...interface{}) (result value, err error) {
 	var ofTypes *[]string
