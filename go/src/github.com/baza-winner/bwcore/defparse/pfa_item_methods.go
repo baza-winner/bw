@@ -22,8 +22,8 @@ var pfaItemFinishMethods = map[parseStackItemType]pfaItemFinishMethod{
 }
 
 func pfaItemFinishMethodsCheck() {
-	itemType := _parseStackItemBelow + 1
-	for itemType < _parseStackItemAbove {
+	itemType := parseStackItem_below_ + 1
+	for itemType < parseStackItem_above_ {
 		if _, ok := pfaItemFinishMethods[itemType]; !ok {
       bwerror.Panic("not defined <ansiOutline>pfaItemFinishMethods<ansi>[<ansiPrimaryLiteral>%s<ansi>]", itemType)
 		}

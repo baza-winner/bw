@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwjson"
+	"github.com/baza-winner/bwcore/bwset"
 	"reflect"
 )
 
@@ -14,13 +15,13 @@ type value struct {
 }
 
 func (v value) GetDataForJson() interface{} {
-  result := map[string]interface{}{}
-  result["where"] = v.where
-  result["value"] = v.value
-  if v.error != nil {
-    result["error"] = v.error.GetDataForJson()
-  }
-  return result
+	result := map[string]interface{}{}
+	result["where"] = v.where
+	result["value"] = v.value
+	if v.error != nil {
+		result["error"] = v.error.GetDataForJson()
+	}
+	return result
 }
 
 func (v value) String() string {
@@ -30,7 +31,7 @@ func (v value) String() string {
 func (v *value) asMap() (result map[string]interface{}, err error) {
 	var ok bool
 	if result, ok = v.value.(map[string]interface{}); !ok {
-		err = v.err(valueErrorIsNotOfTypes, "map")
+		err = v.err(valueErrorIsNotOfType, "map")
 	}
 	return
 }
@@ -46,7 +47,7 @@ func (v *value) mustBeMap() (result map[string]interface{}) {
 func (v *value) asString() (result string, err error) {
 	var ok bool
 	if result, ok = v.value.(string); !ok {
-		err = v.err(valueErrorIsNotOfTypes, "string")
+		err = v.err(valueErrorIsNotOfType, "string")
 	}
 	return
 }
@@ -62,18 +63,24 @@ func (v *value) mustBeString() (result string) {
 func (v *value) asBool() (result bool, err error) {
 	var ok bool
 	if result, ok = v.value.(bool); !ok {
-		err = v.err(valueErrorIsNotOfTypes, "bool")
+		err = v.err(valueErrorIsNotOfType, "bool")
 	}
 	return
 }
 
-// func (v *value) is(ofType string) {
-//   return _isOfType(v.value, ofType)
-// }
-
-// func (v *value) mustBeSliceOfStrings() []string {
-//   return _isOfType(v.value, ofType)
-// }
+func (v *value) getElem(elemIndex int, opts ...interface{}) (result value) {
+	vType := reflect.TypeOf(v.value)
+	if vType.Kind() != reflect.Slice {
+		// err = v.err(valueErrorIsNotOfType, "slice")
+		bwerror.Panic("<ansiSecondaryLiteral>%s<ansi> (type: <ansiSecondaryLiteral>%s<ansi>) is not <ansiPrimaryLiteral>slice<ansi>", bwjson.PrettyJsonOf(v), vType.Kind())
+	}
+	sv := reflect.ValueOf(v)
+	if !(0 <= elemIndex && elemIndex < sv.Len()) {
+		bwerror.Panic("<ansiOutline>elemIndex <ansiSecondaryLiteral>%d<ansi> is out of range <ansiSecondaryLiteral>%s", elemIndex, bwjson.PrettyJsonOf(v))
+	}
+	result = value{where: v.where + fmt.Sprintf(".#%d", elemIndex), value: sv.Index(elemIndex)}
+	return
+}
 
 func (v *value) getKey(keyName string, opts ...interface{}) (result value, err error) {
 	var ofTypes *[]string
@@ -85,7 +92,7 @@ func (v *value) getKey(keyName string, opts ...interface{}) (result value, err e
 		} else if _isOfType(opts[0], "[]string") {
 			ofTypeStrings = _mustBeSliceOfStrings(opts[0])
 		} else {
-			_ = _mustBeOfTypes(opts[0], "string", "[]string")
+			_ = _mustBeOfType(opts[0], "string", "[]string")
 		}
 		ofTypes = &ofTypeStrings
 		if len(opts) > 1 {
@@ -111,35 +118,52 @@ func (v *value) getKey(keyName string, opts ...interface{}) (result value, err e
 			for _, i := range ofTypeStrings {
 				ofTypeIntfs = append(ofTypeIntfs, i)
 			}
-			err = result.err(valueErrorIsNotOfTypes, ofTypeIntfs...)
+			err = result.err(valueErrorIsNotOfType, ofTypeIntfs...)
 		}
 	}
 	return
 }
 
 func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
-	vType := reflect.TypeOf(v)
-	for _, ofType := range ofTypes {
-		switch ofType {
-		case "string":
-			ok = vType.Kind() == reflect.String
-		case "[]string":
-			ok = vType.Kind() == reflect.Slice && vType.Elem().Kind() == reflect.String
-		case "map":
-			ok = vType.Kind() == reflect.Map && vType.Key().Kind() == reflect.String && vType.Elem().Kind() == reflect.Interface
-		case "bool":
-			ok = vType.Kind() == reflect.Bool
-		default:
-			bwerror.Panic("unsupported type <ansiPrimaryLiteral>%s", ofType)
-		}
-		if ok {
-			break
+	if v != nil {
+		vType := reflect.TypeOf(v)
+		for _, ofType := range ofTypes {
+			switch ofType {
+			case "string", "enum":
+				ok = vType.Kind() == reflect.String
+			case "[]string":
+				if vType.Kind() == reflect.Slice {
+					if vType.Elem().Kind() == reflect.String || vType.Elem().Kind() == reflect.Interface {
+						ok = true
+						if vType.Elem().Kind() == reflect.Interface {
+							sv := reflect.ValueOf(v)
+							for i := 0; i < sv.Len(); i++ {
+								ok = _isOfType(sv.Index(i).Interface(), "string")
+								if !ok {
+									break
+								}
+							}
+						}
+					}
+				}
+			case "map":
+				ok = vType.Kind() == reflect.Map && vType.Key().Kind() == reflect.String && vType.Elem().Kind() == reflect.Interface
+			case "bool":
+				ok = vType.Kind() == reflect.Bool
+			case "bwset.Strings":
+				_, ok = v.(bwset.Strings)
+			default:
+				bwerror.Panic("unsupported type <ansiPrimaryLiteral>%s", ofType)
+			}
+			if ok {
+				break
+			}
 		}
 	}
 	return
 }
 
-func _mustBeOfTypes(v interface{}, ofTypes ...string) (result interface{}) {
+func _mustBeOfType(v interface{}, ofTypes ...string) (result interface{}) {
 	if !_isOfType(v, ofTypes...) {
 		bwerror.Panic("<ansiSecondaryLiteral>%+v<ansi> is not of types <ansiSecondaryLiteral>%v", v, ofTypes)
 	}
@@ -147,11 +171,24 @@ func _mustBeOfTypes(v interface{}, ofTypes ...string) (result interface{}) {
 }
 
 func _mustBeString(v interface{}) (result string) {
-	result, _ = _mustBeOfTypes(v, "string").(string)
+	result, _ = _mustBeOfType(v, "string").(string)
 	return
 }
 
 func _mustBeSliceOfStrings(v interface{}) (result []string) {
-	result, _ = _mustBeOfTypes(v, "[]string").([]string)
+	var ok bool
+	if result, ok = _mustBeOfType(v, "[]string").([]string); !ok {
+		result = []string{}
+		sv := reflect.ValueOf(v)
+		for i := 0; i < sv.Len(); i++ {
+			s, _ := sv.Index(i).Interface().(string)
+			result = append(result, s)
+		}
+	}
+	return
+}
+
+func _mustBeSetOfStrings(v interface{}) (result bwset.Strings) {
+	result, _ = _mustBeOfType(v, "bwset.Strings").(bwset.Strings)
 	return
 }

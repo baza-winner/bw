@@ -7,7 +7,7 @@ import (
 type parsePrimaryState uint16
 
 const (
-	_expectBelow parsePrimaryState = iota
+	parsePrimaryState_below_ parsePrimaryState = iota
 	expectEOF
 	expectValueOrSpace
 	expectArrayItemSeparatorOrSpace
@@ -21,7 +21,7 @@ const (
 	expectSpaceOrMapKey
 	expectSpaceOrQwItemOrDelimiter
 	expectEndOfQwItem
-	_expectAbove
+	parsePrimaryState_above_
 )
 
 //go:generate stringer -type=parsePrimaryState

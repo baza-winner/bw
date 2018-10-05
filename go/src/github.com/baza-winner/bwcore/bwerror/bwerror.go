@@ -12,6 +12,11 @@ import (
 	"os"
 )
 
+type WhereError interface {
+	WhereError() string
+	error
+}
+
 func ExitWithError(exitCode int, fmtString string, fmtArgs ...interface{}) {
 	log.Print(ansi.Ansi(`Err`, fmt.Sprintf(fmtString, fmtArgs...)))
 	os.Exit(exitCode)

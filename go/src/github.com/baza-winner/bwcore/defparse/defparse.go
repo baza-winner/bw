@@ -177,9 +177,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerror"
 )
 
-/*
-ParseMap - парсит строку с определением Map
-*/
+// ParseMap - парсит строку с определением Map
 func ParseMap(source string) (result map[string]interface{}, err error) {
 	var _result interface{}
 	if _result, err = Parse(source); err == nil {
@@ -191,21 +189,17 @@ func ParseMap(source string) (result map[string]interface{}, err error) {
 	return result, err
 }
 
-/*
-MustParseMap is like ParseMap but panics if the expression cannot be parsed.
-It simplifies safe initialization of global variables holding parsed values.
-*/
+// MustParseMap is like ParseMap but panics if the expression cannot be parsed.
+// It simplifies safe initialization of global variables holding parsed values.
 func MustParseMap(source string) (result map[string]interface{}) {
 	var err error
 	if result, err = ParseMap(source); err != nil {
-		bwerror.Panic(err.Error())
+		bwerror.PanicErr(err)
 	}
 	return result
 }
 
-/*
-Parse - парсит строку
-*/
+// Parse - парсит строку
 func Parse(source string) (interface{}, error) {
 	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}}
 	var err error
@@ -223,14 +217,12 @@ func Parse(source string) (interface{}, error) {
 	return pfa.result, err
 }
 
-/*
-MustParse is like Parse but panics if the expression cannot be parsed.
-It simplifies safe initialization of global variables holding parsed values.
-*/
+// MustParse is like Parse but panics if the expression cannot be parsed.
+// It simplifies safe initialization of global variables holding parsed values.
 func MustParse(source string) (result interface{}) {
 	var err error
 	if result, err = Parse(source); err != nil {
-		bwerror.Panic(err.Error())
+		bwerror.PanicErr(err)
 	}
 	return result
 }

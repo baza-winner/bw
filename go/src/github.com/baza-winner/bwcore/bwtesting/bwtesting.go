@@ -7,7 +7,7 @@ package bwtesting
 
 import (
 	"fmt"
-	"log"
+	// "log"
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwerror"
@@ -15,11 +15,32 @@ import (
 	"testing"
 )
 
-func Debug(args ...interface{}) {
-	for _, arg := range args {
-		log.Printf("%s ", bwjson.PrettyJson(arg))
+type BtOptFuncType uint16
+
+const (
+	BtOptFuncType_below_ BtOptFuncType = iota
+	WhenDiffErr
+	WhenDiffResult
+	BtOptFuncType_above_
+)
+
+//go:generate stringer -type=BtOptFuncType
+
+type WhenDiffErrFunc func(t *testing.T, bt BT, tstErr, etaErr error)
+
+func WhenDiffErrFuncDefault(t *testing.T, bt BT, tstErr, etaErr error) {
+	t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), tstErr, etaErr)
+	fmt.Printf("tstErr: %+q\netaErr: %+q\n", tstErr, etaErr)
+	if whereErr, ok := tstErr.(bwerror.WhereError); ok {
+		fmt.Printf("errWhere: %s\n", whereErr.WhereError())
 	}
-	log.Println()
+}
+
+type WhenDiffResultFunc func(t *testing.T, bt BT, tstResult, etaResult interface{})
+
+func WhenDiffResultFuncDefault(t *testing.T, bt BT, tstResult, etaResult interface{}) {
+	t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), bwjson.PrettyJson(tstResult), bwjson.PrettyJson(etaResult))
+	fmt.Printf("tstResult: %+q\netaResult: %+q\n", tstResult, etaResult)
 }
 
 type GetEtaErr func (testIntf interface{}) (err error)
@@ -31,7 +52,7 @@ type BT interface {
 	GetTstResultErr() (interface{}, error)
 }
 
-func BtCheckErr(t *testing.T, bt BT, tstErr error) bool {
+func BtCheckErr(t *testing.T, bt BT, tstErr error, opts ...map[BtOptFuncType]interface{}) bool {
 	eta := bt.GetEtaErr()
 	var etaErr error
 	var ok bool
@@ -46,32 +67,50 @@ func BtCheckErr(t *testing.T, bt BT, tstErr error) bool {
 	}
 	if tstErr != etaErr {
 		if tstErr == nil || etaErr == nil || tstErr.Error() != etaErr.Error() {
-			t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => err: <ansiErr>'%v'<ansi>\n, want err: <ansiOK>'%v'"), tstErr, etaErr)
-			fmt.Printf("tstErr: %+q\netaErr: %+q\n", tstErr, etaErr)
+			if opts != nil {
+				if i, ok := opts[0][WhenDiffErr]; ok {
+					if f, ok := i.(func(t *testing.T, bt BT, tstErr, etaErr error)); !ok {
+						bwerror.Panic("opt[%s] (%#v) is not of <ansiPrimaryLiteral>WhenDiffErrFunc", WhenDiffErr, i)
+					} else {
+						f(t, bt, tstErr, etaErr)
+						return false
+					}
+				}
+			}
+			WhenDiffErrFuncDefault(t, bt, tstErr, etaErr)
 		}
 		return false
 	}
 	return true
 }
 
-func BtCheckResult(t *testing.T, bt BT, tstResult interface{}) {
-	eta := bt.GetEtaResult()
-	if !reflect.DeepEqual(tstResult, eta) { // https://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
-		t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), bwjson.PrettyJson(tstResult), bwjson.PrettyJson(eta))
-		fmt.Printf("tstResult: %+q\netaResult: %+q\n", tstResult, eta)
+func BtCheckResult(t *testing.T, bt BT, tstResult interface{}, opts ...map[BtOptFuncType]interface{}) {
+	etaResult := bt.GetEtaResult()
+	if !reflect.DeepEqual(tstResult, etaResult) { // https://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
+		if opts != nil {
+			if i, ok := opts[0][WhenDiffResult]; ok {
+				if f, ok := i.(*func(t *testing.T, bt BT, tstResult, etaResult interface{})); !ok {
+					bwerror.Panic("opt[%s] (%#v) is not of <ansiPrimaryLiteral>WhenDiffResultFunc", WhenDiffResult, i)
+				} else {
+					(*f)(t, bt, tstResult, etaResult)
+					return
+				}
+			}
+		}
+		WhenDiffResultFuncDefault(t, bt, tstResult, etaResult)
 	}
 }
 
-func BtCheckErrResult(t *testing.T, bt BT, tstErr error, tstResult interface{}) {
-	if BtCheckErr(t, bt, tstErr) {
-		BtCheckResult(t, bt, tstResult)
+func BtCheckErrResult(t *testing.T, bt BT, tstErr error, tstResult interface{}, opts ...map[BtOptFuncType]interface{}) {
+	if BtCheckErr(t, bt, tstErr, opts...) {
+		BtCheckResult(t, bt, tstResult, opts...)
 	}
 }
 
-func BtRunTest(t *testing.T, testName string, bt BT) {
+func BtRunTest(t *testing.T, testName string, bt BT, opts ...map[BtOptFuncType]interface{}) {
 	t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 	result, err := bt.GetTstResultErr()
-	BtCheckErrResult(t, bt, err, result)
+	BtCheckErrResult(t, bt, err, result, opts...)
 }
 
 // CompareErrors - сравнивает тестовое и эталонное значение ошибки, и в случае их расхождения вызывает t.Errorf
