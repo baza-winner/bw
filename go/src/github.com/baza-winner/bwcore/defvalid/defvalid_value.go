@@ -6,10 +6,12 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
 	"reflect"
+	// "log"
 )
 
 func init() {
 	valueErrorValidatorsCheck()
+	defErrorValidatorsCheck()
 }
 
 type value struct {
@@ -31,7 +33,7 @@ func (v value) String() string {
 func (v value) asMap() (result map[string]interface{}, err error) {
 	var ok bool
 	if result, ok = v.value.(map[string]interface{}); !ok {
-		err = valueErrMake(v, valueErrorIsNotOfType, "map")
+		err = valueErrorMake(v, valueErrorIsNotOfType, "map")
 	}
 	return
 }
@@ -47,7 +49,7 @@ func (v value) mustBeMap() (result map[string]interface{}) {
 func (v value) asString() (result string, err error) {
 	var ok bool
 	if result, ok = v.value.(string); !ok {
-		err = valueErrMake(v, valueErrorIsNotOfType, "string")
+		err = valueErrorMake(v, valueErrorIsNotOfType, "string")
 	}
 	return
 }
@@ -63,27 +65,12 @@ func (v value) mustBeString() (result string) {
 func (v value) asBool() (result bool, err error) {
 	var ok bool
 	if result, ok = v.value.(bool); !ok {
-		err = valueErrMake(v, valueErrorIsNotOfType, "bool")
+		err = valueErrorMake(v, valueErrorIsNotOfType, "bool")
 	}
 	return
 }
 
-func (v value) getElem(elemIndex int, opts ...interface{}) (result value) {
-	vType := reflect.TypeOf(v.value)
-	if vType.Kind() != reflect.Slice {
-		// err = getValueErr(v, valueErrorIsNotOfType, "slice")
-		bwerror.Panic("<ansiSecondaryLiteral>%s<ansi> (type: <ansiSecondaryLiteral>%s<ansi>) is not <ansiPrimaryLiteral>slice<ansi>", bwjson.PrettyJsonOf(v), vType.Kind())
-	}
-	sv := reflect.ValueOf(v)
-	if !(0 <= elemIndex && elemIndex < sv.Len()) {
-		bwerror.Panic("<ansiOutline>elemIndex <ansiSecondaryLiteral>%d<ansi> is out of range <ansiSecondaryLiteral>%s", elemIndex, bwjson.PrettyJsonOf(v))
-	}
-	result = value{what: v.what + fmt.Sprintf(".#%d", elemIndex), value: sv.Index(elemIndex)}
-	return
-}
-
-func (v value) getKey(keyName string, opts ...interface{}) (result value, err error) {
-	var ofTypes *[]string
+func (v value) getElem(elemIndex int, opts ...interface{}) (result value, err error) {
 	var defaultValue *interface{}
 	var ofTypeStrings []string
 	if opts != nil {
@@ -94,7 +81,6 @@ func (v value) getKey(keyName string, opts ...interface{}) (result value, err er
 		} else {
 			_ = _mustBeOfType(opts[0], "string", "[]string")
 		}
-		ofTypes = &ofTypeStrings
 		if len(opts) > 1 {
 			defaultValueIntf := opts[1]
 			defaultValue = &defaultValueIntf
@@ -103,23 +89,83 @@ func (v value) getKey(keyName string, opts ...interface{}) (result value, err er
 			bwerror.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiSecondaryLiteral>%v", opts)
 		}
 	}
-	var m map[string]interface{}
-	if m, err = v.asMap(); err == nil {
-		var ok bool
-		result.what = v.what + "." + keyName
-		if result.value, ok = m[keyName]; !ok {
-			if defaultValue == nil {
-				// bwerror.Panic(keyName)
-				err = valueErrMake(v, valueErrorHasNoKey, keyName)
+	if v.value == nil {
+		err = valueErrorMake(v, valueErrorIsNotOfType, "array")
+	} else {
+		vType := reflect.TypeOf(v.value)
+		if vType.Kind() != reflect.Slice {
+			err = valueErrorMake(v, valueErrorIsNotOfType, "array")
+		} else {
+			sv := reflect.ValueOf(v.value)
+			result.what = v.what + fmt.Sprintf(".#%d", elemIndex)
+			if !(0 <= elemIndex && elemIndex < sv.Len()) {
+				if defaultValue == nil {
+					err = valueErrorMake(v, valueErrorHasNoKey, fmt.Sprintf("#%d", elemIndex))
+				} else {
+					result.value = *defaultValue
+				}
 			} else {
-				result.value = *defaultValue
+				elem := sv.Index(elemIndex)
+				result.value = elem.Interface()
+				if ofTypeStrings != nil && !_isOfType(result.value, ofTypeStrings...) {
+					var ofTypeIntfs = []interface{}{}
+					for _, i := range ofTypeStrings {
+						ofTypeIntfs = append(ofTypeIntfs, i)
+					}
+					err = valueErrorMake(result, valueErrorIsNotOfType, ofTypeIntfs...)
+				}
 			}
-		} else if ofTypes != nil && !_isOfType(result.value, (*ofTypes)...) {
-			var ofTypeIntfs = []interface{}{}
-			for _, i := range ofTypeStrings {
-				ofTypeIntfs = append(ofTypeIntfs, i)
+		}
+	}
+	return
+}
+
+func (v value) getKey(keyName string, opts ...interface{}) (result value, err error) {
+	var defaultValue *interface{}
+	var ofTypeStrings []string
+	if opts != nil {
+		if _isOfType(opts[0], "string") {
+			ofTypeStrings = []string{_mustBeString(opts[0])}
+		} else if _isOfType(opts[0], "[]string") {
+			ofTypeStrings = _mustBeSliceOfStrings(opts[0])
+		} else {
+			_ = _mustBeOfType(opts[0], "string", "[]string")
+		}
+		if len(opts) > 1 {
+			defaultValueIntf := opts[1]
+			defaultValue = &defaultValueIntf
+		}
+		if len(opts) > 2 {
+			bwerror.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiSecondaryLiteral>%v", opts)
+		}
+	}
+	if v.value == nil {
+		err = valueErrorMake(v, valueErrorIsNotOfType, "map")
+	} else {
+		vType := reflect.TypeOf(v.value)
+		if vType.Kind() != reflect.Map || vType.Key().Kind() != reflect.String {
+			err = valueErrorMake(v, valueErrorIsNotOfType, "map")
+		} else {
+			mv := reflect.ValueOf(v.value)
+			result.what = v.what + "." + keyName
+			elem := mv.MapIndex(reflect.ValueOf(keyName))
+			zeroValue := reflect.Value{}
+			if elem == zeroValue {
+				if defaultValue == nil {
+					err = valueErrorMake(v, valueErrorHasNoKey, keyName)
+				} else {
+					result.value = *defaultValue
+				}
+			} else {
+				result.value = elem.Interface()
+				if ofTypeStrings != nil && !_isOfType(result.value, ofTypeStrings...) {
+					var ofTypeIntfs = []interface{}{}
+					for _, i := range ofTypeStrings {
+						ofTypeIntfs = append(ofTypeIntfs, i)
+					}
+					err = valueErrorMake(result, valueErrorIsNotOfType, ofTypeIntfs...)
+				}
 			}
-			err = valueErrMake(result, valueErrorIsNotOfType, ofTypeIntfs...)
 		}
 	}
 	return

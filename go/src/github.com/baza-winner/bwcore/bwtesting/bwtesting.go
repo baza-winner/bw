@@ -39,8 +39,13 @@ func WhenDiffErrFuncDefault(t *testing.T, bt BT, tstErr, etaErr error) {
 type WhenDiffResultFunc func(t *testing.T, bt BT, tstResult, etaResult interface{})
 
 func WhenDiffResultFuncDefault(t *testing.T, bt BT, tstResult, etaResult interface{}) {
-	t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), bwjson.PrettyJson(tstResult), bwjson.PrettyJson(etaResult))
-	fmt.Printf("tstResult: %+q\netaResult: %+q\n", tstResult, etaResult)
+	t.Errorf(
+		ansi.Ansi("", bt.GetTitle()+"    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"),
+		bwjson.PrettyJson(bt.GetResultDataForJson(tstResult)),
+		bwjson.PrettyJson(bt.GetResultDataForJson(etaResult)),
+	)
+	// t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), bwjson.PrettyJson(tstResult), bwjson.PrettyJson(etaResult))
+	fmt.Printf("tstResult: %#v\netaResult: %#v\n", tstResult, etaResult)
 }
 
 type GetEtaErr func (testIntf interface{}) (err error)
@@ -48,8 +53,18 @@ type GetEtaErr func (testIntf interface{}) (err error)
 type BT interface {
 	GetEtaErr() interface{}
 	GetEtaResult() interface{}
+	IsDiffResult(tstResult, etaResult interface{}) bool
 	GetTitle() string
 	GetTstResultErr() (interface{}, error)
+	GetResultDataForJson(result interface{}) interface{}
+}
+
+func GetResultDataForJsonDefault(result bwjson.Jsonable) interface{} {
+	return result.GetDataForJson()
+}
+
+func IsDiffResultDefault(tstResult, etaResult interface{}) bool {
+	return !reflect.DeepEqual(tstResult, etaResult)
 }
 
 func BtCheckErr(t *testing.T, bt BT, tstErr error, opts ...map[BtOptFuncType]interface{}) bool {
@@ -86,7 +101,8 @@ func BtCheckErr(t *testing.T, bt BT, tstErr error, opts ...map[BtOptFuncType]int
 
 func BtCheckResult(t *testing.T, bt BT, tstResult interface{}, opts ...map[BtOptFuncType]interface{}) {
 	etaResult := bt.GetEtaResult()
-	if !reflect.DeepEqual(tstResult, etaResult) { // https://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
+	// if !reflect.DeepEqual(tstResult, etaResult) { // https://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
+	if bt.IsDiffResult(tstResult, etaResult) { // https://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
 		if opts != nil {
 			if i, ok := opts[0][WhenDiffResult]; ok {
 				if f, ok := i.(*func(t *testing.T, bt BT, tstResult, etaResult interface{})); !ok {
@@ -99,6 +115,12 @@ func BtCheckResult(t *testing.T, bt BT, tstResult interface{}, opts ...map[BtOpt
 		}
 		WhenDiffResultFuncDefault(t, bt, tstResult, etaResult)
 	}
+
+	// if !bt.CompareResult(tstResult, etaResult) { // https://stackoverflow.com/questions/18208394/testing-equivalence-of-maps-golang
+	// 	// t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), bwjson.PrettyJson(tstResult), bwjson.PrettyJson(etaResult))
+	// 	t.Errorf(ansi.Ansi("", bt.GetTitle()+"    => <ansiErr>%s<ansi>\n, want <ansiOK>%s"), bt.GetResultDataForJson(tstResult), bt.GetResultDataForJson(etaResult))
+	// 	// fmt.Printf("tstResult: %#v\netaResult: %#v\n", tstResult, etaResult)
+	// }
 }
 
 func BtCheckErrResult(t *testing.T, bt BT, tstErr error, tstResult interface{}, opts ...map[BtOptFuncType]interface{}) {

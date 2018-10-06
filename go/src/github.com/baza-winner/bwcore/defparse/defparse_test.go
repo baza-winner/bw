@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwjson"
+  "github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"testing"
 )
@@ -115,7 +116,7 @@ me'`,
 		},
 		"qw": {
 			source: `[
-				qw/one two tree/
+				qw/ one two tree /
 				qw|one two tree|
 				qw#one two tree#
 				qw[one two tree]
@@ -228,9 +229,11 @@ me'`,
 	}
 
 	testsToRun := tests
+  bwmap.CropMap(testsToRun)
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"], "true": tests["true"], "float number": tests["float number"], "double quoted string": tests["double quoted string"], "array": tests["array"]}
 	// testsToRun = map[string]testParseStruct{"empty": tests["empty"]}
 	// testsToRun = map[string]testParseStruct{"non map": tests["non map"]}
+  // bwmap.CropMap(testsToRun, "qw")
 	for testName, test := range testsToRun {
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		result, err := Parse(test.source)

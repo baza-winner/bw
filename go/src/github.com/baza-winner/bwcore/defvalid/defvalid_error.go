@@ -10,70 +10,77 @@ import (
 	"sort"
 )
 
-// type defErrorType uint16
+type defErrorType uint16
 
-// const (
-// 	defError_below_ defErrorType = iota
-// 	defErrorIsNil
-// 	// defErrorIsNotOfType
-// 	// defErrorHasUnexpectedKeys
-// 	// defErrorHasNoKey
-// 	// defErrorHasNonSupportedValue
-// 	// defErrorValuesCannotBeCombined
-// 	defError_above_
-// )
+const (
+	defError_below_ defErrorType = iota
+	defErrorHasUnexpectedValue
+	// defErrorIsNotOfType
+	// defErrorHasUnexpectedKeys
+	// defErrorHasNoKey
+	// defErrorHasNonSupportedValue
+	// defErrorValuesCannotBeCombined
+	defError_above_
+)
 
 //go:generate stringer -type=defErrorType
 
-// type valueError struct {
-// 	val       value
-// 	errorType valueErrorType
-// 	fmtString string
-// 	args      []interface{}
-// 	where     string
-// }
+type defError struct {
+	val       value
+	errorType defErrorType
+	fmtString string
+	args      []interface{}
+	where     string
+}
 
-// func getValueErr(v value, errorType valueErrorType, args ...interface{}) (result valueError) {
-// 	if !(valueError_below_ < errorType && errorType < valueError_above_) {
-// 		bwerror.Panic(v.String()+" errorType == %s", errorType)
-// 	}
-// 	var fmtString string
-// 	fmtString, args = valueErrorValidators[errorType](v, args...)
-// 	result = valueError{v, errorType, fmtString, args, whereami.WhereAmI(2)}
-// 	return
-// }
+func defErrorMake(v value, errorType defErrorType, args ...interface{}) (result defError) {
+	if !(defError_below_ < errorType && errorType < defError_above_) {
+		bwerror.Panic(v.String()+" errorType == %s", errorType)
+	}
+	var fmtString string
+	fmtString, args = defErrorValidators[errorType](v, args...)
+	result = defError{v, errorType, fmtString, args, whereami.WhereAmI(2)}
+	return
+}
 
-// func (err valueError) Error() (result string) {
-// 	result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.args...))
-// 	return
-// }
+func (err defError) Error() (result string) {
+	result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.args...))
+	return
+}
 
-// func (v valueError) WhereError() (result string) {
-// 	result = v.where
-// 	return
-// }
+func (v defError) WhereError() (result string) {
+	result = v.where
+	return
+}
 
-// type valueErrorValidator func(v value, args ...interface{}) (string, []interface{})
+type defErrorValidator func(v value, args ...interface{}) (string, []interface{})
 
-// var valueErrorValidators = map[valueErrorType]valueErrorValidator{
-// 	valueErrorIsNotOfType:            _valueErrorIsNotOfType,
-// 	valueErrorHasUnexpectedKeys:      _valueErrorHasUnexpectedKeys,
-// 	valueErrorHasNoKey:               _valueErrorHasNoKey,
-// 	valueErrorHasNonSupportedValue:   _valueErrorHasNonSupportedValue,
-// 	valueErrorValuesCannotBeCombined: _valueErrorValuesCannotBeCombined,
-// }
+var defErrorValidators = map[defErrorType]defErrorValidator{
+	defErrorHasUnexpectedValue: _defErrorHasUnexpectedValue,
+	// defErrorHasUnexpectedKeys:      _defErrorHasUnexpectedKeys,
+	// defErrorHasNoKey:               _defErrorHasNoKey,
+	// defErrorHasNonSupportedValue:   _defErrorHasNonSupportedValue,
+	// defErrorValuesCannotBeCombined: _defErrorValuesCannotBeCombined,
+}
 
-// func valueErrorValidatorsCheck() {
-// 	valueErrorType := valueError_below_ + 1
-// 	for valueErrorType < valueError_above_ {
-// 		if _, ok := valueErrorValidators[valueErrorType]; !ok {
-// 			bwerror.Panic("not defined <ansiOutline>valueErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", valueErrorType)
-// 		}
-// 		valueErrorType += 1
-// 	}
-// }
+func defErrorValidatorsCheck() {
+	defErrorType := defError_below_ + 1
+	for defErrorType < defError_above_ {
+		if _, ok := defErrorValidators[defErrorType]; !ok {
+			bwerror.Panic("not defined <ansiOutline>defErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", defErrorType)
+		}
+		defErrorType += 1
+	}
+}
 
-// //=============================================================================
+func _defErrorHasUnexpectedValue(v value, args ...interface{}) (string, []interface{}) {
+	if args != nil {
+		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	return `has unexpected value`, nil
+}
+
+//=============================================================================
 
 type valueErrorType uint16
 
@@ -97,7 +104,7 @@ type valueError struct {
 	where     string
 }
 
-func valueErrMake(v value, errorType valueErrorType, args ...interface{}) (result valueError) {
+func valueErrorMake(v value, errorType valueErrorType, args ...interface{}) (result valueError) {
 	if !(valueError_below_ < errorType && errorType < valueError_above_) {
 		bwerror.Panic(v.String()+" errorType == %s", errorType)
 	}
@@ -149,14 +156,14 @@ func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}
 			ss := _mustBeSliceOfStrings(i)
 			expectedTypes.Add(ss...)
 		} else if _isOfType(i, "bwset.Strings") {
-			ss := _mustBeSetOfStrings(i).ToSliceOfStrings()
+			ss := _mustBeSetOfStrings(i).ToSlice()
 			expectedTypes.Add(ss...)
 		}
 	}
 	var result string
-	for _, s := range expectedTypes.ToSliceOfStrings() {
+	for _, s := range expectedTypes.ToSlice() {
 		if len(result) > 0 {
-			result += "<ansi> or <ansiPrimaryLiteral>"
+			result += "<ansi>, or <ansiPrimaryLiteral>"
 		}
 		result += s
 	}

@@ -54,17 +54,7 @@ func _parseStackItemArray(pfa *pfaStruct) (skipPostProcess bool, err error) {
 }
 
 func _parseStackItemQw(pfa *pfaStruct) (skipPostProcess bool, err error) {
-	pfa.panic()
-	return
-}
-
-func _parseStackItemQwItem(pfa *pfaStruct) (skipPostProcess bool, err error) {
-	if len(pfa.stack) < 2 {
-		pfa.panic()
-	}
-	stackSubItem := pfa.popStackItem()
 	stackItem := pfa.getTopStackItemOfType(parseStackItemQw)
-	stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemString)
 	if pfa.charPtr == nil {
 		pfa.panic()
 	}
@@ -80,6 +70,18 @@ func _parseStackItemQwItem(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
 		pfa.state.setPrimary(expectArrayItemSeparatorOrSpace)
 	}
+	return true, nil
+}
+
+func _parseStackItemQwItem(pfa *pfaStruct) (skipPostProcess bool, err error) {
+	if len(pfa.stack) < 2 {
+		pfa.panic()
+	}
+	stackSubItem := pfa.popStackItem()
+
+	stackItem := pfa.getTopStackItemOfType(parseStackItemQw)
+	stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemString)
+	return _parseStackItemQw(pfa)
 
 	return true, nil
 }

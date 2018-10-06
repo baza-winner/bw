@@ -4,29 +4,35 @@ import  (
   "sort"
   "github.com/baza-winner/bwcore/bwjson"
 )
+
 type Strings map[string]struct{}
 
-func FromSliceOfStrings(ss []string) Strings {
+
+func FromArgs(kk ...string) Strings {
+  return FromSlice(kk)
+}
+
+func FromSlice(kk []string) Strings {
   result := Strings{}
-  result.Add(ss...)
+  result.Add(kk...)
   return result
 }
 
-func (v Strings) Has(s string) (ok bool) {
-  _, ok = v[s]
+func (v Strings) Has(k string) (ok bool) {
+  _, ok = v[k]
   return
 }
 
-func (v Strings) Add(ss ...string) {
-  for _, s := range ss {
+func (v Strings) Add(kk ...string) {
+  for _, s := range kk {
     v[s] = struct{}{}
   }
 }
 
-func (v Strings) ToSliceOfStrings() []string {
+func (v Strings) ToSlice() []string {
   result := []string{}
-  for s, _ := range v {
-    result = append(result, s)
+  for k, _ := range v {
+    result = append(result, k)
   }
   sort.Strings(result)
   return result
@@ -34,8 +40,7 @@ func (v Strings) ToSliceOfStrings() []string {
 
 func (v Strings) GetDataForJson() interface{} {
   result := []interface{}{}
-  ss := v.ToSliceOfStrings()
-  for _, s := range ss {
+  for _, s := range v.ToSlice() {
     result = append(result, s)
   }
   return result

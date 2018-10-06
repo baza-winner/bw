@@ -9,49 +9,81 @@ import (
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/defparse"
 	"testing"
+	// "log"
 )
 
 // ============================================================================
 
-// type testCompileDefStruct struct {
-// 	what   string
-// 	val    interface{}
-// 	def    interface{}
-// 	result interface{}
-// 	err    interface{}
-// }
+type testCompileDefStruct struct {
+	def    interface{}
+	result *Def
+	err    interface{}
+}
 
-// func (test testCompileDefStruct) GetTstResultErr() (interface{}, error) {
-// 	return CompileDef(test.what, test.val, test.def)
-// }
+func (test testCompileDefStruct) GetTstResultErr() (interface{}, error) {
+	return CompileDef(test.def)
+}
 
-// func (test testCompileDefStruct) GetTitle() string {
-// 	return fmt.Sprintf("CompileDef(%s, %s, %s)\n", test.what, bwjson.PrettyJson(test.val), bwjson.PrettyJson(test.def))
-// }
+func (test testCompileDefStruct) GetTitle() string {
+	return fmt.Sprintf("CompileDef(%s)\n", bwjson.PrettyJson(test.def))
+}
 
-// func (test testCompileDefStruct) GetEtaErr() interface{} {
-// 	return test.err
-// }
+func (test testCompileDefStruct) GetEtaErr() interface{} {
+	return test.err
+}
 
-// func (test testCompileDefStruct) GetEtaResult() interface{} {
-// 	return test.result
-// }
+func (test testCompileDefStruct) GetEtaResult() interface{} {
+	return test.result
+}
 
-// func TestCompileDef(t *testing.T) {
-// 	tests := map[string]testCompileDefStruct{
-// 		"def: nil": {
-// 			val:  defparse.MustParseMap(`{ }`),
-// 			what: "somewhere",
-// 			def:  nil,
-// 			err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd><ansi> (<ansiSecondaryLiteral>null<ansi>) is not of type <ansiPrimaryLiteral>map")),
-// 		},
-// 	}
-// 	testsToRun := tests
-// 	bwmap.CropMap(testsToRun)
-// 	for testName, test := range testsToRun {
-// 		bwtesting.BtRunTest(t, testName, test)
-// 	}
-// }
+func (test testCompileDefStruct) IsDiffResult(tstResult, etaResult interface{}) bool {
+	tstResultJsonData := mustDef(tstResult).GetDataForJson()
+	etaResultJsonData := mustDef(etaResult).GetDataForJson()
+	return bwtesting.IsDiffResultDefault(tstResultJsonData, etaResultJsonData)
+}
+
+func (test testCompileDefStruct) GetResultDataForJson(result interface{}) interface{} {
+	return mustDef(result).GetDataForJson()
+}
+
+
+func mustDef(v interface{}) (result *Def) {
+	if v == nil { return nil }
+	var ok bool
+	if result, ok = v.(*Def); !ok { bwerror.Panic("%#v is not *Def", v) }
+	return
+}
+
+func TestCompileDef(t *testing.T) {
+	tests := map[string]testCompileDefStruct{
+		"def: nil": {
+			def: nil,
+			err: fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>null<ansi>) has unexpected value")),
+		},
+		"def: invalid type": {
+			def: defparse.MustParse(`false`),
+			err: fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>map<ansi>, or <ansiPrimaryLiteral>string")),
+		},
+		"def: simple valid": {
+			def: defparse.MustParse(`"bool"`),
+			result: &Def{tp: FromArgs(deftypeBool)},
+		},
+		"def: invalid deftypeItem": {
+			def: defparse.MustParse(`[ qw/ bool int some / ]`),
+			err: fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>def<ansiCmd>.#2<ansi> (<ansiSecondaryLiteral>\"some\"<ansi>) has non supported value")),
+		},
+		// "def: invalid detype": {
+		// 	def: defparse.MustParse(`false`),
+		// 	err: fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>map<ansi>, or <ansiPrimaryLiteral>string")),
+		// },
+	}
+	testsToRun := tests
+	bwmap.CropMap(testsToRun)
+	// bwmap.CropMap(testsToRun, "def: invalid deftypeItem")
+	for testName, test := range testsToRun {
+		bwtesting.BtRunTest(t, testName, test)
+	}
+}
 
 // ============================================================================
 
@@ -79,6 +111,14 @@ func (test testValidateValStruct) GetEtaResult() interface{} {
 	return test.result
 }
 
+func (test testValidateValStruct) IsDiffResult(tstResult, etaResult interface{}) bool {
+	return bwtesting.IsDiffResultDefault(tstResult, etaResult)
+}
+
+func (test testValidateValStruct) GetResultDataForJson(result interface{}) interface{} {
+	return result
+}
+
 func TestValidateVal(t *testing.T) {
 	tests := map[string]testValidateValStruct{
 		"def: nil": {
@@ -97,7 +137,7 @@ func TestValidateVal(t *testing.T) {
 			what: "somewhere",
 			val:  defparse.MustParseMap(`{ }`),
 			def:  defparse.MustParseMap(`{ type: false }`),
-			err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi> or <ansiPrimaryLiteral>string")),
+			err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>string")),
 		},
 		".type has non supported value": {
 			what: "somewhere",
@@ -322,7 +362,7 @@ func TestValidateVal(t *testing.T) {
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "def.type: []string")
+	// bwmap.CropMap(testsToRun, "def.type: invalid type")
 	for testName, test := range testsToRun {
 		bwtesting.BtRunTest(t, testName, test)
 	}
