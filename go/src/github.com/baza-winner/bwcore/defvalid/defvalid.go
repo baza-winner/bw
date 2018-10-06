@@ -21,7 +21,7 @@ func getExpectedTypes(defType value, isSimpleDef bool) (result bwset.Strings, er
 		ss = _mustBeSliceOfStrings(defType.value)
 		isString = false
 	} else {
-		err = getValueErr(defType, valueErrorIsNotOfType, "string", "[]string")
+		err = valueErrMake(defType, valueErrorIsNotOfType, "string", "[]string")
 	}
 	if err == nil {
 		for i, s := range ss {
@@ -32,25 +32,25 @@ func getExpectedTypes(defType value, isSimpleDef bool) (result bwset.Strings, er
 			case "enum":
 				if isSimpleDef {
 					if isString {
-						err = getValueErr(defType, valueErrorHasNonSupportedValue)
+						err = valueErrMake(defType, valueErrorHasNonSupportedValue)
 					} else {
 						elem := defType.getElem(i)
-						err = getValueErr(elem, valueErrorHasNonSupportedValue)
+						err = valueErrMake(elem, valueErrorHasNonSupportedValue)
 					}
 				}
 			default:
 				if isString {
-					err = getValueErr(defType, valueErrorHasNonSupportedValue)
+					err = valueErrMake(defType, valueErrorHasNonSupportedValue)
 				} else {
 					elem := defType.getElem(i)
-					err = getValueErr(elem, valueErrorHasNonSupportedValue)
+					err = valueErrMake(elem, valueErrorHasNonSupportedValue)
 				}
 			}
 		}
 		result = bwset.FromSliceOfStrings(ss)
 		if result.Has("enum") && result.Has("string") {
 			// log.Printf("%s\n", result)
-			err = getValueErr(defType, valueErrorValuesCannotBeCombined, "enum", "string")
+			err = valueErrMake(defType, valueErrorValuesCannotBeCombined, "enum", "string")
 		}
 	}
 	return
@@ -126,7 +126,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 				return nil, err
 			}
 		} else if defaultVal.value == nil {
-			return nil, getValueErr(defaultVal, valueErrorHasNonSupportedValue)
+			return nil, valueErrMake(defaultVal, valueErrorHasNonSupportedValue)
 		} else if defaultVal.value, err = getValidVal(defaultVal, def, true); err != nil {
 			return nil, err
 		}
@@ -139,13 +139,13 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 	var typeName string
 	if val.value == nil {
 		if isSimpleDef {
-			return nil, getValueErr(val, valueErrorIsNotOfType, expectedTypes)
+			return nil, valueErrMake(val, valueErrorIsNotOfType, expectedTypes)
 		} else if defaultVal.value != nil {
 			return defaultVal.value, nil
 		} else if expectedTypes.Has("map") {
 			val.value = map[string]interface{}{}
 		} else {
-			return nil, getValueErr(val, valueErrorIsNotOfType, expectedTypes)
+			return nil, valueErrMake(val, valueErrorIsNotOfType, expectedTypes)
 		}
 	}
 	valType := reflect.TypeOf(val.value)
@@ -180,7 +180,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 		}
 	}
 	if len(typeName) == 0 {
-		return nil, getValueErr(val, valueErrorIsNotOfType, expectedTypes)
+		return nil, valueErrMake(val, valueErrorIsNotOfType, expectedTypes)
 	}
 	var validDefKeys bwset.Strings
 	if !isSimpleDef {
@@ -197,7 +197,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 			} else if defKeys.value != nil {
 				valAsMap, _ := val.asMap()
 				if unexpectedKeys := bwmap.GetUnexpectedKeys(valAsMap, defKeys.mustBeMap()); unexpectedKeys != nil {
-					return nil, getValueErr(val, valueErrorHasUnexpectedKeys, unexpectedKeys)
+					return nil, valueErrMake(val, valueErrorHasUnexpectedKeys, unexpectedKeys)
 				}
 				for defKeysKey, _ := range defKeys.mustBeMap() {
 					var defKeysKeyVal value
@@ -216,7 +216,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 						if _isOfType(defKeysKeyVal.value, "string", "[]string") {
 							if _, err = val.getKey(defKeysKey); err != nil {
 								if valErr, ok := err.(valueError); ok && valErr.errorType == valueErrorHasNoKey {
-									return nil, getValueErr(val, valueErrorHasNoKey, defKeysKey)
+									return nil, valueErrMake(val, valueErrorHasNoKey, defKeysKey)
 								} else {
 									return nil, err
 								}
@@ -242,7 +242,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 			}
 			enumSet := bwset.FromSliceOfStrings(_mustBeSliceOfStrings(enumValues.value))
 			if !enumSet.Has(_mustBeString(val.value)) {
-				return nil, getValueErr(val, valueErrorHasNonSupportedValue)
+				return nil, valueErrMake(val, valueErrorHasNonSupportedValue)
 			}
 
 		default:
@@ -252,7 +252,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 
 	if !isSimpleDef {
 		if unexpectedKeys := bwmap.GetUnexpectedKeys(def.mustBeMap(), validDefKeys); unexpectedKeys != nil {
-			return nil, getValueErr(def, valueErrorHasUnexpectedKeys, unexpectedKeys)
+			return nil, valueErrMake(def, valueErrorHasUnexpectedKeys, unexpectedKeys)
 		}
 	}
 	return val.value, nil

@@ -8,6 +8,10 @@ import (
 	"reflect"
 )
 
+func init() {
+	valueErrorValidatorsCheck()
+}
+
 type value struct {
 	what  string
 	value interface{}
@@ -27,7 +31,7 @@ func (v value) String() string {
 func (v value) asMap() (result map[string]interface{}, err error) {
 	var ok bool
 	if result, ok = v.value.(map[string]interface{}); !ok {
-		err = getValueErr(v, valueErrorIsNotOfType, "map")
+		err = valueErrMake(v, valueErrorIsNotOfType, "map")
 	}
 	return
 }
@@ -43,7 +47,7 @@ func (v value) mustBeMap() (result map[string]interface{}) {
 func (v value) asString() (result string, err error) {
 	var ok bool
 	if result, ok = v.value.(string); !ok {
-		err = getValueErr(v, valueErrorIsNotOfType, "string")
+		err = valueErrMake(v, valueErrorIsNotOfType, "string")
 	}
 	return
 }
@@ -59,7 +63,7 @@ func (v value) mustBeString() (result string) {
 func (v value) asBool() (result bool, err error) {
 	var ok bool
 	if result, ok = v.value.(bool); !ok {
-		err = getValueErr(v, valueErrorIsNotOfType, "bool")
+		err = valueErrMake(v, valueErrorIsNotOfType, "bool")
 	}
 	return
 }
@@ -106,7 +110,7 @@ func (v value) getKey(keyName string, opts ...interface{}) (result value, err er
 		if result.value, ok = m[keyName]; !ok {
 			if defaultValue == nil {
 				// bwerror.Panic(keyName)
-				err = getValueErr(v, valueErrorHasNoKey, keyName)
+				err = valueErrMake(v, valueErrorHasNoKey, keyName)
 			} else {
 				result.value = *defaultValue
 			}
@@ -115,7 +119,7 @@ func (v value) getKey(keyName string, opts ...interface{}) (result value, err er
 			for _, i := range ofTypeStrings {
 				ofTypeIntfs = append(ofTypeIntfs, i)
 			}
-			err = getValueErr(result, valueErrorIsNotOfType, ofTypeIntfs...)
+			err = valueErrMake(result, valueErrorIsNotOfType, ofTypeIntfs...)
 		}
 	}
 	return
