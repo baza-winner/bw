@@ -1,6 +1,4 @@
-/*
-Предоставляет функции для валидации interface{}.
-*/
+// Предоставляет функции для валидации interface{}.
 package defvalid
 
 import (
@@ -9,8 +7,8 @@ import (
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/defparse"
+	// "log"
 	"reflect"
-	"log"
 )
 
 func getExpectedTypes(defType value, isSimpleDef bool) (result bwset.Strings, err error) {
@@ -50,11 +48,37 @@ func getExpectedTypes(defType value, isSimpleDef bool) (result bwset.Strings, er
 			}
 		}
 		result = bwset.FromSliceOfStrings(ss)
+		if result.Has("enum") && result.Has("string") {
+			// log.Printf("%s\n", result)
+			err = defType.err(valueErrorValuesCannotBeCombined, "enum", "string")
+		}
 	}
 	return
 }
 
-func GetValidVal(val, def value, skipDefault ...bool) (result interface{}, err error) {
+// func CompileDef(def value)
+func ValidateVal(what string, val, def interface{}) (result interface{}, err error) {
+	return getValidVal(
+		value{
+			value: val,
+			what:  "<ansiOutline>" + what + "<ansiCmd>",
+		},
+		value{
+			value: def,
+			what:  "<ansiOutline>" + what + "::def<ansiCmd>",
+		},
+	)
+}
+
+func MustValidVal(what string, val, def interface{}) (result interface{}) {
+	var err error
+	if result, err = ValidateVal(what, val, def); err != nil {
+		bwerror.PanicErr(err)
+	}
+	return
+}
+
+func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err error) {
 	var defType value
 	var isSimpleDef bool
 	var defaultVal value
@@ -72,7 +96,7 @@ func GetValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 			}
 		} else if defaultVal.value == nil {
 			return nil, defaultVal.err(valueErrorHasNonSupportedValue)
-		} else if defaultVal.value, err = GetValidVal(defaultVal, def, true); err != nil {
+		} else if defaultVal.value, err = getValidVal(defaultVal, def, true); err != nil {
 			return nil, err
 		}
 	}
@@ -120,15 +144,16 @@ func GetValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 	case reflect.String:
 		if expectedTypes.Has("string") {
 			typeName = "string"
+		} else if expectedTypes.Has("enum") {
+			typeName = "enum"
 		}
 	}
 	if len(typeName) == 0 {
-		bwerror.Panic("HERE")
 		return nil, val.err(valueErrorIsNotOfType, expectedTypes)
 	}
 	var validDefKeys bwset.Strings
 	if !isSimpleDef {
-		validDefKeys = bwset.FromSliceOfStrings([]string{ "type", "default" })
+		validDefKeys = bwset.FromSliceOfStrings([]string{"type", "default"})
 	}
 
 	if !isSimpleDef {
@@ -153,12 +178,11 @@ func GetValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 						if valErr, ok := err.(*value); !ok || valErr.error.errorType != valueErrorHasNoKey {
 							return nil, err
 						} else {
-							valKeyVal = *valErr
-							valKeyVal.error = nil
+							valKeyVal = value{what: val.what + "." + defKeysKey, value: nil}
 						}
 					}
 					if valKeyVal.value == nil {
-						if _isOfType(defKeysKeyVal.value, "string", "[string]") {
+						if _isOfType(defKeysKeyVal.value, "string", "[]string") {
 							if _, err = val.getKey(defKeysKey); err != nil {
 								if valErr, ok := err.(*value); ok && valErr.error.errorType == valueErrorHasNoKey {
 									return nil, val.err(valueErrorHasNoKey, defKeysKey)
@@ -171,44 +195,9 @@ func GetValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 							}
 						}
 					}
-					log.Printf("defKeysKey: %s, valAsMap: %s, valKeyVal: %s, defKeysKeyVal: %s\n", defKeysKey, valAsMap, bwjson.PrettyJsonOf(valKeyVal), bwjson.PrettyJsonOf(defKeysKeyVal))
-					if valAsMap[defKeysKey], err = GetValidVal(valKeyVal, defKeysKeyVal); err != nil {
+					if valAsMap[defKeysKey], err = getValidVal(valKeyVal, defKeysKeyVal); err != nil {
 						return nil, err
 					}
-
-
-
-					// var defKeysKeyVal, valMapKeyValTypeVal, valMapKeyDefaultVal, valMapKeyVal value
-					// if defKeysKeyVal, err = defKeys.getKey(defKeysKey, "map"); err != nil {
-					// 	return nil, err
-					// }
-
-					// var defKeysKeyValValidKeys = []string{"type", "default"}
-					// if valMapKeyValTypeVal, err = defKeysKeyVal.getKey("type", []string{"string", "[]string"}); err != nil {
-					// 	return nil, err
-					// }
-					// valMapKeyDefaultVal, err = defKeysKeyVal.getKey("default", valMapKeyValTypeVal.value)
-					// if err != nil {
-					// 	if valErr, ok := err.(*value); ok && valErr.error.errorType == valueErrorHasNoKey {
-					// 		valMapKeyDefaultVal.value = nil
-					// 		err = nil
-					// 	} else {
-					// 		break
-					// 	}
-					// }
-					// if valMapKeyVal, err = val.getKey(defKeysKey); err == nil {
-					// 	var validVal interface{}
-					// 	if validVal, err = GetValidVal(valMapKeyVal, defKeysKeyVal); err != nil {
-					// 		return nil, err
-					// 	}
-					// 	valAsMap[defKeysKey] = validVal
-					// } else if valMapKeyDefaultVal.value != nil {
-					// 	valAsMap[defKeysKey] = valMapKeyDefaultVal.value
-					// 	err = nil
-					// }
-					// if unexpectedKeys := bwmap.GetUnexpectedKeys(defKeysKeyVal.mustBeMap(), defKeysKeyValValidKeys); unexpectedKeys != nil {
-					// 	return nil, defKeysKeyVal.err(valueErrorHasUnexpectedKeys, unexpectedKeys)
-					// }
 				}
 			}
 
@@ -216,6 +205,14 @@ func GetValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 		case "string":
 		case "enum":
 			validDefKeys.Add("enum")
+			var enumValues value
+			if enumValues, err = def.getKey("enum", "[]string"); err != nil {
+				return nil, err
+			}
+			enumSet := bwset.FromSliceOfStrings(_mustBeSliceOfStrings(enumValues.value))
+			if !enumSet.Has(_mustBeString(val.value)) {
+				return nil, val.err(valueErrorHasNonSupportedValue)
+			}
 
 		default:
 			bwerror.Panic("typeName: %s", typeName)
@@ -231,7 +228,14 @@ func GetValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 }
 
 func GetValOfPath(val interface{}, path string) (result interface{}, valueError error) {
-	result = defparse.MustParse("{ type: 'bool', default: false, some: \"thing\" }")
+	switch path {
+	case ".keys.keyOne":
+		result = defparse.MustParse("{ type: 'bool', default: false, some: \"thing\" }")
+	case ".type":
+		result = defparse.MustParse("['enum', 'string']")
+	case ".enum":
+		result = defparse.MustParse("['one', true, 3 ]")
+	}
 	return
 }
 

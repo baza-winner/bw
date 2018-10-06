@@ -9,14 +9,14 @@ import (
 )
 
 type value struct {
-	where string
+	what  string
 	value interface{}
 	error *valueError
 }
 
 func (v value) GetDataForJson() interface{} {
 	result := map[string]interface{}{}
-	result["where"] = v.where
+	result["where"] = v.what
 	result["value"] = v.value
 	if v.error != nil {
 		result["error"] = v.error.GetDataForJson()
@@ -25,7 +25,7 @@ func (v value) GetDataForJson() interface{} {
 }
 
 func (v value) String() string {
-	return fmt.Sprintf(v.where+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
+	return fmt.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
 }
 
 func (v *value) asMap() (result map[string]interface{}, err error) {
@@ -78,7 +78,7 @@ func (v *value) getElem(elemIndex int, opts ...interface{}) (result value) {
 	if !(0 <= elemIndex && elemIndex < sv.Len()) {
 		bwerror.Panic("<ansiOutline>elemIndex <ansiSecondaryLiteral>%d<ansi> is out of range <ansiSecondaryLiteral>%s", elemIndex, bwjson.PrettyJsonOf(v))
 	}
-	result = value{where: v.where + fmt.Sprintf(".#%d", elemIndex), value: sv.Index(elemIndex)}
+	result = value{what: v.what + fmt.Sprintf(".#%d", elemIndex), value: sv.Index(elemIndex)}
 	return
 }
 
@@ -106,7 +106,7 @@ func (v *value) getKey(keyName string, opts ...interface{}) (result value, err e
 	var m map[string]interface{}
 	if m, err = v.asMap(); err == nil {
 		var ok bool
-		result.where = v.where + "." + keyName
+		result.what = v.what + "." + keyName
 		if result.value, ok = m[keyName]; !ok {
 			if defaultValue == nil {
 				err = v.err(valueErrorHasNoKey, keyName)

@@ -18,6 +18,7 @@ const (
 	valueErrorHasUnexpectedKeys
 	valueErrorHasNoKey
 	valueErrorHasNonSupportedValue
+	valueErrorValuesCannotBeCombined
 	valueError_above_
 )
 
@@ -26,15 +27,16 @@ const (
 type valueErrorValidator func(v *value, args ...interface{}) (string, []interface{})
 
 var valueErrorValidators = map[valueErrorType]valueErrorValidator{
-	valueErrorIsNotOfType:          _valueErrorIsNotOfType,
-	valueErrorHasUnexpectedKeys:    _valueErrorHasUnexpectedKeys,
-	valueErrorHasNoKey:             _valueErrorHasNoKey,
-	valueErrorHasNonSupportedValue: _valueErrorHasNonSupportedValue,
+	valueErrorIsNotOfType:            _valueErrorIsNotOfType,
+	valueErrorHasUnexpectedKeys:      _valueErrorHasUnexpectedKeys,
+	valueErrorHasNoKey:               _valueErrorHasNoKey,
+	valueErrorHasNonSupportedValue:   _valueErrorHasNonSupportedValue,
+	valueErrorValuesCannotBeCombined: _valueErrorValuesCannotBeCombined,
 }
 
 func _valueErrorIsNotOfType(v *value, args ...interface{}) (string, []interface{}) {
 	if args == nil {
-		bwerror.Panic("expects at least one arg instead of <ansiSecondaryLiteral>%v", args)
+		bwerror.Panic("expects at least one arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	var expectedTypes = bwset.Strings{}
 	for _, i := range args {
@@ -60,7 +62,7 @@ func _valueErrorIsNotOfType(v *value, args ...interface{}) (string, []interface{
 
 func _valueErrorHasUnexpectedKeys(v *value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) != 1 {
-		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%v", args)
+		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	var fmtString string
 	unexpectedKeys := _mustBeSliceOfStrings(args[0])
@@ -80,7 +82,7 @@ func _valueErrorHasUnexpectedKeys(v *value, args ...interface{}) (string, []inte
 
 func _valueErrorHasNoKey(v *value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) != 1 {
-		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%v", args)
+		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	_ = _mustBeString(args[0])
 	return `has no key <ansiPrimaryLiteral>%s`, args
@@ -88,9 +90,16 @@ func _valueErrorHasNoKey(v *value, args ...interface{}) (string, []interface{}) 
 
 func _valueErrorHasNonSupportedValue(v *value, args ...interface{}) (string, []interface{}) {
 	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%v", args)
+		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	return `has non supported value`, nil
+}
+
+func _valueErrorValuesCannotBeCombined(v *value, args ...interface{}) (string, []interface{}) {
+	if args == nil || len(args) < 2 {
+		bwerror.Panic("expects at least 2 arg instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	return `following values can not be combined: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(args)}
 }
 
 func valueErrorValidatorsCheck() {
@@ -111,7 +120,7 @@ type valueError struct {
 	errorType valueErrorType
 	fmtString string
 	args      []interface{}
-	where     string
+	what      string
 }
 
 func (v valueError) GetDataForJson() interface{} {
@@ -130,10 +139,10 @@ func (v value) Error() (result string) {
 }
 
 func (v value) WhereError() (result string) {
-  if v.error != nil {
-    result = v.error.where
-  }
-  return
+	if v.error != nil {
+		result = v.error.what
+	}
+	return
 }
 
 func (v *value) err(errorType valueErrorType, args ...interface{}) error {
