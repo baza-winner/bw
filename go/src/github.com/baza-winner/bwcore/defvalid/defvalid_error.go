@@ -10,6 +10,46 @@ import (
 	"sort"
 )
 
+// type defErrorType uint16
+
+// const (
+// 	defError_below_ defErrorType = iota
+// 	defErrorIsNil
+// 	// defErrorIsNotOfType
+// 	// defErrorHasUnexpectedKeys
+// 	// defErrorHasNoKey
+// 	// defErrorHasNonSupportedValue
+// 	// defErrorValuesCannotBeCombined
+// 	defError_above_
+// )
+
+// //go:generate stringer -type=defErrorType
+
+// type DefError
+
+// func (v value) defError(errorType defErrorType, args ...interface{}) error {
+// 	if !(defError_below_ < errorType && errorType < defError_above_) {
+// 		bwerror.Panic(v.String()+" errorType == %s", errorType)
+// 	}
+// 	var fmtString string
+// 	fmtString, args = defErrorValidators[errorType](v, args...)
+// 	v.error = &defError{errorType, fmtString, args, whereami.WhereAmI(2)}
+// 	return v
+// }
+
+// type defErrorValidator func(v value, args ...interface{}) (string, []interface{})
+
+// var defErrorValidators = map[defErrorType]defErrorValidator{
+// 	defErrorIsNil: _defErrorIsNil,
+// 	// defErrorIsNotOfType:            _defErrorIsNotOfType,
+// 	// defErrorHasUnexpectedKeys:      _defErrorHasUnexpectedKeys,
+// 	// defErrorHasNoKey:               _defErrorHasNoKey,
+// 	// defErrorHasNonSupportedValue:   _defErrorHasNonSupportedValue,
+// 	// defErrorValuesCannotBeCombined: _defErrorValuesCannotBeCombined,
+// }
+
+// //=============================================================================
+
 type valueErrorType uint16
 
 const (
@@ -24,7 +64,7 @@ const (
 
 //go:generate stringer -type=valueErrorType
 
-type valueErrorValidator func(v *value, args ...interface{}) (string, []interface{})
+type valueErrorValidator func(v value, args ...interface{}) (string, []interface{})
 
 var valueErrorValidators = map[valueErrorType]valueErrorValidator{
 	valueErrorIsNotOfType:            _valueErrorIsNotOfType,
@@ -34,7 +74,7 @@ var valueErrorValidators = map[valueErrorType]valueErrorValidator{
 	valueErrorValuesCannotBeCombined: _valueErrorValuesCannotBeCombined,
 }
 
-func _valueErrorIsNotOfType(v *value, args ...interface{}) (string, []interface{}) {
+func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil {
 		bwerror.Panic("expects at least one arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
@@ -60,7 +100,7 @@ func _valueErrorIsNotOfType(v *value, args ...interface{}) (string, []interface{
 	return `is not of type <ansiPrimaryLiteral>%s`, []interface{}{result}
 }
 
-func _valueErrorHasUnexpectedKeys(v *value, args ...interface{}) (string, []interface{}) {
+func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) != 1 {
 		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
@@ -80,7 +120,7 @@ func _valueErrorHasUnexpectedKeys(v *value, args ...interface{}) (string, []inte
 	return fmtString, args
 }
 
-func _valueErrorHasNoKey(v *value, args ...interface{}) (string, []interface{}) {
+func _valueErrorHasNoKey(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) != 1 {
 		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
@@ -88,14 +128,14 @@ func _valueErrorHasNoKey(v *value, args ...interface{}) (string, []interface{}) 
 	return `has no key <ansiPrimaryLiteral>%s`, args
 }
 
-func _valueErrorHasNonSupportedValue(v *value, args ...interface{}) (string, []interface{}) {
+func _valueErrorHasNonSupportedValue(v value, args ...interface{}) (string, []interface{}) {
 	if args != nil {
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	return `has non supported value`, nil
 }
 
-func _valueErrorValuesCannotBeCombined(v *value, args ...interface{}) (string, []interface{}) {
+func _valueErrorValuesCannotBeCombined(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) < 2 {
 		bwerror.Panic("expects at least 2 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
@@ -117,10 +157,11 @@ func init() {
 }
 
 type valueError struct {
+	val       value
 	errorType valueErrorType
 	fmtString string
 	args      []interface{}
-	what      string
+	where     string
 }
 
 func (v valueError) GetDataForJson() interface{} {
@@ -131,26 +172,37 @@ func (v valueError) GetDataForJson() interface{} {
 	return result
 }
 
-func (v value) Error() (result string) {
-	if v.error != nil {
-		result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(v.String()+` `+v.error.fmtString, v.error.args...))
-	}
+func (err valueError) Error() (result string) {
+	// if v.error != nil {
+	result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.args...))
+	// }
 	return
 }
 
-func (v value) WhereError() (result string) {
-	if v.error != nil {
-		result = v.error.what
-	}
+func (v valueError) WhereError() (result string) {
+	// if v.error != nil {
+	result = v.where
+	// }
 	return
 }
 
-func (v *value) err(errorType valueErrorType, args ...interface{}) error {
+func getValueErr(v value, errorType valueErrorType, args ...interface{}) (result valueError) {
 	if !(valueError_below_ < errorType && errorType < valueError_above_) {
 		bwerror.Panic(v.String()+" errorType == %s", errorType)
 	}
 	var fmtString string
 	fmtString, args = valueErrorValidators[errorType](v, args...)
-	v.error = &valueError{errorType, fmtString, args, whereami.WhereAmI(2)}
-	return v
+	result = valueError{v, errorType, fmtString, args, whereami.WhereAmI(2)}
+	// v.error = &valueError{errorType, fmtString, args, whereami.WhereAmI(2)}
+	return
 }
+
+// func (v value) err(errorType valueErrorType, args ...interface{}) error {
+// 	if !(valueError_below_ < errorType && errorType < valueError_above_) {
+// 		bwerror.Panic(v.String()+" errorType == %s", errorType)
+// 	}
+// 	var fmtString string
+// 	fmtString, args = valueErrorValidators[errorType](v, args...)
+// 	v.error = &valueError{errorType, fmtString, args, whereami.WhereAmI(2)}
+// 	return v
+// }

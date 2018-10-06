@@ -11,16 +11,12 @@ import (
 type value struct {
 	what  string
 	value interface{}
-	error *valueError
 }
 
 func (v value) GetDataForJson() interface{} {
 	result := map[string]interface{}{}
 	result["where"] = v.what
 	result["value"] = v.value
-	if v.error != nil {
-		result["error"] = v.error.GetDataForJson()
-	}
 	return result
 }
 
@@ -28,15 +24,15 @@ func (v value) String() string {
 	return fmt.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
 }
 
-func (v *value) asMap() (result map[string]interface{}, err error) {
+func (v value) asMap() (result map[string]interface{}, err error) {
 	var ok bool
 	if result, ok = v.value.(map[string]interface{}); !ok {
-		err = v.err(valueErrorIsNotOfType, "map")
+		err = getValueErr(v, valueErrorIsNotOfType, "map")
 	}
 	return
 }
 
-func (v *value) mustBeMap() (result map[string]interface{}) {
+func (v value) mustBeMap() (result map[string]interface{}) {
 	var err error
 	if result, err = v.asMap(); err != nil {
 		bwerror.Panic(err.Error())
@@ -44,15 +40,15 @@ func (v *value) mustBeMap() (result map[string]interface{}) {
 	return
 }
 
-func (v *value) asString() (result string, err error) {
+func (v value) asString() (result string, err error) {
 	var ok bool
 	if result, ok = v.value.(string); !ok {
-		err = v.err(valueErrorIsNotOfType, "string")
+		err = getValueErr(v, valueErrorIsNotOfType, "string")
 	}
 	return
 }
 
-func (v *value) mustBeString() (result string) {
+func (v value) mustBeString() (result string) {
 	var err error
 	if result, err = v.asString(); err != nil {
 		bwerror.Panic(err.Error())
@@ -60,18 +56,18 @@ func (v *value) mustBeString() (result string) {
 	return
 }
 
-func (v *value) asBool() (result bool, err error) {
+func (v value) asBool() (result bool, err error) {
 	var ok bool
 	if result, ok = v.value.(bool); !ok {
-		err = v.err(valueErrorIsNotOfType, "bool")
+		err = getValueErr(v, valueErrorIsNotOfType, "bool")
 	}
 	return
 }
 
-func (v *value) getElem(elemIndex int, opts ...interface{}) (result value) {
+func (v value) getElem(elemIndex int, opts ...interface{}) (result value) {
 	vType := reflect.TypeOf(v.value)
 	if vType.Kind() != reflect.Slice {
-		// err = v.err(valueErrorIsNotOfType, "slice")
+		// err = getValueErr(v, valueErrorIsNotOfType, "slice")
 		bwerror.Panic("<ansiSecondaryLiteral>%s<ansi> (type: <ansiSecondaryLiteral>%s<ansi>) is not <ansiPrimaryLiteral>slice<ansi>", bwjson.PrettyJsonOf(v), vType.Kind())
 	}
 	sv := reflect.ValueOf(v)
@@ -82,7 +78,7 @@ func (v *value) getElem(elemIndex int, opts ...interface{}) (result value) {
 	return
 }
 
-func (v *value) getKey(keyName string, opts ...interface{}) (result value, err error) {
+func (v value) getKey(keyName string, opts ...interface{}) (result value, err error) {
 	var ofTypes *[]string
 	var defaultValue *interface{}
 	var ofTypeStrings []string
@@ -109,7 +105,8 @@ func (v *value) getKey(keyName string, opts ...interface{}) (result value, err e
 		result.what = v.what + "." + keyName
 		if result.value, ok = m[keyName]; !ok {
 			if defaultValue == nil {
-				err = v.err(valueErrorHasNoKey, keyName)
+				// bwerror.Panic(keyName)
+				err = getValueErr(v, valueErrorHasNoKey, keyName)
 			} else {
 				result.value = *defaultValue
 			}
@@ -118,7 +115,7 @@ func (v *value) getKey(keyName string, opts ...interface{}) (result value, err e
 			for _, i := range ofTypeStrings {
 				ofTypeIntfs = append(ofTypeIntfs, i)
 			}
-			err = result.err(valueErrorIsNotOfType, ofTypeIntfs...)
+			err = getValueErr(result, valueErrorIsNotOfType, ofTypeIntfs...)
 		}
 	}
 	return

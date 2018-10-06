@@ -21,7 +21,7 @@ func getExpectedTypes(defType value, isSimpleDef bool) (result bwset.Strings, er
 		ss = _mustBeSliceOfStrings(defType.value)
 		isString = false
 	} else {
-		err = defType.err(valueErrorIsNotOfType, "string", "[]string")
+		err = getValueErr(defType, valueErrorIsNotOfType, "string", "[]string")
 	}
 	if err == nil {
 		for i, s := range ss {
@@ -32,31 +32,62 @@ func getExpectedTypes(defType value, isSimpleDef bool) (result bwset.Strings, er
 			case "enum":
 				if isSimpleDef {
 					if isString {
-						err = defType.err(valueErrorHasNonSupportedValue)
+						err = getValueErr(defType, valueErrorHasNonSupportedValue)
 					} else {
 						elem := defType.getElem(i)
-						err = elem.err(valueErrorHasNonSupportedValue)
+						err = getValueErr(elem, valueErrorHasNonSupportedValue)
 					}
 				}
 			default:
 				if isString {
-					err = defType.err(valueErrorHasNonSupportedValue)
+					err = getValueErr(defType, valueErrorHasNonSupportedValue)
 				} else {
 					elem := defType.getElem(i)
-					err = elem.err(valueErrorHasNonSupportedValue)
+					err = getValueErr(elem, valueErrorHasNonSupportedValue)
 				}
 			}
 		}
 		result = bwset.FromSliceOfStrings(ss)
 		if result.Has("enum") && result.Has("string") {
 			// log.Printf("%s\n", result)
-			err = defType.err(valueErrorValuesCannotBeCombined, "enum", "string")
+			err = getValueErr(defType, valueErrorValuesCannotBeCombined, "enum", "string")
 		}
 	}
 	return
 }
 
-// func CompileDef(def value)
+// type DeftypeType uint16
+
+// const (
+// 	deftype_below_ DeftypeType = iota
+// 	deftypeBool
+// 	deftypeString
+// 	deftypeInt
+// 	deftypeNumber
+// 	deftypeMap
+// 	deftypeArray
+// 	deftype_above_
+// )
+
+// type Def struct {
+// 	deftype   []DefTypeType
+// 	enum      bwset.Strings
+// 	minInt    int
+// 	maxInt    int
+// 	minNumber float64
+// 	maxNumber float64
+// 	keys      map[string]Def
+// 	elem      Def
+// 	arrayItem Def
+// }
+
+// func CompileDef(def value) (result Def, err error) {
+// 	if def.value == nil {
+
+// 	}
+
+// }
+
 func ValidateVal(what string, val, def interface{}) (result interface{}, err error) {
 	return getValidVal(
 		value{
@@ -89,13 +120,13 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 	} else if skipDefault == nil || !skipDefault[0] {
 		defaultVal, err = def.getKey("default")
 		if err != nil {
-			if valErr, ok := err.(*value); ok && valErr.error.errorType == valueErrorHasNoKey {
+			if valErr, ok := err.(valueError); ok && valErr.errorType == valueErrorHasNoKey {
 				err = nil
 			} else {
 				return nil, err
 			}
 		} else if defaultVal.value == nil {
-			return nil, defaultVal.err(valueErrorHasNonSupportedValue)
+			return nil, getValueErr(defaultVal, valueErrorHasNonSupportedValue)
 		} else if defaultVal.value, err = getValidVal(defaultVal, def, true); err != nil {
 			return nil, err
 		}
@@ -108,13 +139,13 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 	var typeName string
 	if val.value == nil {
 		if isSimpleDef {
-			return nil, val.err(valueErrorIsNotOfType, expectedTypes)
+			return nil, getValueErr(val, valueErrorIsNotOfType, expectedTypes)
 		} else if defaultVal.value != nil {
 			return defaultVal.value, nil
 		} else if expectedTypes.Has("map") {
 			val.value = map[string]interface{}{}
 		} else {
-			return nil, val.err(valueErrorIsNotOfType, expectedTypes)
+			return nil, getValueErr(val, valueErrorIsNotOfType, expectedTypes)
 		}
 	}
 	valType := reflect.TypeOf(val.value)
@@ -149,7 +180,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 		}
 	}
 	if len(typeName) == 0 {
-		return nil, val.err(valueErrorIsNotOfType, expectedTypes)
+		return nil, getValueErr(val, valueErrorIsNotOfType, expectedTypes)
 	}
 	var validDefKeys bwset.Strings
 	if !isSimpleDef {
@@ -166,7 +197,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 			} else if defKeys.value != nil {
 				valAsMap, _ := val.asMap()
 				if unexpectedKeys := bwmap.GetUnexpectedKeys(valAsMap, defKeys.mustBeMap()); unexpectedKeys != nil {
-					return nil, val.err(valueErrorHasUnexpectedKeys, unexpectedKeys)
+					return nil, getValueErr(val, valueErrorHasUnexpectedKeys, unexpectedKeys)
 				}
 				for defKeysKey, _ := range defKeys.mustBeMap() {
 					var defKeysKeyVal value
@@ -175,7 +206,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 					}
 					var valKeyVal value
 					if valKeyVal, err = val.getKey(defKeysKey); err != nil {
-						if valErr, ok := err.(*value); !ok || valErr.error.errorType != valueErrorHasNoKey {
+						if valErr, ok := err.(valueError); !ok || valErr.errorType != valueErrorHasNoKey {
 							return nil, err
 						} else {
 							valKeyVal = value{what: val.what + "." + defKeysKey, value: nil}
@@ -184,8 +215,8 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 					if valKeyVal.value == nil {
 						if _isOfType(defKeysKeyVal.value, "string", "[]string") {
 							if _, err = val.getKey(defKeysKey); err != nil {
-								if valErr, ok := err.(*value); ok && valErr.error.errorType == valueErrorHasNoKey {
-									return nil, val.err(valueErrorHasNoKey, defKeysKey)
+								if valErr, ok := err.(valueError); ok && valErr.errorType == valueErrorHasNoKey {
+									return nil, getValueErr(val, valueErrorHasNoKey, defKeysKey)
 								} else {
 									return nil, err
 								}
@@ -211,7 +242,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 			}
 			enumSet := bwset.FromSliceOfStrings(_mustBeSliceOfStrings(enumValues.value))
 			if !enumSet.Has(_mustBeString(val.value)) {
-				return nil, val.err(valueErrorHasNonSupportedValue)
+				return nil, getValueErr(val, valueErrorHasNonSupportedValue)
 			}
 
 		default:
@@ -221,7 +252,7 @@ func getValidVal(val, def value, skipDefault ...bool) (result interface{}, err e
 
 	if !isSimpleDef {
 		if unexpectedKeys := bwmap.GetUnexpectedKeys(def.mustBeMap(), validDefKeys); unexpectedKeys != nil {
-			return nil, def.err(valueErrorHasUnexpectedKeys, unexpectedKeys)
+			return nil, getValueErr(def, valueErrorHasUnexpectedKeys, unexpectedKeys)
 		}
 	}
 	return val.value, nil

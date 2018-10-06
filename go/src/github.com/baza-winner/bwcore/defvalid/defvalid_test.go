@@ -11,6 +11,50 @@ import (
 	"testing"
 )
 
+// ============================================================================
+
+// type testCompileDefStruct struct {
+// 	what   string
+// 	val    interface{}
+// 	def    interface{}
+// 	result interface{}
+// 	err    interface{}
+// }
+
+// func (test testCompileDefStruct) GetTstResultErr() (interface{}, error) {
+// 	return CompileDef(test.what, test.val, test.def)
+// }
+
+// func (test testCompileDefStruct) GetTitle() string {
+// 	return fmt.Sprintf("CompileDef(%s, %s, %s)\n", test.what, bwjson.PrettyJson(test.val), bwjson.PrettyJson(test.def))
+// }
+
+// func (test testCompileDefStruct) GetEtaErr() interface{} {
+// 	return test.err
+// }
+
+// func (test testCompileDefStruct) GetEtaResult() interface{} {
+// 	return test.result
+// }
+
+// func TestCompileDef(t *testing.T) {
+// 	tests := map[string]testCompileDefStruct{
+// 		"def: nil": {
+// 			val:  defparse.MustParseMap(`{ }`),
+// 			what: "somewhere",
+// 			def:  nil,
+// 			err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd><ansi> (<ansiSecondaryLiteral>null<ansi>) is not of type <ansiPrimaryLiteral>map")),
+// 		},
+// 	}
+// 	testsToRun := tests
+// 	bwmap.CropMap(testsToRun)
+// 	for testName, test := range testsToRun {
+// 		bwtesting.BtRunTest(t, testName, test)
+// 	}
+// }
+
+// ============================================================================
+
 type testValidateValStruct struct {
 	what   string
 	val    interface{}
@@ -278,6 +322,7 @@ func TestValidateVal(t *testing.T) {
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
+	// bwmap.CropMap(testsToRun, "def.type: []string")
 	for testName, test := range testsToRun {
 		bwtesting.BtRunTest(t, testName, test)
 	}
