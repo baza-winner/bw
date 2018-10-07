@@ -11,7 +11,6 @@ import (
 
 func init() {
 	valueErrorValidatorsCheck()
-	defErrorValidatorsCheck()
 }
 
 type value struct {

@@ -12,7 +12,7 @@ import (
 
 type Def struct {
 	tp        deftype
-	enum      *bwset.Strings
+	enum      bwset.Strings
 	minInt    *int
 	maxInt    *int
 	minNumber *float64

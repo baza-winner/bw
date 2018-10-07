@@ -1,14 +1,14 @@
 package defvalid
 
 import (
-// "github.com/baza-winner/bwcore/bwerror"
-"github.com/baza-winner/bwcore/bwset"
-// "log"
+	// "github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwset"
+	// "log"
 )
 
 func compileDef(def value) (result *Def, err error) {
 	if def.value == nil {
-		return nil, defErrorMake(def, defErrorHasUnexpectedValue)
+		return nil, valueErrorMake(def, valueErrorHasNonSupportedValue)
 	}
 	var defType value
 	var isSimpleDef bool
@@ -48,8 +48,7 @@ func compileDef(def value) (result *Def, err error) {
 				return nil, err
 			}
 			if enumVal.value != nil {
-				enum := bwset.StringsFromSlice(_mustBeSliceOfStrings(enumVal.value))
-				result.enum = &enum
+				result.enum = bwset.StringsFromSlice(_mustBeSliceOfStrings(enumVal.value))
 			}
 		}
 	}

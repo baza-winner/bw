@@ -1,8 +1,8 @@
 package defvalid
 
 import (
-	"fmt"
-	"github.com/baza-winner/bwcore/ansi"
+	// "fmt"
+	// "github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
@@ -100,7 +100,7 @@ type valueError struct {
 	// val       value
 	errorType valueErrorType
 	fmtString string
-	fmtArgs      []interface{}
+	fmtArgs   []interface{}
 	where     string
 }
 
@@ -108,8 +108,8 @@ func valueErrorMake(v value, errorType valueErrorType, args ...interface{}) (res
 	if !(valueError_below_ < errorType && errorType < valueError_above_) {
 		bwerror.Panic(v.String()+" errorType == %s", errorType)
 	}
-	var fmtString string
-	fmtString, fmtArgs = valueErrorValidators[errorType](v, args...)
+	// var fmtString string
+	fmtString, fmtArgs := valueErrorValidators[errorType](v, args...)
 	// result = valueError{v, errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
 	result = valueError{errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
 	return
@@ -169,7 +169,7 @@ func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}
 		}
 		result += s
 	}
-	return v.String()+` is not of type <ansiPrimaryLiteral>%s`, []interface{}{result}
+	return v.String() + ` is not of type <ansiPrimaryLiteral>` + result, nil
 }
 
 func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []interface{}) {
@@ -189,7 +189,7 @@ func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []inter
 		fmtString = `has unexpected keys <ansiSecondaryLiteral>%s`
 		args = []interface{}{bwjson.PrettyJson(unexpectedKeys)}
 	}
-	return v.String()+` `+fmtString, args
+	return v.String() + ` ` + fmtString, args
 }
 
 func _valueErrorHasNoKey(v value, args ...interface{}) (string, []interface{}) {
@@ -197,19 +197,19 @@ func _valueErrorHasNoKey(v value, args ...interface{}) (string, []interface{}) {
 		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	_ = _mustBeString(args[0])
-	return v.String()+` has no key <ansiPrimaryLiteral>%s`, args
+	return v.String() + ` has no key <ansiPrimaryLiteral>%s`, args
 }
 
 func _valueErrorHasNonSupportedValue(v value, args ...interface{}) (string, []interface{}) {
 	if args != nil {
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	return v.String()+` has non supported value`, nil
+	return v.String() + ` has non supported value`, nil
 }
 
 func _valueErrorValuesCannotBeCombined(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) < 2 {
 		bwerror.Panic("expects at least 2 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	return v.String()+` following values can not be combined: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(args)}
+	return v.String() + ` following values can not be combined: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(args)}
 }
