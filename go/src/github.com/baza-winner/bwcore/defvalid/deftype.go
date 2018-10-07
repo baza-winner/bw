@@ -15,7 +15,7 @@ const (
 	deftypeNumber
 	deftypeMap
 	deftypeArray
-  deftypeOrArrayOf
+	deftypeOrArrayOf
 	deftype_above_
 )
 
@@ -38,13 +38,13 @@ func (v deftype) GetDataForJson() interface{} {
 }
 
 func FromArgs(kk ...deftypeItem) deftype {
-  return FromSlice(kk)
+	return FromSlice(kk)
 }
 
 func FromSlice(kk []deftypeItem) deftype {
-  result := deftype{}
-  result.Add(kk...)
-  return result
+	result := deftype{}
+	result.Add(kk...)
+	return result
 }
 
 func (v deftype) Has(k deftypeItem) (ok bool) {

@@ -2,7 +2,7 @@ package bwexec
 
 import (
 	"fmt"
-	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/defparse"
 	"os"
@@ -35,69 +35,78 @@ func ExampleExecCmd() {
 	// - exitCode:2
 }
 
-type testExecCmdStruct struct {
-	opt     map[string]interface{}
-	cmdName string
-	cmdArgs []string
-	result  map[string]interface{}
-}
+// type testExecCmdStruct struct {
+// 	opt     map[string]interface{}
+// 	cmdName string
+// 	cmdArgs []string
+// 	result  map[string]interface{}
+// }
 
 func TestExecCmd(t *testing.T) {
-	tests := map[string]testExecCmdStruct{
+	tests := map[string]bwtesting.TestCaseStruct{
 		"test1": {
-			opt:     nil,
-			cmdName: `bwexectesthelper2`,
-			cmdArgs: []string{`-v`, `none`, `-s`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
-			result: map[string]interface{}{
-				"stdout": []string{
-					"===== exitCode: 2",
-					"===== stdout:",
-					"some",
-					"===== stderr:",
-					"thing",
+			In: []interface{}{
+				map[string]interface{}(nil),
+				`bwexectesthelper2`,
+				[]string{`-v`, `none`, `-s`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
+			},
+			Out: []interface{}{
+				map[string]interface{}{
+					"stdout": []string{
+						"===== exitCode: 2",
+						"===== stdout:",
+						"some",
+						"===== stderr:",
+						"thing",
+					},
+					"stderr":   []string{},
+					"exitCode": 0,
 				},
-				"stderr":   []string{},
-				"exitCode": 0,
 			},
 		},
 		"test2": {
-			opt:     nil,
-			cmdName: `bwexectesthelper2`,
-			cmdArgs: []string{`-v`, `none`, `-s`, `all`, `-d`, `-n`, `-e`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
-			result: map[string]interface{}{
-				"stdout":   []string{},
-				"stderr":   []string{},
-				"exitCode": 2,
+			In: []interface{}{
+				map[string]interface{}(nil),
+				`bwexectesthelper2`,
+				[]string{`-v`, `none`, `-s`, `all`, `-d`, `-n`, `-e`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
+			},
+			Out: []interface{}{
+				map[string]interface{}{
+					"stdout":   []string{},
+					"stderr":   []string{},
+					"exitCode": 2,
+				},
 			},
 		},
 		"test3": {
-			opt:     nil,
-			cmdName: `bwexectesthelper2`,
-			cmdArgs: []string{`-v`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
-			result: map[string]interface{}{
-				"stdout": []string{
-					"bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething . . .",
-					"some",
-					"ERR: bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething",
-					"===== exitCode: 2",
-					"===== stdout:",
-					"some",
-					"===== stderr:",
-					"thing",
+			In: []interface{}{
+				map[string]interface{}(nil),
+				`bwexectesthelper2`,
+				[]string{`-v`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
+			},
+			Out: []interface{}{
+				map[string]interface{}{
+					"stdout": []string{
+						"bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething . . .",
+						"some",
+						"ERR: bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething",
+						"===== exitCode: 2",
+						"===== stdout:",
+						"some",
+						"===== stderr:",
+						"thing",
+					},
+					"stderr": []string{
+						"thing",
+					},
+					"exitCode": 0,
 				},
-				"stderr": []string{
-					"thing",
-				},
-				"exitCode": 0,
 			},
 		},
 	}
 
 	testsToRun := tests
-	for testName, test := range testsToRun {
-		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
-		result := ExecCmd(test.opt, test.cmdName, test.cmdArgs...)
-		testTitle := fmt.Sprintf("ExecCmd(%+v, %+v, %+v)\n", test.opt, test.cmdName, test.cmdArgs)
-		bwtesting.DeepEqual(t, result, test.result, testTitle)
-	}
+	bwmap.CropMap(testsToRun)
+	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
+	bwtesting.BwRunTests(t, testsToRun, ExecCmd)
 }

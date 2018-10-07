@@ -10,75 +10,75 @@ import (
 	"sort"
 )
 
-type defErrorType uint16
+// type defErrorType uint16
 
-const (
-	defError_below_ defErrorType = iota
-	defErrorHasUnexpectedValue
-	// defErrorIsNotOfType
-	// defErrorHasUnexpectedKeys
-	// defErrorHasNoKey
-	// defErrorHasNonSupportedValue
-	// defErrorValuesCannotBeCombined
-	defError_above_
-)
+// const (
+// 	defError_below_ defErrorType = iota
+// 	defErrorHasUnexpectedValue
+// 	// defErrorIsNotOfType
+// 	// defErrorHasUnexpectedKeys
+// 	// defErrorHasNoKey
+// 	// defErrorHasNonSupportedValue
+// 	// defErrorValuesCannotBeCombined
+// 	defError_above_
+// )
 
-//go:generate stringer -type=defErrorType
+// //go:generate stringer -type=defErrorType
 
-type defError struct {
-	val       value
-	errorType defErrorType
-	fmtString string
-	args      []interface{}
-	where     string
-}
+// type defError struct {
+// 	val       value
+// 	errorType defErrorType
+// 	fmtString string
+// 	fmtArgs      []interface{}
+// 	where     string
+// }
 
-func defErrorMake(v value, errorType defErrorType, args ...interface{}) (result defError) {
-	if !(defError_below_ < errorType && errorType < defError_above_) {
-		bwerror.Panic(v.String()+" errorType == %s", errorType)
-	}
-	var fmtString string
-	fmtString, args = defErrorValidators[errorType](v, args...)
-	result = defError{v, errorType, fmtString, args, whereami.WhereAmI(2)}
-	return
-}
+// func defErrorMake(v value, errorType defErrorType, args ...interface{}) (result defError) {
+// 	if !(defError_below_ < errorType && errorType < defError_above_) {
+// 		bwerror.Panic(v.String()+" errorType == %s", errorType)
+// 	}
+// 	var fmtString string
+// 	fmtString, fmtArgs = defErrorValidators[errorType](v, args...)
+// 	result = defError{v, errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
+// 	return
+// }
 
-func (err defError) Error() (result string) {
-	result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.args...))
-	return
-}
+// func (err defError) Error() (result string) {
+// 	result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.args...))
+// 	return
+// }
 
-func (v defError) WhereError() (result string) {
-	result = v.where
-	return
-}
+// func (v defError) WhereError() (result string) {
+// 	result = v.where
+// 	return
+// }
 
-type defErrorValidator func(v value, args ...interface{}) (string, []interface{})
+// type defErrorValidator func(v value, args ...interface{}) (string, []interface{})
 
-var defErrorValidators = map[defErrorType]defErrorValidator{
-	defErrorHasUnexpectedValue: _defErrorHasUnexpectedValue,
-	// defErrorHasUnexpectedKeys:      _defErrorHasUnexpectedKeys,
-	// defErrorHasNoKey:               _defErrorHasNoKey,
-	// defErrorHasNonSupportedValue:   _defErrorHasNonSupportedValue,
-	// defErrorValuesCannotBeCombined: _defErrorValuesCannotBeCombined,
-}
+// var defErrorValidators = map[defErrorType]defErrorValidator{
+// 	defErrorHasUnexpectedValue: _defErrorHasUnexpectedValue,
+// 	// defErrorHasUnexpectedKeys:      _defErrorHasUnexpectedKeys,
+// 	// defErrorHasNoKey:               _defErrorHasNoKey,
+// 	// defErrorHasNonSupportedValue:   _defErrorHasNonSupportedValue,
+// 	// defErrorValuesCannotBeCombined: _defErrorValuesCannotBeCombined,
+// }
 
-func defErrorValidatorsCheck() {
-	defErrorType := defError_below_ + 1
-	for defErrorType < defError_above_ {
-		if _, ok := defErrorValidators[defErrorType]; !ok {
-			bwerror.Panic("not defined <ansiOutline>defErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", defErrorType)
-		}
-		defErrorType += 1
-	}
-}
+// func defErrorValidatorsCheck() {
+// 	defErrorType := defError_below_ + 1
+// 	for defErrorType < defError_above_ {
+// 		if _, ok := defErrorValidators[defErrorType]; !ok {
+// 			bwerror.Panic("not defined <ansiOutline>defErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", defErrorType)
+// 		}
+// 		defErrorType += 1
+// 	}
+// }
 
-func _defErrorHasUnexpectedValue(v value, args ...interface{}) (string, []interface{}) {
-	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
-	}
-	return `has unexpected value`, nil
-}
+// func _defErrorHasUnexpectedValue(v value, args ...interface{}) (string, []interface{}) {
+// 	if args != nil {
+// 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+// 	}
+// 	return `has unexpected value`, nil
+// }
 
 //=============================================================================
 
@@ -97,10 +97,10 @@ const (
 //go:generate stringer -type=valueErrorType
 
 type valueError struct {
-	val       value
+	// val       value
 	errorType valueErrorType
 	fmtString string
-	args      []interface{}
+	fmtArgs      []interface{}
 	where     string
 }
 
@@ -109,13 +109,15 @@ func valueErrorMake(v value, errorType valueErrorType, args ...interface{}) (res
 		bwerror.Panic(v.String()+" errorType == %s", errorType)
 	}
 	var fmtString string
-	fmtString, args = valueErrorValidators[errorType](v, args...)
-	result = valueError{v, errorType, fmtString, args, whereami.WhereAmI(2)}
+	fmtString, fmtArgs = valueErrorValidators[errorType](v, args...)
+	// result = valueError{v, errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
+	result = valueError{errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
 	return
 }
 
 func (err valueError) Error() (result string) {
-	result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.args...))
+	// result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.fmtArgs...))
+	result = bwerror.Error(err.fmtString, err.fmtArgs...).Error()
 	return
 }
 
@@ -167,7 +169,7 @@ func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}
 		}
 		result += s
 	}
-	return `is not of type <ansiPrimaryLiteral>%s`, []interface{}{result}
+	return v.String()+` is not of type <ansiPrimaryLiteral>%s`, []interface{}{result}
 }
 
 func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []interface{}) {
@@ -187,7 +189,7 @@ func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []inter
 		fmtString = `has unexpected keys <ansiSecondaryLiteral>%s`
 		args = []interface{}{bwjson.PrettyJson(unexpectedKeys)}
 	}
-	return fmtString, args
+	return v.String()+` `+fmtString, args
 }
 
 func _valueErrorHasNoKey(v value, args ...interface{}) (string, []interface{}) {
@@ -195,19 +197,19 @@ func _valueErrorHasNoKey(v value, args ...interface{}) (string, []interface{}) {
 		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	_ = _mustBeString(args[0])
-	return `has no key <ansiPrimaryLiteral>%s`, args
+	return v.String()+` has no key <ansiPrimaryLiteral>%s`, args
 }
 
 func _valueErrorHasNonSupportedValue(v value, args ...interface{}) (string, []interface{}) {
 	if args != nil {
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	return `has non supported value`, nil
+	return v.String()+` has non supported value`, nil
 }
 
 func _valueErrorValuesCannotBeCombined(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) < 2 {
 		bwerror.Panic("expects at least 2 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	return `following values can not be combined: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(args)}
+	return v.String()+` following values can not be combined: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(args)}
 }

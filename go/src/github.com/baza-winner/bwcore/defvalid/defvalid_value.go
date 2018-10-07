@@ -46,49 +46,32 @@ func (v value) mustBeMap() (result map[string]interface{}) {
 	return
 }
 
-func (v value) asString() (result string, err error) {
-	var ok bool
-	if result, ok = v.value.(string); !ok {
-		err = valueErrorMake(v, valueErrorIsNotOfType, "string")
-	}
-	return
-}
+// func (v value) asString() (result string, err error) {
+// 	var ok bool
+// 	if result, ok = v.value.(string); !ok {
+// 		err = valueErrorMake(v, valueErrorIsNotOfType, "string")
+// 	}
+// 	return
+// }
 
-func (v value) mustBeString() (result string) {
-	var err error
-	if result, err = v.asString(); err != nil {
-		bwerror.Panic(err.Error())
-	}
-	return
-}
+// func (v value) mustBeString() (result string) {
+// 	var err error
+// 	if result, err = v.asString(); err != nil {
+// 		bwerror.Panic(err.Error())
+// 	}
+// 	return
+// }
 
-func (v value) asBool() (result bool, err error) {
-	var ok bool
-	if result, ok = v.value.(bool); !ok {
-		err = valueErrorMake(v, valueErrorIsNotOfType, "bool")
-	}
-	return
-}
+// func (v value) asBool() (result bool, err error) {
+// 	var ok bool
+// 	if result, ok = v.value.(bool); !ok {
+// 		err = valueErrorMake(v, valueErrorIsNotOfType, "bool")
+// 	}
+// 	return
+// }
 
 func (v value) getElem(elemIndex int, opts ...interface{}) (result value, err error) {
-	var defaultValue *interface{}
-	var ofTypeStrings []string
-	if opts != nil {
-		if _isOfType(opts[0], "string") {
-			ofTypeStrings = []string{_mustBeString(opts[0])}
-		} else if _isOfType(opts[0], "[]string") {
-			ofTypeStrings = _mustBeSliceOfStrings(opts[0])
-		} else {
-			_ = _mustBeOfType(opts[0], "string", "[]string")
-		}
-		if len(opts) > 1 {
-			defaultValueIntf := opts[1]
-			defaultValue = &defaultValueIntf
-		}
-		if len(opts) > 2 {
-			bwerror.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiSecondaryLiteral>%v", opts)
-		}
-	}
+	defaultValue, ofType := getDefaultValueAndOfTypeFromOpts(opts)
 	if v.value == nil {
 		err = valueErrorMake(v, valueErrorIsNotOfType, "array")
 	} else {
@@ -98,22 +81,12 @@ func (v value) getElem(elemIndex int, opts ...interface{}) (result value, err er
 		} else {
 			sv := reflect.ValueOf(v.value)
 			result.what = v.what + fmt.Sprintf(".#%d", elemIndex)
-			if !(0 <= elemIndex && elemIndex < sv.Len()) {
-				if defaultValue == nil {
-					err = valueErrorMake(v, valueErrorHasNoKey, fmt.Sprintf("#%d", elemIndex))
-				} else {
-					result.value = *defaultValue
-				}
+			if 0 <= elemIndex && elemIndex < sv.Len() {
+				err = checkElemIsOfType(&result, sv.Index(elemIndex), ofType)
+			} else if defaultValue == nil {
+				err = valueErrorMake(v, valueErrorHasNoKey, fmt.Sprintf("#%d", elemIndex))
 			} else {
-				elem := sv.Index(elemIndex)
-				result.value = elem.Interface()
-				if ofTypeStrings != nil && !_isOfType(result.value, ofTypeStrings...) {
-					var ofTypeIntfs = []interface{}{}
-					for _, i := range ofTypeStrings {
-						ofTypeIntfs = append(ofTypeIntfs, i)
-					}
-					err = valueErrorMake(result, valueErrorIsNotOfType, ofTypeIntfs...)
-				}
+				result.value = *defaultValue
 			}
 		}
 	}
@@ -121,24 +94,7 @@ func (v value) getElem(elemIndex int, opts ...interface{}) (result value, err er
 }
 
 func (v value) getKey(keyName string, opts ...interface{}) (result value, err error) {
-	var defaultValue *interface{}
-	var ofTypeStrings []string
-	if opts != nil {
-		if _isOfType(opts[0], "string") {
-			ofTypeStrings = []string{_mustBeString(opts[0])}
-		} else if _isOfType(opts[0], "[]string") {
-			ofTypeStrings = _mustBeSliceOfStrings(opts[0])
-		} else {
-			_ = _mustBeOfType(opts[0], "string", "[]string")
-		}
-		if len(opts) > 1 {
-			defaultValueIntf := opts[1]
-			defaultValue = &defaultValueIntf
-		}
-		if len(opts) > 2 {
-			bwerror.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiSecondaryLiteral>%v", opts)
-		}
-	}
+	defaultValue, ofType := getDefaultValueAndOfTypeFromOpts(opts)
 	if v.value == nil {
 		err = valueErrorMake(v, valueErrorIsNotOfType, "map")
 	} else {
@@ -150,22 +106,45 @@ func (v value) getKey(keyName string, opts ...interface{}) (result value, err er
 			result.what = v.what + "." + keyName
 			elem := mv.MapIndex(reflect.ValueOf(keyName))
 			zeroValue := reflect.Value{}
-			if elem == zeroValue {
-				if defaultValue == nil {
-					err = valueErrorMake(v, valueErrorHasNoKey, keyName)
-				} else {
-					result.value = *defaultValue
-				}
+			if elem != zeroValue {
+				err = checkElemIsOfType(&result, elem, ofType)
+			} else if defaultValue == nil {
+				err = valueErrorMake(v, valueErrorHasNoKey, keyName)
 			} else {
-				result.value = elem.Interface()
-				if ofTypeStrings != nil && !_isOfType(result.value, ofTypeStrings...) {
-					var ofTypeIntfs = []interface{}{}
-					for _, i := range ofTypeStrings {
-						ofTypeIntfs = append(ofTypeIntfs, i)
-					}
-					err = valueErrorMake(result, valueErrorIsNotOfType, ofTypeIntfs...)
-				}
+				result.value = *defaultValue
 			}
+		}
+	}
+	return
+}
+
+func checkElemIsOfType(result *value, elem reflect.Value, ofType []string) (err error) {
+	result.value = elem.Interface()
+	if ofType != nil && !_isOfType(result.value, ofType...) {
+		var ofTypeIntfs = []interface{}{}
+		for _, i := range ofType {
+			ofTypeIntfs = append(ofTypeIntfs, i)
+		}
+		err = valueErrorMake(*result, valueErrorIsNotOfType, ofTypeIntfs...)
+	}
+	return
+}
+
+func getDefaultValueAndOfTypeFromOpts(opts []interface{}) (defaultValue *interface{}, ofType []string) {
+	if opts != nil {
+		if _isOfType(opts[0], "string") {
+			ofType = []string{_mustBeString(opts[0])}
+		} else if _isOfType(opts[0], "[]string") {
+			ofType = _mustBeSliceOfStrings(opts[0])
+		} else {
+			_ = _mustBeOfType(opts[0], "string", "[]string")
+		}
+		if len(opts) > 1 {
+			defaultValueIntf := opts[1]
+			defaultValue = &defaultValueIntf
+		}
+		if len(opts) > 2 {
+			bwerror.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiSecondaryLiteral>%v", opts)
 		}
 	}
 	return

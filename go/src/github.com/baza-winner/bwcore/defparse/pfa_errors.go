@@ -4,58 +4,123 @@ import (
 	"fmt"
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/jimlawless/whereami"
 )
 
-type unexpectedCharError struct{}
+type pfaErrorType uint16
 
-func (e unexpectedCharError) Error() string {
-	return `unexpectedCharError`
+const (
+	pfaError_below_ pfaErrorType = iota
+	unexpectedCharError
+	failedToGetNumberError
+	unknownWordError
+	unexpectedWordError
+	pfaError_above_
+)
+
+//go:generate stringer -type=pfaErrorType
+
+type pfaError struct {
+	pfa       *pfaStruct
+	errorType pfaErrorType
+	fmtString string
+	fmtArgs   []interface{}
+	Where     string
 }
 
-type failedToGetNumberError struct{}
-
-func (e failedToGetNumberError) Error() string {
-	return `failedToGetNumberError`
+func pfaErrorMake(pfa *pfaStruct, errorType pfaErrorType, args ...interface{}) (result pfaError) {
+	if !(pfaError_below_ < errorType && errorType < pfaError_above_) {
+		bwerror.Panic(" errorType == %s", errorType)
+	}
+	fmtString, fmtArgs := pfaErrorValidators[errorType](pfa, args...)
+	result = pfaError{pfa, errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
+	return
 }
 
-type unknownWordError struct{}
-
-func (e unknownWordError) Error() string {
-	return `unknownWordError`
+func (err pfaError) Error() string {
+	return bwerror.Error(err.fmtString, err.fmtArgs...).Error()
 }
 
-type unexpectedWordError struct{}
+// func (v pfaError) WhereError() (result string) {
+// 	result = v.where
+// 	return
+// }
 
-func (e unexpectedWordError) Error() string {
-	return `unexpectedWordError`
+func (v pfaError) GetDataForJson() interface{} {
+	result := map[string]interface{}{}
+	result["pfa"] = v.pfa.GetDataForJson()
+	result["errorType"] = v.errorType.String()
+	result["Where"] = v.Where
+	return result
 }
 
-func (pfa *pfaStruct) arrangeError(err error, source string) error {
-	if err != nil {
-		if _, ok := err.(unexpectedCharError); ok {
-			if pfa.charPtr == nil {
-				suffix := getSuffix(source, 0, 0)
-				err = bwerror.Error("<ansiReset>unexpected end of string (pfa.state: %s)"+suffix, pfa.state)
-			} else {
-				suffix := getSuffix(source, uint(pfa.pos), 1)
-				err = bwerror.Error("<ansiReset>unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %v, pfa.state: %s)"+suffix, *pfa.charPtr, *pfa.charPtr, pfa.state)
-			}
-		} else if _, ok := err.(failedToGetNumberError); ok {
-			stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
-			suffix := getSuffix(source, uint(stackItem.pos), uint(len(stackItem.itemString)))
-			err = bwerror.Error("<ansiReset>failed to get number from string <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
-		} else if _, ok := err.(unknownWordError); ok {
-			stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
-			suffix := getSuffix(source, uint(stackItem.pos), uint(len(stackItem.itemString)))
-			err = bwerror.Error("<ansiReset>unknown word <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
-		} else if _, ok := err.(unexpectedWordError); ok {
-			stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
-			suffix := getSuffix(source, uint(stackItem.pos), uint(len(stackItem.itemString)))
-			err = bwerror.Error("<ansiReset>unexpected word <ansiPrimaryLiteral>" + stackItem.itemString + suffix)
+type pfaErrorValidator func(pfa *pfaStruct, args ...interface{}) (string, []interface{})
+
+var pfaErrorValidators = map[pfaErrorType]pfaErrorValidator{
+	unexpectedCharError:    _unexpectedCharError,
+	failedToGetNumberError: _failedToGetNumberError,
+	unknownWordError:       _unknownWordError,
+	unexpectedWordError:    _unexpectedWordError,
+}
+
+func pfaErrorValidatorsCheck() {
+	pfaErrorType := pfaError_below_ + 1
+	for pfaErrorType < pfaError_above_ {
+		if _, ok := pfaErrorValidators[pfaErrorType]; !ok {
+			bwerror.Panic("not defined <ansiOutline>pfaErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", pfaErrorType)
+		}
+		pfaErrorType += 1
+	}
+}
+
+func _unexpectedCharError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
+	if args != nil {
+		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	if pfa.charPtr == nil {
+		suffix := getSuffix(pfa.source, 0, 0)
+		fmtString = "unexpected end of string (pfa.state: %s)" + suffix
+		fmtArgs = []interface{}{pfa.state}
+	} else {
+		suffix := getSuffix(pfa.source, uint(pfa.pos), 1)
+		fmtString = "unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %v, pfa.state: %s)" + suffix
+		fmtArgs = []interface{}{
+			*pfa.charPtr,
+			*pfa.charPtr,
+			pfa.state,
 		}
 	}
-	return err
+	return
 }
+
+func _failedToGetNumberError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
+	if args != nil {
+		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
+	suffix := getSuffix(pfa.source, uint(stackItem.pos), uint(len(stackItem.itemString)))
+	return "failed to get number from string <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
+}
+
+func _unknownWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
+	if args != nil {
+		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
+	suffix := getSuffix(pfa.source, uint(stackItem.pos), uint(len(stackItem.itemString)))
+	return "unknown word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
+}
+
+func _unexpectedWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
+	if args != nil {
+		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
+	suffix := getSuffix(pfa.source, uint(stackItem.pos), uint(len(stackItem.itemString)))
+	return "unexpected word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
+}
+
+// =============
 
 func getSuffix(source string, pos, length uint, opts ...uint) (suffix string) {
 	preLineCount := uint(3)

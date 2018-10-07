@@ -46,14 +46,6 @@ func (test testCompileDefStruct) GetResultDataForJson(result interface{}) interf
 	return mustDef(result).GetDataForJson()
 }
 
-
-func mustDef(v interface{}) (result *Def) {
-	if v == nil { return nil }
-	var ok bool
-	if result, ok = v.(*Def); !ok { bwerror.Panic("%#v is not *Def", v) }
-	return
-}
-
 func TestCompileDef(t *testing.T) {
 	tests := map[string]testCompileDefStruct{
 		"def: nil": {
@@ -65,11 +57,15 @@ func TestCompileDef(t *testing.T) {
 			err: fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>map<ansi>, or <ansiPrimaryLiteral>string")),
 		},
 		"def: simple valid": {
-			def: defparse.MustParse(`"bool"`),
+			def:    defparse.MustParse(`"bool"`),
 			result: &Def{tp: FromArgs(deftypeBool)},
 		},
 		"def: invalid deftypeItem": {
 			def: defparse.MustParse(`[ qw/ bool int some / ]`),
+			err: fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>def<ansiCmd>.#2<ansi> (<ansiSecondaryLiteral>\"some\"<ansi>) has non supported value")),
+		},
+		"def: enum": {
+			def: defparse.MustParse(`{ type: "string", enum: [qw/one two three/]}`),
 			err: fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>def<ansiCmd>.#2<ansi> (<ansiSecondaryLiteral>\"some\"<ansi>) has non supported value")),
 		},
 		// "def: invalid detype": {

@@ -1,8 +1,8 @@
 package defparse
 
 import (
-	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwjson"
 	"strconv"
 	"unicode"
 )
@@ -10,12 +10,14 @@ import (
 func init() {
 	pfaPrimaryStateMethodsCheck()
 	pfaItemFinishMethodsCheck()
+	pfaErrorValidatorsCheck()
 }
 
 type pfaStruct struct {
 	stack   parseStack
 	state   parseState
 	result  interface{}
+	source  string
 	pos     int
 	charPtr *rune
 }
@@ -131,7 +133,8 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 			pfa.state.setSecondary(expectEOF, orSpace)
 		} else if len(pfa.stack) > 1 {
 			if pfa.charPtr == nil {
-				err = unexpectedCharError{}
+				// err = unexpectedCharError{}
+				err = pfaErrorMake(pfa, unexpectedCharError)
 			} else {
 				stackSubItem := pfa.popStackItem()
 				stackItem = pfa.getTopStackItem()
@@ -148,7 +151,8 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 						case *pfa.charPtr == ']':
 							err = pfa.finishTopStackItem()
 						default:
-							err = unexpectedCharError{}
+							// err = unexpectedCharError{}
+							err = pfaErrorMake(pfa, unexpectedCharError)
 						}
 					default:
 						pfa.state.setSecondary(expectValueOrSpace, orArrayItemSeparator)
@@ -178,7 +182,8 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 							case *pfa.charPtr == '}':
 								err = pfa.finishTopStackItem()
 							default:
-								err = unexpectedCharError{}
+								err = pfaErrorMake(pfa, unexpectedCharError)
+								// err = pfaErrorMake(pfa, unexpectedCharError)
 							}
 						default:
 							pfa.state.setSecondary(expectSpaceOrMapKey, orMapValueSeparator)

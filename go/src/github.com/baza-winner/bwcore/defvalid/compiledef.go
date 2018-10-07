@@ -1,8 +1,8 @@
 package defvalid
 
 import (
-	// "github.com/baza-winner/bwcore/bwerror"
-	// "github.com/baza-winner/bwcore/bwjson"
+// "github.com/baza-winner/bwcore/bwerror"
+"github.com/baza-winner/bwcore/bwset"
 // "log"
 )
 
@@ -35,15 +35,24 @@ func compileDef(def value) (result *Def, err error) {
 		//   }
 	}
 
-  var tp deftype
-  if tp, err = getDeftype(defType, isSimpleDef); err != nil {
-  	return nil, err
-  }
-	// log.Printf("tp: %s\n", bwjson.PrettyJson(tp.GetDataForJson()))
+	var tp deftype
+	if tp, err = getDeftype(defType, isSimpleDef); err != nil {
+		return nil, err
+	}
+
 	result = &Def{tp: tp}
-	// log.Printf("result: %s\n", bwjson.PrettyJson(result.GetDataForJson()))
-	// if (_isOfType(defType, "string"))
-	// bwerror.Noop(defType)
+	if !isSimpleDef {
+		if tp.Has(deftypeString) {
+			var enumVal value
+			if enumVal, err = def.getKey("enum", "[]string", nil); err != nil {
+				return nil, err
+			}
+			if enumVal.value != nil {
+				enum := bwset.StringsFromSlice(_mustBeSliceOfStrings(enumVal.value))
+				result.enum = &enum
+			}
+		}
+	}
 	return
 }
 
@@ -60,7 +69,6 @@ func getDeftype(defType value, isSimpleDef bool) (result deftype, err error) {
 		return nil, valueErrorMake(defType, valueErrorIsNotOfType, "string", "[]string")
 	}
 	result = deftype{}
-	// if err == nil {
 	for i, s := range ss {
 		switch s {
 		case "bool":
@@ -82,20 +90,12 @@ func getDeftype(defType value, isSimpleDef bool) (result deftype, err error) {
 				err = valueErrorMake(defType, valueErrorHasNonSupportedValue)
 			} else {
 				var elem value
-				if elem, err = defType.getElem(i, "string"); err != nil { return nil, err }
-				// log.Printf("elem: %s\n", bwjson.PrettyJsonOf(elem))
+				if elem, err = defType.getElem(i, "string"); err != nil {
+					return nil, err
+				}
 				err = valueErrorMake(elem, valueErrorHasNonSupportedValue)
 			}
 		}
 	}
-	// log.Printf("result: %s\n", bwjson.PrettyJson(result.GetDataForJson()) )
-	// log.Printf("result: %s\n", result)
-	// result = bwset.FromSlice(ss)
-	// if result.Has("enum") && result.Has("string") {
-	// 	// log.Printf("%s\n", result)
-	// 	err = valueErrorMake(defType, valueErrorValuesCannotBeCombined, "enum", "string")
-	// }
-	// // }
 	return
 }
-// func getDeftype

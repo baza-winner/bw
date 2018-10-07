@@ -1,7 +1,7 @@
 package defvalid
 
 import (
-	// "github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerror"
 	// "github.com/baza-winner/bwcore/bwjson"
 	// "github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
@@ -23,9 +23,22 @@ type Def struct {
 	dflt      interface{}
 }
 
+func mustDef(v interface{}) (result *Def) {
+	if v == nil {
+		return nil
+	}
+	var ok bool
+	if result, ok = v.(*Def); !ok {
+		bwerror.Panic("%#v is not *Def", v)
+	}
+	return
+}
+
 func (v *Def) GetDataForJson() interface{} {
-  if v == nil {return nil }
-  result := map[string]interface{}{}
+	if v == nil {
+		return nil
+	}
+	result := map[string]interface{}{}
 	result["tp"] = v.tp.GetDataForJson()
 	if v.enum != nil {
 		result["enum"] = v.enum.GetDataForJson()

@@ -1,11 +1,11 @@
 package defparse
 
 import (
+	"github.com/baza-winner/bwcore/bwerror"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
-  "github.com/baza-winner/bwcore/bwerror"
 )
 
 type pfaItemFinishMethod func(*pfaStruct) (bool, error)
@@ -25,7 +25,7 @@ func pfaItemFinishMethodsCheck() {
 	itemType := parseStackItem_below_ + 1
 	for itemType < parseStackItem_above_ {
 		if _, ok := pfaItemFinishMethods[itemType]; !ok {
-      bwerror.Panic("not defined <ansiOutline>pfaItemFinishMethods<ansi>[<ansiPrimaryLiteral>%s<ansi>]", itemType)
+			bwerror.Panic("not defined <ansiOutline>pfaItemFinishMethods<ansi>[<ansiPrimaryLiteral>%s<ansi>]", itemType)
 		}
 		itemType += 1
 	}
@@ -113,7 +113,8 @@ func _parseStackItemNumber(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		}
 	}
 	if err != nil {
-		err = failedToGetNumberError{}
+		// err = failedToGetNumberError{}
+		err = pfaErrorMake(pfa, failedToGetNumberError)
 	}
 	return false, err
 }
@@ -129,10 +130,11 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		stackItem.value = nil
 	case "qw":
 		if len(pfa.stack) < 2 || pfa.getTopStackItem(-2).itemType != parseStackItemArray {
-			err = unexpectedWordError{}
+			// err = unexpectedWordError{}
+			err = pfaErrorMake(pfa, unexpectedWordError)
 		} else {
 			if pfa.charPtr == nil {
-				err = unexpectedCharError{}
+				err = pfaErrorMake(pfa, unexpectedCharError)
 			} else {
 				pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
 				switch *pfa.charPtr {
@@ -149,7 +151,7 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 					case unicode.IsPunct(*pfa.charPtr) || unicode.IsSymbol(*pfa.charPtr):
 						stackItem.delimiter = *pfa.charPtr
 					default:
-						err = unexpectedCharError{}
+						err = pfaErrorMake(pfa, unexpectedCharError)
 					}
 				}
 				if pfa.state.primary == expectSpaceOrQwItemOrDelimiter {
@@ -161,7 +163,8 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		return true, err
 
 	default:
-		err = unknownWordError{}
+		err = pfaErrorMake(pfa, unknownWordError)
+		// err = unknownWordError{}
 	}
 	return false, err
 }

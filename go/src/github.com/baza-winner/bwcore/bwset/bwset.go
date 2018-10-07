@@ -8,14 +8,14 @@ import  (
 type Strings map[string]struct{}
 
 
-func FromArgs(kk ...string) Strings {
-  return FromSlice(kk)
-}
-
-func FromSlice(kk []string) Strings {
+func StringsFromSlice(kk []string) Strings {
   result := Strings{}
   result.Add(kk...)
   return result
+}
+
+func StringsFromArgs(kk ...string) Strings {
+  return StringsFromSlice(kk)
 }
 
 func (v Strings) Has(k string) (ok bool) {

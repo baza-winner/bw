@@ -12,10 +12,11 @@ import (
 	"os"
 )
 
-type WhereError interface {
-	WhereError() string
-	error
-}
+const (
+	ansiErr = `Reset`
+	errPrefix = `<ansiErr>ERR:<ansi> `
+	wherePrefix = ` <ansiCmd>at `
+)
 
 func ExitWithError(exitCode int, fmtString string, fmtArgs ...interface{}) {
 	log.Print(ansi.Ansi(`Err`, fmt.Sprintf(fmtString, fmtArgs...)))
@@ -23,19 +24,19 @@ func ExitWithError(exitCode int, fmtString string, fmtArgs ...interface{}) {
 }
 
 func Error(msgFmt string, args ...interface{}) error {
-	return errors.New(fmt.Sprintf(ansi.Ansi(`Err`, "ERR: "+msgFmt), args...))
+	return errors.New(fmt.Sprintf(ansi.Ansi(ansiErr, errPrefix+msgFmt), args...))
 }
 
 func PanicErr(err error) {
-	log.Panic(err.Error() + ansi.Ansi("Cmd", " at "+whereami.WhereAmI(2)))
+	log.Panic(err.Error() + wherePrefix+whereami.WhereAmI(2))
 }
 
 func Panic(msgFmt string, args ...interface{}) {
-	log.Panicf(ansi.Ansi(`Err`, "ERR: "+msgFmt+` <ansiCmd>at `+whereami.WhereAmI(2)), args...)
+	log.Panicf(ansi.Ansi(ansiErr, errPrefix+msgFmt+wherePrefix+whereami.WhereAmI(2)), args...)
 }
 
 func Panicd(depth uint, msgFmt string, args ...interface{}) {
-	log.Panicf(ansi.Ansi(`Err`, "ERR: "+msgFmt+` <ansiCmd>at `+whereami.WhereAmI(int(depth)+2)), args...)
+	log.Panicf(ansi.Ansi(ansiErr, errPrefix+msgFmt+wherePrefix+whereami.WhereAmI(int(depth)+2)), args...)
 }
 
 func Noop(args ...interface{}) {

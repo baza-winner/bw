@@ -1,7 +1,7 @@
 package defparse
 
 import (
-  "github.com/baza-winner/bwcore/bwjson"
+	"github.com/baza-winner/bwcore/bwjson"
 )
 
 type parseStackItem struct {
@@ -41,5 +41,5 @@ func (self *parseStackItem) GetDataForJson() interface{} {
 }
 
 func (stackItem *parseStackItem) String() (result string) {
-  return bwjson.PrettyJsonOf(stackItem)
+	return bwjson.PrettyJsonOf(stackItem)
 }

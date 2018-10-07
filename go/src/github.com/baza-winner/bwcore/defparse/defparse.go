@@ -201,7 +201,7 @@ func MustParseMap(source string) (result map[string]interface{}) {
 
 // Parse - парсит строку
 func Parse(source string) (interface{}, error) {
-	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}}
+	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}, source: source}
 	var err error
 	for pos, char := range source {
 		if err = pfa.processCharAtPos(char, pos); err != nil {
@@ -211,9 +211,9 @@ func Parse(source string) (interface{}, error) {
 	if err == nil {
 		err = pfa.processEOF()
 	}
-	if err != nil {
-		err = pfa.arrangeError(err, source)
-	}
+	// if err != nil {
+	// 	err = pfa.arrangeError(err, source)
+	// }
 	return pfa.result, err
 }
 
