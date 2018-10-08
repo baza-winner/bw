@@ -2,6 +2,7 @@ package defvalid
 
 import (
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/defvalid/deftype"
 	// "github.com/baza-winner/bwcore/bwjson"
 	// "github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
@@ -11,13 +12,13 @@ import (
 )
 
 type Def struct {
-	tp        deftype
+	tp        deftype.Set
 	enum      bwset.Strings
-	minInt    *int
-	maxInt    *int
+	minInt    *int64
+	maxInt    *int64
 	minNumber *float64
 	maxNumber *float64
-	keys      *map[string]*Def
+	keys      map[string]Def
 	elem      *Def
 	arrayElem *Def
 	dflt      interface{}
@@ -57,8 +58,8 @@ func (v *Def) GetDataForJson() interface{} {
 	}
 	if v.keys != nil {
 		keysJsonData := map[string]interface{}{}
-		for k, v := range *(v.keys) {
-			keysJsonData[k] = (*v).GetDataForJson()
+		for k, v := range v.keys {
+			keysJsonData[k] = v.GetDataForJson()
 		}
 		result["keys"] = keysJsonData
 	}

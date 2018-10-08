@@ -93,9 +93,6 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 				vType := reflect.TypeOf(v)
 				if true &&
 					vType.Kind() == reflect.Func &&
-					vType.NumIn() == 1 &&
-					vType.In(0).Kind() == reflect.Struct &&
-					vType.In(0).Name() == "TestStruct" &&
 					true {
 					if vType.NumOut() != 1 {
 						bwerror.Panic(

@@ -2,10 +2,12 @@ package defvalid
 
 import (
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/defparse"
+	"github.com/baza-winner/bwcore/defvalid/deftype"
 	"testing"
 )
 
@@ -24,13 +26,13 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`false`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>map<ansi>, or <ansiPrimaryLiteral>string"),
+				bwerror.Error("<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>map[string]<ansi>, or <ansiPrimaryLiteral>string"),
 			},
 		},
 		"def: simple valid": {
 			In: []interface{}{defparse.MustParse(`"bool"`)},
 			Out: []interface{}{
-				&Def{tp: FromArgs(deftypeBool)},
+				&Def{tp: deftype.FromArgs(deftype.Bool)},
 				nil,
 			},
 		},
@@ -44,14 +46,116 @@ func TestCompileDef(t *testing.T) {
 		"def: enum": {
 			In: []interface{}{defparse.MustParse(`{ type: "string", enum: [qw/one two three/]}`)},
 			Out: []interface{}{
-				&Def{tp: FromArgs(deftypeString), enum: bwset.StringsFromArgs("one", "two", "three")},
+				&Def{tp: deftype.FromArgs(deftype.String), enum: bwset.StringsFromArgs("one", "two", "three")},
 				nil,
 			},
 		},
+		"def: map with keys": {
+			In: []interface{}{defparse.MustParse(`{ type: "map", keys: { keyBool: ['bool'] }}`)},
+			Out: []interface{}{
+				&Def{
+					tp: deftype.FromArgs(deftype.Map),
+					keys: map[string]Def{
+						"keyBool": Def{tp: deftype.FromArgs(deftype.Bool)},
+					}},
+				nil,
+			},
+		},
+		"def: unexpected keys": {
+			In: []interface{}{defparse.MustParse(`{ type: "map", kyes: { keyBool: ['bool'] }}`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				func(test bwtesting.TestCaseStruct) error {
+					return bwerror.Error(
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(test.In[0]) +
+							"<ansi>) has unexpected key <ansiPrimaryLiteral>kyes",
+					)
+				},
+			},
+		},
+		"def: array with arrayElem": {
+			In: []interface{}{defparse.MustParse(`{ type: "array", arrayElem: 'int' }`)},
+			Out: []interface{}{
+				&Def{
+					tp:        deftype.FromArgs(deftype.Array),
+					arrayElem: &Def{tp: deftype.FromArgs(deftype.Int)},
+				},
+				nil,
+			},
+		},
+		"def: array with arrayElem and Elem": {
+			In: []interface{}{defparse.MustParse(`{ type: "array", arrayElem: 'int', elem: 'bool' }`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				func(test bwtesting.TestCaseStruct) error {
+					return bwerror.Error(
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(test.In[0]) +
+							"<ansi>) has unexpected key <ansiPrimaryLiteral>elem",
+					)
+				},
+			},
+		},
+		"def: minInt, maxInt": {
+			In: []interface{}{defparse.MustParse(`{ type: "int", minInt: -6, maxInt: 10 }`)},
+			Out: []interface{}{
+				&Def{
+					tp:     deftype.FromArgs(deftype.Int),
+					minInt: ptrToInt64(-6),
+					maxInt: ptrToInt64(10),
+				},
+				nil,
+			},
+		},
+		"def: minInt > maxInt": {
+			In: []interface{}{defparse.MustParse(`{ type: "int", minInt: 6, maxInt: -10 }`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				func(test bwtesting.TestCaseStruct) error {
+					return bwerror.Error(
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(test.In[0]) +
+							"<ansi>) following values can not be combined: <ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(defparse.MustParse("[ 6, -10 ]")),
+					)
+				},
+			},
+		},
+		"def: minNumber, maxNumber": {
+			In: []interface{}{defparse.MustParse(`{ type: "number", minNumber: -6, maxNumber: 10 }`)},
+			Out: []interface{}{
+				&Def{
+					tp:        deftype.FromArgs(deftype.Number),
+					minNumber: ptrToFloat64(float64(-6)),
+					maxNumber: ptrToFloat64(float64(10)),
+				},
+				nil,
+			},
+		},
+		// "def: default": {
+		// 	In: []interface{}{defparse.MustParse(`{ type: "bool", default: "string" }`)},
+		// 	Out: []interface{}{
+		// 		(*Def)(nil),
+		// 		// &Def{
+		// 		// 	tp:        deftype.FromArgs(deftype.Number),
+		// 		// 	minNumber: ptrToFloat64(float64(-6)),
+		// 		// 	maxNumber: ptrToFloat64(float64(10)),
+		// 		// },
+		// 		// nil,
+
+		// 		bwerror.Error(
+		// 			"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
+		// 				bwjson.PrettyJson(test.In[0]) +
+		// 				"<ansi>) following values can not be combined: <ansiSecondaryLiteral>" +
+		// 				bwjson.PrettyJson(defparse.MustParse("[ 6, -10 ]")),
+		// 		),
+		// 	},
+		// },
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "def: invalid deftypeItem")
+	// bwmap.CropMap(testsToRun, "def: unexpected keys")
 	bwtesting.BwRunTests(t, testsToRun, CompileDef)
 }
 

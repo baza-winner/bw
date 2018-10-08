@@ -2,6 +2,7 @@ package defparse
 
 import (
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwint"
 	"regexp"
 	"strconv"
 	"strings"
@@ -86,11 +87,11 @@ func _parseStackItemQwItem(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	return true, nil
 }
 
-const (
-	maxUint = ^uint(0)
-	maxInt  = int(maxUint >> 1)
-	minInt  = -maxInt - 1
-)
+// const (
+// 	maxUint = ^uint(0)
+// 	maxInt  = int(maxUint >> 1)
+// 	minInt  = -maxInt - 1
+// )
 
 var underscoreRegexp = regexp.MustCompile("[_]+")
 
@@ -105,8 +106,12 @@ func _parseStackItemNumber(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	} else {
 		var int64Val int64
 		if int64Val, err = strconv.ParseInt(source, 10, 64); err == nil {
-			if int64(minInt) <= int64Val && int64Val <= int64(maxInt) {
-				stackItem.value = int(int64Val)
+			if int64(bwint.MinInt8) <= int64Val && int64Val <= int64(bwint.MaxInt8) {
+				stackItem.value = int8(int64Val)
+			} else if int64(bwint.MinInt16) <= int64Val && int64Val <= int64(bwint.MaxInt16) {
+				stackItem.value = int16(int64Val)
+			} else if int64(bwint.MinInt32) <= int64Val && int64Val <= int64(bwint.MaxInt32) {
+				stackItem.value = int32(int64Val)
 			} else {
 				stackItem.value = int64Val
 			}

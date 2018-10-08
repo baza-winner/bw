@@ -15,14 +15,28 @@ import (
 
 func CompileDef(def interface{}) (result *Def, err error) {
 	result, err = compileDef(value{"<ansiOutline>def<ansiCmd>", def})
-	// log.Printf("CompileDef result: %s\n", bwjson.PrettyJson(result.GetDataForJson()))
+	// log.Printf("result: %#v", result)
+	// var compileDefResult *Def
+	// compileDefResult, err = compileDef(value{"<ansiOutline>def<ansiCmd>", def})
+	// if err == nil {
+	// 	if compileDefResult == nil {
+	// 		bwerror.Panic("Unexpected behavior; def: %s", bwjson.PrettyJson(def))
+	// 	} else {
+	// 		result = *compileDefResult
+	// 	}
+	// }
 	return
 }
 
-func MustCompileDef(def interface{}) (result *Def) {
+func MustCompileDef(def interface{}) (result Def) {
 	var err error
-	if result, err = CompileDef(def); err != nil {
+	var compileDefResult *Def
+	if compileDefResult, err = CompileDef(def); err != nil {
 		bwerror.PanicErr(err)
+	} else if compileDefResult == nil {
+		bwerror.Panic("Unexpected behavior; def: %s", bwjson.PrettyJson(def))
+	} else {
+		result = *compileDefResult
 	}
 	return
 }
