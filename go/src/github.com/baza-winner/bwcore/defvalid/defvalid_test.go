@@ -32,7 +32,7 @@ func TestCompileDef(t *testing.T) {
 		"def: simple valid": {
 			In: []interface{}{defparse.MustParse(`"bool"`)},
 			Out: []interface{}{
-				&Def{tp: deftype.FromArgs(deftype.Bool), isSimple: true},
+				&Def{tp: deftype.FromArgs(deftype.Bool)},
 				nil,
 			},
 		},
@@ -56,7 +56,7 @@ func TestCompileDef(t *testing.T) {
 				&Def{
 					tp: deftype.FromArgs(deftype.Map),
 					keys: map[string]Def{
-						"keyBool": Def{tp: deftype.FromArgs(deftype.Bool), isSimple: true},
+						"keyBool": Def{tp: deftype.FromArgs(deftype.Bool)},
 					}},
 				nil,
 			},
@@ -79,7 +79,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				&Def{
 					tp:        deftype.FromArgs(deftype.Array),
-					arrayElem: &Def{tp: deftype.FromArgs(deftype.Int), isSimple: true},
+					arrayElem: &Def{tp: deftype.FromArgs(deftype.Int)},
 				},
 				nil,
 			},
@@ -116,8 +116,8 @@ func TestCompileDef(t *testing.T) {
 					return bwerror.Error(
 						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
 							bwjson.PrettyJson(test.In[0]) +
-							"<ansi>) following values can not be combined: <ansiSecondaryLiteral>" +
-							bwjson.PrettyJson(defparse.MustParse("[ 6, -10 ]")),
+							"<ansi>) has conflicting keys: <ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(defparse.MustParse("{ minInt: 6, maxInt: -10 }")),
 					)
 				},
 			},
@@ -136,90 +136,173 @@ func TestCompileDef(t *testing.T) {
 		"def: default": {
 			In: []interface{}{defparse.MustParse(`{ type: "bool", default: true }`)},
 			Out: []interface{}{
-				// (*Def)(nil),
 				&Def{
-					tp:   deftype.FromArgs(deftype.Bool),
-					dflt: true,
-					// minNumber: ptrToFloat64(float64(-6)),
-					// maxNumber: ptrToFloat64(float64(10)),
+					tp:         deftype.FromArgs(deftype.Bool),
+					dflt:       true,
+					isOptional: true,
 				},
 				nil,
-
-				// bwerror.Error(
-				// 	"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
-				// 		bwjson.PrettyJson(test.In[0]) +
-				// 		"<ansi>) following values can not be combined: <ansiSecondaryLiteral>" +
-				// 		bwjson.PrettyJson(defparse.MustParse("[ 6, -10 ]")),
-				// ),
+			},
+		},
+		"def: default 'string' for bool": {
+			In: []interface{}{defparse.MustParse(`{ type: "bool", default: "string" }`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				bwerror.Error("<ansiOutline>def<ansiCmd>.default<ansi> (<ansiSecondaryLiteral>\"string\"<ansi>) is not of type <ansiPrimaryLiteral>Bool"),
+			},
+		},
+		"def: isOptional": {
+			In: []interface{}{defparse.MustParse(`{ type: "bool", isOptional: true }`)},
+			Out: []interface{}{
+				&Def{
+					tp:         deftype.FromArgs(deftype.Bool),
+					isOptional: true,
+				},
+				nil,
+			},
+		},
+		"def: isOptional = false conflicts with dflt": {
+			In: []interface{}{defparse.MustParse(`{ type: "bool", isOptional: false, default: false }`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				func(test bwtesting.TestCaseStruct) error {
+					return bwerror.Error(
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(test.In[0]) +
+							"<ansi>) has conflicting keys: <ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(defparse.MustParse("{ isOptional: false, default: false }")),
+					)
+				},
+			},
+		},
+		"def: arrayOf without follower": {
+			In: []interface{}{defparse.MustParse(`{ type:  "arrayOf"  }`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				bwerror.Error("<ansiOutline>def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>\"arrayOf\"<ansi>) must be followed by some type"),
+			},
+		},
+		"simple.def: arrayOf without follower": {
+			In: []interface{}{defparse.MustParse(`"arrayOf"`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				bwerror.Error("<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>\"arrayOf\"<ansi>) must be followed by some type"),
+			},
+		},
+		"simple.def: arrayOf can not be combined with array": {
+			In: []interface{}{defparse.MustParse(`["arrayOf", "array", "string"]`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				func(test bwtesting.TestCaseStruct) error {
+					return bwerror.Error(
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(test.In[0]) +
+							"<ansi>) following values can not be combined: <ansiSecondaryLiteral>" +
+							bwjson.PrettyJson(defparse.MustParse("[ 'array', 'arrayOf' ]")),
+					)
+				},
 			},
 		},
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "def: unexpected keys")
+	// bwmap.CropMap(testsToRun, "def: arrayOf without follower")
 	bwtesting.BwRunTests(t, testsToRun, CompileDef)
 }
 
 // ============================================================================
 
-// type testValidateValStruct struct {
-// 	what   string
-// 	val    interface{}
-// 	def    interface{}
-// 	result interface{}
-// 	err    interface{}
-// }
-
-// func (test testValidateValStruct) GetTstResultErr() (interface{}, error) {
-// 	return ValidateVal(test.what, test.val, test.def)
-// }
-
-// func (test testValidateValStruct) GetTitle() string {
-// 	return fmt.Sprintf("ValidateVal(%s, %s, %s)\n", test.what, bwjson.PrettyJson(test.val), bwjson.PrettyJson(test.def))
-// }
-
-// func (test testValidateValStruct) GetEtaErr() interface{} {
-// 	return test.err
-// }
-
-// func (test testValidateValStruct) GetEtaResult() interface{} {
-// 	return test.result
-// }
-
-// func (test testValidateValStruct) IsDiffResult(tstResult, etaResult interface{}) bool {
-// 	return bwtesting.IsDiffResultDefault(tstResult, etaResult)
-// }
-
-// func (test testValidateValStruct) GetResultDataForJson(result interface{}) interface{} {
-// 	return result
-// }
-
 func TestValidateVal(t *testing.T) {
 	tests := map[string]bwtesting.TestCaseStruct{
-		// "def: nil": {
-		// 	val:  defparse.MustParseMap(`{ }`),
-		// 	what: "somewhere",
-		// 	def:  nil,
-		// 	err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd><ansi> (<ansiSecondaryLiteral>null<ansi>) is not of type <ansiPrimaryLiteral>map")),
-		// },
-		// "def.type: no": {
-		// 	what: "somewhere",
-		// 	val:  defparse.MustParseMap(`{ }`),
-		// 	def:  defparse.MustParseMap(`{ }`),
-		// 	err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd><ansi> (<ansiSecondaryLiteral>{}<ansi>) has no key <ansiPrimaryLiteral>type")),
-		// },
-		// "def.type: invalid type": {
-		// 	what: "somewhere",
-		// 	val:  defparse.MustParseMap(`{ }`),
-		// 	def:  defparse.MustParseMap(`{ type: false }`),
-		// 	err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>false<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>string")),
-		// },
-		// ".type has non supported value": {
-		// 	what: "somewhere",
-		// 	val:  defparse.MustParseMap(`{  }`),
-		// 	def:  defparse.MustParseMap(`{ type: 'some' }`),
-		// 	err:  fmt.Errorf(ansi.Ansi(`Err`, "ERR: <ansiOutline>somewhere::def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>\"some\"<ansi>) has non supported value")),
-		// },
+		"val: nil, simple.def: bool": {
+			In: []interface{}{
+				"val",
+				nil,
+				MustCompileDef(defparse.MustParse("'bool'")),
+			},
+			Out: []interface{}{
+				nil,
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>null<ansi>) is not of type <ansiPrimaryLiteral>Bool"),
+			},
+		},
+		"val: nil, def: bool.isOptional": {
+			In: []interface{}{
+				"val",
+				nil,
+				MustCompileDef(defparse.MustParse("{ type: 'bool', isOptional: true }")),
+			},
+			Out: []interface{}{
+				nil,
+				nil,
+			},
+		},
+		"val: nil, def: bool.default=true": {
+			In: []interface{}{
+				"val",
+				nil,
+				MustCompileDef(defparse.MustParse("{ type: 'bool', default: true }")),
+			},
+			Out: []interface{}{
+				true,
+				nil,
+			},
+		},
+		"val: nil, simple.def: map": {
+			In: []interface{}{
+				"val",
+				nil,
+				MustCompileDef(defparse.MustParse("'map'")),
+			},
+			Out: []interface{}{
+				map[string]interface{}{},
+				nil,
+			},
+		},
+		"val: nil, def: map": {
+			In: []interface{}{
+				"val",
+				nil,
+				MustCompileDef(defparse.MustParse("{ type: 'map' }")),
+			},
+			Out: []interface{}{
+				map[string]interface{}{},
+				nil,
+			},
+		},
+		"val: valid, def: string.enum": {
+			In: []interface{}{
+				"val",
+				"one",
+				MustCompileDef(defparse.MustParse("{ type: 'string', enum: [qw/one two three/] }")),
+			},
+			Out: []interface{}{
+				"one",
+				nil,
+			},
+		},
+		"val: invalid, def: string.enum": {
+			In: []interface{}{
+				"val",
+				"One",
+				MustCompileDef(defparse.MustParse("{ type: 'string', enum: [qw/one two three/] }")),
+			},
+			Out: []interface{}{
+				nil,
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>\"One\"<ansi>) has non supported value"),
+			},
+		},
+		"val: valid, def: int.min": {
+			In: []interface{}{
+				"val",
+				1,
+				MustCompileDef(defparse.MustParse("{ type: 'int', minInt: 0 }")),
+			},
+			Out: []interface{}{
+				1,
+				nil,
+				// bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>\"One\"<ansi>) has non supported value"),
+			},
+		},
 		// "val: unexpected keys": {
 		// 	what: "somewhere",
 		// 	val:  defparse.MustParseMap(`{ some: true, thing: false }`),

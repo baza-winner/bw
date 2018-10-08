@@ -6,13 +6,10 @@ import (
 	"github.com/baza-winner/bwcore/bwint"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
+	"github.com/baza-winner/bwcore/defvalid/deftype"
+	"log"
 	"reflect"
-	// "log"
 )
-
-func init() {
-	valueErrorValidatorsCheck()
-}
 
 type value struct {
 	what  string
@@ -30,26 +27,6 @@ func (v value) String() string {
 	return fmt.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
 }
 
-func (v value) asMap() (result map[string]interface{}, err error) {
-	var ok bool
-	if result, ok = v.value.(map[string]interface{}); !ok {
-		err = valueErrorMake(v, valueErrorIsNotOfType, "map")
-	}
-	return
-}
-
-func (v value) mustBeMap() (result map[string]interface{}) {
-	var err error
-	if result, err = v.asMap(); err != nil {
-		bwerror.Panic(err.Error())
-	}
-	return
-}
-
-// func (v value) IsMapString(m interface{}) bool {
-
-// }
-
 func (v value) forEachMapString(f func(k string, v interface{}) (err error)) (err error) {
 	if !_isOfType(v.value, "map[string]") {
 		err = valueErrorMake(v, valueErrorIsNotOfType, "map[string]")
@@ -66,29 +43,20 @@ func (v value) forEachMapString(f func(k string, v interface{}) (err error)) (er
 	return err
 }
 
-// func (v value) asString() (result string, err error) {
-// 	var ok bool
-// 	if result, ok = v.value.(string); !ok {
-// 		err = valueErrorMake(v, valueErrorIsNotOfType, "string")
-// 	}
-// 	return
-// }
-
-// func (v value) mustBeString() (result string) {
-// 	var err error
-// 	if result, err = v.asString(); err != nil {
-// 		bwerror.Panic(err.Error())
-// 	}
-// 	return
-// }
-
-// func (v value) asBool() (result bool, err error) {
-// 	var ok bool
-// 	if result, ok = v.value.(bool); !ok {
-// 		err = valueErrorMake(v, valueErrorIsNotOfType, "bool")
-// 	}
-// 	return
-// }
+func (v value) forEachSlice(f func(i int, v interface{}) (err error)) (err error) {
+	if !_isOfType(v.value, "[]") {
+		err = valueErrorMake(v, valueErrorIsNotOfType, "[]")
+	} else {
+		sliceValue := reflect.ValueOf(v.value)
+		for i := 0; i < sliceValue.Len(); i++ {
+			err = f(i, sliceValue.Index(i).Interface())
+			if err != nil {
+				break
+			}
+		}
+	}
+	return err
+}
 
 func (v value) getElem(elemIndex int, opts ...interface{}) (result value, err error) {
 	defaultValue, ofType := getDefaultValueAndOfTypeFromOpts(opts)
@@ -214,18 +182,18 @@ func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
 				}
 			case "int64":
 				switch vType.Kind() {
-				case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
 					ok = true
-				case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 					ok = reflect.ValueOf(v).Uint() <= uint64(bwint.MaxInt64)
 				default:
 					ok = false
 				}
 			case "float64":
 				switch vType.Kind() {
-				case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
 					ok = true
-				case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 					ok = true
 				case reflect.Float32, reflect.Float64:
 					ok = true
@@ -236,6 +204,8 @@ func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
 				ok = vType.Kind() == reflect.Bool
 			case "bwset.Strings":
 				_, ok = v.(bwset.Strings)
+			case "deftype.Set":
+				_, ok = v.(deftype.Set)
 			case "interface{}":
 				ok = true
 			default:
@@ -261,18 +231,24 @@ func _mustBeString(v interface{}) (result string) {
 	return
 }
 
+func _mustBeBool(v interface{}) (result bool) {
+	result, _ = _mustBeOfType(v, "bool").(bool)
+	return
+}
+
 func _mustBeInt64(v interface{}) (result int64) {
 	vValue := reflect.ValueOf(v)
 	switch vValue.Kind() {
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
 		result = vValue.Int()
-	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 		if reflect.ValueOf(v).Uint() <= uint64(bwint.MaxInt64) {
 			result = int64(vValue.Uint())
 		} else {
 			bwerror.Panic("<ansiSecondaryLiteral>%+v<ansi> is not of type <ansiSecondaryLiteral>int64", v)
 		}
 	default:
+		log.Printf("vValue.Kind(): %s", vValue.Kind())
 		bwerror.Panic("<ansiSecondaryLiteral>%+v<ansi> is not of type <ansiSecondaryLiteral>int64", v)
 	}
 	return
@@ -281,9 +257,9 @@ func _mustBeInt64(v interface{}) (result int64) {
 func _mustBeFloat64(v interface{}) (result float64) {
 	vValue := reflect.ValueOf(v)
 	switch vValue.Kind() {
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
 		result = float64(vValue.Int())
-	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 		result = float64(vValue.Uint())
 	case reflect.Float32, reflect.Float64:
 		result = vValue.Float()
@@ -306,8 +282,13 @@ func _mustBeSliceOfStrings(v interface{}) (result []string) {
 	return
 }
 
-func _mustBeSetOfStrings(v interface{}) (result bwset.Strings) {
+func _mustBeBwsetStrings(v interface{}) (result bwset.Strings) {
 	result, _ = _mustBeOfType(v, "bwset.Strings").(bwset.Strings)
+	return
+}
+
+func _mustBeDeftypeSet(v interface{}) (result deftype.Set) {
+	result, _ = _mustBeOfType(v, "deftype.Set").(deftype.Set)
 	return
 }
 

@@ -15,7 +15,7 @@ const (
 	Number
 	Map
 	Array
-	OrArrayOf
+	ArrayOf
 	Item_above_
 )
 
@@ -59,6 +59,13 @@ func (v Set) ToSlice() []Item {
 	for k, _ := range v { s = append(s, k) }
 	sort.Sort(s)
 	return s
+}
+
+func (v Set) ToSliceOfStrings() (result []string) {
+	result = []string{}
+	for k, _ := range v { result = append(result, k.String()) }
+	sort.Strings(result)
+	return
 }
 
 // ============================================================================
