@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	// "log"
 )
 
 type TestCaseStruct struct {
@@ -52,10 +53,10 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 	fValue := reflect.ValueOf(f)
 
 	for testName, test := range tests {
-		testPrefix := "<ansiCmd>" + testFunc + "::<ansiOutline>test" + "<ansiCmd>.<ansiSecondaryLiteral>" + testName + "<ansiCmd>"
+		testPrefix := "<ansiCmd>" + testFunc + "::<ansiOutline>test" + "<ansiCmd>.<ansiSecondaryLiteral>[\"" + testName + "\"]<ansiCmd>"
 		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
 		if len(test.In) != numIn {
-			bwerror.Panic(testPrefix+".Out<ansi>: ожидается <ansiPrimaryLiteral>%d<ansi> %s вместо <ansiSecondaryLiteral>%d", numIn, getPluralWord(numIn, "параметр", "", "а", "ов"), len(test.In))
+			bwerror.Panic(testPrefix+".In<ansi>: ожидается <ansiPrimaryLiteral>%d<ansi> %s вместо <ansiSecondaryLiteral>%d", numIn, getPluralWord(numIn, "параметр", "", "а", "ов"), len(test.In))
 		}
 		if len(test.Out) != numOut {
 			bwerror.Panic(testPrefix+".Out<ansi>: ожидается <ansiPrimaryLiteral>%d<ansi> %s вместо <ansiSecondaryLiteral>%d", numOut, getPluralWord(numOut, "параметр", "", "а", "ов"), len(test.Out))
@@ -146,19 +147,22 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 								"<ansiOK>etaErr(json)<ansi>: %s"
 							fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
 						}
-						if reflect.TypeOf(tstErr).Kind() == reflect.Struct {
-							if sf, ok := reflect.TypeOf(tstErr).FieldByName("Where"); ok && sf.Type.Kind() == reflect.String {
-								fmtString += "\n" +
-									"<ansiHeader>errWhere<ansi>: <ansiCmd>%s"
-								fmtArgs = append(fmtArgs, reflect.ValueOf(tstErr).FieldByName("Where").Interface())
+						if tstErr != nil {
+							tstErrType := reflect.TypeOf(tstErr)
+							if tstErrType.Kind() == reflect.Struct {
+								if sf, ok := tstErrType.FieldByName("Where"); ok && sf.Type.Kind() == reflect.String {
+									fmtString += "\n" +
+										"<ansiHeader>errWhere<ansi>: <ansiCmd>%s"
+									fmtArgs = append(fmtArgs, reflect.ValueOf(tstErr).FieldByName("Where").Interface())
+								}
 							}
 						}
 						t.Errorf(ansi.Ansi("", fmtString), fmtArgs...)
 					}
 				}
-			} else if !reflect.DeepEqual(out[i].Interface(), test.Out[i]) {
+			} else if !reflect.DeepEqual(out[i].Interface(), outEta[i]) {
 				tstResult := out[i].Interface()
-				etaResult := test.Out[i]
+				etaResult := outEta[i]
 				fmtString := testTitle + "    <ansiErr>=><ansi> %#v\n, <ansiOK>want<ansi> %#v"
 				fmtArgs := []interface{}{tstResult, etaResult}
 

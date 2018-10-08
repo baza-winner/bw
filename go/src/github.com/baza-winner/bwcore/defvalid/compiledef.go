@@ -1,7 +1,6 @@
 package defvalid
 
 import (
-	// "github.com/baza-winner/bwcore/bwint"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
@@ -21,7 +20,7 @@ func compileDef(def value) (result *Def, err error) {
 	} else if !_isOfType(def.value, "map[string]") {
 		return nil, valueErrorMake(def, valueErrorIsNotOfType, "string", "[]string", "map[string]")
 	} else {
-		if defType, err = getDefKey(def, "type", []string{"string", "[]string"}, &validDefKeys); err != nil {
+		if defType, err = getDefKey(def, "type", []string{"string", "[]string"}, nil, &validDefKeys); err != nil {
 			return nil, err
 		}
 	}
@@ -31,11 +30,11 @@ func compileDef(def value) (result *Def, err error) {
 		return nil, err
 	}
 
-	result = &Def{tp: tp, isSimple: isSimple}
+	result = &Def{tp: tp}
 	if !isSimple {
 		if tp.Has(deftype.String) {
 			var enumVal value
-			if enumVal, err = getDefKey(def, "enum", "[]string", &validDefKeys); err != nil {
+			if enumVal, err = getDefKey(def, "enum", "[]string", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if enumVal.value != nil {
@@ -44,7 +43,7 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Map) {
 			var keysVal value
-			if keysVal, err = getDefKey(def, "keys", "map[string]", &validDefKeys); err != nil {
+			if keysVal, err = getDefKey(def, "keys", "map[string]", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if keysVal.value != nil {
@@ -62,7 +61,7 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Array) {
 			var arrayElemVal value
-			if arrayElemVal, err = getDefKey(def, "arrayElem", "interface{}", &validDefKeys); err != nil {
+			if arrayElemVal, err = getDefKey(def, "arrayElem", "interface{}", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if arrayElemVal.value != nil {
@@ -73,7 +72,7 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Map) || tp.Has(deftype.Array) && result.arrayElem == nil {
 			var elemVal value
-			if elemVal, err = getDefKey(def, "elem", "interface{}", &validDefKeys); err != nil {
+			if elemVal, err = getDefKey(def, "elem", "interface{}", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if elemVal.value != nil {
@@ -84,50 +83,67 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Int) {
 			var minIntVal value
-			if minIntVal, err = getDefKey(def, "minInt", "int64", &validDefKeys); err != nil {
+			if minIntVal, err = getDefKey(def, "minInt", "int64", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if minIntVal.value != nil {
 				result.minInt = ptrToInt64(_mustBeInt64(minIntVal.value))
 			}
 			var maxIntVal value
-			if maxIntVal, err = getDefKey(def, "maxInt", "int64", &validDefKeys); err != nil {
+			if maxIntVal, err = getDefKey(def, "maxInt", "int64", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if maxIntVal.value != nil {
 				result.maxInt = ptrToInt64(_mustBeInt64(maxIntVal.value))
 			}
 			if result.minInt != nil && result.maxInt != nil && *(result.minInt) > *(result.maxInt) {
-				return nil, valueErrorMake(def, valueErrorValuesCannotBeCombined, *(result.minInt), *(result.maxInt))
+				return nil, valueErrorMake(def, valueErrorConflictingKeys, map[string]interface{}{
+					"minInt": *(result.minInt),
+					"maxInt": *(result.maxInt),
+				})
 			}
 		}
 		if tp.Has(deftype.Number) {
 			var minNumberVal value
-			if minNumberVal, err = getDefKey(def, "minNumber", "float64", &validDefKeys); err != nil {
+			if minNumberVal, err = getDefKey(def, "minNumber", "float64", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if minNumberVal.value != nil {
 				result.minNumber = ptrToFloat64(_mustBeFloat64(minNumberVal.value))
 			}
 			var maxNumberVal value
-			if maxNumberVal, err = getDefKey(def, "maxNumber", "float64", &validDefKeys); err != nil {
+			if maxNumberVal, err = getDefKey(def, "maxNumber", "float64", nil, &validDefKeys); err != nil {
 				return nil, err
 			}
 			if maxNumberVal.value != nil {
 				result.maxNumber = ptrToFloat64(_mustBeFloat64(maxNumberVal.value))
 			}
 			if result.minNumber != nil && result.maxNumber != nil && *(result.minNumber) > *(result.maxNumber) {
-				return nil, valueErrorMake(def, valueErrorValuesCannotBeCombined, *(result.minNumber), *(result.maxNumber))
+				return nil, valueErrorMake(def, valueErrorConflictingKeys, map[string]interface{}{
+					"minNumber": *(result.minNumber),
+					"maxNumber": *(result.maxNumber),
+				})
 			}
 		}
 		var dfltVal value
-		if dfltVal, err = getDefKey(def, "default", "interface{}", &validDefKeys); err != nil {
+		if dfltVal, err = getDefKey(def, "default", "interface{}", nil, &validDefKeys); err != nil {
 			return nil, err
 		}
 		if dfltVal.value != nil {
 			if result.dflt, err = getValidVal(dfltVal, *result); err != nil {
 				return nil, err
 			}
+		}
+		var boolVal value
+		if boolVal, err = getDefKey(def, "isOptional", "bool", result.dflt != nil, &validDefKeys); err != nil {
+			return nil, err
+		}
+		result.isOptional = _mustBeBool(boolVal.value)
+		if !result.isOptional && result.dflt != nil {
+			return nil, valueErrorMake(def, valueErrorConflictingKeys, map[string]interface{}{
+				"isOptional": result.isOptional,
+				"default":    result.dflt,
+			})
 		}
 		if unexpectedKeys := bwmap.GetUnexpectedKeys(def.value, validDefKeys); unexpectedKeys != nil {
 			return nil, valueErrorMake(def, valueErrorHasUnexpectedKeys, unexpectedKeys)
@@ -136,8 +152,8 @@ func compileDef(def value) (result *Def, err error) {
 	return
 }
 
-func getDefKey(def value, keyName string, ofType interface{}, validDefKeys *bwset.Strings) (keyValue value, err error) {
-	keyValue, err = def.getKey(keyName, ofType, nil)
+func getDefKey(def value, keyName string, ofType interface{}, defaultValue interface{}, validDefKeys *bwset.Strings) (keyValue value, err error) {
+	keyValue, err = def.getKey(keyName, ofType, defaultValue)
 	validDefKeys.Add(keyName)
 	return
 }
@@ -169,8 +185,8 @@ func getDeftype(defType value, isSimple bool) (result deftype.Set, err error) {
 			result.Add(deftype.Map)
 		case "array":
 			result.Add(deftype.Array)
-		case "orArrayOf":
-			result.Add(deftype.OrArrayOf)
+		case "arrayOf":
+			result.Add(deftype.ArrayOf)
 		default:
 			if isString {
 				err = valueErrorMake(defType, valueErrorHasNonSupportedValue)
@@ -181,6 +197,13 @@ func getDeftype(defType value, isSimple bool) (result deftype.Set, err error) {
 				}
 				err = valueErrorMake(elem, valueErrorHasNonSupportedValue)
 			}
+		}
+	}
+	if result.Has(deftype.ArrayOf) {
+		if len(result) < 2 {
+			err = valueErrorMake(defType, valueErrorArrayOf)
+		} else if result.Has(deftype.Array) {
+			err = valueErrorMake(defType, valueErrorValuesCannotBeCombined, "array", "arrayOf")
 		}
 	}
 	return

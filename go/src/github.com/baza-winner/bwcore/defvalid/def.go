@@ -14,7 +14,6 @@ import (
 type Def struct {
 	tp         deftype.Set
 	isOptional bool
-	isSimple   bool
 	enum       bwset.Strings
 	minInt     *int64
 	maxInt     *int64
@@ -43,7 +42,7 @@ func (v *Def) GetDataForJson() interface{} {
 	}
 	result := map[string]interface{}{}
 	result["tp"] = v.tp.GetDataForJson()
-	result["isSimple"] = v.isSimple
+	result["isOptional"] = v.isOptional
 	if v.enum != nil {
 		result["enum"] = v.enum.GetDataForJson()
 	}
@@ -70,7 +69,10 @@ func (v *Def) GetDataForJson() interface{} {
 		result["elem"] = (*(v.elem)).GetDataForJson()
 	}
 	if v.arrayElem != nil {
-		result["elem"] = (*(v.arrayElem)).GetDataForJson()
+		result["arrayElem"] = (*(v.arrayElem)).GetDataForJson()
+	}
+	if v.dflt != nil {
+		result["dflt"] = v.dflt
 	}
 	return result
 }

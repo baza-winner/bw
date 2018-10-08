@@ -4,9 +4,9 @@ package defvalid
 
 import "strconv"
 
-const _valueErrorType_name = "valueError_below_valueErrorIsNotOfTypevalueErrorHasUnexpectedKeysvalueErrorHasNoKeyvalueErrorHasNonSupportedValuevalueErrorValuesCannotBeCombinedvalueError_above_"
+const _valueErrorType_name = "valueError_below_valueErrorIsNotOfTypevalueErrorHasUnexpectedKeysvalueErrorHasNoKeyvalueErrorHasNonSupportedValuevalueErrorValuesCannotBeCombinedvalueErrorConflictingKeysvalueErrorArrayOfvalueErrorOutOfRangevalueError_above_"
 
-var _valueErrorType_index = [...]uint8{0, 17, 38, 65, 83, 113, 145, 162}
+var _valueErrorType_index = [...]uint8{0, 17, 38, 65, 83, 113, 145, 170, 187, 207, 224}
 
 func (i valueErrorType) String() string {
 	if i >= valueErrorType(len(_valueErrorType_index)-1) {

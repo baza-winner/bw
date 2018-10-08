@@ -7,78 +7,10 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/jimlawless/whereami"
+	// "log"
+	"reflect"
 	"sort"
 )
-
-// type defErrorType uint16
-
-// const (
-// 	defError_below_ defErrorType = iota
-// 	defErrorHasUnexpectedValue
-// 	// defErrorIsNotOfType
-// 	// defErrorHasUnexpectedKeys
-// 	// defErrorHasNoKey
-// 	// defErrorHasNonSupportedValue
-// 	// defErrorValuesCannotBeCombined
-// 	defError_above_
-// )
-
-// //go:generate stringer -type=defErrorType
-
-// type defError struct {
-// 	val       value
-// 	errorType defErrorType
-// 	fmtString string
-// 	fmtArgs      []interface{}
-// 	where     string
-// }
-
-// func defErrorMake(v value, errorType defErrorType, args ...interface{}) (result defError) {
-// 	if !(defError_below_ < errorType && errorType < defError_above_) {
-// 		bwerror.Panic(v.String()+" errorType == %s", errorType)
-// 	}
-// 	var fmtString string
-// 	fmtString, fmtArgs = defErrorValidators[errorType](v, args...)
-// 	result = defError{v, errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
-// 	return
-// }
-
-// func (err defError) Error() (result string) {
-// 	result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.args...))
-// 	return
-// }
-
-// func (v defError) WhereError() (result string) {
-// 	result = v.where
-// 	return
-// }
-
-// type defErrorValidator func(v value, args ...interface{}) (string, []interface{})
-
-// var defErrorValidators = map[defErrorType]defErrorValidator{
-// 	defErrorHasUnexpectedValue: _defErrorHasUnexpectedValue,
-// 	// defErrorHasUnexpectedKeys:      _defErrorHasUnexpectedKeys,
-// 	// defErrorHasNoKey:               _defErrorHasNoKey,
-// 	// defErrorHasNonSupportedValue:   _defErrorHasNonSupportedValue,
-// 	// defErrorValuesCannotBeCombined: _defErrorValuesCannotBeCombined,
-// }
-
-// func defErrorValidatorsCheck() {
-// 	defErrorType := defError_below_ + 1
-// 	for defErrorType < defError_above_ {
-// 		if _, ok := defErrorValidators[defErrorType]; !ok {
-// 			bwerror.Panic("not defined <ansiOutline>defErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", defErrorType)
-// 		}
-// 		defErrorType += 1
-// 	}
-// }
-
-// func _defErrorHasUnexpectedValue(v value, args ...interface{}) (string, []interface{}) {
-// 	if args != nil {
-// 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
-// 	}
-// 	return `has unexpected value`, nil
-// }
 
 //=============================================================================
 
@@ -91,50 +23,38 @@ const (
 	valueErrorHasNoKey
 	valueErrorHasNonSupportedValue
 	valueErrorValuesCannotBeCombined
+	valueErrorConflictingKeys
+	valueErrorArrayOf
+	valueErrorOutOfRange
 	valueError_above_
 )
 
 //go:generate stringer -type=valueErrorType
 
 type valueError struct {
-	// val       value
 	errorType valueErrorType
 	fmtString string
 	fmtArgs   []interface{}
-	where     string
+	Where     string
 }
 
 func valueErrorMake(v value, errorType valueErrorType, args ...interface{}) (result valueError) {
 	if !(valueError_below_ < errorType && errorType < valueError_above_) {
 		bwerror.Panic(v.String()+" errorType == %s", errorType)
 	}
-	// var fmtString string
 	fmtString, fmtArgs := valueErrorValidators[errorType](v, args...)
-	// result = valueError{v, errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
 	result = valueError{errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
 	return
 }
 
 func (err valueError) Error() (result string) {
-	// result = ansi.Ansi("Err", "ERR: "+fmt.Sprintf(err.val.String()+` `+err.fmtString, err.fmtArgs...))
 	result = bwerror.Error(err.fmtString, err.fmtArgs...).Error()
-	return
-}
-
-func (v valueError) WhereError() (result string) {
-	result = v.where
 	return
 }
 
 type valueErrorValidator func(v value, args ...interface{}) (string, []interface{})
 
-var valueErrorValidators = map[valueErrorType]valueErrorValidator{
-	valueErrorIsNotOfType:            _valueErrorIsNotOfType,
-	valueErrorHasUnexpectedKeys:      _valueErrorHasUnexpectedKeys,
-	valueErrorHasNoKey:               _valueErrorHasNoKey,
-	valueErrorHasNonSupportedValue:   _valueErrorHasNonSupportedValue,
-	valueErrorValuesCannotBeCombined: _valueErrorValuesCannotBeCombined,
-}
+var valueErrorValidators map[valueErrorType]valueErrorValidator
 
 func valueErrorValidatorsCheck() {
 	valueErrorType := valueError_below_ + 1
@@ -155,13 +75,16 @@ func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}
 		if _isOfType(i, "string") {
 			expectedTypes.Add(_mustBeString(i))
 		} else if _isOfType(i, "[]string") {
-			ss := _mustBeSliceOfStrings(i)
-			expectedTypes.Add(ss...)
+			expectedTypes.Add(_mustBeSliceOfStrings(i)...)
 		} else if _isOfType(i, "bwset.Strings") {
-			ss := _mustBeSetOfStrings(i).ToSlice()
-			expectedTypes.Add(ss...)
+			expectedTypes.Add(_mustBeBwsetStrings(i).ToSlice()...)
+		} else if _isOfType(i, "deftype.Set") {
+			expectedTypes.Add(_mustBeDeftypeSet(i).ToSliceOfStrings()...)
+		} else {
+			bwerror.Panic("args: %#v", args)
 		}
 	}
+	// log.Printf("args: %#v", args)
 	var result string
 	for _, s := range expectedTypes.ToSlice() {
 		if len(result) > 0 {
@@ -212,4 +135,59 @@ func _valueErrorValuesCannotBeCombined(v value, args ...interface{}) (string, []
 		bwerror.Panic("expects at least 2 arg instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	return v.String() + ` following values can not be combined: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(args)}
+}
+
+func _valueErrorConflictingKeys(v value, args ...interface{}) (string, []interface{}) {
+	if args == nil || len(args) != 1 {
+		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	var ck map[string]interface{}
+	var ok bool
+	if ck, ok = args[0].(map[string]interface{}); !ok {
+		bwerror.Panic("expects map[string]interface{} instead of <ansiSecondaryLiteral>%#v", args[0])
+	}
+	return v.String() + ` has conflicting keys: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(ck)}
+}
+
+func _valueErrorArrayOf(v value, args ...interface{}) (string, []interface{}) {
+	if args != nil {
+		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	return v.String() + ` must be followed by some type`, nil
+}
+
+func _valueErrorOutOfRange(v value, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
+	if args == nil || len(args) != 2 {
+		bwerror.Panic("expects exact 2 arg instead of <ansiSecondaryLiteral>%#v", args)
+	}
+	minFmt, min := getFmtStringArg(args[0])
+	maxFmt, max := getFmtStringArg(args[1])
+
+	if len(minFmt) > 0 {
+		if len(maxFmt) > 0 {
+			fmtString = v.String() + " is out of <ansiOutline>range <ansiSecondaryLiteral>[" + minFmt + ", " + maxFmt + "]"
+			fmtArgs = []interface{}{min, max}
+		} else {
+			fmtString = v.String() + " is less then <ansiOutline>minLimit <ansiPrimaryLiteral>" + minFmt
+			fmtArgs = []interface{}{min}
+		}
+	} else if len(maxFmt) > 0 {
+		fmtString = v.String() + " is greater then <ansiOutline>maxLimit <ansiPrimaryLiteral>" + maxFmt
+		fmtArgs = []interface{}{max}
+	}
+	return
+}
+
+func getFmtStringArg(limit interface{}) (fmtString string, fmtArg interface{}) {
+	limitValue := reflect.ValueOf(limit).Elem()
+	zeroValue := reflect.Value{}
+	if limitValue != zeroValue {
+		fmtArg = limitValue.Interface()
+		if _isOfType(fmtArg, "int64", "float64") {
+			fmtString = "%v"
+		} else {
+			bwerror.Panic("limit %#v is expected to be int64 or float64", fmtArg)
+		}
+	}
+	return
 }
