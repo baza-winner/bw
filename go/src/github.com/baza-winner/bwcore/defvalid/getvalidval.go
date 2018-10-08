@@ -118,7 +118,6 @@ func _Int(val value, def Def) (result interface{}, err error) {
 			isOutOfRange = !(n <= *(def.maxInt))
 		}
 		if isOutOfRange {
-			// log.Printf("def.minInt: %#v, def.maxInt: %#v", def.minInt, def.maxInt)
 			err = valueErrorMake(val, valueErrorOutOfRange, def.minInt, def.maxInt)
 		}
 	}
@@ -210,7 +209,6 @@ func _ArrayOf(val value, def Def) (result interface{}, err error) {
 }
 
 func _ArrayHelper(val value, elemDef Def, optSkipArrayOf ...bool) (result interface{}, err error) {
-	// newSlice := []interface{}{}
 	newSliceValue := reflect.MakeSlice(reflect.TypeOf(val.value), 0, reflect.ValueOf(val.value).Len())
 	err = val.forEachSlice(func(i int, v interface{}) (err error) {
 		var elemVal value

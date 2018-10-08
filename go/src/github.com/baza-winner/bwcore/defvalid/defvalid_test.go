@@ -425,18 +425,6 @@ func TestValidateVal(t *testing.T) {
 			},
 		},
 
-		"val: nil, def: map": {
-			In: []interface{}{
-				"val",
-				nil,
-				MustCompileDef(defparse.MustParse("{ type: 'map' }")),
-			},
-			Out: []interface{}{
-				map[string]interface{}{},
-				nil,
-			},
-		},
-
 		"val: valid, def: map": {
 			In: []interface{}{
 				"val",
