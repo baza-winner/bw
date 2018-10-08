@@ -113,6 +113,16 @@ func (v value) getElem(elemIndex int, opts ...interface{}) (result value, err er
 	return
 }
 
+func (v value) setKey(keyName string, keyValue interface{}) (err error) {
+	if !_isOfType(v.value, "map[string]") {
+		err = valueErrorMake(v, valueErrorIsNotOfType, "map[string]")
+	} else {
+		mv := reflect.ValueOf(v.value)
+		mv.SetMapIndex(reflect.ValueOf(keyName), reflect.ValueOf(keyValue))
+	}
+	return
+}
+
 func (v value) getKey(keyName string, opts ...interface{}) (result value, err error) {
 	defaultValue, ofType := getDefaultValueAndOfTypeFromOpts(opts)
 	if !_isOfType(v.value, "map[string]") {
@@ -130,26 +140,6 @@ func (v value) getKey(keyName string, opts ...interface{}) (result value, err er
 			result.value = *defaultValue
 		}
 	}
-	// if v.value == nil {
-	// 	err = valueErrorMake(v, valueErrorIsNotOfType, "map[string]")
-	// } else {
-	// 	vType := reflect.TypeOf(v.value)
-	// 	if vType.Kind() != reflect.Map || vType.Key().Kind() != reflect.String {
-	// 		err = valueErrorMake(v, valueErrorIsNotOfType, "map[string]")
-	// 	} else {
-	// 		mv := reflect.ValueOf(v.value)
-	// 		result.what = v.what + "." + keyName
-	// 		elem := mv.MapIndex(reflect.ValueOf(keyName))
-	// 		zeroValue := reflect.Value{}
-	// 		if elem != zeroValue {
-	// 			err = checkElemIsOfType(&result, elem, ofType)
-	// 		} else if defaultValue == nil {
-	// 			err = valueErrorMake(v, valueErrorHasNoKey, keyName)
-	// 		} else {
-	// 			result.value = *defaultValue
-	// 		}
-	// 	}
-	// }
 	return
 }
 

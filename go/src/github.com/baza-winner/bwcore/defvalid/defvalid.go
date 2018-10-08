@@ -43,20 +43,17 @@ func MustCompileDef(def interface{}) (result Def) {
 
 // ==================================================================================
 
-func ValidateVal(what string, val, def interface{}) (result interface{}, err error) {
+func ValidateVal(what string, val interface{}, def Def) (result interface{}, err error) {
 	return getValidVal(
 		value{
 			value: val,
 			what:  "<ansiOutline>" + what + "<ansiCmd>",
 		},
-		value{
-			value: def,
-			what:  "<ansiOutline>" + what + "::def<ansiCmd>",
-		},
+		def,
 	)
 }
 
-func MustValidVal(what string, val, def interface{}) (result interface{}) {
+func MustValidVal(what string, val interface{}, def Def) (result interface{}) {
 	var err error
 	if result, err = ValidateVal(what, val, def); err != nil {
 		bwerror.PanicErr(err)

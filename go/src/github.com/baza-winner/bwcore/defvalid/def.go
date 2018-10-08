@@ -12,16 +12,18 @@ import (
 )
 
 type Def struct {
-	tp        deftype.Set
-	enum      bwset.Strings
-	minInt    *int64
-	maxInt    *int64
-	minNumber *float64
-	maxNumber *float64
-	keys      map[string]Def
-	elem      *Def
-	arrayElem *Def
-	dflt      interface{}
+	tp         deftype.Set
+	isOptional bool
+	isSimple   bool
+	enum       bwset.Strings
+	minInt     *int64
+	maxInt     *int64
+	minNumber  *float64
+	maxNumber  *float64
+	keys       map[string]Def
+	elem       *Def
+	arrayElem  *Def
+	dflt       interface{}
 }
 
 func mustDef(v interface{}) (result *Def) {
@@ -41,6 +43,7 @@ func (v *Def) GetDataForJson() interface{} {
 	}
 	result := map[string]interface{}{}
 	result["tp"] = v.tp.GetDataForJson()
+	result["isSimple"] = v.isSimple
 	if v.enum != nil {
 		result["enum"] = v.enum.GetDataForJson()
 	}

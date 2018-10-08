@@ -14,42 +14,40 @@ func compileDef(def value) (result *Def, err error) {
 		return nil, valueErrorMake(def, valueErrorHasNonSupportedValue)
 	}
 	var defType value
-	var isSimpleDef bool
-	if isSimpleDef = _isOfType(def.value, "string", "[]string"); isSimpleDef {
+	var isSimple bool
+	validDefKeys := bwset.Strings{}
+	if isSimple = _isOfType(def.value, "string", "[]string"); isSimple {
 		defType = def
 	} else if !_isOfType(def.value, "map[string]") {
 		return nil, valueErrorMake(def, valueErrorIsNotOfType, "string", "[]string", "map[string]")
 	} else {
-		if defType, err = def.getKey("type", []string{"string", "[]string"}); err != nil {
+		if defType, err = getDefKey(def, "type", []string{"string", "[]string"}, &validDefKeys); err != nil {
 			return nil, err
 		}
 	}
 
 	var tp deftype.Set
-	if tp, err = getDeftype(defType, isSimpleDef); err != nil {
+	if tp, err = getDeftype(defType, isSimple); err != nil {
 		return nil, err
 	}
 
-	result = &Def{tp: tp}
-	if !isSimpleDef {
-		validDefKeys := bwset.StringsFromArgs("type")
+	result = &Def{tp: tp, isSimple: isSimple}
+	if !isSimple {
 		if tp.Has(deftype.String) {
 			var enumVal value
-			if enumVal, err = def.getKey("enum", "[]string", nil); err != nil {
+			if enumVal, err = getDefKey(def, "enum", "[]string", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if enumVal.value != nil {
-				validDefKeys.Add("enum")
 				result.enum = bwset.StringsFromSlice(_mustBeSliceOfStrings(enumVal.value))
 			}
 		}
 		if tp.Has(deftype.Map) {
 			var keysVal value
-			if keysVal, err = def.getKey("keys", "map[string]", nil); err != nil {
+			if keysVal, err = getDefKey(def, "keys", "map[string]", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if keysVal.value != nil {
-				validDefKeys.Add("keys")
 				result.keys = map[string]Def{}
 				if err = keysVal.forEachMapString(func(k string, v interface{}) (err error) {
 					var keyDef *Def
@@ -64,11 +62,10 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Array) {
 			var arrayElemVal value
-			if arrayElemVal, err = def.getKey("arrayElem", "interface{}", nil); err != nil {
+			if arrayElemVal, err = getDefKey(def, "arrayElem", "interface{}", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if arrayElemVal.value != nil {
-				validDefKeys.Add("arrayElem")
 				if result.arrayElem, err = compileDef(arrayElemVal); err != nil {
 					return nil, err
 				}
@@ -76,11 +73,10 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Map) || tp.Has(deftype.Array) && result.arrayElem == nil {
 			var elemVal value
-			if elemVal, err = def.getKey("elem", "interface{}", nil); err != nil {
+			if elemVal, err = getDefKey(def, "elem", "interface{}", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if elemVal.value != nil {
-				validDefKeys.Add("elem")
 				if result.elem, err = compileDef(elemVal); err != nil {
 					return nil, err
 				}
@@ -88,19 +84,17 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Int) {
 			var minIntVal value
-			if minIntVal, err = def.getKey("minInt", "int64", nil); err != nil {
+			if minIntVal, err = getDefKey(def, "minInt", "int64", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if minIntVal.value != nil {
-				validDefKeys.Add("minInt")
 				result.minInt = ptrToInt64(_mustBeInt64(minIntVal.value))
 			}
 			var maxIntVal value
-			if maxIntVal, err = def.getKey("maxInt", "int64", nil); err != nil {
+			if maxIntVal, err = getDefKey(def, "maxInt", "int64", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if maxIntVal.value != nil {
-				validDefKeys.Add("maxInt")
 				result.maxInt = ptrToInt64(_mustBeInt64(maxIntVal.value))
 			}
 			if result.minInt != nil && result.maxInt != nil && *(result.minInt) > *(result.maxInt) {
@@ -109,43 +103,46 @@ func compileDef(def value) (result *Def, err error) {
 		}
 		if tp.Has(deftype.Number) {
 			var minNumberVal value
-			if minNumberVal, err = def.getKey("minNumber", "float64", nil); err != nil {
+			if minNumberVal, err = getDefKey(def, "minNumber", "float64", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if minNumberVal.value != nil {
-				validDefKeys.Add("minNumber")
 				result.minNumber = ptrToFloat64(_mustBeFloat64(minNumberVal.value))
 			}
 			var maxNumberVal value
-			if maxNumberVal, err = def.getKey("maxNumber", "float64", nil); err != nil {
+			if maxNumberVal, err = getDefKey(def, "maxNumber", "float64", &validDefKeys); err != nil {
 				return nil, err
 			}
 			if maxNumberVal.value != nil {
-				validDefKeys.Add("maxNumber")
 				result.maxNumber = ptrToFloat64(_mustBeFloat64(maxNumberVal.value))
 			}
 			if result.minNumber != nil && result.maxNumber != nil && *(result.minNumber) > *(result.maxNumber) {
 				return nil, valueErrorMake(def, valueErrorValuesCannotBeCombined, *(result.minNumber), *(result.maxNumber))
 			}
 		}
+		var dfltVal value
+		if dfltVal, err = getDefKey(def, "default", "interface{}", &validDefKeys); err != nil {
+			return nil, err
+		}
+		if dfltVal.value != nil {
+			if result.dflt, err = getValidVal(dfltVal, *result); err != nil {
+				return nil, err
+			}
+		}
 		if unexpectedKeys := bwmap.GetUnexpectedKeys(def.value, validDefKeys); unexpectedKeys != nil {
 			return nil, valueErrorMake(def, valueErrorHasUnexpectedKeys, unexpectedKeys)
 		}
-		// var dfltVal value
-		// if dfltVal, err = def.getKey("dflt", "interface{}", nil); err != nil {
-		// 	return nil, err
-		// }
-		// if dfltVal.value != nil {
-		// 	if result.dflt, err = getValidVal(dfltVal, result); err != nil {
-		// 		return nil, err
-		// 	}
-		// }
-
 	}
 	return
 }
 
-func getDeftype(defType value, isSimpleDef bool) (result deftype.Set, err error) {
+func getDefKey(def value, keyName string, ofType interface{}, validDefKeys *bwset.Strings) (keyValue value, err error) {
+	keyValue, err = def.getKey(keyName, ofType, nil)
+	validDefKeys.Add(keyName)
+	return
+}
+
+func getDeftype(defType value, isSimple bool) (result deftype.Set, err error) {
 	var isString bool
 	var ss []string
 	if _isOfType(defType.value, "string") {

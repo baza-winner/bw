@@ -32,7 +32,7 @@ func TestCompileDef(t *testing.T) {
 		"def: simple valid": {
 			In: []interface{}{defparse.MustParse(`"bool"`)},
 			Out: []interface{}{
-				&Def{tp: deftype.FromArgs(deftype.Bool)},
+				&Def{tp: deftype.FromArgs(deftype.Bool), isSimple: true},
 				nil,
 			},
 		},
@@ -56,7 +56,7 @@ func TestCompileDef(t *testing.T) {
 				&Def{
 					tp: deftype.FromArgs(deftype.Map),
 					keys: map[string]Def{
-						"keyBool": Def{tp: deftype.FromArgs(deftype.Bool)},
+						"keyBool": Def{tp: deftype.FromArgs(deftype.Bool), isSimple: true},
 					}},
 				nil,
 			},
@@ -79,7 +79,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				&Def{
 					tp:        deftype.FromArgs(deftype.Array),
-					arrayElem: &Def{tp: deftype.FromArgs(deftype.Int)},
+					arrayElem: &Def{tp: deftype.FromArgs(deftype.Int), isSimple: true},
 				},
 				nil,
 			},
@@ -133,25 +133,26 @@ func TestCompileDef(t *testing.T) {
 				nil,
 			},
 		},
-		// "def: default": {
-		// 	In: []interface{}{defparse.MustParse(`{ type: "bool", default: "string" }`)},
-		// 	Out: []interface{}{
-		// 		(*Def)(nil),
-		// 		// &Def{
-		// 		// 	tp:        deftype.FromArgs(deftype.Number),
-		// 		// 	minNumber: ptrToFloat64(float64(-6)),
-		// 		// 	maxNumber: ptrToFloat64(float64(10)),
-		// 		// },
-		// 		// nil,
+		"def: default": {
+			In: []interface{}{defparse.MustParse(`{ type: "bool", default: true }`)},
+			Out: []interface{}{
+				// (*Def)(nil),
+				&Def{
+					tp:   deftype.FromArgs(deftype.Bool),
+					dflt: true,
+					// minNumber: ptrToFloat64(float64(-6)),
+					// maxNumber: ptrToFloat64(float64(10)),
+				},
+				nil,
 
-		// 		bwerror.Error(
-		// 			"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
-		// 				bwjson.PrettyJson(test.In[0]) +
-		// 				"<ansi>) following values can not be combined: <ansiSecondaryLiteral>" +
-		// 				bwjson.PrettyJson(defparse.MustParse("[ 6, -10 ]")),
-		// 		),
-		// 	},
-		// },
+				// bwerror.Error(
+				// 	"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>" +
+				// 		bwjson.PrettyJson(test.In[0]) +
+				// 		"<ansi>) following values can not be combined: <ansiSecondaryLiteral>" +
+				// 		bwjson.PrettyJson(defparse.MustParse("[ 6, -10 ]")),
+				// ),
+			},
+		},
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
