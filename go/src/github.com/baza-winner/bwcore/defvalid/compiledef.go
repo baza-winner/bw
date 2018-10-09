@@ -130,7 +130,25 @@ func compileDef(def value) (result *Def, err error) {
 			return nil, err
 		}
 		if dfltVal.value != nil {
-			if result.dflt, err = getValidVal(dfltVal, *result); err != nil {
+			dfltDef := *result
+			if result.tp.Has(deftype.ArrayOf) {
+				dfltDef = Def{
+					tp: deftype.FromArgs(deftype.Array),
+					arrayElem: &Def{
+						tp:         result.tp.Copy(),
+						isOptional: false,
+						enum:       result.enum,
+						minInt:     result.minInt,
+						maxInt:     result.maxInt,
+						minNumber:  result.minNumber,
+						maxNumber:  result.maxNumber,
+						keys:       result.keys,
+						elem:       result.elem,
+					},
+				}
+				dfltDef.arrayElem.tp.Del(deftype.ArrayOf)
+			}
+			if result.dflt, err = getValidVal(dfltVal, dfltDef); err != nil {
 				return nil, err
 			}
 		}

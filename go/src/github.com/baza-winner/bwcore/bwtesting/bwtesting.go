@@ -3,13 +3,15 @@ package bwtesting
 
 import (
 	"fmt"
-	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwjson"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwjson"
+	"github.com/kylelemons/godebug/pretty"
 	// "log"
 )
 
@@ -78,7 +80,7 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 					test.In[i],
 				)
 			}
-			if i == numIn - 1 && fType.IsVariadic() {
+			if i == numIn-1 && fType.IsVariadic() {
 				for j := 0; j < inItem.Len(); j++ {
 					in = append(in, inItem.Index(j))
 				}
@@ -137,6 +139,7 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 							"<ansiErr>tstErr(q)<ansi>: %q\n" +
 							"<ansiOK>etaErr(q)<ansi>: %q"
 						fmtArgs := []interface{}{tstErr, etaErr, tstErr, etaErr}
+
 						if jsonable, ok := tstErr.(bwjson.Jsonable); ok {
 							fmtString += "\n" +
 								"<ansiErr>tstErr(json)<ansi>: %s"
@@ -160,29 +163,34 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 						t.Errorf(ansi.Ansi("", fmtString), fmtArgs...)
 					}
 				}
-			} else if !reflect.DeepEqual(out[i].Interface(), outEta[i]) {
+			} else {
 				tstResult := out[i].Interface()
 				etaResult := outEta[i]
-				fmtString := testTitle + "    <ansiErr>=><ansi> %#v\n, <ansiOK>want<ansi> %#v"
-				fmtArgs := []interface{}{tstResult, etaResult}
+				if cmp := pretty.Compare(tstResult, etaResult); len(cmp) > 0 {
 
-				fmtString += "\n" +
-					"<ansiErr>tst(json)<ansi>: %s"
-				if jsonable, ok := tstResult.(bwjson.Jsonable); ok {
-					fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-				} else {
-					fmtArgs = append(fmtArgs, bwjson.PrettyJson(tstResult))
+					fmtString := testTitle
+					fmtString += cmp
+					fmtString += "\n <ansiErr>got<ansi>: %#v\n<ansiOK>want<ansi>: %#v\n"
+					fmtArgs := []interface{}{tstResult, etaResult}
+
+					fmtString += "\n" +
+						"<ansiErr>tst(json)<ansi>: %s"
+					if jsonable, ok := tstResult.(bwjson.Jsonable); ok {
+						fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+					} else {
+						fmtArgs = append(fmtArgs, bwjson.PrettyJson(tstResult))
+					}
+
+					fmtString += "\n" +
+						"<ansiOK>eta(json)<ansi>: %s"
+					if jsonable, ok := etaResult.(bwjson.Jsonable); ok {
+						fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+					} else {
+						fmtArgs = append(fmtArgs, bwjson.PrettyJson(etaResult))
+					}
+
+					t.Errorf(ansi.Ansi("", fmtString), fmtArgs...)
 				}
-
-				fmtString += "\n" +
-					"<ansiOK>eta(json)<ansi>: %s"
-				if jsonable, ok := etaResult.(bwjson.Jsonable); ok {
-					fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-				} else {
-					fmtArgs = append(fmtArgs, bwjson.PrettyJson(etaResult))
-				}
-
-				t.Errorf(ansi.Ansi("", fmtString), fmtArgs...)
 			}
 		}
 	}
@@ -190,15 +198,19 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 
 func getPluralWord(count int, word string, word1 string, word2_4 string, _word5more ...string) (result string) {
 	var word5more string
-	if _word5more != nil { word5more = _word5more[0] }
-	if len(word5more) == 0 { word5more = word2_4 }
+	if _word5more != nil {
+		word5more = _word5more[0]
+	}
+	if len(word5more) == 0 {
+		word5more = word2_4
+	}
 	result = word5more
 	decimal := count / 10 % 10
 	if decimal != 1 {
 		unit := count % 10
 		if unit == 1 {
 			result = word1
-		} else if 2 <= unit && unit <= 4  {
+		} else if 2 <= unit && unit <= 4 {
 			result = word2_4
 		}
 	}

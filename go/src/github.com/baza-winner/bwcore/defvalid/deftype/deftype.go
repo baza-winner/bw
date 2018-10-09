@@ -1,8 +1,9 @@
 package deftype
 
 import (
-	"github.com/baza-winner/bwcore/bwjson"
 	"sort"
+
+	"github.com/baza-winner/bwcore/bwjson"
 )
 
 type Item uint16
@@ -33,6 +34,10 @@ func FromSlice(kk []Item) Set {
 	return result
 }
 
+func (v Set) Copy() Set {
+	return FromSlice(v.ToSlice())
+}
+
 func (v Set) Has(k Item) (ok bool) {
 	_, ok = v[k]
 	return
@@ -41,6 +46,12 @@ func (v Set) Has(k Item) (ok bool) {
 func (v Set) Add(kk ...Item) {
 	for _, k := range kk {
 		v[k] = struct{}{}
+	}
+}
+
+func (v Set) Del(kk ...Item) {
+	for _, k := range kk {
+		delete(v, k)
 	}
 }
 
@@ -56,14 +67,18 @@ func (v Set) GetDataForJson() interface{} {
 
 func (v Set) ToSlice() []Item {
 	s := slice{}
-	for k, _ := range v { s = append(s, k) }
+	for k, _ := range v {
+		s = append(s, k)
+	}
 	sort.Sort(s)
 	return s
 }
 
 func (v Set) ToSliceOfStrings() (result []string) {
 	result = []string{}
-	for k, _ := range v { result = append(result, k.String()) }
+	for k, _ := range v {
+		result = append(result, k.String())
+	}
 	sort.Strings(result)
 	return
 }
@@ -75,4 +90,3 @@ type slice []Item
 func (v slice) Len() int           { return len(v) }
 func (v slice) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
 func (v slice) Less(i, j int) bool { return v[i] < v[j] }
-

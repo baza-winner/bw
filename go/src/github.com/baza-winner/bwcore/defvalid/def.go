@@ -25,7 +25,38 @@ type Def struct {
 	dflt       interface{}
 }
 
-func mustDef(v interface{}) (result *Def) {
+// func (v *Def) Copy() (result *Def) {
+// 	return &Def{
+// 		tp: v.tp.Copy(),
+// 		isOptional:v.isOptional,
+// 		enum:v.enum.Copy(),
+// 		minInt: copyPtrToInt64(v.minInt),
+// 		maxInt: copyPtrToInt64(v.maxInt,
+// 		minNumber: copyPtrToFloat64(v.minNumber),
+// 		maxNumber: copyPtrToFloat64(v.maxNumber),
+// 		elem:
+// 	}
+// }
+
+// func copyPtrToInt64(p *int64) *int64 {
+// 	if p == nil {
+// 		return nil
+// 	} else {
+// 		i := *p
+// 		return &i
+// 	}
+// }
+
+// func copyPtrToFloat64(p *float64) *float64 {
+// 	if p == nil {
+// 		return nil
+// 	} else {
+// 		i := *p
+// 		return &i
+// 	}
+// }
+
+func MustDef(v interface{}) (result *Def) {
 	if v == nil {
 		return nil
 	}

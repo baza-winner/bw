@@ -204,6 +204,32 @@ func TestCompileDef(t *testing.T) {
 				},
 			},
 		},
+		"simple.def: arrayOf with non Array default": {
+			In: []interface{}{defparse.MustParse(`{
+				type ["arrayOf", "int"]
+				default 3
+			}`)},
+			Out: []interface{}{
+				(*Def)(nil),
+				bwerror.Error(
+					"<ansiOutline>def<ansiCmd>.default<ansi> (<ansiSecondaryLiteral>3<ansi>) is not of type <ansiPrimaryLiteral>Array",
+				),
+			},
+		},
+		"simple.def: arrayOf with valid default": {
+			In: []interface{}{defparse.MustParse(`{
+				type ["arrayOf", "int"]
+				default [3]
+			}`)},
+			Out: []interface{}{
+				&Def{
+					tp:         deftype.FromArgs(deftype.ArrayOf, deftype.Int),
+					isOptional: true,
+					dflt:       []interface{}{3},
+				},
+				nil,
+			},
+		},
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
@@ -600,42 +626,74 @@ func TestValidateVal(t *testing.T) {
 				}`)),
 			},
 			Out: []interface{}{
-				[]interface{}{1, 2},
+				[]int{1, 2},
 				nil,
 			},
 		},
-
-		// "ExecCmd opt": {
-		// 	what: "ExecCmd.opt",
-		// 	val:  nil,
-		// 	def: defparse.MustParse(`{
-		//      type: 'map',
-		//      keys: {
-		//        v: {
-		//          type: 'enum'
-		//          enum: [ qw/all err ok none/ ]
-		//          default: 'none'
-		//        }
-		//        s: {
-		//          type: 'enum'
-		//          enum: [ qw/none stderr stdout all/ ]
-		//          default: 'all'
-		//        }
-		//        exitOnError: {
-		//          type: 'bool'
-		//          default: false
-		//        }
-		//      }
-		//    }`),
-		// 	result: defparse.MustParse(`{
-		// 		v: 'none'
-		// 		s: 'all'
-		// 		exitOnError: false
-		// 	}`),
-		// },
+		"val: array, def: arrayOf,int.default": {
+			In: []interface{}{
+				"val",
+				[]int{1, 2},
+				MustCompileDef(defparse.MustParse(`{
+					type [ 'arrayOf' 'int' ]
+					default [3]
+				}`)),
+			},
+			Out: []interface{}{
+				[]int{1, 2},
+				nil,
+			},
+		},
+		"val: nil, def: arrayOf,int.default": {
+			In: []interface{}{
+				"val",
+				nil,
+				MustCompileDef(defparse.MustParse(`{
+					type [ 'arrayOf' 'int' ]
+					default [3]
+				}`)),
+			},
+			Out: []interface{}{
+				[]interface{}{3},
+				nil,
+			},
+		},
+		"ExecCmd opt": {
+			In: []interface{}{
+				"ExecCmd.opt",
+				nil,
+				MustCompileDef(defparse.MustParse(`{
+		     type: 'map',
+		     keys: {
+		       v: {
+		         type: 'string'
+		         enum: [ qw/all err ok none/ ]
+		         default: 'none'
+		       }
+		       s: {
+		         type: 'string'
+		         enum: [ qw/none stderr stdout all/ ]
+		         default: 'all'
+		       }
+		       exitOnError: {
+		         type: 'bool'
+		         default: false
+		       }
+		     }
+				}`)),
+			},
+			Out: []interface{}{
+				defparse.MustParse(`{
+					v: 'none'
+					s: 'all'
+					exitOnError: false
+				}`),
+				nil,
+			},
+		},
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	bwmap.CropMap(testsToRun, "val: array, def: arrayOf,int")
+	// bwmap.CropMap(testsToRun, "val: array, def: arrayOf,int.default")
 	bwtesting.BwRunTests(t, testsToRun, ValidateVal)
 }
