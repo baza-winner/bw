@@ -215,8 +215,7 @@ func _ArrayHelper(val value, elemDef Def, optSkipArrayOf ...bool) (result interf
 		if elemVal, err = val.getElem(i); err == nil {
 			var elemValIntf interface{}
 			if elemValIntf, err = getValidVal(elemVal, elemDef, optSkipArrayOf...); err == nil && elemValIntf != nil {
-				reflect.Append(newSliceValue, reflect.ValueOf(elemValIntf))
-				// newSlice = append(newSlice, elemValIntf)
+				newSliceValue = reflect.Append(newSliceValue, reflect.ValueOf(elemValIntf))
 			}
 		}
 		// log.Printf("i: %d, v: %#v, err: %#v", i, v, err)

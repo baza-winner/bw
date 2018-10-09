@@ -560,6 +560,24 @@ func TestValidateVal(t *testing.T) {
 			},
 		},
 
+		"val: valid, def: array.elem": {
+			In: []interface{}{
+				"val",
+				defparse.MustParse(`[1 2 3]`),
+				// []int{1, 2, 3},
+				MustCompileDef(defparse.MustParse(`{
+					type 'array'
+					arrayElem 'int'
+				}`)),
+			},
+			Out: []interface{}{
+				func(test bwtesting.TestCaseStruct) interface{} {
+					return test.In[1]
+				},
+				nil,
+			},
+		},
+
 		// "ExecCmd opt": {
 		// 	what: "ExecCmd.opt",
 		// 	val:  nil,

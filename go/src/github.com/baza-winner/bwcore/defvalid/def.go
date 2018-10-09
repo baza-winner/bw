@@ -3,11 +3,11 @@ package defvalid
 import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
+
 	// "github.com/baza-winner/bwcore/bwjson"
 	// "github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
 	// "github.com/baza-winner/bwcore/defparse"
-	// "log"
 	// "reflect"
 )
 
