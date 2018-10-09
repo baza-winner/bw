@@ -140,16 +140,17 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 							"<ansiOK>etaErr(q)<ansi>: %q"
 						fmtArgs := []interface{}{tstErr, etaErr, tstErr, etaErr}
 
-						// if jsonable, ok := tstErr.(bwjson.Jsonable); ok {
-						// 	fmtString += "\n" +
-						// 		"<ansiErr>tstErr(json)<ansi>: %s"
-						// 	fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-						// }
-						// if jsonable, ok := etaErr.(bwjson.Jsonable); ok {
-						// 	fmtString += "\n" +
-						// 		"<ansiOK>etaErr(json)<ansi>: %s"
-						// 	fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-						// }
+						if jsonable, ok := tstErr.(bwjson.Jsonable); ok {
+							fmtString += "\n" +
+								"<ansiErr>tstErr(json)<ansi>: %s"
+							fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+						}
+						if jsonable, ok := etaErr.(bwjson.Jsonable); ok {
+							fmtString += "\n" +
+								"<ansiOK>etaErr(json)<ansi>: %s"
+							fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+						}
+
 						if tstErr != nil {
 							tstErrType := reflect.TypeOf(tstErr)
 							if tstErrType.Kind() == reflect.Struct {
@@ -173,21 +174,21 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 					fmtString += "\n <ansiErr>got<ansi>: %#v\n<ansiOK>want<ansi>: %#v\n"
 					fmtArgs := []interface{}{tstResult, etaResult}
 
-					fmtString += "\n" +
-						"<ansiErr>tst(json)<ansi>: %s"
-					if jsonable, ok := tstResult.(bwjson.Jsonable); ok {
-						fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-					} else {
-						fmtArgs = append(fmtArgs, bwjson.PrettyJson(tstResult))
-					}
+					// fmtString += "\n" +
+					// 	"<ansiErr>tst(json)<ansi>: %s"
+					// if jsonable, ok := tstResult.(bwjson.Jsonable); ok {
+					// 	fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+					// } else {
+					// 	fmtArgs = append(fmtArgs, bwjson.PrettyJson(tstResult))
+					// }
 
-					fmtString += "\n" +
-						"<ansiOK>eta(json)<ansi>: %s"
-					if jsonable, ok := etaResult.(bwjson.Jsonable); ok {
-						fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-					} else {
-						fmtArgs = append(fmtArgs, bwjson.PrettyJson(etaResult))
-					}
+					// fmtString += "\n" +
+					// 	"<ansiOK>eta(json)<ansi>: %s"
+					// if jsonable, ok := etaResult.(bwjson.Jsonable); ok {
+					// 	fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+					// } else {
+					// 	fmtArgs = append(fmtArgs, bwjson.PrettyJson(etaResult))
+					// }
 
 					t.Error(bwerror.Spew.Sprintf(ansi.Ansi("", fmtString), fmtArgs...))
 				}

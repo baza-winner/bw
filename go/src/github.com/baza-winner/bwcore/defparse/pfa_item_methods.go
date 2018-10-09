@@ -1,12 +1,13 @@
 package defparse
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwint"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwint"
 )
 
 type pfaItemFinishMethod func(*pfaStruct) (bool, error)
@@ -133,6 +134,8 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		stackItem.value = false
 	case "nil", "null":
 		stackItem.value = nil
+	case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
+		stackItem.value = stackItem.itemString
 	case "qw":
 		if len(pfa.stack) < 2 || pfa.getTopStackItem(-2).itemType != parseStackItemArray {
 			// err = unexpectedWordError{}

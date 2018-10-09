@@ -2,12 +2,13 @@ package defparse
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
-	"testing"
 )
 
 func TestParse(t *testing.T) {
@@ -243,6 +244,20 @@ me'`},
 		"[qw/one two three/]": {
 			In:  []interface{}{`[qw/one two three/]`},
 			Out: []interface{}{[]interface{}{"one", "two", "three"}, nil},
+		},
+		"[ Bool String Int Number Map Array ArrayOf ]": {
+			In: []interface{}{`[ Bool String Int Number Map Array ArrayOf ]`},
+			Out: []interface{}{
+				[]interface{}{"Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf"},
+				nil,
+			},
+		},
+		"qw/ Bool String Int Number Map Array ArrayOf /": {
+			In: []interface{}{`[ Bool String Int Number Map Array ArrayOf ]`},
+			Out: []interface{}{
+				[]interface{}{"Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf"},
+				nil,
+			},
 		},
 	}
 
