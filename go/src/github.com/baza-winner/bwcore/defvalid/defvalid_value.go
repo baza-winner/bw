@@ -2,11 +2,14 @@ package defvalid
 
 import (
 	"fmt"
+
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwint"
-	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
+
+  // "github.com/davecgh/go-spew/spew"
+
 	// "log"
 	"reflect"
 )
@@ -24,7 +27,8 @@ func (v value) GetDataForJson() interface{} {
 }
 
 func (v value) String() string {
-	return fmt.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
+	// return fmt.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
+  return bwerror.Spew.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%#v<ansi>)`, v.value)
 }
 
 func (v value) forEachMapString(f func(k string, v interface{}) (err error)) (err error) {

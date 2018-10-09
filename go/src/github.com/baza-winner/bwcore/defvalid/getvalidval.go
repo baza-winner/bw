@@ -1,13 +1,11 @@
 package defvalid
 
 import (
+	"reflect"
+
 	"github.com/baza-winner/bwcore/bwerror"
-	// "github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
-
-	// "log"
-	"reflect"
 )
 
 func getValidVal(val value, def Def, optSkipArrayOf ...bool) (result interface{}, err error) {
@@ -174,21 +172,16 @@ func _Map(val value, def Def) (result interface{}, err error) {
 	return
 }
 
-func _MapHelper(val value, key string, elemDef Def) (err error) {
-	var elemVal value
-	if elemVal, err = val.getKey(key, "interface{}", nil); err != nil {
+func _MapHelper(val value, key string, elemDef Def) error {
+	elemVal, _ := val.getKey(key)
+	if elemValIntf, err := getValidVal(elemVal, elemDef); err != nil {
 		return err
-	}
-	var elemValIntf interface{}
-	if elemValIntf, err = getValidVal(elemVal, elemDef); err != nil {
-		return err
-	}
-	if elemValIntf != nil {
-		if err = val.setKey(key, elemValIntf); err != nil {
+	} else if elemValIntf != nil {
+		if err := val.setKey(key, elemValIntf); err != nil {
 			return err
 		}
 	}
-	return
+	return nil
 }
 
 func _Array(val value, def Def) (result interface{}, err error) {
@@ -219,53 +212,7 @@ func _ArrayHelper(val value, elemDef Def, optSkipArrayOf ...bool) (result interf
 				newSliceValue = reflect.Append(newSliceValue, reflect.ValueOf(elemValIntf))
 			}
 		}
-		// log.Printf("i: %d, v: %#v, err: %#v", i, v, err)
 		return
 	})
 	return newSliceValue.Interface(), err
 }
-
-// func getExpectedTypes(defType value, isSimpleDef bool) (result bwset.Strings, err error) {
-// 	var isString bool
-// 	var ss []string
-// 	if _isOfType(defType.value, "string") {
-// 		ss = []string{_mustBeString(defType.value)}
-// 		isString = true
-// 	} else if _isOfType(defType.value, "[]string") {
-// 		ss = _mustBeSliceOfStrings(defType.value)
-// 		isString = false
-// 	} else {
-// 		err = valueErrorMake(defType, valueErrorIsNotOfType, "string", "[]string")
-// 	}
-// 	if err == nil {
-// 		for i, s := range ss {
-// 			switch s {
-// 			case "map":
-// 			case "bool":
-// 			case "string":
-// 			case "enum":
-// 				var elem value
-// 				if isSimpleDef {
-// 					if isString {
-// 						err = valueErrorMake(defType, valueErrorHasNonSupportedValue)
-// 					} else if elem, err = defType.getElem(i); err == nil {
-// 						err = valueErrorMake(elem, valueErrorHasNonSupportedValue)
-// 					}
-// 				}
-// 			default:
-// 				var elem value
-// 				if isString {
-// 					err = valueErrorMake(defType, valueErrorHasNonSupportedValue)
-// 				} else if elem, err = defType.getElem(i); err == nil {
-// 					err = valueErrorMake(elem, valueErrorHasNonSupportedValue)
-// 				}
-// 			}
-// 		}
-// 		result = bwset.StringsFromSlice(ss)
-// 		if result.Has("enum") && result.Has("string") {
-// 			// log.Printf("%s\n", result)
-// 			err = valueErrorMake(defType, valueErrorValuesCannotBeCombined, "enum", "string")
-// 		}
-// 	}
-// 	return
-// }

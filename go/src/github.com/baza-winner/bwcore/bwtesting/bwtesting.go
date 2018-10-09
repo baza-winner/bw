@@ -134,22 +134,22 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 				if tstErr != etaErr {
 					if tstErr == nil || etaErr == nil || tstErr.Error() != etaErr.Error() {
 						fmtString := testTitle +
-							"    => <ansiErr>err<ansi>: '%v'\n" +
-							", <ansiOK>want err<ansi>: '%v'\n" +
+							"    => <ansiErr>err<ansi>: '%#v'\n" +
+							", <ansiOK>want err<ansi>: '%#v'\n" +
 							"<ansiErr>tstErr(q)<ansi>: %q\n" +
 							"<ansiOK>etaErr(q)<ansi>: %q"
 						fmtArgs := []interface{}{tstErr, etaErr, tstErr, etaErr}
 
-						if jsonable, ok := tstErr.(bwjson.Jsonable); ok {
-							fmtString += "\n" +
-								"<ansiErr>tstErr(json)<ansi>: %s"
-							fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-						}
-						if jsonable, ok := etaErr.(bwjson.Jsonable); ok {
-							fmtString += "\n" +
-								"<ansiOK>etaErr(json)<ansi>: %s"
-							fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
-						}
+						// if jsonable, ok := tstErr.(bwjson.Jsonable); ok {
+						// 	fmtString += "\n" +
+						// 		"<ansiErr>tstErr(json)<ansi>: %s"
+						// 	fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+						// }
+						// if jsonable, ok := etaErr.(bwjson.Jsonable); ok {
+						// 	fmtString += "\n" +
+						// 		"<ansiOK>etaErr(json)<ansi>: %s"
+						// 	fmtArgs = append(fmtArgs, bwjson.PrettyJsonOf(jsonable))
+						// }
 						if tstErr != nil {
 							tstErrType := reflect.TypeOf(tstErr)
 							if tstErrType.Kind() == reflect.Struct {
@@ -160,7 +160,7 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 								}
 							}
 						}
-						t.Errorf(ansi.Ansi("", fmtString), fmtArgs...)
+						t.Error(bwerror.Spew.Sprintf(ansi.Ansi("", fmtString), fmtArgs...))
 					}
 				}
 			} else {
@@ -189,7 +189,7 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 						fmtArgs = append(fmtArgs, bwjson.PrettyJson(etaResult))
 					}
 
-					t.Errorf(ansi.Ansi("", fmtString), fmtArgs...)
+					t.Error(bwerror.Spew.Sprintf(ansi.Ansi("", fmtString), fmtArgs...))
 				}
 			}
 		}
