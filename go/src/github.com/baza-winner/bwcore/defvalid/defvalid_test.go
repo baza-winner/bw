@@ -1,6 +1,8 @@
 package defvalid
 
 import (
+	"testing"
+
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
@@ -8,7 +10,6 @@ import (
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/defparse"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
-	"testing"
 )
 
 // ============================================================================
@@ -564,7 +565,6 @@ func TestValidateVal(t *testing.T) {
 			In: []interface{}{
 				"val",
 				defparse.MustParse(`[1 2 3]`),
-				// []int{1, 2, 3},
 				MustCompileDef(defparse.MustParse(`{
 					type 'array'
 					arrayElem 'int'
@@ -574,6 +574,33 @@ func TestValidateVal(t *testing.T) {
 				func(test bwtesting.TestCaseStruct) interface{} {
 					return test.In[1]
 				},
+				nil,
+			},
+		},
+
+		"val: scalar, def: arrayOf,int": {
+			In: []interface{}{
+				"val",
+				1,
+				MustCompileDef(defparse.MustParse(`{
+					type [ 'arrayOf' 'int' ]
+				}`)),
+			},
+			Out: []interface{}{
+				[]interface{}{1},
+				nil,
+			},
+		},
+		"val: array, def: arrayOf,int": {
+			In: []interface{}{
+				"val",
+				[]int{1, 2},
+				MustCompileDef(defparse.MustParse(`{
+					type [ 'arrayOf' 'int' ]
+				}`)),
+			},
+			Out: []interface{}{
+				[]interface{}{1, 2},
 				nil,
 			},
 		},
@@ -609,6 +636,6 @@ func TestValidateVal(t *testing.T) {
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	bwmap.CropMap(testsToRun, "val: valid, def: array.arrayElem")
+	bwmap.CropMap(testsToRun, "val: array, def: arrayOf,int")
 	bwtesting.BwRunTests(t, testsToRun, ValidateVal)
 }
