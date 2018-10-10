@@ -397,6 +397,16 @@ me'`},
 				),
 			},
 		},
+		// "key starts with underscore": {
+		// 	In: []interface{}{` { _key: some } `},
+		// 	Out: []interface{}{
+		// 		nil,
+		// 		bwerror.Error(
+		// 			"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+		// 			' ', expectSpaceOrQwItemOrDelimiter, 2, "qw", " ",
+		// 		),
+		// 	},
+		// },
 	}
 
 	testsToRun := tests

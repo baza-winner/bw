@@ -229,28 +229,6 @@ import (
 	"github.com/baza-winner/bwcore/bwerror"
 )
 
-// ParseMap - парсит строку с определением Map
-func ParseMap(source string) (result map[string]interface{}, err error) {
-	var _result interface{}
-	if _result, err = Parse(source); err == nil {
-		var ok bool
-		if result, ok = _result.(map[string]interface{}); !ok {
-			err = bwerror.Error("is not Map definition: <ansiSecondaryLiteral>%s", source)
-		}
-	}
-	return result, err
-}
-
-// MustParseMap is like ParseMap but panics if the expression cannot be parsed.
-// It simplifies safe initialization of global variables holding parsed values.
-func MustParseMap(source string) (result map[string]interface{}) {
-	var err error
-	if result, err = ParseMap(source); err != nil {
-		bwerror.PanicErr(err)
-	}
-	return result
-}
-
 type stringRuneProvider struct {
 	pos int
 	src []rune
@@ -276,6 +254,28 @@ func Parse(source string) (interface{}, error) {
 func MustParse(source string) (result interface{}) {
 	var err error
 	if result, err = Parse(source); err != nil {
+		bwerror.PanicErr(err)
+	}
+	return result
+}
+
+// ParseMap - парсит строку с определением Map
+func ParseMap(source string) (result map[string]interface{}, err error) {
+	var _result interface{}
+	if _result, err = Parse(source); err == nil {
+		var ok bool
+		if result, ok = _result.(map[string]interface{}); !ok {
+			err = bwerror.Error("is not Map definition: <ansiSecondaryLiteral>%s", source)
+		}
+	}
+	return result, err
+}
+
+// MustParseMap is like ParseMap but panics if the expression cannot be parsed.
+// It simplifies safe initialization of global variables holding parsed values.
+func MustParseMap(source string) (result map[string]interface{}) {
+	var err error
+	if result, err = ParseMap(source); err != nil {
 		bwerror.PanicErr(err)
 	}
 	return result

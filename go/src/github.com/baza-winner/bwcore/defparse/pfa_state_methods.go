@@ -143,12 +143,23 @@ func _expectMapKey(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
 	switch {
 	case pfa.curr.runePtr == nil:
 		err = pfaErrorMake(pfa, unexpectedRuneError)
-	case !(unicode.IsSpace(*pfa.curr.runePtr) || *pfa.curr.runePtr == ':' || *pfa.curr.runePtr == '='):
+	case unicode.IsLetter(*pfa.curr.runePtr) || *pfa.curr.runePtr == '_' || unicode.IsDigit(*pfa.curr.runePtr):
 		stackItem.itemString = stackItem.itemString + string(*pfa.curr.runePtr)
 	default:
+		pfa.pushRune()
 		needFinishTopStackItem = true
 	}
 	return
+	// stackItem := pfa.getTopStackItemOfType(parseStackItemKey)
+	// switch {
+	// case pfa.curr.runePtr == nil:
+	// 	err = pfaErrorMake(pfa, unexpectedRuneError)
+	// case !(unicode.IsSpace(*pfa.curr.runePtr) || *pfa.curr.runePtr == ':' || *pfa.curr.runePtr == '='):
+	// 	stackItem.itemString = stackItem.itemString + string(*pfa.curr.runePtr)
+	// default:
+	// 	needFinishTopStackItem = true
+	// }
+	// return
 }
 
 func _expectWord(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
