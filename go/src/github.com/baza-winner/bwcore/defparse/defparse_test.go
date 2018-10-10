@@ -277,7 +277,7 @@ me'`},
 
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "qw/Bool String Int Number Map Array ArrayOf/")
+	// bwmap.CropMap(testsToRun, "double quoted string")
 	bwtesting.BwRunTests(t, testsToRun, Parse)
 }
 

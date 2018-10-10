@@ -14,15 +14,38 @@ func init() {
 	pfaErrorValidatorsCheck()
 }
 
+type runePtrStruct struct {
+	runePtr *rune
+	line    uint
+	col     uint
+	pos     int
+}
+
+func (v runePtrStruct) copyPtr() *runePtrStruct {
+	return &runePtrStruct{v.runePtr, v.line, v.col, v.pos}
+}
+
+func (v runePtrStruct) GetDataForJson() interface{} {
+	result := map[string]interface{}{}
+	if v.runePtr == nil {
+		result["rune"] = "EOF"
+	} else {
+		result["rune"] = string(*(v.runePtr))
+	}
+	result["line"] = v.line
+	result["col"] = v.col
+	result["pos"] = v.pos
+	return result
+}
+
 type pfaStruct struct {
 	stack        parseStack
 	state        parseState
 	result       interface{}
 	source       string
-	pos          int
-	prevRunePtr  *rune
-	runePtr      *rune
-	nextRunePtr  *rune
+	prev         *runePtrStruct
+	curr         runePtrStruct
+	next         *runePtrStruct
 	runeProvider PfaRuneProvider
 }
 
@@ -31,11 +54,13 @@ func (pfa pfaStruct) GetDataForJson() interface{} {
 	result["stack"] = pfa.stack.GetDataForJson()
 	result["state"] = pfa.state.String()
 	result["result"] = pfa.result
-	result["pos"] = strconv.FormatInt(int64(pfa.pos), 10)
-	if pfa.runePtr == nil {
-		result["runePtr"] = nil
-	} else {
-		result["rune"] = string(*pfa.runePtr)
+	result["pos"] = strconv.FormatInt(int64(pfa.curr.pos), 10)
+	result["curr"] = pfa.curr.GetDataForJson()
+	if pfa.prev != nil {
+		result["prev"] = pfa.prev.GetDataForJson()
+	}
+	if pfa.next != nil {
+		result["next"] = pfa.prev.GetDataForJson()
 	}
 	return result
 }
@@ -49,7 +74,7 @@ type PfaRuneProvider interface {
 }
 
 func pfaRun(runeProvider PfaRuneProvider, source string) (interface{}, error) {
-	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}, pos: -1, runeProvider: runeProvider, source: source}
+	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}, runeProvider: runeProvider, curr: runePtrStruct{pos: -1, line: 1}, source: source}
 	var err error
 	for {
 		pfa.pullRune()
@@ -60,7 +85,7 @@ func pfaRun(runeProvider PfaRuneProvider, source string) (interface{}, error) {
 		if err != nil {
 			break
 		}
-		if pfa.runePtr == nil {
+		if pfa.curr.runePtr == nil {
 			if pfa.state.primary != expectEOF {
 				pfa.panic("pfa.state.primary != expectEOF")
 			}
@@ -71,23 +96,34 @@ func pfaRun(runeProvider PfaRuneProvider, source string) (interface{}, error) {
 }
 
 func (pfa *pfaStruct) pullRune() {
-	pfa.prevRunePtr = pfa.runePtr
-	if pfa.nextRunePtr != nil {
-		pfa.runePtr = pfa.nextRunePtr
-		pfa.nextRunePtr = nil
+	pfa.prev = pfa.curr.copyPtr()
+	if pfa.next == nil {
+		line := pfa.prev.line
+		col := pfa.prev.col
+		if pfa.prev.runePtr != nil && *(pfa.prev.runePtr) == '\n' {
+			line += 1
+			col = 1
+		} else {
+			col += 1
+		}
+		pfa.curr = runePtrStruct{
+			runePtr: pfa.runeProvider.PullRune(),
+			pos:     pfa.prev.pos + 1,
+			line:    line,
+			col:     col,
+		}
 	} else {
-		pfa.runePtr = pfa.runeProvider.PullRune()
+		pfa.curr = *(pfa.next)
+		pfa.next = nil
 	}
-	pfa.pos += 1
 }
 
 func (pfa *pfaStruct) pushRune() {
-	if pfa.prevRunePtr == nil {
-		pfa.panic("pfa.prevRunePtr == nil")
+	if pfa.prev == nil {
+		pfa.panic("pfa.prev == nil")
 	} else {
-		pfa.nextRunePtr = pfa.runePtr
-		pfa.runePtr = pfa.prevRunePtr
-		pfa.pos -= 1
+		pfa.next = pfa.curr.copyPtr()
+		pfa.curr = *(pfa.prev)
 	}
 }
 
@@ -160,7 +196,7 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 			pfa.result = stackItem.value
 			pfa.state.setSecondary(expectEOF, orSpace)
 		} else if len(pfa.stack) > 1 {
-			if pfa.runePtr == nil {
+			if pfa.curr.runePtr == nil {
 				err = pfaErrorMake(pfa, unexpectedRuneError)
 			} else {
 				stackSubItem := pfa.popStackItem()
@@ -183,9 +219,9 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 					case parseStackItemKey:
 						stackItem.currentKey = stackSubItem.itemString
 						switch {
-						case unicode.IsSpace(*pfa.runePtr):
+						case unicode.IsSpace(*pfa.curr.runePtr):
 							pfa.state.setSecondary(expectValueOrSpace, orMapKeySeparator)
-						case *pfa.runePtr == ':' || *pfa.runePtr == '=':
+						case *pfa.curr.runePtr == ':' || *pfa.curr.runePtr == '=':
 							pfa.state.setPrimary(expectValueOrSpace)
 						default:
 							pfa.state.setPrimary(expectMapKeySeparatorOrSpace)

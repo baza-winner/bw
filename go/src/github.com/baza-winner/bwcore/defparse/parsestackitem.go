@@ -6,7 +6,7 @@ import (
 
 type parseStackItem struct {
 	itemType   parseStackItemType
-	pos        int
+	start      runePtrStruct
 	itemArray  []interface{}
 	itemMap    map[string]interface{}
 	delimiter  rune
@@ -15,27 +15,27 @@ type parseStackItem struct {
 	value      interface{}
 }
 
-func (self *parseStackItem) GetDataForJson() interface{} {
+func (stackItem *parseStackItem) GetDataForJson() interface{} {
 	result := map[string]interface{}{}
-	result["itemType"] = self.itemType.String()
-	result["pos"] = self.pos
-	switch self.itemType {
+	result["itemType"] = stackItem.itemType.String()
+	result["start"] = stackItem.start.GetDataForJson()
+	switch stackItem.itemType {
 	case parseStackItemArray:
-		result["itemArray"] = self.itemArray
-		result["value"] = self.value
+		result["itemArray"] = stackItem.itemArray
+		result["value"] = stackItem.value
 	case parseStackItemQw:
-		result["delimiter"] = string(self.delimiter)
-		result["itemArray"] = self.itemArray
-		result["value"] = self.value
+		result["delimiter"] = string(stackItem.delimiter)
+		result["itemArray"] = stackItem.itemArray
+		result["value"] = stackItem.value
 	case parseStackItemQwItem:
-		result["delimiter"] = string(self.delimiter)
-		result["itemString"] = self.itemString
+		result["delimiter"] = string(stackItem.delimiter)
+		result["itemString"] = stackItem.itemString
 	case parseStackItemMap:
-		result["itemMap"] = self.itemMap
-		result["value"] = self.value
+		result["itemMap"] = stackItem.itemMap
+		result["value"] = stackItem.value
 	case parseStackItemNumber, parseStackItemString, parseStackItemWord, parseStackItemKey:
-		result["itemString"] = self.itemString
-		result["value"] = self.value
+		result["itemString"] = stackItem.itemString
+		result["value"] = stackItem.value
 	}
 	return result
 }

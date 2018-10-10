@@ -78,16 +78,16 @@ func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string
 	if args != nil {
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	if pfa.runePtr == nil {
-		suffix := getSuffix(pfa.source, 0, 0)
+	if pfa.curr.runePtr == nil {
+		suffix := getSuffix(pfa, pfa.curr, 0)
 		fmtString = "unexpected end of string (pfa.state: %s)" + suffix
 		fmtArgs = []interface{}{pfa.state}
 	} else {
-		suffix := getSuffix(pfa.source, uint(pfa.pos), 1)
+		suffix := getSuffix(pfa, pfa.curr, 1)
 		fmtString = "unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %v, pfa.state: %s)" + suffix
 		fmtArgs = []interface{}{
-			*pfa.runePtr,
-			*pfa.runePtr,
+			*pfa.curr.runePtr,
+			*pfa.curr.runePtr,
 			pfa.state,
 		}
 	}
@@ -99,7 +99,7 @@ func _failedToGetNumberError(pfa *pfaStruct, args ...interface{}) (fmtString str
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
-	suffix := getSuffix(pfa.source, uint(stackItem.pos), uint(len(stackItem.itemString)))
+	suffix := getSuffix(pfa, stackItem.start, len(stackItem.itemString))
 	return "failed to get number from string <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
 }
 
@@ -108,7 +108,7 @@ func _unknownWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, f
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
-	suffix := getSuffix(pfa.source, uint(stackItem.pos), uint(len(stackItem.itemString)))
+	suffix := getSuffix(pfa, stackItem.start, len(stackItem.itemString))
 	return "unknown word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
 }
 
@@ -117,13 +117,15 @@ func _unexpectedWordError(pfa *pfaStruct, args ...interface{}) (fmtString string
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
 	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
-	suffix := getSuffix(pfa.source, uint(stackItem.pos), uint(len(stackItem.itemString)))
+	suffix := getSuffix(pfa, stackItem.start, len(stackItem.itemString))
 	return "unexpected word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
 }
 
 // =============
 
-func getSuffix(source string, pos, length uint, opts ...uint) (suffix string) {
+// func getSuffix(pfa *pfaStruct, pos, length uint, opts ...uint) (suffix string) {
+func getSuffix(pfa *pfaStruct, start runePtrStruct, length int, opts ...uint) (suffix string) {
+	source := pfa.source
 	preLineCount := uint(3)
 	postLineCount := uint(3)
 	if opts != nil {
@@ -133,15 +135,13 @@ func getSuffix(source string, pos, length uint, opts ...uint) (suffix string) {
 		}
 	}
 	if length == 0 {
-		pos = uint(len(source))
 		preLineCount += postLineCount
 	}
 
-	foundPreBreak := false
-	fromPos := pos
+	fromPos := start.pos
 	for int(fromPos) >= 1 {
 		if source[fromPos-1] == byte('\n') {
-			foundPreBreak = true
+			// foundPreBreak = true
 			preLineCount -= 1
 			if preLineCount <= 0 {
 				break
@@ -149,7 +149,7 @@ func getSuffix(source string, pos, length uint, opts ...uint) (suffix string) {
 		}
 		fromPos -= 1
 	}
-	toPos := pos
+	toPos := start.pos
 	for int(toPos) < len(source) {
 		if source[toPos] == byte('\n') {
 			postLineCount -= 1
@@ -160,32 +160,20 @@ func getSuffix(source string, pos, length uint, opts ...uint) (suffix string) {
 		toPos += 1
 	}
 	separator := "\n"
-	if !foundPreBreak {
-		suffix += fmt.Sprintf(" at pos <ansiCmd>%d<ansi>", pos)
+	if pfa.curr.line <= 1 {
+		suffix += fmt.Sprintf(" at pos <ansiCmd>%d<ansi>", start.pos)
 		separator = " "
 	} else {
-		fromPos := pos
-		line := 1
-		col := 1
-		foundPreBreak := false
-		for int(fromPos) >= 1 {
-			if source[fromPos-1] == byte('\n') {
-				foundPreBreak = true
-				line += 1
-			} else if !foundPreBreak {
-				col += 1
-			}
-			fromPos -= 1
-		}
-		suffix += fmt.Sprintf(" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>)", line, col, pos)
+		suffix += fmt.Sprintf(" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>)", start.line, start.col, start.pos)
 	}
 	suffix += ":" + separator + "<ansiDarkGreen>"
-	suffix += source[fromPos:pos]
+	suffix += source[fromPos:start.pos]
 	if length > 0 {
 		suffix += "<ansiLightRed>"
-		suffix += source[pos : pos+length]
+		suffix += source[start.pos : start.pos+length]
+
 		suffix += "<ansiReset>"
-		suffix += source[pos+length : toPos]
+		suffix += source[start.pos+length : toPos]
 	}
 	if byte(suffix[len(suffix)-1]) != '\n' {
 		suffix += string('\n')
