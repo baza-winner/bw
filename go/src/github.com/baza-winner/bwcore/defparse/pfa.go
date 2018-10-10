@@ -2,6 +2,7 @@ package defparse
 
 import (
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/baza-winner/bwcore/bwerror"
@@ -15,14 +16,16 @@ func init() {
 }
 
 type runePtrStruct struct {
-	runePtr *rune
-	line    uint
-	col     uint
-	pos     int
+	runePtr     *rune
+	pos         int
+	line        uint
+	col         uint
+	prefix      string
+	prefixStart int
 }
 
 func (v runePtrStruct) copyPtr() *runePtrStruct {
-	return &runePtrStruct{v.runePtr, v.line, v.col, v.pos}
+	return &runePtrStruct{v.runePtr, v.pos, v.line, v.col, v.prefix, v.prefixStart}
 }
 
 func (v runePtrStruct) GetDataForJson() interface{} {
@@ -39,14 +42,15 @@ func (v runePtrStruct) GetDataForJson() interface{} {
 }
 
 type pfaStruct struct {
-	stack        parseStack
-	state        parseState
-	result       interface{}
-	source       string
-	prev         *runePtrStruct
-	curr         runePtrStruct
-	next         *runePtrStruct
-	runeProvider PfaRuneProvider
+	stack         parseStack
+	state         parseState
+	result        interface{}
+	prev          *runePtrStruct
+	curr          runePtrStruct
+	next          *runePtrStruct
+	runeProvider  PfaRuneProvider
+	preLineCount  int
+	postLineCount int
 }
 
 func (pfa pfaStruct) GetDataForJson() interface{} {
@@ -73,8 +77,15 @@ type PfaRuneProvider interface {
 	PullRune() *rune
 }
 
-func pfaRun(runeProvider PfaRuneProvider, source string) (interface{}, error) {
-	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}, runeProvider: runeProvider, curr: runePtrStruct{pos: -1, line: 1}, source: source}
+func pfaRun(runeProvider PfaRuneProvider) (interface{}, error) {
+	pfa := pfaStruct{
+		stack:         parseStack{},
+		state:         parseState{primary: expectValueOrSpace},
+		runeProvider:  runeProvider,
+		curr:          runePtrStruct{pos: -1, line: 1},
+		preLineCount:  3,
+		postLineCount: 3,
+	}
 	var err error
 	for {
 		pfa.pullRune()
@@ -96,25 +107,36 @@ func pfaRun(runeProvider PfaRuneProvider, source string) (interface{}, error) {
 }
 
 func (pfa *pfaStruct) pullRune() {
-	pfa.prev = pfa.curr.copyPtr()
-	if pfa.next == nil {
-		line := pfa.prev.line
-		col := pfa.prev.col
-		if pfa.prev.runePtr != nil && *(pfa.prev.runePtr) == '\n' {
-			line += 1
-			col = 1
+	if pfa.curr.pos < 0 || pfa.curr.runePtr != nil {
+		pfa.prev = pfa.curr.copyPtr()
+		if pfa.next != nil {
+			pfa.curr = *(pfa.next)
+			pfa.next = nil
 		} else {
-			col += 1
+			runePtr := pfa.runeProvider.PullRune()
+			pos := pfa.prev.pos + 1
+			line := pfa.prev.line
+			col := pfa.prev.col
+			prefix := pfa.prev.prefix
+			prefixStart := pfa.prev.prefixStart
+			if runePtr != nil && pfa.prev.runePtr != nil {
+				if *(pfa.prev.runePtr) != '\n' {
+					col += 1
+				} else {
+					line += 1
+					col = 1
+					if int(line) > pfa.preLineCount {
+						i := strings.Index(prefix, "\n")
+						prefix = prefix[i+1:]
+						prefixStart += i + 1
+					}
+				}
+			}
+			if runePtr != nil {
+				prefix += string(*runePtr)
+			}
+			pfa.curr = runePtrStruct{runePtr, pos, line, col, prefix, prefixStart}
 		}
-		pfa.curr = runePtrStruct{
-			runePtr: pfa.runeProvider.PullRune(),
-			pos:     pfa.prev.pos + 1,
-			line:    line,
-			col:     col,
-		}
-	} else {
-		pfa.curr = *(pfa.next)
-		pfa.next = nil
 	}
 }
 

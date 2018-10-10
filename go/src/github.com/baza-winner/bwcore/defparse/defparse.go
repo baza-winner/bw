@@ -216,24 +216,7 @@ func (v *stringRuneProvider) PullRune() *rune {
 
 // Parse - парсит строку
 func Parse(source string) (interface{}, error) {
-	return pfaRun(&stringRuneProvider{pos: -1, src: []rune(source)}, source)
-	// pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}}
-	// var err error
-
-	// pfa.run()
-
-	// for pos, char := range source {
-	// 	if err = pfa.processCharAtPos(char, pos); err != nil {
-	// 		break
-	// 	}
-	// }
-	// if err == nil {
-	// 	err = pfa.processEOF()
-	// }
-	// if err != nil {
-	// 	err = pfa.arrangeError(err, source)
-	// }
-	// return pfa.result, err
+	return pfaRun(&stringRuneProvider{pos: -1, src: []rune(source)})
 }
 
 // MustParse is like Parse but panics if the expression cannot be parsed.
