@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
@@ -119,15 +118,15 @@ me'`},
             some => [ 0, 100_000, 5_000.5, -3.14 ],
             thing: true
             'go\'od' "str\ning"
-            "go\"od" nil,
+            "go\"od\\" nil,
           }`,
 			},
 			Out: []interface{}{
 				map[string]interface{}{
-					"some":   []interface{}{0, 100000, 5000.5, -3.14},
-					"thing":  true,
-					"go'od":  "str\ning",
-					"go\"od": nil,
+					"some":     []interface{}{0, 100000, 5000.5, -3.14},
+					"thing":    true,
+					"go'od":    "str\ning",
+					"go\"od\\": nil,
 				},
 				nil},
 		},
@@ -136,8 +135,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"failed to get number from string <ansiPrimaryLiteral>1_000_000_000_000_000_000_000" +
-						ansi.Ansi("Reset", " at pos <ansiCmd>17<ansi>: <ansiDarkGreen>{ someBigNumber: <ansiLightRed>1_000_000_000_000_000_000_000<ansiReset> }\n"),
+					"failed to get number from string <ansiPrimaryLiteral>1_000_000_000_000_000_000_000 at pos <ansiCmd>17<ansi>: <ansiDarkGreen>{ someBigNumber: <ansiLightRed>1_000_000_000_000_000_000_000<ansiReset> }\n",
 				),
 			},
 		},
@@ -146,8 +144,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>Something" +
-						ansi.Ansi("Reset", " at pos <ansiCmd>7<ansi>: <ansiDarkGreen>[ Bool <ansiLightRed>Something<ansiReset> String ]\n"),
+					"unknown word <ansiPrimaryLiteral>Something at pos <ansiCmd>7<ansi>: <ansiDarkGreen>[ Bool <ansiLightRed>Something<ansiReset> String ]\n",
 				),
 			},
 		},
@@ -167,8 +164,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>def" +
-						ansi.Ansi("Reset", " at line <ansiCmd>4<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>25<ansi>):\n<ansiDarkGreen>[\n  qw/one two three/\n  <ansiLightRed>def<ansiReset>\n  qw/\n    four\n"),
+					"unknown word <ansiPrimaryLiteral>def at line <ansiCmd>4<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>25<ansi>):\n<ansiDarkGreen>[\n  qw/one two three/\n  <ansiLightRed>def<ansiReset>\n  qw/\n    four\n",
 				),
 			},
 		},
@@ -184,8 +180,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected char <ansiPrimaryLiteral>'*'<ansiReset> (charCode: 42, pfa.state: expectValueOrSpace.orArrayItemSeparator)" +
-						ansi.Ansi("Reset", " at line <ansiCmd>5<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>20<ansi>):\n<ansiDarkGreen>  1000,\n  true\n  <ansiLightRed>*<ansiReset>\n  'value',\n]\n"),
+					"unexpected char <ansiPrimaryLiteral>'*'<ansiReset> (charCode: 42, pfa.state: expectValueOrSpace.orArrayItemSeparator) at line <ansiCmd>5<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>20<ansi>):\n<ansiDarkGreen>  1000,\n  true\n  <ansiLightRed>*<ansiReset>\n  'value',\n]\n",
 				),
 			},
 		},
@@ -194,8 +189,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected end of string (pfa.state: expectValueOrSpace)" +
-						ansi.Ansi("Reset", " at pos <ansiCmd>22<ansi>: <ansiDarkGreen> [1000, true 'value', \n"),
+					"unexpected end of string (pfa.state: expectValueOrSpace) at pos <ansiCmd>22<ansi>: <ansiDarkGreen> [1000, true 'value', \n",
 				),
 			},
 		},
@@ -224,8 +218,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>type" +
-						ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"),
+					"unknown word <ansiPrimaryLiteral>type at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n",
 				),
 			},
 		},
@@ -273,11 +266,143 @@ me'`},
 				nil,
 			},
 		},
+		"_expectEOF && non space fa.curr.runePtr": {
+			In: []interface{}{`Map Bool`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected char <ansiPrimaryLiteral>'B'<ansiReset> (charCode: 66, pfa.state: expectEOF.orSpace) at pos <ansiCmd>4<ansi>: <ansiDarkGreen>Map <ansiLightRed>B<ansiReset>ool\n",
+				),
+			},
+		},
+		"_expectRocket && fa.curr.runePtr != >": {
+			In: []interface{}{`{ key =Bool`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected char <ansiPrimaryLiteral>'B'<ansiReset> (charCode: 66, pfa.state: expectRocket) at pos <ansiCmd>7<ansi>: <ansiDarkGreen>{ key =<ansiLightRed>B<ansiReset>ool\n",
+				),
+			},
+		},
+		"_expectSpaceOrMapKey && fa.curr.runePtr == EOF": {
+			In: []interface{}{`{ `},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: expectSpaceOrMapKey) at pos <ansiCmd>2<ansi>: <ansiDarkGreen>{ \n",
+				),
+			},
+		},
+		"_expectSpaceOrMapKey && fa.curr.runePtr == unexpected char": {
+			In: []interface{}{`{ ,`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected char <ansiPrimaryLiteral>','<ansiReset> (charCode: 44, pfa.state: expectSpaceOrMapKey) at pos <ansiCmd>2<ansi>: <ansiDarkGreen>{ <ansiLightRed>,<ansiReset>\n",
+				),
+			},
+		},
+		"_expectMapKey && fa.curr.runePtr == EOF": {
+			In: []interface{}{`{ key`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: expectMapKey) at pos <ansiCmd>5<ansi>: <ansiDarkGreen>{ key\n",
+				),
+			},
+		},
+		"_expectEndOfQwItem && fa.curr.runePtr == EOF": {
+			In: []interface{}{`<some`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: expectEndOfQwItem) at pos <ansiCmd>5<ansi>: <ansiDarkGreen><some\n",
+				),
+			},
+		},
+		"expectDigit && fa.curr.runePtr == EOF": {
+			In: []interface{}{`-`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+					expectDigit, 1, "-",
+				),
+			},
+		},
+		"expectContentOf && fa.curr.runePtr == EOF": {
+			In: []interface{}{`"`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+					"expectContentOf.doubleQuoted.stringToken", 1, "\"",
+				),
+			},
+		},
+		"_expectEscapedContentOf && fa.curr.runePtr == EOF": {
+			In: []interface{}{`"\`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+					"expectEscapedContentOf.doubleQuoted.stringToken", 2, "\"\\",
+				),
+			},
+		},
+		"_expectEscapedContentOf && fa.curr.runePtr == unexpected char": {
+			In: []interface{}{`"\j`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+					'j', "expectEscapedContentOf.doubleQuoted.stringToken", 2, "\"\\", "j",
+				),
+			},
+		},
+		"_expectSpaceOrQwItemOrDelimiter && fa.curr.runePtr == EOF": {
+			In: []interface{}{`<some `},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+					expectSpaceOrQwItemOrDelimiter, 6, "<some ",
+				),
+			},
+		},
+		"_parseStackItemNumber int64Val": {
+			In: []interface{}{`8_589_934_591`},
+			Out: []interface{}{
+				int64(8589934591),
+				nil,
+			},
+		},
+		"qw && fa.curr.runePtr == EOF": {
+			In: []interface{}{`qw`},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+					expectWord, 2, "qw",
+				),
+			},
+		},
+		"qw ": {
+			In: []interface{}{`qw `},
+			Out: []interface{}{
+				nil,
+				bwerror.Error(
+					"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+					' ', expectSpaceOrQwItemOrDelimiter, 2, "qw", " ",
+				),
+			},
+		},
 	}
 
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "double quoted string")
+	// bwmap.CropMap(testsToRun, "_expectSpaceOrQwItemOrDelimiter && fa.curr.runePtr == EOF")
+	// bwmap.CropMap(testsToRun, "qw ")
 	bwtesting.BwRunTests(t, testsToRun, Parse)
 }
 
@@ -541,57 +666,6 @@ func ExampleParse_6() {
    {
      keyOfStringValue "stringValue"
      keyOfBoolValue false
-     keyOfNumberValue 12345000.678001
-   } {
-      keyOfNull null
-      keyOfNil nil
-      keyOfArrayValue [ "stringValue" true 876.54321 ]
-      keyOfMapValue {
-        key1 "value1"
-        key2 true
-        key3 -3.14
-        key4 nil
-        key5 [ qw/one two three/ ]
-     }
-   }
-  ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
-	// Output:
-	// err: <nil>
-	// result: [
-	//   {
-	//     "keyOfBoolValue": false,
-	//     "keyOfNumberValue": 12345000.678001,
-	//     "keyOfStringValue": "stringValue"
-	//   },
-	//   {
-	//     "keyOfArrayValue": [
-	//       "stringValue",
-	//       true,
-	//       876.54321
-	//     ],
-	//     "keyOfMapValue": {
-	//       "key1": "value1",
-	//       "key2": true,
-	//       "key3": -3.14,
-	//       "key4": null,
-	//       "key5": [
-	//         "one",
-	//         "two",
-	//         "three"
-	//       ]
-	//     },
-	//     "keyOfNil": null,
-	//     "keyOfNull": null
-	//   }
-	// ]
-}
-
-func ExampleParse_7() {
-	result, err := Parse(`[
-   {
-     keyOfStringValue "stringValue"
-     keyOfBoolValue false
      keyOfNumberValue 12_345_000.678_001
    } {
       keyOfNull null
@@ -638,6 +712,191 @@ func ExampleParse_7() {
 	// ]
 }
 
+func ExampleParse_7() {
+	result, err := Parse(`[
+   {
+     keyOfStringValue "stringValue"
+     keyOfBoolValue false
+     keyOfNumberValue 12345000.678001
+   } {
+      keyOfNull null
+      keyOfNil nil
+      keyOfArrayValue [ "stringValue" true 876.54321 ]
+      keyOfMapValue {
+        key1 "value1"
+        key2 true
+        key3 -3.14
+        key4 nil
+        key5 [
+          qw/one two three/
+          qw{four five six}
+          qw< seven eight nine >
+        ]
+        key6 qw( ten eleven twelve )
+        key7 qw# thirteen fourteen #
+     }
+   }
+  ]`)
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	// Output:
+	// err: <nil>
+	// result: [
+	//   {
+	//     "keyOfBoolValue": false,
+	//     "keyOfNumberValue": 12345000.678001,
+	//     "keyOfStringValue": "stringValue"
+	//   },
+	//   {
+	//     "keyOfArrayValue": [
+	//       "stringValue",
+	//       true,
+	//       876.54321
+	//     ],
+	//     "keyOfMapValue": {
+	//       "key1": "value1",
+	//       "key2": true,
+	//       "key3": -3.14,
+	//       "key4": null,
+	//       "key5": [
+	//         "one",
+	//         "two",
+	//         "three",
+	//         "four",
+	//         "five",
+	//         "six",
+	//         "seven",
+	//         "eight",
+	//         "nine"
+	//       ],
+	//       "key6": [
+	//         "ten",
+	//         "eleven",
+	//         "twelve"
+	//       ],
+	//       "key7": [
+	//         "thirteen",
+	//         "fourteen"
+	//       ]
+	//     },
+	//     "keyOfNil": null,
+	//     "keyOfNull": null
+	//   }
+	// ]
+}
+
+func ExampleParse_8() {
+	result, err := Parse(`[
+   {
+     keyOfStringValue "stringValue"
+     keyOfBoolValue false
+     keyOfNumberValue 12345000.678001
+   } {
+      keyOfNull null
+      keyOfNil nil
+      keyOfArrayValue [ "stringValue" true 876.54321 ]
+      keyOfMapValue {
+        key1 "value1"
+        key2 true
+        key3 -3.14
+        key4 nil
+        key5 [
+          <one two three>
+          'four' <five > 'six'
+          < seven eight nine >
+        ]
+        key6 < ten eleven twelve>
+     }
+   }
+  ]`)
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	// Output:
+	// err: <nil>
+	// result: [
+	//   {
+	//     "keyOfBoolValue": false,
+	//     "keyOfNumberValue": 12345000.678001,
+	//     "keyOfStringValue": "stringValue"
+	//   },
+	//   {
+	//     "keyOfArrayValue": [
+	//       "stringValue",
+	//       true,
+	//       876.54321
+	//     ],
+	//     "keyOfMapValue": {
+	//       "key1": "value1",
+	//       "key2": true,
+	//       "key3": -3.14,
+	//       "key4": null,
+	//       "key5": [
+	//         "one",
+	//         "two",
+	//         "three",
+	//         "four",
+	//         "five",
+	//         "six",
+	//         "seven",
+	//         "eight",
+	//         "nine"
+	//       ],
+	//       "key6": [
+	//         "ten",
+	//         "eleven",
+	//         "twelve"
+	//       ]
+	//     },
+	//     "keyOfNil": null,
+	//     "keyOfNull": null
+	//   }
+	// ]
+}
+
+func ExampleParse_9() {
+	result, err := Parse(`{
+    type Map
+    keys {
+      v {
+        type String
+        enum <all err ok none>
+        default 'none'
+      }
+      s {
+        type String
+        enum <none stderr stdout all>
+        default 'all'
+      }
+    }
+  }`)
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	// Output:
+	// err: <nil>
+	// result: {
+	//   "keys": {
+	//     "s": {
+	//       "default": "all",
+	//       "enum": [
+	//         "none",
+	//         "stderr",
+	//         "stdout",
+	//         "all"
+	//       ],
+	//       "type": "String"
+	//     },
+	//     "v": {
+	//       "default": "none",
+	//       "enum": [
+	//         "all",
+	//         "err",
+	//         "ok",
+	//         "none"
+	//       ],
+	//       "type": "String"
+	//     }
+	//   },
+	//   "type": "Map"
+	// }
+}
+
 func TestParseMap(t *testing.T) {
 	tests := map[string]bwtesting.TestCaseStruct{
 		"map": {
@@ -669,9 +928,7 @@ func TestParseMap(t *testing.T) {
       `},
 			Out: []interface{}{
 				map[string]interface{}(nil),
-				bwerror.Error("unknown word <ansiPrimaryLiteral>type" +
-					ansi.Ansi("Reset", " at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"),
-				),
+				bwerror.Error("unknown word <ansiPrimaryLiteral>type at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"),
 			},
 		},
 	}

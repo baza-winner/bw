@@ -129,28 +129,7 @@
 	 }
  ]
 
-6. Поддерживает qw// внутри [...], как в Perl (http://oooportal.ru/?cat=article&id=463)
-
- [
-	 {
-		 keyOfStringValue "stringValue"
-		 keyOfBoolValue false
-		 keyOfNumberValue 12345000.678001
-	 } {
-	 	  keyOfNull null
-	 	  keyOfNil nil
-		  keyOfArrayValue [ "stringValue" true 876.54321 ]
-		  keyOfMapValue {
-		 	  key1 "value1"
-		 	  key2 true
-		 	  key3 -3.14
-		 	  key4 nil
-			  key5 [ qw/one two three/ ]
-		 }
-	 }
- ]
-
-7. Поддерживает underscore ('_') внутри Number как в Swift (http://omarrr.com/underscores-in-apples-swift-numbers/)
+6. Поддерживает underscore ('_') внутри Number как в Swift (http://omarrr.com/underscores-in-apples-swift-numbers/)
 
  [
 	 {
@@ -170,6 +149,79 @@
 		 }
 	 }
  ]
+
+7. Поддерживает qw//, qw{}, qw<>, qw(), qw## и т.п. внутри [...], как в Perl (http://oooportal.ru/?cat=article&id=463), так и во вне
+
+ [
+	 {
+		 keyOfStringValue "stringValue"
+		 keyOfBoolValue false
+		 keyOfNumberValue 12345000.678001
+	 } {
+	 	  keyOfNull null
+	 	  keyOfNil nil
+		  keyOfArrayValue [ "stringValue" true 876.54321 ]
+		  keyOfMapValue {
+		 	  key1 "value1"
+		 	  key2 true
+		 	  key3 -3.14
+		 	  key4 nil
+        key5 [
+          qw/one two three/
+          qw{four five six}
+          qw< seven eight nine >
+        ]
+        key6 qw( ten eleven twelve )
+        key7 qw# thirteen fourteen #
+		 }
+	 }
+ ]
+
+8. Поддерживает <> как синоним qw<>
+
+ [
+	 {
+		 keyOfStringValue "stringValue"
+		 keyOfBoolValue false
+		 keyOfNumberValue 12345000.678001
+	 } {
+	 	  keyOfNull null
+	 	  keyOfNil nil
+		  keyOfArrayValue [ "stringValue" true 876.54321 ]
+		  keyOfMapValue {
+		 	  key1 "value1"
+		 	  key2 true
+		 	  key3 -3.14
+		 	  key4 nil
+        key5 [
+          <one two three>
+          'four' <five > 'six'
+          < seven eight nine >
+        ]
+        key6 < ten eleven twelve>
+		 }
+	 }
+ ]
+
+ 9. Интерпретирует слова "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf" как соответвующие строки:
+
+  {
+	  type Map
+	  keys {
+	  	v {
+	  		type String
+	  		enum <all err ok none>
+	  		default 'none'
+	  	}
+	  	s {
+	  		type String
+	  		enum <none stderr stdout all>
+	  		default 'all'
+	  	}
+	  }
+  }
+
+
 */
 package defparse
 
@@ -216,7 +268,7 @@ func (v *stringRuneProvider) PullRune() *rune {
 
 // Parse - парсит строку
 func Parse(source string) (interface{}, error) {
-	return pfaRun(&stringRuneProvider{pos: -1, src: []rune(source)})
+	return pfaParse(&stringRuneProvider{pos: -1, src: []rune(source)})
 }
 
 // MustParse is like Parse but panics if the expression cannot be parsed.

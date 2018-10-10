@@ -4,9 +4,9 @@ package defparse
 
 import "strconv"
 
-const _parsePrimaryState_name = "parsePrimaryState_below_expectEOFexpectValueOrSpaceexpectArrayItemSeparatorOrSpaceexpectMapKeySeparatorOrSpaceexpectRocketexpectMapKeyexpectWordexpectDigitexpectContentOfexpectEscapedContentOfexpectSpaceOrMapKeyexpectSpaceOrQwItemOrDelimiterexpectEndOfQwItemparsePrimaryState_above_"
+const _parsePrimaryState_name = "parsePrimaryState_below_expectEOFexpectValueOrSpaceexpectRocketexpectMapKeyexpectWordexpectDigitexpectContentOfexpectEscapedContentOfexpectSpaceOrMapKeyexpectSpaceOrQwItemOrDelimiterexpectEndOfQwItemparsePrimaryState_above_"
 
-var _parsePrimaryState_index = [...]uint16{0, 24, 33, 51, 82, 110, 122, 134, 144, 155, 170, 192, 211, 241, 258, 282}
+var _parsePrimaryState_index = [...]uint8{0, 24, 33, 51, 63, 75, 85, 96, 111, 133, 152, 182, 199, 223}
 
 func (i parsePrimaryState) String() string {
 	if i >= parsePrimaryState(len(_parsePrimaryState_index)-1) {

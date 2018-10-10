@@ -57,66 +57,15 @@ func _parseStackItemArray(pfa *pfaStruct) (skipPostProcess bool, err error) {
 
 func _parseStackItemQw(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	stackItem := pfa.getTopStackItemOfType(parseStackItemQw)
-	// if pfa.charPtr == nil {
-	// 	pfa.panic()
-	// }
-	// if unicode.IsSpace(*pfa.charPtr) {
-	// 	pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
-	// 	return true, nil
-	// } else {
-	// if len(pfa.stack) >= 2 {
-	// 	stackItem := pfa.getTopStackItem(-2)
-	// 	if stackItem.itemType == parseStackItemArray {
-	// 		// stackSubItem := pfa.stack[len(pfa.stack)-1]
-	// 		// pfa.stack = pfa.stack[:len(pfa.stack)-1]
-	// 		stackSubItem := pfa.popStackItem()
-	// 		// stackItem = pfa.getTopStackItemOfType(parseStackItemArray)
-	// 		stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
-	// 		pfa.state.setPrimary(expectArrayItemSeparatorOrSpace)
-	// 		return true, nil
-	// 	}
-	// }
-	// stackItem.itemType = parseStackItemArray
-	// stackItem := pfa.getTopStackItem()
 	stackItem.value = stackItem.itemArray
-	// pfa.state.setPrimary(expectValueOrSpace)
-	// return true, nil
-
-	// && (pfa.stack[:len(pfa.stack)-2]).itemType == parseStackItemArray {
-	// 	stackSubItem := pfa.stack[len(pfa.stack)-1]
-	// 	pfa.stack = pfa.stack[:len(pfa.stack)-1]
-	// 	stackItem = pfa.getTopStackItemOfType(parseStackItemArray)
-	// 	stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
-	// 	pfa.state.setPrimary(expectArrayItemSeparatorOrSpace)
-	// } else {
-	// }
 	return false, nil
-	// }
 }
 
 func _parseStackItemQwItem(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	stackItem := pfa.getTopStackItemOfType(parseStackItemQwItem)
-
 	stackItem.value = stackItem.itemString
-	// if len(pfa.stack) < 2 {
-	// 	pfa.panic()
-	// }
-	// // stackSubItem := pfa.popStackItem()
-
-	// // stackItem := pfa.getTopStackItemOfType(parseStackItemQw)
-
-	// stackItem := pfa.getTopStackItemOfType(parseStackItemQwItem)
-	// stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemString)
-	// return _parseStackItemQw(pfa)
-
 	return false, nil
 }
-
-// const (
-// 	maxUint = ^uint(0)
-// 	maxInt  = int(maxUint >> 1)
-// 	minInt  = -maxInt - 1
-// )
 
 var underscoreRegexp = regexp.MustCompile("[_]+")
 
@@ -143,7 +92,6 @@ func _parseStackItemNumber(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		}
 	}
 	if err != nil {
-		// err = failedToGetNumberError{}
 		err = pfaErrorMake(pfa, failedToGetNumberError)
 	}
 	return false, err
@@ -161,10 +109,6 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
 		stackItem.value = stackItem.itemString
 	case "qw":
-		// if len(pfa.stack) < 2 || pfa.getTopStackItem(-2).itemType != parseStackItemArray {
-		// 	// err = unexpectedWordError{}
-		// 	err = pfaErrorMake(pfa, unexpectedWordError)
-		// } else {
 		pfa.pullRune()
 		if pfa.curr.runePtr == nil {
 			err = pfaErrorMake(pfa, unexpectedRuneError)
@@ -187,17 +131,13 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 					err = pfaErrorMake(pfa, unexpectedRuneError)
 				}
 			}
-			// if pfa.state.primary == expectSpaceOrQwItemOrDelimiter {
 			stackItem.itemType = parseStackItemQw
 			stackItem.itemArray = []interface{}{}
-			// }
-			// }
 		}
 		return true, err
 
 	default:
 		err = pfaErrorMake(pfa, unknownWordError)
-		// err = unknownWordError{}
 	}
 	return false, err
 }

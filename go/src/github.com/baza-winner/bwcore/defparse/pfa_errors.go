@@ -3,7 +3,6 @@ package defparse
 import (
 	"fmt"
 
-	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/jimlawless/whereami"
 )
@@ -15,7 +14,6 @@ const (
 	unexpectedRuneError
 	failedToGetNumberError
 	unknownWordError
-	unexpectedWordError
 	pfaError_above_
 )
 
@@ -56,7 +54,6 @@ var pfaErrorValidators = map[pfaErrorType]pfaErrorValidator{
 	unexpectedRuneError:    _unexpectedRuneError,
 	failedToGetNumberError: _failedToGetNumberError,
 	unknownWordError:       _unknownWordError,
-	unexpectedWordError:    _unexpectedWordError,
 }
 
 func pfaErrorValidatorsCheck() {
@@ -104,15 +101,6 @@ func _unknownWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, f
 	return "unknown word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
 }
 
-func _unexpectedWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
-	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
-	}
-	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
-	suffix := getSuffix(pfa, stackItem.start, stackItem.itemString)
-	return "unexpected word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
-}
-
 // =============
 
 // func getSuffix(pfa *pfaStruct, pos, length uint, opts ...uint) (suffix string) {
@@ -150,5 +138,5 @@ func getSuffix(pfa *pfaStruct, start runePtrStruct, redString string) (suffix st
 	if byte(suffix[len(suffix)-1]) != '\n' {
 		suffix += string('\n')
 	}
-	return ansi.Ansi("Reset", suffix)
+	return suffix
 }

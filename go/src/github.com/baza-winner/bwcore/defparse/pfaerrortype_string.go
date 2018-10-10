@@ -4,9 +4,9 @@ package defparse
 
 import "strconv"
 
-const _pfaErrorType_name = "pfaError_below_unexpectedRuneErrorfailedToGetNumberErrorunknownWordErrorunexpectedWordErrorpfaError_above_"
+const _pfaErrorType_name = "pfaError_below_unexpectedRuneErrorfailedToGetNumberErrorunknownWordErrorpfaError_above_"
 
-var _pfaErrorType_index = [...]uint8{0, 15, 34, 56, 72, 91, 106}
+var _pfaErrorType_index = [...]uint8{0, 15, 34, 56, 72, 87}
 
 func (i pfaErrorType) String() string {
 	if i >= pfaErrorType(len(_pfaErrorType_index)-1) {
