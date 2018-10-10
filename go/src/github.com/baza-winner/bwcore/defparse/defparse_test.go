@@ -142,12 +142,12 @@ me'`},
 			},
 		},
 		"unexpectedWordError": {
-			In: []interface{}{` qw/abc def/  `},
+			In: []interface{}{`[ Bool Something String ]`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected word <ansiPrimaryLiteral>qw" +
-						ansi.Ansi("Reset", " at pos <ansiCmd>1<ansi>: <ansiDarkGreen> <ansiLightRed>qw<ansiReset>/abc def/  \n"),
+					"unknown word <ansiPrimaryLiteral>Something" +
+						ansi.Ansi("Reset", " at pos <ansiCmd>7<ansi>: <ansiDarkGreen>[ Bool <ansiLightRed>Something<ansiReset> String ]\n"),
 				),
 			},
 		},
@@ -172,7 +172,7 @@ me'`},
 				),
 			},
 		},
-		"unexpectedCharError": {
+		"unexpectedRuneError": {
 			In: []interface{}{`
 [
   1000,
@@ -189,7 +189,7 @@ me'`},
 				),
 			},
 		},
-		"unexpectedCharError(EOF)": {
+		"unexpectedRuneError(EOF)": {
 			In: []interface{}{` [1000, true 'value', `},
 			Out: []interface{}{
 				nil,
@@ -252,10 +252,24 @@ me'`},
 				nil,
 			},
 		},
-		"qw/ Bool String Int Number Map Array ArrayOf /": {
-			In: []interface{}{`[ Bool String Int Number Map Array ArrayOf ]`},
+		"qw/Bool String Int Number Map Array ArrayOf/": {
+			In: []interface{}{`qw/Bool String Int Number Map Array ArrayOf/`},
 			Out: []interface{}{
 				[]interface{}{"Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf"},
+				nil,
+			},
+		},
+		"< bool string int number map array arrayof >": {
+			In: []interface{}{`< bool string int number map array arrayof >`},
+			Out: []interface{}{
+				[]interface{}{"bool", "string", "int", "number", "map", "array", "arrayof"},
+				nil,
+			},
+		},
+		"[ 'bool' <string int number map array> 'arrayof' ]": {
+			In: []interface{}{`[ 'bool' <string int number map array> 'arrayof' ]`},
+			Out: []interface{}{
+				[]interface{}{"bool", "string", "int", "number", "map", "array", "arrayof"},
 				nil,
 			},
 		},
@@ -263,7 +277,7 @@ me'`},
 
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
+	// bwmap.CropMap(testsToRun, "qw/Bool String Int Number Map Array ArrayOf/")
 	bwtesting.BwRunTests(t, testsToRun, Parse)
 }
 

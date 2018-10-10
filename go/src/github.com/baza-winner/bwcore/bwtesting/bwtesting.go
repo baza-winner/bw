@@ -134,8 +134,8 @@ func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
 				if tstErr != etaErr {
 					if tstErr == nil || etaErr == nil || tstErr.Error() != etaErr.Error() {
 						fmtString := testTitle +
-							"    => <ansiErr>err<ansi>: '%#v'\n" +
-							", <ansiOK>want err<ansi>: '%#v'\n" +
+							"    => <ansiErr>err<ansi>: '%s'\n" +
+							", <ansiOK>want err<ansi>: '%s'\n" +
 							"<ansiErr>tstErr(q)<ansi>: %q\n" +
 							"<ansiOK>etaErr(q)<ansi>: %q"
 						fmtArgs := []interface{}{tstErr, etaErr, tstErr, etaErr}

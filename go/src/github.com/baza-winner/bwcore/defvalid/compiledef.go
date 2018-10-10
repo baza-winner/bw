@@ -4,11 +4,9 @@ import (
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
-	// "log"
 )
 
 func compileDef(def value) (result *Def, err error) {
-	// log.Printf("compileDef::result: %#v", result)
 	if def.value == nil {
 		return nil, valueErrorMake(def, valueErrorHasNonSupportedValue)
 	}

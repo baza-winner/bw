@@ -57,35 +57,59 @@ func _parseStackItemArray(pfa *pfaStruct) (skipPostProcess bool, err error) {
 
 func _parseStackItemQw(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	stackItem := pfa.getTopStackItemOfType(parseStackItemQw)
-	if pfa.charPtr == nil {
-		pfa.panic()
-	}
-	if unicode.IsSpace(*pfa.charPtr) {
-		pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
-	} else {
-		if len(pfa.stack) < 2 {
-			pfa.panic()
-		}
-		stackSubItem := pfa.stack[len(pfa.stack)-1]
-		pfa.stack = pfa.stack[:len(pfa.stack)-1]
-		stackItem = pfa.getTopStackItemOfType(parseStackItemArray)
-		stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
-		pfa.state.setPrimary(expectArrayItemSeparatorOrSpace)
-	}
-	return true, nil
+	// if pfa.charPtr == nil {
+	// 	pfa.panic()
+	// }
+	// if unicode.IsSpace(*pfa.charPtr) {
+	// 	pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
+	// 	return true, nil
+	// } else {
+	// if len(pfa.stack) >= 2 {
+	// 	stackItem := pfa.getTopStackItem(-2)
+	// 	if stackItem.itemType == parseStackItemArray {
+	// 		// stackSubItem := pfa.stack[len(pfa.stack)-1]
+	// 		// pfa.stack = pfa.stack[:len(pfa.stack)-1]
+	// 		stackSubItem := pfa.popStackItem()
+	// 		// stackItem = pfa.getTopStackItemOfType(parseStackItemArray)
+	// 		stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
+	// 		pfa.state.setPrimary(expectArrayItemSeparatorOrSpace)
+	// 		return true, nil
+	// 	}
+	// }
+	// stackItem.itemType = parseStackItemArray
+	// stackItem := pfa.getTopStackItem()
+	stackItem.value = stackItem.itemArray
+	// pfa.state.setPrimary(expectValueOrSpace)
+	// return true, nil
+
+	// && (pfa.stack[:len(pfa.stack)-2]).itemType == parseStackItemArray {
+	// 	stackSubItem := pfa.stack[len(pfa.stack)-1]
+	// 	pfa.stack = pfa.stack[:len(pfa.stack)-1]
+	// 	stackItem = pfa.getTopStackItemOfType(parseStackItemArray)
+	// 	stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemArray...)
+	// 	pfa.state.setPrimary(expectArrayItemSeparatorOrSpace)
+	// } else {
+	// }
+	return false, nil
+	// }
 }
 
 func _parseStackItemQwItem(pfa *pfaStruct) (skipPostProcess bool, err error) {
-	if len(pfa.stack) < 2 {
-		pfa.panic()
-	}
-	stackSubItem := pfa.popStackItem()
+	stackItem := pfa.getTopStackItemOfType(parseStackItemQwItem)
 
-	stackItem := pfa.getTopStackItemOfType(parseStackItemQw)
-	stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemString)
-	return _parseStackItemQw(pfa)
+	stackItem.value = stackItem.itemString
+	// if len(pfa.stack) < 2 {
+	// 	pfa.panic()
+	// }
+	// // stackSubItem := pfa.popStackItem()
 
-	return true, nil
+	// // stackItem := pfa.getTopStackItemOfType(parseStackItemQw)
+
+	// stackItem := pfa.getTopStackItemOfType(parseStackItemQwItem)
+	// stackItem.itemArray = append(stackItem.itemArray, stackSubItem.itemString)
+	// return _parseStackItemQw(pfa)
+
+	return false, nil
 }
 
 // const (
@@ -137,36 +161,37 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
 		stackItem.value = stackItem.itemString
 	case "qw":
-		if len(pfa.stack) < 2 || pfa.getTopStackItem(-2).itemType != parseStackItemArray {
-			// err = unexpectedWordError{}
-			err = pfaErrorMake(pfa, unexpectedWordError)
+		// if len(pfa.stack) < 2 || pfa.getTopStackItem(-2).itemType != parseStackItemArray {
+		// 	// err = unexpectedWordError{}
+		// 	err = pfaErrorMake(pfa, unexpectedWordError)
+		// } else {
+		pfa.pullRune()
+		if pfa.runePtr == nil {
+			err = pfaErrorMake(pfa, unexpectedRuneError)
 		} else {
-			if pfa.charPtr == nil {
-				err = pfaErrorMake(pfa, unexpectedCharError)
-			} else {
-				pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
-				switch *pfa.charPtr {
-				case '<':
-					stackItem.delimiter = '>'
-				case '[':
-					stackItem.delimiter = ']'
-				case '(':
-					stackItem.delimiter = ')'
-				case '{':
-					stackItem.delimiter = '}'
+			pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
+			switch *pfa.runePtr {
+			case '<':
+				stackItem.delimiter = '>'
+			case '[':
+				stackItem.delimiter = ']'
+			case '(':
+				stackItem.delimiter = ')'
+			case '{':
+				stackItem.delimiter = '}'
+			default:
+				switch {
+				case unicode.IsPunct(*pfa.runePtr) || unicode.IsSymbol(*pfa.runePtr):
+					stackItem.delimiter = *pfa.runePtr
 				default:
-					switch {
-					case unicode.IsPunct(*pfa.charPtr) || unicode.IsSymbol(*pfa.charPtr):
-						stackItem.delimiter = *pfa.charPtr
-					default:
-						err = pfaErrorMake(pfa, unexpectedCharError)
-					}
-				}
-				if pfa.state.primary == expectSpaceOrQwItemOrDelimiter {
-					stackItem.itemType = parseStackItemQw
-					stackItem.itemArray = []interface{}{}
+					err = pfaErrorMake(pfa, unexpectedRuneError)
 				}
 			}
+			// if pfa.state.primary == expectSpaceOrQwItemOrDelimiter {
+			stackItem.itemType = parseStackItemQw
+			stackItem.itemArray = []interface{}{}
+			// }
+			// }
 		}
 		return true, err
 

@@ -199,22 +199,41 @@ func MustParseMap(source string) (result map[string]interface{}) {
 	return result
 }
 
+type stringRuneProvider struct {
+	pos int
+	src []rune
+}
+
+func (v *stringRuneProvider) PullRune() *rune {
+	v.pos += 1
+	if v.pos >= len(v.src) {
+		return nil
+	} else {
+		result := v.src[v.pos]
+		return &result
+	}
+}
+
 // Parse - парсит строку
 func Parse(source string) (interface{}, error) {
-	pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}, source: source}
-	var err error
-	for pos, char := range source {
-		if err = pfa.processCharAtPos(char, pos); err != nil {
-			break
-		}
-	}
-	if err == nil {
-		err = pfa.processEOF()
-	}
+	return pfaRun(&stringRuneProvider{pos: -1, src: []rune(source)}, source)
+	// pfa := pfaStruct{stack: parseStack{}, state: parseState{primary: expectValueOrSpace}}
+	// var err error
+
+	// pfa.run()
+
+	// for pos, char := range source {
+	// 	if err = pfa.processCharAtPos(char, pos); err != nil {
+	// 		break
+	// 	}
+	// }
+	// if err == nil {
+	// 	err = pfa.processEOF()
+	// }
 	// if err != nil {
 	// 	err = pfa.arrangeError(err, source)
 	// }
-	return pfa.result, err
+	// return pfa.result, err
 }
 
 // MustParse is like Parse but panics if the expression cannot be parsed.

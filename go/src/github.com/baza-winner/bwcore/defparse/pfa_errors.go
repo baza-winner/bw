@@ -2,6 +2,7 @@ package defparse
 
 import (
 	"fmt"
+
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/jimlawless/whereami"
@@ -11,7 +12,7 @@ type pfaErrorType uint16
 
 const (
 	pfaError_below_ pfaErrorType = iota
-	unexpectedCharError
+	unexpectedRuneError
 	failedToGetNumberError
 	unknownWordError
 	unexpectedWordError
@@ -57,7 +58,7 @@ func (v pfaError) GetDataForJson() interface{} {
 type pfaErrorValidator func(pfa *pfaStruct, args ...interface{}) (string, []interface{})
 
 var pfaErrorValidators = map[pfaErrorType]pfaErrorValidator{
-	unexpectedCharError:    _unexpectedCharError,
+	unexpectedRuneError:    _unexpectedRuneError,
 	failedToGetNumberError: _failedToGetNumberError,
 	unknownWordError:       _unknownWordError,
 	unexpectedWordError:    _unexpectedWordError,
@@ -73,11 +74,11 @@ func pfaErrorValidatorsCheck() {
 	}
 }
 
-func _unexpectedCharError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
+func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 	if args != nil {
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	if pfa.charPtr == nil {
+	if pfa.runePtr == nil {
 		suffix := getSuffix(pfa.source, 0, 0)
 		fmtString = "unexpected end of string (pfa.state: %s)" + suffix
 		fmtArgs = []interface{}{pfa.state}
@@ -85,8 +86,8 @@ func _unexpectedCharError(pfa *pfaStruct, args ...interface{}) (fmtString string
 		suffix := getSuffix(pfa.source, uint(pfa.pos), 1)
 		fmtString = "unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %v, pfa.state: %s)" + suffix
 		fmtArgs = []interface{}{
-			*pfa.charPtr,
-			*pfa.charPtr,
+			*pfa.runePtr,
+			*pfa.runePtr,
 			pfa.state,
 		}
 	}

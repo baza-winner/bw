@@ -4,7 +4,7 @@ package defparse
 
 import "strconv"
 
-const _pfaErrorType_name = "pfaError_below_unexpectedCharErrorfailedToGetNumberErrorunknownWordErrorunexpectedWordErrorpfaError_above_"
+const _pfaErrorType_name = "pfaError_below_unexpectedRuneErrorfailedToGetNumberErrorunknownWordErrorunexpectedWordErrorpfaError_above_"
 
 var _pfaErrorType_index = [...]uint8{0, 15, 34, 56, 72, 91, 106}
 
