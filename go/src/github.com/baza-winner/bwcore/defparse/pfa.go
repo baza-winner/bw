@@ -101,7 +101,6 @@ const (
 	expectEOF
 	expectValueOrSpace
 	expectRocket
-	expectMapKey
 	expectWord
 	expectDigit
 	expectContentOf
@@ -117,7 +116,8 @@ const (
 type parseSecondaryState uint16
 
 const (
-	noSecondaryState parseSecondaryState = iota
+	anySecondaryState parseSecondaryState = iota
+	noSecondaryState
 	orSpace
 
 	orMapKeySeparator
@@ -126,28 +126,30 @@ const (
 	orUnderscoreOrDot
 	orUnderscore
 
-	doubleQuoted
-	singleQuoted
+	stringToken
+	keyToken
+	// doubleQuoted
+	// singleQuoted
 
 	orMapValueSeparator
 )
 
 //go:generate stringer -type=parseSecondaryState
 
-type parseTertiaryState uint16
+// type parseTertiaryState uint16
 
-const (
-	noTertiaryState parseTertiaryState = iota
-	stringToken
-	keyToken
-)
+// const (
+// 	noTertiaryState parseTertiaryState = iota
+// 	stringToken
+// 	keyToken
+// )
 
-//go:generate stringer -type=parseTertiaryState
+// go:generate stringer -type=parseTertiaryState
 
 type parseState struct {
 	primary   parsePrimaryState
 	secondary parseSecondaryState
-	tertiary  parseTertiaryState
+	// tertiary  parseTertiaryState
 }
 
 func (state *parseState) setPrimary(primary parsePrimaryState) {
@@ -155,19 +157,22 @@ func (state *parseState) setPrimary(primary parsePrimaryState) {
 }
 
 func (state *parseState) setSecondary(primary parsePrimaryState, secondary parseSecondaryState) {
-	state.setTertiary(primary, secondary, noTertiaryState)
-}
-
-func (state *parseState) setTertiary(primary parsePrimaryState, secondary parseSecondaryState, tertiary parseTertiaryState) {
 	state.primary = primary
 	state.secondary = secondary
-	state.tertiary = tertiary
+	// state.setTertiary(primary, secondary, noTertiaryState)
 }
 
+// func (state *parseState) setTertiary(primary parsePrimaryState, secondary parseSecondaryState, tertiary parseTertiaryState) {
+// 	state.primary = primary
+// 	state.secondary = secondary
+// 	state.tertiary = tertiary
+// }
+
 func (state parseState) String() string {
-	if state.tertiary != noTertiaryState {
-		return fmt.Sprintf(`%s.%s.%s`, state.primary, state.secondary, state.tertiary)
-	} else if state.secondary != noSecondaryState {
+	// if state.tertiary != noTertiaryState {
+	// 	return fmt.Sprintf(`%s.%s.%s`, state.primary, state.secondary, state.tertiary)
+	// } else
+	if state.secondary != noSecondaryState {
 		return fmt.Sprintf(`%s.%s`, state.primary, state.secondary)
 	} else {
 		return state.primary.String()
@@ -314,6 +319,17 @@ func (pfa *pfaStruct) pushRune() {
 		pfa.next = pfa.curr.copyPtr()
 		pfa.curr = *(pfa.prev)
 	}
+}
+
+func (pfa *pfaStruct) currRune() (result rune, isEOF bool) {
+	if pfa.curr.runePtr == nil {
+		result = '\000'
+		isEOF = true
+	} else {
+		result = *pfa.curr.runePtr
+		isEOF = false
+	}
+	return
 }
 
 func (pfa *pfaStruct) panic(args ...interface{}) {

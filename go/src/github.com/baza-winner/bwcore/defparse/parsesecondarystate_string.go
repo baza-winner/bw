@@ -4,9 +4,9 @@ package defparse
 
 import "strconv"
 
-const _parseSecondaryState_name = "noSecondaryStateorSpaceorMapKeySeparatororArrayItemSeparatororUnderscoreOrDotorUnderscoredoubleQuotedsingleQuotedorMapValueSeparator"
+const _parseSecondaryState_name = "anySecondaryStatenoSecondaryStateorSpaceorMapKeySeparatororArrayItemSeparatororUnderscoreOrDotorUnderscorestringTokenkeyTokenorMapValueSeparator"
 
-var _parseSecondaryState_index = [...]uint8{0, 16, 23, 40, 60, 77, 89, 101, 113, 132}
+var _parseSecondaryState_index = [...]uint8{0, 17, 33, 40, 57, 77, 94, 106, 117, 125, 144}
 
 func (i parseSecondaryState) String() string {
 	if i >= parseSecondaryState(len(_parseSecondaryState_index)-1) {
