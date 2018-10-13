@@ -14,7 +14,7 @@ import (
 type Def struct {
 	tp         deftype.Set
 	isOptional bool
-	enum       bwset.Strings
+	enum       bwset.StringSet
 	minInt     *int64
 	maxInt     *int64
 	minNumber  *float64

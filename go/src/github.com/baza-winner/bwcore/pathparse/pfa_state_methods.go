@@ -78,11 +78,10 @@ func _expectPathSegment(pfa *pfaStruct) (needFinishTopStackItem bool, err error)
 
 func _expectMapKey(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
 	stackItem := pfa.getTopStackItemOfType(parseStackItemKey)
+	currRune := pfa.currRune()
 	switch {
-	// case pfa.curr.runePtr == nil:
-	// 	err = pfaErrorMake(pfa, unexpectedRuneError)
-	case unicode.IsLetter(*pfa.curr.runePtr) || *pfa.curr.runePtr == '_' || unicode.IsDigit(*pfa.curr.runePtr):
-		stackItem.itemString = stackItem.itemString + string(*pfa.curr.runePtr)
+	case unicode.IsLetter(currRune) || currRune == '_' || unicode.IsDigit(currRune):
+		stackItem.itemString = stackItem.itemString + string(currRune)
 	default:
 		pfa.pushRune()
 		needFinishTopStackItem = true
@@ -92,23 +91,23 @@ func _expectMapKey(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
 
 func _expectDigit(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
 	stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
-	isNotEOF := pfa.curr.runePtr != nil
+	currRune := pfa.currRune()
 	if pfa.state.secondary == noSecondaryState {
 		switch {
-		case isNotEOF && unicode.IsDigit(*pfa.curr.runePtr):
-			stackItem.itemString = stackItem.itemString + string(*pfa.curr.runePtr)
+		case unicode.IsDigit(currRune):
+			stackItem.itemString = stackItem.itemString + string(currRune)
 			pfa.state.secondary = orUnderscore
 		default:
 			err = pfaErrorMake(pfa, unexpectedRuneError)
 		}
 	} else {
 		switch {
-		case isNotEOF && (unicode.IsDigit(*pfa.curr.runePtr) || *pfa.curr.runePtr == '_'):
+		case unicode.IsDigit(currRune) || currRune == '_':
 			stackItem.itemString = stackItem.itemString + string(*pfa.curr.runePtr)
 		default:
 			if stackItem.delimiter == nil {
 				pfa.pushRune()
-			} else if !(isNotEOF && *pfa.curr.runePtr == *stackItem.delimiter) {
+			} else if currRune != *stackItem.delimiter {
 				return false, pfaErrorMake(pfa, unexpectedRuneError)
 			}
 			needFinishTopStackItem = true

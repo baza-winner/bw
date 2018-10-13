@@ -20,7 +20,7 @@ type TestCaseStruct struct {
 	Out []interface{}
 }
 
-func BwRunTests(t *testing.T, tests map[string]TestCaseStruct, f interface{}) {
+func BwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct) {
 	fType := reflect.TypeOf(f)
 	if fType.Kind() != reflect.Func {
 		bwerror.Panic("reflect.TypeOf(f).Kind(): %s\n", fType.Kind())

@@ -414,7 +414,7 @@ me'`},
 	bwmap.CropMap(testsToRun)
 	// bwmap.CropMap(testsToRun, "_expectSpaceOrQwItemOrDelimiter && fa.curr.runePtr == EOF")
 	// bwmap.CropMap(testsToRun, "qw ")
-	bwtesting.BwRunTests(t, testsToRun, Parse)
+	bwtesting.BwRunTests(t, Parse, testsToRun)
 }
 
 func ExampleParse_1() {
@@ -946,5 +946,5 @@ func TestParseMap(t *testing.T) {
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
 	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
-	bwtesting.BwRunTests(t, testsToRun, ParseMap)
+	bwtesting.BwRunTests(t, ParseMap, testsToRun)
 }

@@ -57,7 +57,7 @@ func TestCompileDef(t *testing.T) {
 		"def: simple valid": {
 			In: []interface{}{defparse.MustParse(`"Bool"`)},
 			Out: []interface{}{
-				&Def{tp: deftype.FromArgs(deftype.Bool)},
+				&Def{tp: deftype.From(deftype.Bool)},
 				nil,
 			},
 		},
@@ -71,7 +71,7 @@ func TestCompileDef(t *testing.T) {
 		"def: enum": {
 			In: []interface{}{defparse.MustParse(`{ type: "String", enum: [qw/one two three/]}`)},
 			Out: []interface{}{
-				&Def{tp: deftype.FromArgs(deftype.String), enum: bwset.StringsFromArgs("one", "two", "three")},
+				&Def{tp: deftype.From(deftype.String), enum: bwset.StringSetFrom("one", "two", "three")},
 				nil,
 			},
 		},
@@ -86,9 +86,9 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Map", keys: { keyBool: ['Bool'] }}`)},
 			Out: []interface{}{
 				&Def{
-					tp: deftype.FromArgs(deftype.Map),
+					tp: deftype.From(deftype.Map),
 					keys: map[string]Def{
-						"keyBool": Def{tp: deftype.FromArgs(deftype.Bool)},
+						"keyBool": Def{tp: deftype.From(deftype.Bool)},
 					}},
 				nil,
 			},
@@ -129,10 +129,10 @@ func TestCompileDef(t *testing.T) {
 			},
 			Out: []interface{}{
 				&Def{
-					tp:         deftype.FromArgs(deftype.Map),
+					tp:         deftype.From(deftype.Map),
 					isOptional: false,
 					keys: map[string]Def{
-						"keyBool": Def{tp: deftype.FromArgs(deftype.Bool), isOptional: false},
+						"keyBool": Def{tp: deftype.From(deftype.Bool), isOptional: false},
 					},
 				},
 				nil,
@@ -167,8 +167,8 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Array", arrayElem: 'Int' }`)},
 			Out: []interface{}{
 				&Def{
-					tp:        deftype.FromArgs(deftype.Array),
-					arrayElem: &Def{tp: deftype.FromArgs(deftype.Int)},
+					tp:        deftype.From(deftype.Array),
+					arrayElem: &Def{tp: deftype.From(deftype.Int)},
 				},
 				nil,
 			},
@@ -219,7 +219,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Int", minInt: -6, maxInt: 10 }`)},
 			Out: []interface{}{
 				&Def{
-					tp:     deftype.FromArgs(deftype.Int),
+					tp:     deftype.From(deftype.Int),
 					minInt: ptrToInt64(-6),
 					maxInt: ptrToInt64(10),
 				},
@@ -262,7 +262,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Number", minNumber: -6, maxNumber: 10 }`)},
 			Out: []interface{}{
 				&Def{
-					tp:        deftype.FromArgs(deftype.Number),
+					tp:        deftype.From(deftype.Number),
 					minNumber: ptrToFloat64(float64(-6)),
 					maxNumber: ptrToFloat64(float64(10)),
 				},
@@ -295,7 +295,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Bool", default: true }`)},
 			Out: []interface{}{
 				&Def{
-					tp:         deftype.FromArgs(deftype.Bool),
+					tp:         deftype.From(deftype.Bool),
 					dflt:       true,
 					isOptional: true,
 				},
@@ -313,7 +313,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Bool", isOptional: true }`)},
 			Out: []interface{}{
 				&Def{
-					tp:         deftype.FromArgs(deftype.Bool),
+					tp:         deftype.From(deftype.Bool),
 					isOptional: true,
 				},
 				nil,
@@ -376,7 +376,7 @@ func TestCompileDef(t *testing.T) {
 			}`)},
 			Out: []interface{}{
 				&Def{
-					tp:         deftype.FromArgs(deftype.ArrayOf, deftype.Int),
+					tp:         deftype.From(deftype.ArrayOf, deftype.Int),
 					isOptional: true,
 					dflt:       []interface{}{3},
 				},
@@ -386,8 +386,8 @@ func TestCompileDef(t *testing.T) {
 	}
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "def: ArrayOf without follower")
-	bwtesting.BwRunTests(t, testsToRun, CompileDef)
+	// bwmap.CropMap(testsToRun, "simple.def: ArrayOf with valid default")
+	bwtesting.BwRunTests(t, CompileDef, testsToRun)
 }
 
 // ============================================================================
@@ -888,5 +888,5 @@ func TestValidateVal(t *testing.T) {
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
 	// bwmap.CropMap(testsToRun, "val: invalid, def: int.min.max")
-	bwtesting.BwRunTests(t, testsToRun, ValidateVal)
+	bwtesting.BwRunTests(t, ValidateVal, testsToRun)
 }

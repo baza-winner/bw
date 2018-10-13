@@ -8,7 +8,7 @@ import (
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
 
-  // "github.com/davecgh/go-spew/spew"
+	// "github.com/davecgh/go-spew/spew"
 
 	// "log"
 	"reflect"
@@ -28,7 +28,7 @@ func (v value) GetDataForJson() interface{} {
 
 func (v value) String() string {
 	// return fmt.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%s<ansi>)`, bwjson.PrettyJson(v.value))
-  return bwerror.Spew.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%#v<ansi>)`, v.value)
+	return bwerror.Spew.Sprintf(v.what+`<ansi> (<ansiSecondaryLiteral>%#v<ansi>)`, v.value)
 }
 
 func (v value) forEachMapString(f func(k string, v interface{}) (err error)) (err error) {
@@ -209,7 +209,7 @@ func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
 			case "bool":
 				ok = vType.Kind() == reflect.Bool
 			case "bwset.Strings":
-				_, ok = v.(bwset.Strings)
+				_, ok = v.(bwset.StringSet)
 			case "deftype.Set":
 				_, ok = v.(deftype.Set)
 			case "interface{}":
@@ -288,8 +288,8 @@ func _mustBeSliceOfStrings(v interface{}) (result []string) {
 	return
 }
 
-func _mustBeBwsetStrings(v interface{}) (result bwset.Strings) {
-	result, _ = _mustBeOfType(v, "bwset.Strings").(bwset.Strings)
+func _mustBeBwsetStrings(v interface{}) (result bwset.StringSet) {
+	result, _ = _mustBeOfType(v, "bwset.Strings").(bwset.StringSet)
 	return
 }
 

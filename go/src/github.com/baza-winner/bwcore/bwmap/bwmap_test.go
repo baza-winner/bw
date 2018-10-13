@@ -1,9 +1,10 @@
 package bwmap
 
 import (
+	"testing"
+
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/mohae/deepcopy"
-	"testing"
 )
 
 func GetCroppedMap(m interface{}, crop ...interface{}) (result interface{}) {
@@ -102,5 +103,5 @@ func TestGetCroppedMap(t *testing.T) {
 	testsToRun := tests
 	CropMap(testsToRun)
 	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
-	bwtesting.BwRunTests(t, testsToRun, GetCroppedMap)
+	bwtesting.BwRunTests(t, GetCroppedMap, testsToRun)
 }

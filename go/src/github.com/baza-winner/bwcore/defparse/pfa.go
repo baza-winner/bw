@@ -17,6 +17,22 @@ func init() {
 
 // ============================================================================
 
+type unicodeCategory uint8
+
+const (
+	unicodeSpace unicodeCategory = iota
+)
+
+//go:generate setter -type=parseSecondaryState
+
+//go:generate setter -type=parseStackItemType
+//go:generate setter -type=rune
+
+//go:generate setter -type=unicodeCategory
+//go:generate stringer -type=unicodeCategory
+
+// ============================================================================
+
 type parseStackItemType uint16
 
 const (

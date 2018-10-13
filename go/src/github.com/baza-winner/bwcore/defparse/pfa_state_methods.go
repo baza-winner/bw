@@ -31,7 +31,32 @@ func pfaPrimaryStateMethodsCheck() {
 	}
 }
 
+type ruleProcessor func(currRune rune) (needFinishTopStackItem bool, isUnexpectedRune bool)
+type rule struct {
+	runes               runeSet
+	unicodeCategories   unicodeCategorySet
+	secondaryStates     parseSecondaryStateSet
+	parseStackItemTypes parseStackItemTypeSet
+	processor           ruleProcessor
+}
+
+// type eofProcessor func() (needFinishTopStackItem bool, isUnexpectedRune bool)
+// func (pfa *pfaStruct) processState(onEof onEofProcessor, rules []rule, onDefault ruleProcessor) {
+
+// }
+
 func _expectEOF(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
+	// pfa.processState(
+	// 	func () (bool, bool) { pfa.state.setPrimary(expectEOF) },
+	// 	rules[]{
+	// 		rule{
+	// 			runes
+
+	// 			},
+
+	// 		},
+	// )
+
 	currRune, isEOF := pfa.currRune()
 	switch {
 	case isEOF:

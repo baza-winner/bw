@@ -1,8 +1,9 @@
 package bwstring
 
 import (
-	"github.com/baza-winner/bwcore/bwtesting"
 	"testing"
+
+	"github.com/baza-winner/bwcore/bwtesting"
 )
 
 func TestSmartQuote(t *testing.T) {
@@ -17,5 +18,5 @@ func TestSmartQuote(t *testing.T) {
 		},
 	}
 	testsToRun := tests
-	bwtesting.BwRunTests(t, testsToRun, SmartQuote)
+	bwtesting.BwRunTests(t, SmartQuote, testsToRun)
 }

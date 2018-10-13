@@ -2,11 +2,12 @@ package bwexec
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/defparse"
-	"os"
-	"testing"
 )
 
 func TestMain(m *testing.M) { // https://stackoverflow.com/questions/23729790/how-can-i-do-test-setup-using-the-testing-package-in-go/34102842#34102842
@@ -108,5 +109,5 @@ func TestExecCmd(t *testing.T) {
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
 	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
-	bwtesting.BwRunTests(t, testsToRun, ExecCmd)
+	bwtesting.BwRunTests(t, ExecCmd, testsToRun)
 }

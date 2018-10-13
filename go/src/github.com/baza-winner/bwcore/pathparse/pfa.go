@@ -305,6 +305,15 @@ func (pfa *pfaStruct) pushRune() {
 	}
 }
 
+func (pfa *pfaStruct) currRune() (result rune) {
+	if pfa.curr.runePtr == nil {
+		result = '\000'
+	} else {
+		result = *pfa.curr.runePtr
+	}
+	return
+}
+
 func (pfa *pfaStruct) panic(args ...interface{}) {
 	fmtString := "<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>"
 	if args != nil {

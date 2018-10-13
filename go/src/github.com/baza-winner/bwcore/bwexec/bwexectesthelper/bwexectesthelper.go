@@ -1,14 +1,13 @@
-/*
-Вспомогательная утилита для тестирования bwexec.ExecCmd.
-*/
+// Вспомогательная утилита для тестирования bwexec.ExecCmd.
 package main
 
 import (
 	"flag"
 	"fmt"
-	"github.com/baza-winner/bwcore/ansi"
 	"os"
 	"regexp"
+
+	"github.com/baza-winner/bwcore/ansi"
 )
 
 func main() {

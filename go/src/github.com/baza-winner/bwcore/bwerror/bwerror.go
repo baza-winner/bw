@@ -27,7 +27,11 @@ const (
 )
 
 func ExitWithError(exitCode int, fmtString string, fmtArgs ...interface{}) {
-	log.Print(ansi.Ansi(`Err`, fmt.Sprintf(fmtString, fmtArgs...)))
+	msg := ansi.Ansi(ansiErr, fmt.Sprintf(errPrefix+fmtString, fmtArgs...))
+	if byte(msg[len(msg)-1]) != '\n' {
+		msg += string('\n')
+	}
+	fmt.Print(msg)
 	os.Exit(exitCode)
 }
 
