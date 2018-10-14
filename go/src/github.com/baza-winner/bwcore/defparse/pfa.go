@@ -9,11 +9,19 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 )
 
+var unexpectedEof []interface{}
+
 func init() {
 	pfaPrimaryStateMethodsCheck()
 	pfaItemFinishMethodsCheck()
 	pfaErrorValidatorsCheck()
+
+	unexpectedEof = []interface{}{eofRune{},
+		unexpectedRune{},
+	}
 }
+
+//go:generate setter -type=rune
 
 // ============================================================================
 
@@ -21,14 +29,10 @@ type unicodeCategory uint8
 
 const (
 	unicodeSpace unicodeCategory = iota
+	unicodeLetter
+	unicodeDigit
 )
 
-//go:generate setter -type=parseSecondaryState
-
-//go:generate setter -type=parseStackItemType
-//go:generate setter -type=rune
-
-//go:generate setter -type=unicodeCategory
 //go:generate stringer -type=unicodeCategory
 
 // ============================================================================
@@ -49,6 +53,7 @@ const (
 )
 
 //go:generate stringer -type=parseStackItemType
+//go:generate setter -type=parseStackItemType
 
 // ============================================================================
 
@@ -151,16 +156,7 @@ const (
 )
 
 //go:generate stringer -type=parseSecondaryState
-
-// type parseTertiaryState uint16
-
-// const (
-// 	noTertiaryState parseTertiaryState = iota
-// 	stringToken
-// 	keyToken
-// )
-
-// go:generate stringer -type=parseTertiaryState
+//go:generate setter -type=parseSecondaryState
 
 type parseState struct {
 	primary   parsePrimaryState
@@ -394,6 +390,20 @@ func (pfa *pfaStruct) popStackItem() (stackItem parseStackItem) {
 	return
 }
 
+func (pfa *pfaStruct) pushStackItem(itemType parseStackItemType, itemString string, delimiter rune) {
+	pfa.stack = append(pfa.stack, parseStackItem{
+		itemType:  itemType,
+		start:     pfa.curr,
+		itemArray: []interface{}{},
+		itemMap:   map[string]interface{}{},
+		delimiter: delimiter,
+		// currentKey: "",
+		itemString: itemString,
+		// value:      nil,
+	})
+	// return
+}
+
 func (pfa *pfaStruct) finishTopStackItem() (err error) {
 	stackItem := pfa.getTopStackItem()
 	var skipPostProcess bool
@@ -427,7 +437,7 @@ func (pfa *pfaStruct) finishTopStackItem() (err error) {
 					pfa.state.setSecondary(expectSpaceOrMapKey, orMapValueSeparator)
 				}
 			default:
-				pfa.panic()
+				pfa.panic("stackItem.itemType: %s", stackItem.itemType)
 			}
 		}
 	}

@@ -412,8 +412,8 @@ me'`},
 
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "_expectSpaceOrQwItemOrDelimiter && fa.curr.runePtr == EOF")
-	// bwmap.CropMap(testsToRun, "qw ")
+	// bwmap.CropMap(testsToRun, "unexpectedRuneError")
+	// bwmap.CropMap(testsToRun, "qw && fa.curr.runePtr == EOF")
 	bwtesting.BwRunTests(t, Parse, testsToRun)
 }
 

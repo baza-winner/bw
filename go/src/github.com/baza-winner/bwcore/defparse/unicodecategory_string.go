@@ -4,9 +4,9 @@ package defparse
 
 import "strconv"
 
-const _unicodeCategory_name = "unicodeSpace"
+const _unicodeCategory_name = "unicodeSpaceunicodeLetterunicodeDigit"
 
-var _unicodeCategory_index = [...]uint8{0, 12}
+var _unicodeCategory_index = [...]uint8{0, 12, 25, 37}
 
 func (i unicodeCategory) String() string {
 	if i >= unicodeCategory(len(_unicodeCategory_index)-1) {
