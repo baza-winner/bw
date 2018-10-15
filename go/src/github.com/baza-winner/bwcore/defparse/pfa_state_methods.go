@@ -66,36 +66,36 @@ func (v parseStackItemTypeSet) ConformsTo(pfa *pfaStruct) bool {
 }
 
 type processorAction interface {
-	execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune)
+	execute(pfa *pfaStruct, currRune rune)
 }
 
 type unexpectedRune struct{}
 
-func (v unexpectedRune) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
-	*isUnexpectedRune = true
+func (v unexpectedRune) execute(pfa *pfaStruct, currRune rune) {
+	pfa.isUnexpectedRune = true
 }
 
 type needFinish struct{}
 
-func (v needFinish) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v needFinish) execute(pfa *pfaStruct, currRune rune) {
 	pfa.needFinishTopStackItem = true
 }
 
 type appendRuneToItemString struct{}
 
-func (v appendRuneToItemString) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v appendRuneToItemString) execute(pfa *pfaStruct, currRune rune) {
 	pfa.getTopStackItem().itemString += string(currRune)
 }
 
 type pushRune struct{}
 
-func (v pushRune) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v pushRune) execute(pfa *pfaStruct, currRune rune) {
 	pfa.pushRune()
 }
 
 type pullRune struct{}
 
-func (v pullRune) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v pullRune) execute(pfa *pfaStruct, currRune rune) {
 	pfa.pullRune()
 }
 
@@ -103,7 +103,7 @@ type changePrimary struct {
 	primary parsePrimaryState
 }
 
-func (v changePrimary) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v changePrimary) execute(pfa *pfaStruct, currRune rune) {
 	pfa.state.primary = v.primary
 }
 
@@ -111,7 +111,7 @@ type setPrimary struct {
 	primary parsePrimaryState
 }
 
-func (v setPrimary) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v setPrimary) execute(pfa *pfaStruct, currRune rune) {
 	pfa.state.setPrimary(v.primary)
 }
 
@@ -119,7 +119,7 @@ type changeSecondary struct {
 	secondary parseSecondaryState
 }
 
-func (v changeSecondary) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v changeSecondary) execute(pfa *pfaStruct, currRune rune) {
 	pfa.state.secondary = v.secondary
 }
 
@@ -128,7 +128,7 @@ type setSecondary struct {
 	secondary parseSecondaryState
 }
 
-func (v setSecondary) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v setSecondary) execute(pfa *pfaStruct, currRune rune) {
 	pfa.state.setSecondary(v.primary, v.secondary)
 }
 
@@ -136,7 +136,7 @@ type addRune struct {
 	r rune
 }
 
-func (v addRune) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v addRune) execute(pfa *pfaStruct, currRune rune) {
 	pfa.getTopStackItem().itemString += string(v.r)
 }
 
@@ -176,7 +176,7 @@ type pushItem struct {
 	delimiter  delimiterProvider
 }
 
-func (v pushItem) execute(pfa *pfaStruct, isUnexpectedRune *bool, currRune rune) {
+func (v pushItem) execute(pfa *pfaStruct, currRune rune) {
 	var itemString string
 	if v.itemString != nil {
 		itemString = v.itemString.ItemString(pfa, currRune)
@@ -277,11 +277,13 @@ func createRule(args []interface{}) rule {
 }
 
 func (pfa *pfaStruct) processStateDef(def *stateDef) (err error) {
-	var isUnexpectedRune, needBreak bool
+	var needBreak bool
+	pfa.isUnexpectedRune = false
+	pfa.needFinishTopStackItem = false
 	currRune, isEof := pfa.currRune()
 	if rules, ok := (*def)[ruleEof]; isEof && ok {
 		for _, rule := range rules {
-			isUnexpectedRune, needBreak = pfa.tryToProcessRule(rule, currRune)
+			needBreak = pfa.tryToProcessRule(rule, currRune)
 			if needBreak {
 				break
 			}
@@ -290,7 +292,7 @@ func (pfa *pfaStruct) processStateDef(def *stateDef) (err error) {
 		if rules, ok := (*def)[ruleNormal]; ok {
 			for _, rule := range rules {
 				if rule.runeChecker.HasRune(pfa, currRune) {
-					isUnexpectedRune, needBreak = pfa.tryToProcessRule(rule, currRune)
+					needBreak = pfa.tryToProcessRule(rule, currRune)
 					if needBreak {
 						goto End
 					}
@@ -299,7 +301,7 @@ func (pfa *pfaStruct) processStateDef(def *stateDef) (err error) {
 		}
 		if rules, ok := (*def)[ruleDefault]; ok {
 			for _, rule := range rules {
-				isUnexpectedRune, needBreak = pfa.tryToProcessRule(rule, currRune)
+				needBreak = pfa.tryToProcessRule(rule, currRune)
 				if needBreak {
 					goto End
 				}
@@ -307,17 +309,17 @@ func (pfa *pfaStruct) processStateDef(def *stateDef) (err error) {
 		}
 	End:
 	}
-	if isUnexpectedRune {
+	if pfa.isUnexpectedRune {
 		err = pfaErrorMake(pfa, unexpectedRuneError)
 	}
 	return
 }
 
-func (pfa *pfaStruct) tryToProcessRule(r rule, currRune rune) (isUnexpectedRune bool, needBreak bool) {
+func (pfa *pfaStruct) tryToProcessRule(r rule, currRune rune) (needBreak bool) {
 	needBreak = false
 	if r.conditions.conformsTo(pfa) {
 		for _, pa := range r.processorActions {
-			pa.execute(pfa, &isUnexpectedRune, currRune)
+			pa.execute(pfa, currRune)
 		}
 		needBreak = true
 	}

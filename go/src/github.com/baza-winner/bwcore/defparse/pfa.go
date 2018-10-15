@@ -435,6 +435,7 @@ type pfaStruct struct {
 	preLineCount           int
 	postLineCount          int
 	needFinishTopStackItem bool
+	isUnexpectedRune       bool
 }
 
 func (pfa pfaStruct) GetDataForJson() interface{} {
@@ -463,13 +464,12 @@ type PfaRuneProvider interface {
 
 func pfaParse(runeProvider PfaRuneProvider) (interface{}, error) {
 	pfa := pfaStruct{
-		stack:                  parseStack{},
-		state:                  parseState{primary: expectValueOrSpace},
-		runeProvider:           runeProvider,
-		curr:                   runePtrStruct{pos: -1, line: 1},
-		preLineCount:           3,
-		postLineCount:          3,
-		needFinishTopStackItem: false,
+		stack:         parseStack{},
+		state:         parseState{primary: expectValueOrSpace},
+		runeProvider:  runeProvider,
+		curr:          runePtrStruct{pos: -1, line: 1},
+		preLineCount:  3,
+		postLineCount: 3,
 	}
 	var err error
 	for {
@@ -479,7 +479,6 @@ func pfaParse(runeProvider PfaRuneProvider) (interface{}, error) {
 		if def, ok = pfaPrimaryStateDef[pfa.state.primary]; !ok {
 			bwerror.Panic("pfa.state.primary: %s", pfa.state.primary)
 		}
-		pfa.needFinishTopStackItem = false
 		if err = pfa.processStateDef(def); err == nil && pfa.needFinishTopStackItem {
 			err = pfa.finishTopStackItem()
 		}
