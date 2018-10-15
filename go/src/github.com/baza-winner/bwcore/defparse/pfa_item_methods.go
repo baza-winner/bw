@@ -72,29 +72,33 @@ var underscoreRegexp = regexp.MustCompile("[_]+")
 func _parseStackItemNumber(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	stackItem := pfa.getTopStackItem()
 	source := underscoreRegexp.ReplaceAllLiteralString(stackItem.itemString, ``)
+	if stackItem.value, err = parseNumber(source); err != nil {
+		err = pfaErrorMake(pfa, failedToGetNumberError)
+	}
+	return false, err
+}
+
+func parseNumber(source string) (value interface{}, err error) {
 	if strings.Contains(source, `.`) {
 		var float64Val float64
 		if float64Val, err = strconv.ParseFloat(source, 64); err == nil {
-			stackItem.value = float64Val
+			value = float64Val
 		}
 	} else {
 		var int64Val int64
 		if int64Val, err = strconv.ParseInt(source, 10, 64); err == nil {
 			if int64(bwint.MinInt8) <= int64Val && int64Val <= int64(bwint.MaxInt8) {
-				stackItem.value = int8(int64Val)
+				value = int8(int64Val)
 			} else if int64(bwint.MinInt16) <= int64Val && int64Val <= int64(bwint.MaxInt16) {
-				stackItem.value = int16(int64Val)
+				value = int16(int64Val)
 			} else if int64(bwint.MinInt32) <= int64Val && int64Val <= int64(bwint.MaxInt32) {
-				stackItem.value = int32(int64Val)
+				value = int32(int64Val)
 			} else {
-				stackItem.value = int64Val
+				value = int64Val
 			}
 		}
 	}
-	if err != nil {
-		err = pfaErrorMake(pfa, failedToGetNumberError)
-	}
-	return false, err
+	return
 }
 
 func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
@@ -110,11 +114,12 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 		stackItem.value = stackItem.itemString
 	case "qw":
 		pfa.pullRune()
-		if pfa.curr.runePtr == nil {
+		currRune, isEof := pfa.currRune()
+		if isEof {
 			err = pfaErrorMake(pfa, unexpectedRuneError)
 		} else {
 			pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
-			switch *pfa.curr.runePtr {
+			switch currRune {
 			case '<':
 				stackItem.delimiter = runePtr('>')
 			case '[':
@@ -125,14 +130,13 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 				stackItem.delimiter = runePtr('}')
 			default:
 				switch {
-				case unicode.IsPunct(*pfa.curr.runePtr) || unicode.IsSymbol(*pfa.curr.runePtr):
-					stackItem.delimiter = runePtr(*pfa.curr.runePtr)
+				case unicode.IsPunct(currRune) || unicode.IsSymbol(currRune):
+					stackItem.delimiter = runePtr(currRune)
 				default:
 					err = pfaErrorMake(pfa, unexpectedRuneError)
 				}
 			}
 			stackItem.itemType = parseStackItemQw
-			stackItem.itemArray = []interface{}{}
 		}
 		return true, err
 

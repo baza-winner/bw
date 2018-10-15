@@ -11,13 +11,213 @@ import (
 
 var unexpectedEof []interface{}
 
+var pfaPrimaryStateDef map[parsePrimaryState]*stateDef
+
 func init() {
-	pfaPrimaryStateMethodsCheck()
+	// pfaPrimaryStateMethodsCheck()
 	pfaItemFinishMethodsCheck()
 	pfaErrorValidatorsCheck()
 
 	unexpectedEof = []interface{}{eofRune{},
 		unexpectedRune{},
+	}
+	pfaPrimaryStateDef = map[parsePrimaryState]*stateDef{
+		expectEOF: createStateDef(
+			[]interface{}{eofRune{}, setPrimary{expectEOF}},
+			[]interface{}{unicodeSpace},
+			[]interface{}{unexpectedRune{}},
+		),
+		expectRocket: createStateDef(
+			[]interface{}{'>', setPrimary{expectValueOrSpace}},
+			[]interface{}{unexpectedRune{}},
+		),
+		expectWord: createStateDef(
+			[]interface{}{unicodeLetter, unicodeDigit,
+				appendRuneToItemString{},
+			},
+			[]interface{}{
+				pushRune{},
+				needFinish{},
+			},
+		),
+		expectSpaceOrQwItemOrDelimiter: createStateDef(
+			unexpectedEof,
+			[]interface{}{unicodeSpace},
+			[]interface{}{delimiterRune{},
+				needFinish{},
+			},
+			[]interface{}{
+				pushItem{itemType: parseStackItemQwItem, itemString: fromCurrRune{}, delimiter: fromParentItem{}},
+				setPrimary{expectEndOfQwItem},
+			},
+		),
+		expectEndOfQwItem: createStateDef(
+			unexpectedEof,
+			[]interface{}{unicodeSpace, delimiterRune{},
+				pushRune{},
+				needFinish{},
+			},
+			[]interface{}{
+				appendRuneToItemString{},
+			},
+		),
+		expectContentOf: createStateDef(
+			unexpectedEof,
+			[]interface{}{delimiterRune{},
+				needFinish{},
+			},
+			[]interface{}{'\\',
+				changePrimary{expectEscapedContentOf},
+			},
+			[]interface{}{
+				appendRuneToItemString{},
+			},
+		),
+		expectDigit: createStateDef(
+			[]interface{}{unicodeDigit, noSecondaryState,
+				appendRuneToItemString{},
+				changeSecondary{orUnderscoreOrDot},
+			},
+			[]interface{}{'.', orUnderscoreOrDot,
+				appendRuneToItemString{},
+				changeSecondary{orUnderscore},
+			},
+			[]interface{}{'_', unicodeDigit, orUnderscoreOrDot, orUnderscore,
+				appendRuneToItemString{},
+			},
+			[]interface{}{noSecondaryState,
+				unexpectedRune{},
+			},
+			[]interface{}{
+				pushRune{},
+				needFinish{},
+			},
+		),
+		expectSpaceOrMapKey: createStateDef(
+			[]interface{}{unicodeSpace},
+			[]interface{}{unicodeLetter,
+				pushItem{itemType: parseStackItemKey, itemString: fromCurrRune{}},
+				setPrimary{expectWord},
+			},
+			[]interface{}{'"', '\'',
+				pushItem{itemType: parseStackItemKey, delimiter: fromCurrRune{}},
+				setSecondary{expectContentOf, keyToken},
+			},
+			[]interface{}{',', orMapValueSeparator,
+				setPrimary{expectSpaceOrMapKey},
+			},
+			[]interface{}{delimiterRune{}, parseStackItemMap,
+				needFinish{},
+			},
+			[]interface{}{
+				unexpectedRune{},
+			},
+		),
+		expectEscapedContentOf: createStateDef(
+			[]interface{}{'"',
+				addRune{'"'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'\'',
+				addRune{'\''},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'\\',
+				addRune{'\\'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'a', delimiterIs{'"'},
+				addRune{'\a'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'b', delimiterIs{'"'},
+				addRune{'\b'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'f', delimiterIs{'"'},
+				addRune{'\f'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'n', delimiterIs{'"'},
+				addRune{'\n'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'r', delimiterIs{'"'},
+				addRune{'\r'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'t', delimiterIs{'"'},
+				addRune{'\t'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{'v', delimiterIs{'"'},
+				addRune{'\v'},
+				changePrimary{expectContentOf},
+			},
+			[]interface{}{
+				unexpectedRune{},
+			},
+		),
+		expectValueOrSpace: createStateDef(
+			[]interface{}{eofRune{}, stackLenIs{0},
+				setPrimary{expectEOF},
+			},
+			unexpectedEof,
+			[]interface{}{'=', orMapKeySeparator,
+				setPrimary{expectRocket},
+			},
+			[]interface{}{':', orMapKeySeparator,
+				setPrimary{expectValueOrSpace},
+			},
+			[]interface{}{',', orArrayItemSeparator,
+				setPrimary{expectValueOrSpace},
+			},
+			[]interface{}{unicodeSpace},
+			[]interface{}{'{',
+				pushItem{itemType: parseStackItemMap, delimiter: delim{'}'}},
+				setPrimary{expectSpaceOrMapKey},
+			},
+			[]interface{}{'<',
+				pushItem{itemType: parseStackItemQw, delimiter: delim{'>'}},
+				setPrimary{expectSpaceOrQwItemOrDelimiter},
+			},
+			[]interface{}{'[',
+				pushItem{itemType: parseStackItemArray, delimiter: delim{']'}},
+				setPrimary{expectValueOrSpace},
+			},
+			[]interface{}{parseStackItemArray, delimiterRune{},
+				needFinish{},
+			},
+			[]interface{}{'-', '+',
+				pushItem{itemType: parseStackItemNumber, itemString: fromCurrRune{}},
+				setPrimary{expectDigit},
+			},
+			[]interface{}{unicodeDigit,
+				pushItem{itemType: parseStackItemNumber, itemString: fromCurrRune{}},
+				setSecondary{expectDigit, orUnderscoreOrDot},
+			},
+			[]interface{}{'"', '\'',
+				pullRune{},
+				pushItem{itemType: parseStackItemString, delimiter: fromCurrRune{}},
+				pushRune{},
+				setSecondary{expectContentOf, stringToken},
+			},
+			[]interface{}{unicodeLetter,
+				pushItem{itemType: parseStackItemWord, itemString: fromCurrRune{}},
+				setPrimary{expectWord},
+			},
+			[]interface{}{
+				unexpectedRune{},
+			},
+		),
+	}
+
+	expect := parsePrimaryState_below_ + 1
+	for expect < parsePrimaryState_above_ {
+		if _, ok := pfaPrimaryStateDef[expect]; !ok {
+			bwerror.Panic("not defined <ansiOutline>pfaPrimaryStateDef<ansi>[<ansiPrimaryLiteral>%s<ansi>]", expect)
+		}
+		expect += 1
 	}
 }
 
@@ -273,7 +473,12 @@ func pfaParse(runeProvider PfaRuneProvider) (interface{}, error) {
 	for {
 		pfa.pullRune()
 		var needFinishTopStackItem bool
-		if needFinishTopStackItem, err = pfaPrimaryStateMethods[pfa.state.primary](&pfa); err == nil && needFinishTopStackItem {
+		var def *stateDef
+		var ok bool
+		if def, ok = pfaPrimaryStateDef[pfa.state.primary]; !ok {
+			bwerror.Panic("pfa.state.primary: %s", pfa.state.primary)
+		}
+		if needFinishTopStackItem, err = pfa.processStateDef(def); err == nil && needFinishTopStackItem {
 			err = pfa.finishTopStackItem()
 		}
 		if err != nil {
