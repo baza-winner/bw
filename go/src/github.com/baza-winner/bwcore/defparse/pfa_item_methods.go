@@ -116,17 +116,17 @@ func _parseStackItemWord(pfa *pfaStruct) (skipPostProcess bool, err error) {
 			pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
 			switch *pfa.curr.runePtr {
 			case '<':
-				stackItem.delimiter = '>'
+				stackItem.delimiter = runePtr('>')
 			case '[':
-				stackItem.delimiter = ']'
+				stackItem.delimiter = runePtr(']')
 			case '(':
-				stackItem.delimiter = ')'
+				stackItem.delimiter = runePtr(')')
 			case '{':
-				stackItem.delimiter = '}'
+				stackItem.delimiter = runePtr('}')
 			default:
 				switch {
 				case unicode.IsPunct(*pfa.curr.runePtr) || unicode.IsSymbol(*pfa.curr.runePtr):
-					stackItem.delimiter = *pfa.curr.runePtr
+					stackItem.delimiter = runePtr(*pfa.curr.runePtr)
 				default:
 					err = pfaErrorMake(pfa, unexpectedRuneError)
 				}

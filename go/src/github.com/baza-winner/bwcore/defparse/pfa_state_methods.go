@@ -31,21 +31,6 @@ func pfaPrimaryStateMethodsCheck() {
 	}
 }
 
-// type ruleProcessor func(*pfaStruct, rune) (bool, bool)
-
-// func asEofProcessor(arg interface{}) (result eofProcessor, ok bool) {
-// 	if result, ok = arg.(func(*pfaStruct) (bool, bool)); !ok {
-// 		result, ok = arg.(eofProcessor)
-// 	}
-// 	return
-// }
-// func asRuleProcessor(arg interface{}) (result ruleProcessor, ok bool) {
-// 	if result, ok = arg.(func(*pfaStruct, rune) (bool, bool)); !ok {
-// 		result, ok = arg.(ruleProcessor)
-// 	}
-// 	return
-// }
-
 type ruleKind uint8
 
 const (
@@ -57,17 +42,12 @@ const (
 //go:generate stringer -type=ruleKind
 
 type rule struct {
-	kind        ruleKind
-	runeChecker hasRuneSlice
-	conditions  ruleConditions
-	// parseSecondaryStates parseSecondaryStateSet
-	// parseStackItemTypes  parseStackItemTypeSet
-	// delimiterChecker     *delimiterIs
-	// stackLen             *stackLenIs
+	kind             ruleKind
+	runeChecker      hasRuneSlice
+	conditions       ruleConditions
 	processorActions []processorAction
 }
 
-// type ruleSlice []rule
 type ruleCondition interface {
 	ConformsTo(pfa *pfaStruct) bool
 }
@@ -90,7 +70,8 @@ type delimiterIs struct {
 }
 
 func (v delimiterIs) ConformsTo(pfa *pfaStruct) bool {
-	return v.delimiter == pfa.getTopStackItem().delimiter
+	stackItem := pfa.getTopStackItem()
+	return stackItem.delimiter != nil && v.delimiter == *stackItem.delimiter
 }
 
 type stackLenIs struct {
@@ -112,13 +93,6 @@ func (v parseStackItemTypeSet) ConformsTo(pfa *pfaStruct) bool {
 type processorAction interface {
 	execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune)
 }
-
-// func asProcessorAction(f interface{}) (result processorAction, ok bool) {
-// 	if result, ok = f.(processorAction); !ok {
-// 		result, ok = f.(processorAction)
-// 	}
-// 	return
-// }
 
 type unexpectedRune struct{}
 
@@ -191,45 +165,56 @@ func (v addRune) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopSt
 	pfa.getTopStackItem().itemString += string(v.r)
 }
 
-type pushStackItemQwItem struct{}
-
-func (v pushStackItemQwItem) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune) {
-	stackItem := pfa.getTopStackItem()
-	// pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemQwItem, start: pfa.curr, itemString: string(currRune), delimiter: stackItem.delimiter})
-	pfa.pushStackItem(parseStackItemQwItem, string(currRune), stackItem.delimiter)
+type delimiterProvider interface {
+	Delimiter(pfa *pfaStruct, currRune rune) *rune
 }
 
-type pushStackItemQwWithDelimiter struct{ delimiter rune }
+type delim struct{ r rune }
 
-func (v pushStackItemQwWithDelimiter) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune) {
-	// pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemQw, start: pfa.curr, itemArray: []interface{}{}, delimiter: v.delimiter})
-	pfa.pushStackItem(parseStackItemQw, "", v.delimiter)
+func (v delim) Delimiter(pfa *pfaStruct, currRune rune) *rune {
+	return &v.r
 }
 
-type pushStackItemArray struct{}
+type fromParentItem struct{}
 
-func (v pushStackItemArray) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune) {
-	// pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, start: pfa.curr, itemArray: []interface{}{}, delimiter: ']'})
-	pfa.pushStackItem(parseStackItemArray, "", ']')
+func (v fromParentItem) Delimiter(pfa *pfaStruct, currRune rune) *rune {
+	return pfa.getTopStackItem().delimiter
 }
 
-type pushStackItem struct{ itemType parseStackItemType }
-
-func (v pushStackItem) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune) {
-	pfa.pushStackItem(v.itemType, string(currRune), '\000')
+type itemStringProvider interface {
+	ItemString(pfa *pfaStruct, currRune rune) string
 }
 
-type pushStackItemWithCurrRuneAsDelimter struct{ itemType parseStackItemType }
+type fromCurrRune struct{}
 
-func (v pushStackItemWithCurrRuneAsDelimter) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune) {
-	pfa.pushStackItem(v.itemType, "", currRune)
+func (v fromCurrRune) ItemString(pfa *pfaStruct, currRune rune) string {
+	return string(currRune)
 }
 
-type pushStackItemMap struct{}
+func (v fromCurrRune) Delimiter(pfa *pfaStruct, currRune rune) *rune {
+	return runePtr(currRune)
+}
 
-func (v pushStackItemMap) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune) {
-	pfa.pushStackItem(parseStackItemMap, "", '}')
-	// pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemMap, start: pfa.curr, itemMap: map[string]interface{}{}, delimiter: '}'})
+type pushItem struct {
+	itemType   parseStackItemType
+	itemString itemStringProvider
+	delimiter  delimiterProvider
+}
+
+func (v pushItem) execute(pfa *pfaStruct, isUnexpectedRune *bool, needFinishTopStackItem *bool, currRune rune) {
+	var itemString string
+	if v.itemString != nil {
+		itemString = v.itemString.ItemString(pfa, currRune)
+	}
+	var delimiter *rune
+	if v.delimiter != nil {
+		delimiter = v.delimiter.Delimiter(pfa, currRune)
+	}
+	pfa.pushStackItem(
+		v.itemType,
+		itemString,
+		delimiter,
+	)
 }
 
 type stateDef map[ruleKind][]rule
@@ -319,9 +304,7 @@ func createRule(args []interface{}) rule {
 func (pfa *pfaStruct) processStateDef(def *stateDef) (needFinishTopStackItem bool, err error) {
 	var isUnexpectedRune, needBreak bool
 	currRune, isEof := pfa.currRune()
-	// bwerror.Spew.Printf("def: %#v\n", def)
 	if rules, ok := (*def)[ruleEof]; isEof && ok {
-		// bwerror.Spew.Printf("ruleEof: %#v\n", rules)
 		for _, rule := range rules {
 			needFinishTopStackItem, isUnexpectedRune, needBreak = pfa.tryToProcessRule(rule, currRune)
 			if needBreak {
@@ -330,7 +313,6 @@ func (pfa *pfaStruct) processStateDef(def *stateDef) (needFinishTopStackItem boo
 		}
 	} else {
 		if rules, ok := (*def)[ruleNormal]; ok {
-			// bwerror.Spew.Printf("ruleNormal: %#v\n", rules)
 			for _, rule := range rules {
 				if rule.runeChecker.HasRune(pfa, currRune) {
 					needFinishTopStackItem, isUnexpectedRune, needBreak = pfa.tryToProcessRule(rule, currRune)
@@ -341,7 +323,6 @@ func (pfa *pfaStruct) processStateDef(def *stateDef) (needFinishTopStackItem boo
 			}
 		}
 		if rules, ok := (*def)[ruleDefault]; ok {
-			// bwerror.Spew.Printf("ruleDefault: %#v\n", rules)
 			for _, rule := range rules {
 				needFinishTopStackItem, isUnexpectedRune, needBreak = pfa.tryToProcessRule(rule, currRune)
 				if needBreak {
@@ -360,7 +341,6 @@ func (pfa *pfaStruct) processStateDef(def *stateDef) (needFinishTopStackItem boo
 func (pfa *pfaStruct) tryToProcessRule(r rule, currRune rune) (needFinishTopStackItem bool, isUnexpectedRune bool, needBreak bool) {
 	needBreak = false
 	if r.conditions.conformsTo(pfa) {
-		// bwerror.Spew.Printf("r.conditions: %#v, pfa: %#v\n", r.conditions, pfa)
 		for _, pa := range r.processorActions {
 			pa.execute(pfa, &isUnexpectedRune, &needFinishTopStackItem, currRune)
 		}
@@ -398,8 +378,6 @@ func (v unicodeCategory) Len() int {
 
 type delimiterRune struct{}
 
-// const delimiter delimiterRune = delimiterRune{}
-
 func (v delimiterRune) HasRune(r rune) (result bool) {
 	bwerror.Panic("unreachable")
 	return
@@ -431,7 +409,10 @@ func (v hasRuneSlice) HasRune(pfa *pfaStruct, r rune) (result bool) {
 	result = false
 	for _, i := range v {
 		if _, ok := i.(delimiterRune); ok {
-			result = len(pfa.stack) > 0 && pfa.getTopStackItem().delimiter == r
+			if len(pfa.stack) > 0 {
+				stackItem := pfa.getTopStackItem()
+				result = stackItem.delimiter != nil && *stackItem.delimiter == r
+			}
 		} else {
 			result = i.HasRune(r)
 		}
@@ -443,40 +424,19 @@ func (v hasRuneSlice) HasRune(pfa *pfaStruct, r rune) (result bool) {
 }
 
 func _expectEOF(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			[]interface{}{eofRune{}, setPrimary{expectEOF}},
-			[]interface{}{unicodeSpace},
-			[]interface{}{unexpectedRune{}},
-		))
-	} else {
-		currRune, isEOF := pfa.currRune()
-		switch {
-		case isEOF:
-			pfa.state.setPrimary(expectEOF)
-		case pfa.state.secondary == orSpace && unicode.IsSpace(currRune):
-		default:
-			err = pfaErrorMake(pfa, unexpectedRuneError)
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		[]interface{}{eofRune{}, setPrimary{expectEOF}},
+		[]interface{}{unicodeSpace},
+		[]interface{}{unexpectedRune{}},
+	))
 	return
 }
 
 func _expectRocket(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			[]interface{}{'>', setPrimary{expectValueOrSpace}},
-			[]interface{}{unexpectedRune{}},
-		))
-	} else {
-		currRune, _ := pfa.currRune()
-		switch currRune {
-		case '>':
-			pfa.state.setPrimary(expectValueOrSpace)
-		default:
-			err = pfaErrorMake(pfa, unexpectedRuneError)
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		[]interface{}{'>', setPrimary{expectValueOrSpace}},
+		[]interface{}{unexpectedRune{}},
+	))
 	return
 }
 
@@ -507,437 +467,199 @@ func _expectWord(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
 }
 
 func _expectSpaceOrQwItemOrDelimiter(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			unexpectedEof,
-			[]interface{}{unicodeSpace},
-			[]interface{}{delimiterRune{},
-				needFinish{},
-			},
-			[]interface{}{
-				pushStackItemQwItem{},
-				setPrimary{expectEndOfQwItem},
-			},
-		))
-
-	} else {
-
-		stackItem := pfa.getTopStackItem()
-		currRune, isEOF := pfa.currRune()
-		switch {
-		case isEOF:
-			err = pfaErrorMake(pfa, unexpectedRuneError)
-		case unicode.IsSpace(currRune):
-		case currRune == stackItem.delimiter:
-			needFinishTopStackItem = true
-		default:
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemQwItem, start: pfa.curr, itemString: string(*pfa.curr.runePtr), delimiter: stackItem.delimiter})
-			pfa.state.setPrimary(expectEndOfQwItem)
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		unexpectedEof,
+		[]interface{}{unicodeSpace},
+		[]interface{}{delimiterRune{},
+			needFinish{},
+		},
+		[]interface{}{
+			pushItem{itemType: parseStackItemQwItem, itemString: fromCurrRune{}, delimiter: fromParentItem{}},
+			setPrimary{expectEndOfQwItem},
+		},
+	))
 	return
 }
 
 func _expectEndOfQwItem(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			unexpectedEof,
-			[]interface{}{unicodeSpace, delimiterRune{},
-				pushRune{},
-				needFinish{},
-			},
-			[]interface{}{
-				appendRuneToItemString{},
-			},
-		))
-	} else {
-
-		stackItem := pfa.getTopStackItemOfType(parseStackItemQwItem)
-		currRune, isEOF := pfa.currRune()
-		switch {
-		case isEOF:
-			err = pfaErrorMake(pfa, unexpectedRuneError)
-		case unicode.IsSpace(currRune) || currRune == stackItem.delimiter:
-			pfa.pushRune()
-			needFinishTopStackItem = true
-		default:
-			stackItem.itemString += string(currRune)
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		unexpectedEof,
+		[]interface{}{unicodeSpace, delimiterRune{},
+			pushRune{},
+			needFinish{},
+		},
+		[]interface{}{
+			appendRuneToItemString{},
+		},
+	))
 	return
 }
 
 func _expectContentOf(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			unexpectedEof,
-			[]interface{}{delimiterRune{},
-				needFinish{},
-			},
-			[]interface{}{'\\',
-				changePrimary{expectEscapedContentOf},
-			},
-			[]interface{}{
-				appendRuneToItemString{},
-			},
-		))
-	} else {
-
-		stackItem := pfa.getTopStackItem()
-		currRune, isEOF := pfa.currRune()
-		switch {
-		case isEOF:
-			err = pfaErrorMake(pfa, unexpectedRuneError)
-		case currRune == stackItem.delimiter:
-			needFinishTopStackItem = true
-		case currRune == '\\':
-			pfa.state.primary = expectEscapedContentOf
-		default:
-			stackItem.itemString = stackItem.itemString + string(currRune)
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		unexpectedEof,
+		[]interface{}{delimiterRune{},
+			needFinish{},
+		},
+		[]interface{}{'\\',
+			changePrimary{expectEscapedContentOf},
+		},
+		[]interface{}{
+			appendRuneToItemString{},
+		},
+	))
 	return
 }
 
 func _expectDigit(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			[]interface{}{unicodeDigit, noSecondaryState,
-				appendRuneToItemString{},
-				changeSecondary{orUnderscoreOrDot},
-			},
-			[]interface{}{'.', orUnderscoreOrDot,
-				appendRuneToItemString{},
-				changeSecondary{orUnderscore},
-			},
-			[]interface{}{'_', unicodeDigit, orUnderscoreOrDot, orUnderscore,
-				appendRuneToItemString{},
-			},
-			[]interface{}{noSecondaryState,
-				unexpectedRune{},
-			},
-			[]interface{}{
-				pushRune{},
-				needFinish{},
-			},
-		))
-	} else {
-		stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
-		currRune, _ := pfa.currRune()
-		switch pfa.state.secondary {
-		case noSecondaryState:
-			switch {
-			case unicode.IsDigit(currRune):
-				stackItem.itemString = stackItem.itemString + string(currRune)
-				pfa.state.secondary = orUnderscoreOrDot
-			default:
-				err = pfaErrorMake(pfa, unexpectedRuneError)
-			}
-		case orUnderscoreOrDot:
-			switch {
-			case currRune == '.':
-				pfa.state.secondary = orUnderscore
-				stackItem.itemString = stackItem.itemString + string(currRune)
-			case unicode.IsDigit(currRune) || currRune == '_':
-				stackItem.itemString = stackItem.itemString + string(currRune)
-			default:
-				pfa.pushRune()
-				needFinishTopStackItem = true
-			}
-		case orUnderscore:
-			switch {
-			case unicode.IsDigit(currRune) || currRune == '_':
-				stackItem.itemString = stackItem.itemString + string(currRune)
-			default:
-				pfa.pushRune()
-				needFinishTopStackItem = true
-			}
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		[]interface{}{unicodeDigit, noSecondaryState,
+			appendRuneToItemString{},
+			changeSecondary{orUnderscoreOrDot},
+		},
+		[]interface{}{'.', orUnderscoreOrDot,
+			appendRuneToItemString{},
+			changeSecondary{orUnderscore},
+		},
+		[]interface{}{'_', unicodeDigit, orUnderscoreOrDot, orUnderscore,
+			appendRuneToItemString{},
+		},
+		[]interface{}{noSecondaryState,
+			unexpectedRune{},
+		},
+		[]interface{}{
+			pushRune{},
+			needFinish{},
+		},
+	))
 	return
 }
 
 func _expectSpaceOrMapKey(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			[]interface{}{unicodeSpace},
-			[]interface{}{unicodeLetter,
-				pushStackItem{parseStackItemKey},
-				// pushStackItemItemKey{false},
-				setPrimary{expectWord},
-			},
-			[]interface{}{'"', '\'',
-				pushStackItemWithCurrRuneAsDelimter{parseStackItemKey},
-				// pushStackItemItemKey{true},
-				setSecondary{expectContentOf, keyToken},
-			},
-			[]interface{}{',', orMapValueSeparator,
-				setPrimary{expectSpaceOrMapKey},
-			},
-			[]interface{}{delimiterRune{}, parseStackItemMap,
-				needFinish{},
-			},
-			[]interface{}{
-				unexpectedRune{},
-			},
-		))
-	} else {
-		currRune, _ := pfa.currRune()
-		switch {
-		case unicode.IsSpace(currRune):
-		case unicode.IsLetter(currRune):
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, start: pfa.curr, itemString: string(currRune)})
-			pfa.state.setPrimary(expectWord)
-		case currRune == '"' || currRune == '\'':
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemKey, start: pfa.curr, itemString: ``, delimiter: currRune})
-			pfa.state.setSecondary(expectContentOf, keyToken)
-		case currRune == ',' && pfa.state.secondary == orMapValueSeparator:
-			pfa.state.setPrimary(expectSpaceOrMapKey)
-		case pfa.isTopStackItemOfType(parseStackItemMap) && currRune == pfa.getTopStackItem().delimiter:
-			needFinishTopStackItem = true
-		default:
-			err = pfaErrorMake(pfa, unexpectedRuneError)
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		[]interface{}{unicodeSpace},
+		[]interface{}{unicodeLetter,
+			pushItem{itemType: parseStackItemKey, itemString: fromCurrRune{}},
+			setPrimary{expectWord},
+		},
+		[]interface{}{'"', '\'',
+			pushItem{itemType: parseStackItemKey, delimiter: fromCurrRune{}},
+			setSecondary{expectContentOf, keyToken},
+		},
+		[]interface{}{',', orMapValueSeparator,
+			setPrimary{expectSpaceOrMapKey},
+		},
+		[]interface{}{delimiterRune{}, parseStackItemMap,
+			needFinish{},
+		},
+		[]interface{}{
+			unexpectedRune{},
+		},
+	))
 	return
 }
 
 func _expectEscapedContentOf(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	// needFinishTopStackItem, err = pfa.processState(
-	// 	nil,
-	// 	[]rule{
-	// 		rule{
-	// 			[]hasRune{runeSetFrom('\'')},
-	// 			parseSecondaryStateSet{},
-	// 			parseStackItemTypeSet{},
-	// 			func(currRune rune) (needFinishTopStackItem bool, isUnexpectedRune bool) {
-	// 				if actualVal, ok := singleQuotedEscapedContent[currRune]; ok {
-	// 					stackItem.itemString = stackItem.itemString + actualVal
-	// 					pfa.state.primary = expectContentOf
-	// 				} else {
-	// 					isUnexpectedRune = true
-	// 				}
-	// 				return
-	// 			},
-	// 		},
-	// 	},
-	// 	func(currRune rune) (needFinishTopStackItem bool, isUnexpectedRune bool) {
-	// 		isUnexpectedRune = true
-	// 		return
-	// 	},
-	// )
-
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			[]interface{}{'"',
-				addRune{'"'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'\'',
-				addRune{'\''},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'\\',
-				addRune{'\\'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'a', delimiterIs{'"'},
-				addRune{'\a'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'b', delimiterIs{'"'},
-				addRune{'\b'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'f', delimiterIs{'"'},
-				addRune{'\f'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'n', delimiterIs{'"'},
-				addRune{'\n'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'r', delimiterIs{'"'},
-				addRune{'\r'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'t', delimiterIs{'"'},
-				addRune{'\t'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{'v', delimiterIs{'"'},
-				addRune{'\v'},
-				changePrimary{expectContentOf},
-			},
-			[]interface{}{
-				unexpectedRune{},
-			},
-		))
-	} else {
-
-		stackItem := pfa.getTopStackItem()
-		currRune, _ := pfa.currRune()
-		if stackItem.delimiter == '\'' {
-			if actualVal, ok := singleQuotedEscapedContent[currRune]; ok {
-				stackItem.itemString = stackItem.itemString + actualVal
-				pfa.state.primary = expectContentOf
-			} else {
-				err = pfaErrorMake(pfa, unexpectedRuneError)
-			}
-		} else {
-			if actualVal, ok := doubleQuotedEscapedContent[currRune]; ok {
-				stackItem.itemString = stackItem.itemString + actualVal
-				pfa.state.primary = expectContentOf
-			} else {
-				err = pfaErrorMake(pfa, unexpectedRuneError)
-			}
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		[]interface{}{'"',
+			addRune{'"'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'\'',
+			addRune{'\''},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'\\',
+			addRune{'\\'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'a', delimiterIs{'"'},
+			addRune{'\a'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'b', delimiterIs{'"'},
+			addRune{'\b'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'f', delimiterIs{'"'},
+			addRune{'\f'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'n', delimiterIs{'"'},
+			addRune{'\n'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'r', delimiterIs{'"'},
+			addRune{'\r'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'t', delimiterIs{'"'},
+			addRune{'\t'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{'v', delimiterIs{'"'},
+			addRune{'\v'},
+			changePrimary{expectContentOf},
+		},
+		[]interface{}{
+			unexpectedRune{},
+		},
+	))
 	return
 }
 
 func _expectValueOrSpace(pfa *pfaStruct) (needFinishTopStackItem bool, err error) {
-	if true {
-		needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
-			[]interface{}{eofRune{}, stackLenIs{0},
-				setPrimary{expectEOF},
-			},
-			unexpectedEof,
-			[]interface{}{'=', orMapKeySeparator,
-				setPrimary{expectRocket},
-			},
-			[]interface{}{':', orMapKeySeparator,
-				setPrimary{expectValueOrSpace},
-			},
-			[]interface{}{',', orArrayItemSeparator,
-				setPrimary{expectValueOrSpace},
-			},
-			[]interface{}{unicodeSpace},
-			[]interface{}{'{',
-				pushStackItemMap{},
-				setPrimary{expectSpaceOrMapKey},
-			},
-			[]interface{}{'<',
-				pushStackItemQwWithDelimiter{'>'},
-				setPrimary{expectSpaceOrQwItemOrDelimiter},
-			},
-			[]interface{}{'[',
-				pushStackItemArray{},
-				setPrimary{expectValueOrSpace},
-			},
-			[]interface{}{parseStackItemArray, delimiterRune{},
-				needFinish{},
-			},
-			[]interface{}{'-', '+',
-				pushStackItem{parseStackItemNumber},
-				// pushStackItemNumber{},
-				setPrimary{expectDigit},
-			},
-			[]interface{}{unicodeDigit,
-				pushStackItem{parseStackItemNumber},
-				// pushStackItemNumber{},
-				setSecondary{expectDigit, orUnderscoreOrDot},
-			},
-			[]interface{}{'"', '\'',
-				pullRune{},
-				pushStackItemWithCurrRuneAsDelimter{parseStackItemString},
-				// pushStackItemString{},
-				pushRune{},
-				setSecondary{expectContentOf, stringToken},
-			},
-			[]interface{}{unicodeLetter,
-				pushStackItem{parseStackItemWord},
-				// pushStackItemWord{},
-				setPrimary{expectWord},
-			},
-			[]interface{}{
-				unexpectedRune{},
-			},
-		))
-	} else {
-		currRune, isEOF := pfa.currRune()
-		switch {
-		case isEOF:
-			if len(pfa.stack) == 0 {
-				pfa.state.setPrimary(expectEOF)
-			} else {
-				err = pfaErrorMake(pfa, unexpectedRuneError)
-			}
-
-		case currRune == '=' && pfa.state.secondary == orMapKeySeparator:
-			pfa.state.setPrimary(expectRocket)
-
-		case currRune == ':' && pfa.state.secondary == orMapKeySeparator:
-			pfa.state.setPrimary(expectValueOrSpace)
-
-		case currRune == ',' && pfa.state.secondary == orArrayItemSeparator:
-			pfa.state.setPrimary(expectValueOrSpace)
-
-		case unicode.IsSpace(currRune):
-
-		case currRune == '{':
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemMap, start: pfa.curr, itemMap: map[string]interface{}{}, delimiter: '}'})
-			pfa.state.setPrimary(expectSpaceOrMapKey)
-
-		case currRune == '<':
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemQw, start: pfa.curr, itemArray: []interface{}{}, delimiter: '>'})
-			pfa.state.setPrimary(expectSpaceOrQwItemOrDelimiter)
-
-		case currRune == '[':
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemArray, start: pfa.curr, itemArray: []interface{}{}, delimiter: ']'})
-			pfa.state.setPrimary(expectValueOrSpace)
-
-		case pfa.isTopStackItemOfType(parseStackItemArray) && pfa.getTopStackItem().delimiter == currRune:
-			needFinishTopStackItem = true
-
-		case currRune == '-' || currRune == '+':
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, start: pfa.curr, itemString: string(currRune)})
-			pfa.state.setPrimary(expectDigit)
-
-		case unicode.IsDigit(currRune):
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemNumber, start: pfa.curr, itemString: string(currRune)})
-			pfa.state.setSecondary(expectDigit, orUnderscoreOrDot)
-
-		case currRune == '"' || currRune == '\'':
-			pfa.pullRune()
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemString, start: pfa.curr, itemString: ``, delimiter: currRune})
-			pfa.pushRune()
-			pfa.state.setSecondary(expectContentOf, stringToken)
-
-		case unicode.IsLetter(currRune):
-			pfa.stack = append(pfa.stack, parseStackItem{itemType: parseStackItemWord, start: pfa.curr, itemString: string(currRune)})
-			pfa.state.setPrimary(expectWord)
-
-		default:
-			err = pfaErrorMake(pfa, unexpectedRuneError)
-		}
-	}
+	needFinishTopStackItem, err = pfa.processStateDef(createStateDef(
+		[]interface{}{eofRune{}, stackLenIs{0},
+			setPrimary{expectEOF},
+		},
+		unexpectedEof,
+		[]interface{}{'=', orMapKeySeparator,
+			setPrimary{expectRocket},
+		},
+		[]interface{}{':', orMapKeySeparator,
+			setPrimary{expectValueOrSpace},
+		},
+		[]interface{}{',', orArrayItemSeparator,
+			setPrimary{expectValueOrSpace},
+		},
+		[]interface{}{unicodeSpace},
+		[]interface{}{'{',
+			pushItem{itemType: parseStackItemMap, delimiter: delim{'}'}},
+			setPrimary{expectSpaceOrMapKey},
+		},
+		[]interface{}{'<',
+			pushItem{itemType: parseStackItemQw, delimiter: delim{'>'}},
+			setPrimary{expectSpaceOrQwItemOrDelimiter},
+		},
+		[]interface{}{'[',
+			pushItem{itemType: parseStackItemArray, delimiter: delim{']'}},
+			setPrimary{expectValueOrSpace},
+		},
+		[]interface{}{parseStackItemArray, delimiterRune{},
+			needFinish{},
+		},
+		[]interface{}{'-', '+',
+			pushItem{itemType: parseStackItemNumber, itemString: fromCurrRune{}},
+			setPrimary{expectDigit},
+		},
+		[]interface{}{unicodeDigit,
+			pushItem{itemType: parseStackItemNumber, itemString: fromCurrRune{}},
+			setSecondary{expectDigit, orUnderscoreOrDot},
+		},
+		[]interface{}{'"', '\'',
+			pullRune{},
+			pushItem{itemType: parseStackItemString, delimiter: fromCurrRune{}},
+			pushRune{},
+			setSecondary{expectContentOf, stringToken},
+		},
+		[]interface{}{unicodeLetter,
+			pushItem{itemType: parseStackItemWord, itemString: fromCurrRune{}},
+			setPrimary{expectWord},
+		},
+		[]interface{}{
+			unexpectedRune{},
+		},
+	))
 	return
 }
-
-var singleQuotedEscapedContent = map[rune]string{
-	'"':  "\"",
-	'\'': "'",
-	'\\': "\\",
-}
-
-var doubleQuotedEscapedContent = map[rune]string{
-	'"':  "\"",
-	'\'': "'",
-	'\\': "\\",
-	'a':  "\a",
-	'b':  "\b",
-	'f':  "\f",
-	'n':  "\n",
-	'r':  "\r",
-	't':  "\t",
-	'v':  "\v",
-}
-
-// func getRunesOfEscapedContent() (result []rune) {
-// 	result = []rune{}
-// 	for r, _ := range escapedContent {
-// 		result = append(result, r)
-// 	}
-// 	return
-// }

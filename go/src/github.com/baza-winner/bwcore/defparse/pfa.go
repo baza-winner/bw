@@ -62,7 +62,7 @@ type parseStackItem struct {
 	start      runePtrStruct
 	itemArray  []interface{}
 	itemMap    map[string]interface{}
-	delimiter  rune
+	delimiter  *rune
 	currentKey string
 	itemString string
 	value      interface{}
@@ -72,16 +72,19 @@ func (stackItem *parseStackItem) GetDataForJson() interface{} {
 	result := map[string]interface{}{}
 	result["itemType"] = stackItem.itemType.String()
 	result["start"] = stackItem.start.GetDataForJson()
+	if stackItem.delimiter != nil {
+		result["delimiter"] = string(*stackItem.delimiter)
+	}
 	switch stackItem.itemType {
 	case parseStackItemArray:
 		result["itemArray"] = stackItem.itemArray
 		result["value"] = stackItem.value
 	case parseStackItemQw:
-		result["delimiter"] = string(stackItem.delimiter)
+		// result["delimiter"] = string(stackItem.delimiter)
 		result["itemArray"] = stackItem.itemArray
 		result["value"] = stackItem.value
 	case parseStackItemQwItem:
-		result["delimiter"] = string(stackItem.delimiter)
+		// result["delimiter"] = string(stackItem.delimiter)
 		result["itemString"] = stackItem.itemString
 	case parseStackItemMap:
 		result["itemMap"] = stackItem.itemMap
@@ -344,6 +347,10 @@ func (pfa *pfaStruct) currRune() (result rune, isEOF bool) {
 	return
 }
 
+func runePtr(r rune) *rune {
+	return &r
+}
+
 func (pfa *pfaStruct) panic(args ...interface{}) {
 	fmtString := "<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>"
 	if args != nil {
@@ -390,7 +397,11 @@ func (pfa *pfaStruct) popStackItem() (stackItem parseStackItem) {
 	return
 }
 
-func (pfa *pfaStruct) pushStackItem(itemType parseStackItemType, itemString string, delimiter rune) {
+func (pfa *pfaStruct) pushStackItem(
+	itemType parseStackItemType,
+	itemString string,
+	delimiter *rune,
+) {
 	pfa.stack = append(pfa.stack, parseStackItem{
 		itemType:  itemType,
 		start:     pfa.curr,
@@ -401,7 +412,6 @@ func (pfa *pfaStruct) pushStackItem(itemType parseStackItemType, itemString stri
 		itemString: itemString,
 		// value:      nil,
 	})
-	// return
 }
 
 func (pfa *pfaStruct) finishTopStackItem() (err error) {
