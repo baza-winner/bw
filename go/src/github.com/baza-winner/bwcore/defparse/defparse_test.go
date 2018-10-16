@@ -394,7 +394,7 @@ me'`},
 				nil,
 				bwerror.Error(
 					"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
-					' ', expectSpaceOrQwItemOrDelimiter, 2, "qw", " ",
+					' ', expectWord, 2, "qw", " ",
 				),
 			},
 		},
@@ -412,7 +412,7 @@ me'`},
 
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "unexpectedRuneError")
+	// bwmap.CropMap(testsToRun, "qw ")
 	// bwmap.CropMap(testsToRun, "qw && fa.curr.runePtr == EOF")
 	bwtesting.BwRunTests(t, Parse, testsToRun)
 }
