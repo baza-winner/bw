@@ -19,7 +19,7 @@ type value struct {
 	value interface{}
 }
 
-func (v value) GetDataForJson() interface{} {
+func (v value) DataForJson() interface{} {
 	result := map[string]interface{}{}
 	result["where"] = v.what
 	result["value"] = v.value

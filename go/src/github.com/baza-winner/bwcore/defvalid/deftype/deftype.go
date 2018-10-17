@@ -39,4 +39,4 @@ func ItemFromString(s string) (result Item, err error) {
 
 // ============================================================================
 
-//go:generate setter -type=Item -set=Set -omitprefix
+//go:generate bwsetter -type=Item -set=Set -omitprefix

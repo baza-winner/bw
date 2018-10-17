@@ -40,9 +40,9 @@ func (err pfaError) Error() string {
 	return bwerror.Error(err.fmtString, err.fmtArgs...).Error()
 }
 
-func (v pfaError) GetDataForJson() interface{} {
+func (v pfaError) DataForJson() interface{} {
 	result := map[string]interface{}{}
-	result["pfa"] = v.pfa.GetDataForJson()
+	result["pfa"] = v.pfa.DataForJson()
 	result["errorType"] = v.errorType.String()
 	result["Where"] = v.Where
 	return result

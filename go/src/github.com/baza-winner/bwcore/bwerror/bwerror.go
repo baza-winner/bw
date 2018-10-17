@@ -39,6 +39,10 @@ func Error(msgFmt string, args ...interface{}) error {
 	return errors.New(Spew.Sprintf(ansi.Ansi(ansiErr, errPrefix+msgFmt), args...))
 }
 
+func ErrorErr(err error) error {
+	return Error(err.Error())
+}
+
 func PanicErr(err error) {
 	log.Panic(err.Error() + wherePrefix + whereami.WhereAmI(2))
 }

@@ -48,10 +48,10 @@ type parseStackItem struct {
 	value      interface{}
 }
 
-func (stackItem *parseStackItem) GetDataForJson() interface{} {
+func (stackItem *parseStackItem) DataForJson() interface{} {
 	result := map[string]interface{}{}
 	result["itemType"] = stackItem.itemType.String()
-	result["start"] = stackItem.start.GetDataForJson()
+	result["start"] = stackItem.start.DataForJson()
 	if stackItem.itemType == parseStackItemNumber && stackItem.delimiter != nil {
 		result["delimiter"] = stackItem.delimiter
 	}
@@ -67,10 +67,10 @@ func (stackItem *parseStackItem) String() (result string) {
 
 type parseStack []parseStackItem
 
-func (stack *parseStack) GetDataForJson() interface{} {
+func (stack *parseStack) DataForJson() interface{} {
 	result := []interface{}{}
 	for _, item := range *stack {
-		result = append(result, item.GetDataForJson())
+		result = append(result, item.DataForJson())
 	}
 	return result
 }
@@ -177,7 +177,7 @@ func (v runePtrStruct) copyPtr() *runePtrStruct {
 	return &runePtrStruct{v.runePtr, v.pos, v.line, v.col, v.prefix, v.prefixStart}
 }
 
-func (v runePtrStruct) GetDataForJson() interface{} {
+func (v runePtrStruct) DataForJson() interface{} {
 	result := map[string]interface{}{}
 	if v.runePtr == nil {
 		result["rune"] = "EOF"
@@ -204,18 +204,18 @@ type pfaStruct struct {
 	postLineCount int
 }
 
-func (pfa pfaStruct) GetDataForJson() interface{} {
+func (pfa pfaStruct) DataForJson() interface{} {
 	result := map[string]interface{}{}
-	result["stack"] = pfa.stack.GetDataForJson()
+	result["stack"] = pfa.stack.DataForJson()
 	result["state"] = pfa.state.String()
 	result["result"] = pfa.result
 	result["pos"] = strconv.FormatInt(int64(pfa.curr.pos), 10)
-	result["curr"] = pfa.curr.GetDataForJson()
+	result["curr"] = pfa.curr.DataForJson()
 	if pfa.prev != nil {
-		result["prev"] = pfa.prev.GetDataForJson()
+		result["prev"] = pfa.prev.DataForJson()
 	}
 	if pfa.next != nil {
-		result["next"] = pfa.prev.GetDataForJson()
+		result["next"] = pfa.prev.DataForJson()
 	}
 	return result
 }

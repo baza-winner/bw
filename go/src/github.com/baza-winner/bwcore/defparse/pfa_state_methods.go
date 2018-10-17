@@ -77,6 +77,7 @@ func createRule(args []interface{}) rule {
 		ruleConditions{},
 		[]processorAction{},
 	}
+	parsePrimaryStateChecker := parsePrimaryStateSet{}
 	parseSecondaryStateChecker := parseSecondaryStateSet{}
 	itemChecker := parseStackItemTypeChecker{topStackItemProvider{}, parseStackItemTypeSet{}}
 	subItemChecker := parseStackItemTypeChecker{stackSubItemProvider{}, parseStackItemTypeSet{}}
@@ -84,6 +85,7 @@ func createRule(args []interface{}) rule {
 	itemStringChecker := itemStringSet{bwset.StringSet{}}
 	stackLenChecker := (*stackLenIs)(nil)
 	currRuneChecker := runeSet{}
+	vars := map[string]bwset.InterfaceSet{}
 	for _, arg := range args {
 		if typedArg, ok := arg.(rune); ok {
 			currRuneChecker.Add(typedArg)
@@ -99,6 +101,8 @@ func createRule(args []interface{}) rule {
 			if typedArg.Len() > 0 {
 				result.runeChecker = append(result.runeChecker, typedArg)
 			}
+		} else if typedArg, ok := arg.(parsePrimaryState); ok {
+			parsePrimaryStateChecker.Add(typedArg)
 		} else if typedArg, ok := arg.(parseSecondaryState); ok {
 			parseSecondaryStateChecker.Add(typedArg)
 		} else if typedArg, ok := arg.(parseStackItemType); ok {
@@ -127,6 +131,9 @@ func createRule(args []interface{}) rule {
 	}
 	if len(itemStringChecker.StringSet) > 0 {
 		result.conditions = append(result.conditions, itemStringChecker)
+	}
+	if len(parsePrimaryStateChecker) > 0 {
+		result.conditions = append(result.conditions, parsePrimaryStateChecker)
 	}
 	if len(parseSecondaryStateChecker) > 0 {
 		result.conditions = append(result.conditions, parseSecondaryStateChecker)
@@ -204,7 +211,7 @@ func (pfa *pfaStruct) tryToProcessRule(r rule, currRune rune) (needBreak bool) {
 	if r.conditions.conformsTo(pfa) {
 		needBreak = true
 		for _, pa := range r.processorActions {
-			pa.execute(pfa, currRune)
+			pa.execute(pfa)
 			if pfa.err != nil || pfa.errorType > pfaError_below_ {
 				break
 			}
@@ -249,6 +256,19 @@ func (v stackLenIs) ConformsTo(pfa *pfaStruct) bool {
 	return v.i == len(pfa.stack)
 }
 
+type varIs struct {
+	varName  string
+	varValue interface{}
+}
+
+func (v varIs) ConformsTo(pfa *pfaStruct) bool {
+	return pfa.vars[v.varName] == v.varValue
+}
+
+func (v parsePrimaryStateSet) ConformsTo(pfa *pfaStruct) bool {
+	return v.Has(pfa.state.primary)
+}
+
 func (v parseSecondaryStateSet) ConformsTo(pfa *pfaStruct) bool {
 	return v.Has(pfa.state.secondary)
 }
@@ -258,10 +278,6 @@ func (v parseStackItemTypeChecker) ConformsTo(pfa *pfaStruct) bool {
 	return stackItem != nil && v.itemTypes.Has(stackItem.itemType)
 }
 
-// func (v parseStackItemTypeSet) ConformsTo(pfa *pfaStruct) bool {
-// 	return len(pfa.stack) > 0 && v.Has(pfa.stackSubItem.itemType)
-// }
-
 func (v itemStringSet) ConformsTo(pfa *pfaStruct) bool {
 	return len(pfa.stack) > 0 && v.Has(pfa.getTopStackItem().itemString)
 }
@@ -269,11 +285,11 @@ func (v itemStringSet) ConformsTo(pfa *pfaStruct) bool {
 // ============== delimiterProvider, itemStringProvider ========================
 
 type delimiterProvider interface {
-	Delimiter(pfa *pfaStruct, currRune rune) *rune
+	Delimiter(pfa *pfaStruct) *rune
 }
 
 type itemStringProvider interface {
-	ItemString(pfa *pfaStruct, currRune rune) string
+	ItemString(pfa *pfaStruct) string
 }
 
 type delim struct{ r rune }
@@ -284,25 +300,26 @@ func (v delim) Delimiter(pfa *pfaStruct, currRune rune) *rune {
 
 type fromParentItem struct{}
 
-func (v fromParentItem) Delimiter(pfa *pfaStruct, currRune rune) *rune {
+func (v fromParentItem) Delimiter(pfa *pfaStruct) *rune {
 	return pfa.getTopStackItem().delimiter
 }
 
 type fromCurrRune struct{}
 
-func (v fromCurrRune) ItemString(pfa *pfaStruct, currRune rune) string {
-	return string(currRune)
+func (v fromCurrRune) ItemString(pfa *pfaStruct) string {
+	return string(pfa.mustCurrRune())
 }
 
-func (v fromCurrRune) Delimiter(pfa *pfaStruct, currRune rune) *rune {
+func (v fromCurrRune) Delimiter(pfa *pfaStruct) *rune {
+	currRune := pfa.mustCurrRune()
 	return &currRune
 }
 
 type pairForCurrRune struct{}
 
-func (v pairForCurrRune) Delimiter(pfa *pfaStruct, currRune rune) *rune {
-	var r rune
-	switch currRune {
+func (v pairForCurrRune) Delimiter(pfa *pfaStruct) *rune {
+	r := pfa.mustCurrRune()
+	switch r {
 	case '<':
 		r = '>'
 	case '[':
@@ -311,8 +328,6 @@ func (v pairForCurrRune) Delimiter(pfa *pfaStruct, currRune rune) *rune {
 		r = ')'
 	case '{':
 		r = '}'
-	default:
-		r = currRune
 	}
 	return &r
 }
@@ -402,30 +417,24 @@ func (v delimiterRune) Len() int {
 // ======================== processorAction ====================================
 
 type processorAction interface {
-	execute(pfa *pfaStruct, currRune rune)
+	execute(pfa *pfaStruct)
 }
 
 type setError struct{ errorType pfaErrorType }
 
-func (v setError) execute(pfa *pfaStruct, currRune rune) {
+func (v setError) execute(pfa *pfaStruct) {
 	pfa.errorType = v.errorType
-}
-
-type needFinish struct{}
-
-func (v needFinish) execute(pfa *pfaStruct, currRune rune) {
-	pfa.needFinishTopStackItem = true
 }
 
 type pushRune struct{}
 
-func (v pushRune) execute(pfa *pfaStruct, currRune rune) {
+func (v pushRune) execute(pfa *pfaStruct) {
 	pfa.pushRune()
 }
 
 type pullRune struct{}
 
-func (v pullRune) execute(pfa *pfaStruct, currRune rune) {
+func (v pullRune) execute(pfa *pfaStruct) {
 	pfa.pullRune()
 
 }
@@ -434,7 +443,7 @@ type changePrimary struct {
 	primary parsePrimaryState
 }
 
-func (v changePrimary) execute(pfa *pfaStruct, currRune rune) {
+func (v changePrimary) execute(pfa *pfaStruct) {
 	pfa.state.primary = v.primary
 }
 
@@ -442,7 +451,7 @@ type setPrimary struct {
 	primary parsePrimaryState
 }
 
-func (v setPrimary) execute(pfa *pfaStruct, currRune rune) {
+func (v setPrimary) execute(pfa *pfaStruct) {
 	pfa.state.setPrimary(v.primary)
 }
 
@@ -450,7 +459,7 @@ type changeSecondary struct {
 	secondary parseSecondaryState
 }
 
-func (v changeSecondary) execute(pfa *pfaStruct, currRune rune) {
+func (v changeSecondary) execute(pfa *pfaStruct) {
 	pfa.state.secondary = v.secondary
 }
 
@@ -459,35 +468,34 @@ type setSecondary struct {
 	secondary parseSecondaryState
 }
 
-func (v setSecondary) execute(pfa *pfaStruct, currRune rune) {
+func (v setSecondary) execute(pfa *pfaStruct) {
 	pfa.state.setSecondary(v.primary, v.secondary)
 }
 
 type appendCurrRune struct{}
 
-func (v appendCurrRune) execute(pfa *pfaStruct, currRune rune) {
-	pfa.getTopStackItem().itemString += string(currRune)
+func (v appendCurrRune) execute(pfa *pfaStruct) {
+	pfa.getTopStackItem().itemString += string(pfa.mustCurrRune())
 }
 
 type appendRune struct {
 	r rune
 }
 
-func (v appendRune) execute(pfa *pfaStruct, currRune rune) {
+func (v appendRune) execute(pfa *pfaStruct) {
 	pfa.getTopStackItem().itemString += string(v.r)
 }
 
 type setTopItemDelimiter struct{ d delimiterProvider }
 
-func (v setTopItemDelimiter) execute(pfa *pfaStruct, currRune rune) {
-	pfa.getTopStackItem().delimiter = v.d.Delimiter(pfa, currRune)
+func (v setTopItemDelimiter) execute(pfa *pfaStruct) {
+	pfa.getTopStackItem().delimiter = v.d.Delimiter(pfa)
 }
 
 type setTopItemType struct{ itemType parseStackItemType }
 
-func (v setTopItemType) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemType) execute(pfa *pfaStruct) {
 	pfa.getTopStackItem().itemType = v.itemType
-	// pfa.getTopStackItem().stackItem.delimiter = delimiterProvider.Delimiter(pfa, currRune)
 }
 
 type pushItem struct {
@@ -496,14 +504,14 @@ type pushItem struct {
 	delimiter  delimiterProvider
 }
 
-func (v pushItem) execute(pfa *pfaStruct, currRune rune) {
+func (v pushItem) execute(pfa *pfaStruct) {
 	var itemString string
 	if v.itemString != nil {
-		itemString = v.itemString.ItemString(pfa, currRune)
+		itemString = v.itemString.ItemString(pfa)
 	}
 	var delimiter *rune
 	if v.delimiter != nil {
-		delimiter = v.delimiter.Delimiter(pfa, currRune)
+		delimiter = v.delimiter.Delimiter(pfa)
 	}
 	pfa.pushStackItem(
 		v.itemType,
@@ -514,28 +522,28 @@ func (v pushItem) execute(pfa *pfaStruct, currRune rune) {
 
 type setTopItemValueAsString struct{}
 
-func (v setTopItemValueAsString) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemValueAsString) execute(pfa *pfaStruct) {
 	stackItem := pfa.getTopStackItem()
 	stackItem.value = stackItem.itemString
 }
 
 type setTopItemValueAsMap struct{}
 
-func (v setTopItemValueAsMap) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemValueAsMap) execute(pfa *pfaStruct) {
 	stackItem := pfa.getTopStackItem()
 	stackItem.value = stackItem.itemMap
 }
 
 type setTopItemValueAsArray struct{}
 
-func (v setTopItemValueAsArray) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemValueAsArray) execute(pfa *pfaStruct) {
 	stackItem := pfa.getTopStackItem()
 	stackItem.value = stackItem.itemArray
 }
 
 type setTopItemValueAsNumber struct{}
 
-func (v setTopItemValueAsNumber) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemValueAsNumber) execute(pfa *pfaStruct) {
 	stackItem := pfa.getTopStackItem()
 	var err error
 	if stackItem.value, err = _parseNumber(stackItem.itemString); err != nil {
@@ -545,19 +553,13 @@ func (v setTopItemValueAsNumber) execute(pfa *pfaStruct, currRune rune) {
 
 type setTopItemValueAsBool struct{ b bool }
 
-func (v setTopItemValueAsBool) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemValueAsBool) execute(pfa *pfaStruct) {
 	pfa.getTopStackItem().value = v.b
-}
-
-type setSkipPostProcess struct{ b bool }
-
-func (v setSkipPostProcess) execute(pfa *pfaStruct, currRune rune) {
-	pfa.skipPostProcess = true
 }
 
 type processStateDef struct{ def *stateDef }
 
-func (v processStateDef) execute(pfa *pfaStruct, currRune rune) {
+func (v processStateDef) execute(pfa *pfaStruct) {
 	pfa.processStateDef(v.def)
 	if pfa.errorType == unexpectedRuneError {
 		pfa.panic("SOME")
@@ -566,34 +568,55 @@ func (v processStateDef) execute(pfa *pfaStruct, currRune rune) {
 
 type popSubItem struct{}
 
-func (v popSubItem) execute(pfa *pfaStruct, currRune rune) {
+func (v popSubItem) execute(pfa *pfaStruct) {
 	pfa.stackSubItem = pfa.popStackItem()
 }
 
 type appendItemArray struct{ p arrayProvider }
 
-func (v appendItemArray) execute(pfa *pfaStruct, currRune rune) {
+func (v appendItemArray) execute(pfa *pfaStruct) {
 	stackItem := pfa.getTopStackItem()
 	stackItem.itemArray = append(stackItem.itemArray, v.p.GetArray(pfa)...)
 }
 
 type setTopItemStringFromSubItem struct{}
 
-func (v setTopItemStringFromSubItem) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemStringFromSubItem) execute(pfa *pfaStruct) {
 	pfa.getTopStackItem().itemString = pfa.stackSubItem.itemString
 }
 
 type setTopItemMapKeyValueFromSubItem struct{}
 
-func (v setTopItemMapKeyValueFromSubItem) execute(pfa *pfaStruct, currRune rune) {
+func (v setTopItemMapKeyValueFromSubItem) execute(pfa *pfaStruct) {
 	stackItem := pfa.getTopStackItem()
 	stackItem.itemMap[stackItem.itemString] = pfa.stackSubItem.value
 }
 
 type unreachable struct{}
 
-func (v unreachable) execute(pfa *pfaStruct, currRune rune) {
+func (v unreachable) execute(pfa *pfaStruct) {
 	pfa.panic("unreachabe")
+}
+
+type needFinish struct{}
+
+func (v needFinish) execute(pfa *pfaStruct) {
+	pfa.needFinishTopStackItem = true
+}
+
+type setSkipPostProcess struct{ b bool }
+
+func (v setSkipPostProcess) execute(pfa *pfaStruct) {
+	pfa.skipPostProcess = true
+}
+
+type setVar struct {
+	varName  string
+	varValue interface{}
+}
+
+func (v setVar) execute(pfa *pfaStruct) {
+	pfa.vars[v.varName] = v.varValue
 }
 
 // ============================================================================
