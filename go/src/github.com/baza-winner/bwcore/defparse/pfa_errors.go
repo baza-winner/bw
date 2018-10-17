@@ -17,8 +17,6 @@ const (
 	pfaError_above_
 )
 
-//go:generate stringer -type=pfaErrorType
-
 type pfaError struct {
 	pfa       *pfaStruct
 	errorType pfaErrorType

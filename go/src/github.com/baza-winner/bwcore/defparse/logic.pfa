@@ -1,0 +1,58 @@
+finish = [
+  [topItem{string} topItem{qwItem}
+    setTopItemValueAsString
+  ]
+  [topItem{map}
+    setTopItemValueAsMap
+  ]
+  [parseStackItemArray parseStackItemQw
+    setTopItemValueAsArray
+  ]
+  [parseStackItemNumber
+    setTopItemValueAsNumber
+  ]
+  //
+  [parseStackItemWord
+    [
+      ["true"
+        setTopItemValueAsBool{true}
+      ]
+      ["nil" "null"]
+      ["Bool" "String" "Int" "Number" "Map" "Array" "ArrayOf"
+        setTopItemValueAsString
+      ]
+      ["qw"
+        pullRune
+        [
+          [unicodeOpenBraces unicodePunct unicodeSymbol
+            setPrimary{expectSpaceOrQwItemOrDelimiter}
+            setTopItemDelimiter{pairForCurrRune}
+            setTopItemType{parseStackItemQw}
+          ]
+          [
+            setError{unexpectedRuneError}
+          ]
+        ]
+        setVar{"skipPostProcess" true}
+      ]
+      [setError{unknownWordError}]
+    ]
+  ]
+]
+
+postProcessStateDef = [
+  [stackLenIs{0}]
+  [stackLenis{1}
+    setSecondary{expectEOF orSpace}
+  ]
+  [
+    popSubItem
+    [
+      [parseStackItemQw
+        appendItemArray{fromSubItemValue}
+        setPrimary{expectSpaceOrQwItemOrDelimiter}
+      ]
+    ]
+  ]
+]
+

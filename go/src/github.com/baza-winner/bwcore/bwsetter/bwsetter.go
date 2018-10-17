@@ -409,33 +409,6 @@ type Generator struct {
 	packagePath string
 }
 
-// func (g *Generator) Printf(format string, args ...interface{}) {
-// 	fmt.Fprintf(&g.buf, format, args...)
-// }
-
-// File holds a single parsed file and associated data.
-// type File struct {
-// 	pkg  *Package  // Package to which this file belongs.
-// 	file *ast.File // Parsed AST.
-
-// 	trimPrefix  string
-// 	lineComment bool
-// }
-
-// type Package struct {
-// 	dir      string
-// 	name     string
-// 	defs     map[*ast.Ident]types.Object
-// 	files    []*File
-// 	typesPkg *types.Package
-// }
-
-// func buildContext(tags []string) *build.Context {
-// 	ctx := build.Default
-// 	ctx.BuildTags = tags
-// 	return &ctx
-// }
-
 var goFileRegexp = regexp.MustCompile(`^.+\.go$`)
 var goTestFileRegexp = regexp.MustCompile(`^.+_test\.go$`)
 
@@ -490,7 +463,3 @@ func getPackagePath(packageDir string) string {
 	}
 	return packageDir[len(gopathsrc):]
 }
-
-// func defaultImporter() types.Importer {
-// 	return importer.For("source", nil)
-// }
