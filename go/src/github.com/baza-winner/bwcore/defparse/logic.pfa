@@ -1,58 +1,280 @@
-finish = [
-  [topItem{string} topItem{qwItem}
-    setTopItemValueAsString
-  ]
-  [topItem{map}
-    setTopItemValueAsMap
-  ]
-  [parseStackItemArray parseStackItemQw
-    setTopItemValueAsArray
-  ]
-  [parseStackItemNumber
-    setTopItemValueAsNumber
-  ]
-  //
-  [parseStackItemWord
+// logic
+unexpectedEOF = (IsEOF SetError{UnexpectedRune} )
+
+unexpectedRune = (SetError{UnexpectedRune})
+
+finish = [ /* some */
+  (TopItemIs{string qwItem} SetTopItemValueAsString )
+  (TopItemIs{map} SetTopItemValueAsMap )
+  (TopItemIs{array qw} SetTopItemValueAsMap )
+  (TopItemIs{number} SetTopItemValueAsNumber )
+  (TopItemIs{word}
     [
-      ["true"
-        setTopItemValueAsBool{true}
-      ]
-      ["nil" "null"]
-      ["Bool" "String" "Int" "Number" "Map" "Array" "ArrayOf"
-        setTopItemValueAsString
-      ]
-      ["qw"
-        pullRune
+      (TopItemStringIs{true}
+        SetTopItemValueAsBool{false}
+      )
+      (TopItemStringIs{nil null})
+      (TopItemStringIs{//
+        Bool String Int Number Map Array /* */ ArrayOf
+      }
+        SetTopItemValueAsString
+      )
+      (TopItemStringIs{qw}
+        PullRune
         [
-          [unicodeOpenBraces unicodePunct unicodeSymbol
-            setPrimary{expectSpaceOrQwItemOrDelimiter}
-            setTopItemDelimiter{pairForCurrRune}
-            setTopItemType{parseStackItemQw}
-          ]
-          [
-            setError{unexpectedRuneError}
-          ]
+          (IsUnicodeOpenBraces IsUnicodePunct IsUnicodeSymbol
+            SetPrimary{//
+              expectSpaceOrQwItemOrDelimiter//
+            }
+            SetTopItemDelimiter{PairForCurrRune}
+            SetTopItemType{ qw }
+          )
+          unexpectedRune
         ]
-        setVar{"skipPostProcess" true}
-      ]
-      [setError{unknownWordError}]
+        SetVar{//
+          skipPostProcess /*some */ true//
+        }
+      )
+      (SetError{UnknownWord})
     ]
-  ]
+  )
 ]
 
-postProcessStateDef = [
-  [stackLenIs{0}]
-  [stackLenis{1}
-    setSecondary{expectEOF orSpace}
-  ]
-  [
-    popSubItem
+postProcess = [
+  (StackLenIs{0})
+  (StackLenIs{1}
+    SetSecondary{expectEOF orSpace}
+  )
+  (
+    PopSubItem
     [
-      [parseStackItemQw
-        appendItemArray{fromSubItemValue}
-        setPrimary{expectSpaceOrQwItemOrDelimiter}
-      ]
+      (TopItemIs{qw}
+        AppendItemArray{FromSubItemValue}
+        SetPrimary{expectSpaceOrQwItemOrDelimiter}
+      )
+      (TopItemIs{array}
+        [
+          (SubItemIs{qw}
+            AppendItemArray{FromSubItemArray}
+          )
+          (AppendItemArray{FromSubItemValue})
+        ]
+        SetSecondary{expectValueOrSpace orArrayItemSeparator}
+      )
+      (TopItemIs{map}
+        [
+          (SubItemIs{key}
+            SetTopItemStringFromSubItem
+            SetSecondary{expectValueOrSpace orMapKeySeparator}
+          )
+          (
+            SetTopItemMapKeyValueFromSubItem
+            SetSecondary{expectSpaceOrMapKey orMapValueSeparator}
+          )
+        ]
+      )
+      (Unreachable)
     ]
-  ]
+  )
+]
+
+primaryState = [
+  (PrimaryIs{expectEOF}
+    [
+      (IsEOF SetPrimary{expectEOF})
+      (IsUnicodeSpace)
+      unexpectedRune
+    ]
+  )
+  (PrimaryIs{expectRocket}
+    [
+      ('>' SetPrimary{expectValueOrSpace})
+      unexpectedRune
+    ]
+  )
+  (PrimaryIs{expectWord}
+    [
+      (IsUnicodeLetter IsUnicodeDigit AppendCurrRune)
+      (PushRune SetVar{needFinish true})
+    ]
+  )
+  (PrimaryIs{expectSpaceOrQwItemOrDelimiter}
+    [
+      unexpectedEOF
+      (IsUnicodeSpace)
+      (IsDelimiterRune SetVar{needFinish true})
+      (
+        PushItem{
+          ItemType qwItem
+          ItemString FromCurrRune
+          Delimiter FromParentItem
+        }
+        SetPrimary{expectEndOfQwItem}
+      )
+    ]
+  )
+  (PrimaryIs{expectEndOfQwItem}
+    [
+      unexpectedEOF
+      (IsUnicodeSpace IsDelimiterRune
+        PushRune
+        SetVar{needFinish true}
+      )
+      (AppendCurrRune)
+    ]
+  )
+  (PrimaryIs{expectContentOf}
+    [
+      unexpectedEOF
+      (IsDelimiterRune
+        SetVar{needFinish true}
+      )
+      ('\\'
+        ChangePrimary{expectEscapedContentOf}
+      )
+      (
+        AppendCurrRune
+      )
+    ]
+  )
+  (PrimaryIs{expectDigit}
+    [
+      (IsUnicodeDigit SecondaryIs{""}
+        AppendCurrRune
+        ChangeSecondary{orUnderscoreOrDot}
+      )
+      ('.' SecondaryIs{orUnderscoreOrDot}
+        AppendCurrRune
+        ChangeSecondary{orUnderscore}
+      )
+      ('_' IsUnicodeDigit SecondaryIs{orUnderscoreOrDot} SecondaryIs{orUnderscore}
+        AppendCurrRune
+      )
+      (SecondaryIs{""}
+        SetError{UnexpectedRune}
+      )
+      (
+        PushRune
+        SetVar{needFinish true}
+      )
+    ]
+  )
+  (PrimaryIs{expectSpaceOrMapKey}
+    [
+      (IsUnicodeSpace)
+      (IsUnicodeLetter
+        PushItem{ItemType key ItemString FromCurrRune}
+        SetPrimary{expectWord}
+      )
+      ('"' '\''
+        PushItem{ItemType key Delimiter FromCurrRune}
+        SetSecondary{expectContentOf keyToken}
+      )
+      (',' SecondaryIs{orMapValueSeparator}
+        SetPrimary{expectSpaceOrMapKey}
+      )
+      (IsDelimiterRune TopItemIs{map}
+        SetVar{needFinish true}
+      )
+      unexpectedRune
+    ]
+  )
+  (PrimaryIs{expectEscapedContentOf}
+    [
+      ('"' '\'' '\\'
+        AppendCurrRune
+        ChangePrimary{expectContentOf}
+      )
+      (DelimiterIs{'"'}
+        [
+          ('a' AppendRune{'\a'})
+          ('b' AppendRune{'\b'})
+          ('f' AppendRune{'\f'})
+          ('n' AppendRune{'\n'})
+          ('r' AppendRune{'\r'})
+          ('t' AppendRune{'\t'})
+          ('v' AppendRune{'\v'})
+          unexpectedRune
+        ]
+        ChangePrimary{expectContentOf}
+      )
+      unexpectedRune
+    ]
+  )
+  (PrimaryIs{expectValueOrSpace}
+    [
+      (IsEOF StackLenIs{0}
+        SetPrimary{expectEOF}
+      )
+      unexpectedEOF
+      ('=' SecondaryIs{orMapKeySeparator}
+        SetPrimary{expectRocket}
+      )
+      (':' SecondaryIs{orMapKeySeparator}
+        SetPrimary{expectValueOrSpace}
+      )
+      (',' SecondaryIs{orArrayItemSeparator}
+        SetPrimary{expectValueOrSpace}
+      )
+      (IsUnicodeSpace)
+      ('{'
+        PushItem{
+          ItemType map
+          Delimiter PairForCurrRune
+      }
+        SetPrimary{expectSpaceOrMapKey}
+      )
+      ('<'
+        PushItem{ItemType qw Delimiter PairForCurrRune}
+        SetPrimary{expectSpaceOrQwItemOrDelimiter}
+      )
+      ('['
+        PushItem{ItemType array Delimiter PairForCurrRune}
+        SetPrimary{expectValueOrSpace}
+      )
+      (TopItemIs{array} IsDelimiterRune
+        SetVar{needFinish true}
+      )
+      ('-' '+'
+        PushItem{ItemType number ItemString FromCurrRune}
+        SetPrimary{expectDigit}
+      )
+      (IsUnicodeDigit
+        PushItem{ItemType number ItemString FromCurrRune}
+        SetSecondary{expectDigit orUnderscoreOrDot}
+      )
+      ('"' '\''
+        PushItem{ItemType string Delimiter FromCurrRune}
+        SetSecondary{expectContentOf stringToken}
+      )
+      (IsUnicodeLetter
+        PushItem{ItemType word ItemString FromCurrRune}
+        SetPrimary{expectWord}
+      )
+      unexpectedRune
+    ]
+  )
+  (PrimaryIs{expectValueOrSpace}
+    Unreachable
+  )
+]
+
+main = [
+  (
+    PullRune
+    SetVar{"needFinish" false}
+    primaryStateLogic
+    [
+      (VarIs{"needFinish" true}
+        SetVar{"skipPostProcess" false}
+        finishLogic
+        [
+          (VarIs{"skipPostProcess" false}
+            postProcessLogic
+          )
+        ]
+      )
+    ]
+  )
 ]
 

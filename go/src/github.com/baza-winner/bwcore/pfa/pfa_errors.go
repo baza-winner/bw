@@ -1,4 +1,4 @@
-package defparse
+package pfa
 
 import (
 	"fmt"
@@ -7,26 +7,26 @@ import (
 	"github.com/jimlawless/whereami"
 )
 
-type pfaErrorType uint16
+type ErrorType uint16
 
 const (
-	pfaError_below_ pfaErrorType = iota
-	unexpectedRuneError
-	failedToGetNumberError
-	unknownWordError
-	pfaError_above_
+	pfaErrorBelow ErrorType = iota
+	UnexpectedRune
+	FailedToGetNumber
+	UnknownWord
+	pfaErrorAbove
 )
 
 type pfaError struct {
 	pfa       *pfaStruct
-	errorType pfaErrorType
+	errorType ErrorType
 	fmtString string
 	fmtArgs   []interface{}
 	Where     string
 }
 
-func pfaErrorMake(pfa *pfaStruct, errorType pfaErrorType, args ...interface{}) (result pfaError) {
-	if !(pfaError_below_ < errorType && errorType < pfaError_above_) {
+func pfaErrorMake(pfa *pfaStruct, errorType ErrorType, args ...interface{}) (result pfaError) {
+	if !(pfaErrorBelow < errorType && errorType < pfaErrorAbove) {
 		bwerror.Panic(" errorType == %s", errorType)
 	}
 	fmtString, fmtArgs := pfaErrorValidators[errorType](pfa, args...)
@@ -38,9 +38,9 @@ func (err pfaError) Error() string {
 	return bwerror.Error(err.fmtString, err.fmtArgs...).Error()
 }
 
-func (v pfaError) DataForJson() interface{} {
+func (v pfaError) DataForJSON() interface{} {
 	result := map[string]interface{}{}
-	result["pfa"] = v.pfa.DataForJson()
+	result["pfa"] = v.pfa.DataForJSON()
 	result["errorType"] = v.errorType.String()
 	result["Where"] = v.Where
 	return result
@@ -48,19 +48,19 @@ func (v pfaError) DataForJson() interface{} {
 
 type pfaErrorValidator func(pfa *pfaStruct, args ...interface{}) (string, []interface{})
 
-var pfaErrorValidators = map[pfaErrorType]pfaErrorValidator{
-	unexpectedRuneError:    _unexpectedRuneError,
-	failedToGetNumberError: _failedToGetNumberError,
-	unknownWordError:       _unknownWordError,
+var pfaErrorValidators = map[ErrorType]pfaErrorValidator{
+	UnexpectedRune:    _unexpectedRuneError,
+	FailedToGetNumber: _failedToGetNumberError,
+	UnknownWord:       _unknownWordError,
 }
 
 func pfaErrorValidatorsCheck() {
-	pfaErrorType := pfaError_below_ + 1
-	for pfaErrorType < pfaError_above_ {
-		if _, ok := pfaErrorValidators[pfaErrorType]; !ok {
-			bwerror.Panic("not defined <ansiOutline>pfaErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", pfaErrorType)
+	ErrorType := pfaErrorBelow + 1
+	for ErrorType < pfaErrorAbove {
+		if _, ok := pfaErrorValidators[ErrorType]; !ok {
+			bwerror.Panic("not defined <ansiOutline>pfaErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", ErrorType)
 		}
-		pfaErrorType += 1
+		ErrorType += 1
 	}
 }
 
@@ -85,18 +85,18 @@ func _failedToGetNumberError(pfa *pfaStruct, args ...interface{}) (fmtString str
 	if args != nil {
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
+	stackItem := pfa.getTopStackItemOfType("number")
 	suffix := getSuffix(pfa, stackItem.start, stackItem.itemString)
-	return "failed to get number from string <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
+	return "failed to get number from string <ansiPrimaryLiteral>%s<ansi>" + suffix, []interface{}{stackItem.itemString}
 }
 
 func _unknownWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 	if args != nil {
 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
 	}
-	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
+	stackItem := pfa.getTopStackItemOfType("word")
 	suffix := getSuffix(pfa, stackItem.start, stackItem.itemString)
-	return "unknown word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
+	return "unknown word <ansiPrimaryLiteral>%s<ansi>" + suffix, []interface{}{stackItem.itemString}
 }
 
 // =============
@@ -124,7 +124,7 @@ func getSuffix(pfa *pfaStruct, start runePtrStruct, redString string) (suffix st
 		suffix += redString
 		suffix += "<ansiReset>"
 		for pfa.curr.runePtr != nil && postLineCount > 0 {
-			pfa.pullRune()
+			pfa.PullRune()
 			if pfa.curr.runePtr != nil {
 				suffix += string(*pfa.curr.runePtr)
 				if *pfa.curr.runePtr == '\n' {

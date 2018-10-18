@@ -4,7 +4,7 @@ package helper
 
 import "strconv"
 
-const _ParamsType_name = "pt_below_ptNoneptArgptArgsptSliceptSetptIJpt_above_"
+const _ParamsType_name = "ptBelowptNoneptArgptArgsptSliceptSetptIJptAbove"
 
 var _ParamsType_index = [...]uint8{0, 9, 15, 20, 26, 33, 38, 42, 51}
 

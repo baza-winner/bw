@@ -56,7 +56,7 @@ func TestInt16Set(t *testing.T) {
 		In:  []interface{}{Int16Set{_Int16SetTestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.PrettyJson([]int16{_Int16SetTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Int16Set.DataForJson, map[string]bwtesting.TestCaseStruct{"Int16Set.DataForJson": {
+	bwtesting.BwRunTests(t, Int16Set.DataForJSON, map[string]bwtesting.TestCaseStruct{"Int16Set.DataForJSON": {
 		In:  []interface{}{Int16Set{_Int16SetTestItemA: struct{}{}}},
 		Out: []interface{}{[]interface{}{_Int16SetTestItemA}},
 	}})

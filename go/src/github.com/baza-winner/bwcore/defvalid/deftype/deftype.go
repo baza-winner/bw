@@ -7,7 +7,7 @@ import (
 type Item uint16
 
 const (
-	Item_below_ Item = iota
+	ItemBelow Item = iota
 	Bool
 	String
 	Int
@@ -15,7 +15,7 @@ const (
 	Map
 	Array
 	ArrayOf
-	Item_above_
+	ItemAbove
 )
 
 //go:generate stringer -type=Item
@@ -23,10 +23,14 @@ const (
 var mapItemFromString = map[string]Item{}
 
 func init() {
-	for i := Item_below_ + 1; i < Item_above_; i++ {
+	for i := ItemBelow + 1; i < ItemAbove; i++ {
 		mapItemFromString[i.String()] = i
 	}
 	return
+}
+
+func (v Item) DataForJSON() interface{} {
+	return v.String()
 }
 
 func ItemFromString(s string) (result Item, err error) {

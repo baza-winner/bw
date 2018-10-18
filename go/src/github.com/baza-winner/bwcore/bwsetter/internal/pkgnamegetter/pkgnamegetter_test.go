@@ -39,53 +39,7 @@ func myTeardownFunction() {
 	}
 }
 
-func TestGetFirstLine(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
-		"no newline": {
-			In: []interface{}{getTestFileSpec("no newline")},
-			Out: []interface{}{
-				"Радость",
-				nil,
-			},
-		},
-		"newline": {
-			In: []interface{}{getTestFileSpec("newline")},
-			Out: []interface{}{
-				"Радость",
-				nil,
-			},
-		},
-		"invalid utf8": {
-			In: []interface{}{getTestFileSpec("invalid utf8")},
-			Out: []interface{}{
-				"Рад",
-				bwerror.Error(
-					"utf-8 encoding is invalid at pos %d (byte #%d)",
-					2, 5,
-				),
-			},
-		},
-		"non existent": {
-			In: []interface{}{getTestFileSpec("non existent")},
-			Out: []interface{}{
-				"",
-				bwerror.Error(
-					"open %s: no such file or directory",
-					getTestFileSpec("non existent"),
-				),
-			},
-		},
-	}
-	testsToRun := tests
-	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
-	bwtesting.BwRunTests(t, getFirstLine, testsToRun)
-}
-
 func mySetupFunction() {
-	prepareTestFile("no newline", []byte("Радость"))
-	prepareTestFile("newline", []byte("Радость\nСчастье"))
-	prepareTestFile("invalid utf8", []byte("Рад\xa0\xa1")) // https://stackoverflow.com/questions/1301402/example-invalid-utf8-string
 	prepareTestFile("package main", []byte("package main"))
 	prepareTestFile("package some", []byte("  \n// single line comment \n /* some comment */  \n// single line comment\n package /* infix comment */ some;"))
 	prepareTestFile("pack age main", []byte("  pac kage main"))

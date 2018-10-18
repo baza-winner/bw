@@ -61,8 +61,8 @@ func (v RuneSet) String() string {
 	return bwjson.PrettyJsonOf(v)
 }
 
-// DataForJson - поддержка интерфейса bwjson.Jsonable
-func (v RuneSet) DataForJson() interface{} {
+// DataForJSON - поддержка интерфейса bwjson.Jsonable
+func (v RuneSet) DataForJSON() interface{} {
 	result := []interface{}{}
 	for k, _ := range v {
 		result = append(result, k)

@@ -58,7 +58,7 @@ func getValidVal(val value, def Def, optSkipArrayOf ...bool) (result interface{}
 			valDeftype = deftype.String
 		}
 	}
-	if valDeftype == deftype.Item_below_ {
+	if valDeftype == deftype.ItemBelow {
 		return nil, valueErrorMake(val, valueErrorIsNotOfType, def.tp)
 	}
 
@@ -78,8 +78,8 @@ type getValidValHelper func(val value, def Def) (result interface{}, err error)
 var getValidValHelpers map[deftype.Item]getValidValHelper
 
 func getValidValHelpersCheck() {
-	deftypeItem := deftype.Item_below_ + 1
-	for deftypeItem < deftype.Item_above_ {
+	deftypeItem := deftype.ItemBelow + 1
+	for deftypeItem < deftype.ItemAbove {
 		if _, ok := getValidValHelpers[deftypeItem]; !ok {
 			bwerror.Panic("not defined <ansiOutline>deftype.ItemValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", deftypeItem)
 		}

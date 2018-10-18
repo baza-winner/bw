@@ -56,7 +56,7 @@ func TestFloat64Set(t *testing.T) {
 		In:  []interface{}{Float64Set{_Float64SetTestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.PrettyJson([]float64{_Float64SetTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Float64Set.DataForJson, map[string]bwtesting.TestCaseStruct{"Float64Set.DataForJson": {
+	bwtesting.BwRunTests(t, Float64Set.DataForJSON, map[string]bwtesting.TestCaseStruct{"Float64Set.DataForJSON": {
 		In:  []interface{}{Float64Set{_Float64SetTestItemA: struct{}{}}},
 		Out: []interface{}{[]interface{}{_Float64SetTestItemA}},
 	}})

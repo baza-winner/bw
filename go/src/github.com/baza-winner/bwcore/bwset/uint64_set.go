@@ -62,8 +62,8 @@ func (v Uint64Set) String() string {
 	return bwjson.PrettyJsonOf(v)
 }
 
-// DataForJson - поддержка интерфейса bwjson.Jsonable
-func (v Uint64Set) DataForJson() interface{} {
+// DataForJSON - поддержка интерфейса bwjson.Jsonable
+func (v Uint64Set) DataForJSON() interface{} {
 	result := []interface{}{}
 	for k, _ := range v {
 		result = append(result, k)

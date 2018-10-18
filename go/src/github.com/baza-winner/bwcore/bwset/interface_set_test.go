@@ -51,7 +51,7 @@ func TestInterfaceSet(t *testing.T) {
 		In:  []interface{}{InterfaceSet{_InterfaceSetTestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.PrettyJson([]interface{}{_InterfaceSetTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, InterfaceSet.DataForJson, map[string]bwtesting.TestCaseStruct{"InterfaceSet.DataForJson": {
+	bwtesting.BwRunTests(t, InterfaceSet.DataForJSON, map[string]bwtesting.TestCaseStruct{"InterfaceSet.DataForJSON": {
 		In:  []interface{}{InterfaceSet{_InterfaceSetTestItemA: struct{}{}}},
 		Out: []interface{}{[]interface{}{_InterfaceSetTestItemA}},
 	}})

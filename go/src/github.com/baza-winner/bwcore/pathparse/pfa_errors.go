@@ -10,11 +10,11 @@ import (
 type pfaErrorType uint16
 
 const (
-	pfaError_below_ pfaErrorType = iota
+	pfaErrorBelow pfaErrorType = iota
 	unexpectedRuneError
 	failedToGetNumberError
 	// unknownWordError
-	pfaError_above_
+	pfaErrorAbove
 )
 
 //go:generate stringer -type=pfaErrorType
@@ -28,7 +28,7 @@ type pfaError struct {
 }
 
 func pfaErrorMake(pfa *pfaStruct, errorType pfaErrorType, args ...interface{}) (result pfaError) {
-	if !(pfaError_below_ < errorType && errorType < pfaError_above_) {
+	if !(pfaErrorBelow < errorType && errorType < pfaErrorAbove) {
 		bwerror.Panic(" errorType == %s", errorType)
 	}
 	fmtString, fmtArgs := pfaErrorValidators[errorType](pfa, args...)
@@ -40,9 +40,9 @@ func (err pfaError) Error() string {
 	return bwerror.Error(err.fmtString, err.fmtArgs...).Error()
 }
 
-func (v pfaError) DataForJson() interface{} {
+func (v pfaError) DataForJSON() interface{} {
 	result := map[string]interface{}{}
-	result["pfa"] = v.pfa.DataForJson()
+	result["pfa"] = v.pfa.DataForJSON()
 	result["errorType"] = v.errorType.String()
 	result["Where"] = v.Where
 	return result
@@ -57,8 +57,8 @@ var pfaErrorValidators = map[pfaErrorType]pfaErrorValidator{
 }
 
 func pfaErrorValidatorsCheck() {
-	pfaErrorType := pfaError_below_ + 1
-	for pfaErrorType < pfaError_above_ {
+	pfaErrorType := pfaErrorBelow + 1
+	for pfaErrorType < pfaErrorAbove {
 		if _, ok := pfaErrorValidators[pfaErrorType]; !ok {
 			bwerror.Panic("not defined <ansiOutline>pfaErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", pfaErrorType)
 		}

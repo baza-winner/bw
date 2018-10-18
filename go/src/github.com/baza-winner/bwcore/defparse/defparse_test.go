@@ -130,12 +130,13 @@ me'`},
 				},
 				nil},
 		},
-		"failedToGetNumberError": {
+		"FailedToGetNumber": {
 			In: []interface{}{`{ someBigNumber: 1_000_000_000_000_000_000_000 }`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"failed to get number from string <ansiPrimaryLiteral>1_000_000_000_000_000_000_000 at pos <ansiCmd>17<ansi>: <ansiDarkGreen>{ someBigNumber: <ansiLightRed>1_000_000_000_000_000_000_000<ansiReset> }\n",
+					"failed to get number from string <ansiPrimaryLiteral>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"1_000_000_000_000_000_000_000", 17, "{ someBigNumber: ", "1_000_000_000_000_000_000_000", " }",
 				),
 			},
 		},
@@ -144,12 +145,13 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>Something at pos <ansiCmd>7<ansi>: <ansiDarkGreen>[ Bool <ansiLightRed>Something<ansiReset> String ]\n",
+					"unknown word <ansiPrimaryLiteral>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"Something", 7, "[ Bool ", "Something", " String ]",
 				),
 			},
 		},
 
-		"unknownWordError": {
+		"UnknownWord": {
 			In: []interface{}{`
 [
   qw/one two three/
@@ -164,11 +166,12 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>def at line <ansiCmd>4<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>25<ansi>):\n<ansiDarkGreen>[\n  qw/one two three/\n  <ansiLightRed>def<ansiReset>\n  qw/\n    four\n",
+					"unknown word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"def", 4, 3, 25, "[\n  qw/one two three/\n  ", "def", "\n  qw/\n    four",
 				),
 			},
 		},
-		"unexpectedRuneError": {
+		"UnexpectedRune": {
 			In: []interface{}{`
 [
   1000,
@@ -184,7 +187,7 @@ me'`},
 				),
 			},
 		},
-		"unexpectedRuneError(EOF)": {
+		"UnexpectedRune(EOF)": {
 			In: []interface{}{` [1000, true 'value', `},
 			Out: []interface{}{
 				nil,
@@ -194,7 +197,6 @@ me'`},
 			},
 		},
 		"non map": {
-
 			In: []interface{}{`
         type: 'map',
         keys: {
@@ -218,7 +220,8 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>type at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n",
+					"unknown word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
 				),
 			},
 		},
@@ -327,7 +330,7 @@ me'`},
 				nil,
 				bwerror.Error(
 					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
-					expectDigit, 1, "-",
+					"expectDigit", 1, "-",
 				),
 			},
 		},
@@ -367,7 +370,7 @@ me'`},
 				nil,
 				bwerror.Error(
 					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
-					expectSpaceOrQwItemOrDelimiter, 6, "<some ",
+					"expectSpaceOrQwItemOrDelimiter", 6, "<some ",
 				),
 			},
 		},
@@ -384,7 +387,7 @@ me'`},
 				nil,
 				bwerror.Error(
 					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
-					expectWord, 2, "qw",
+					"expectWord", 2, "qw",
 				),
 			},
 		},
@@ -394,7 +397,7 @@ me'`},
 				nil,
 				bwerror.Error(
 					"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
-					' ', expectWord, 2, "qw", " ",
+					' ', "expectWord", 2, "qw", " ",
 				),
 			},
 		},
@@ -939,7 +942,10 @@ func TestParseMap(t *testing.T) {
       `},
 			Out: []interface{}{
 				map[string]interface{}(nil),
-				bwerror.Error("unknown word <ansiPrimaryLiteral>type at line <ansiCmd>2<ansi>, col <ansiCmd>9<ansi> (pos <ansiCmd>9<ansi>):\n<ansiDarkGreen>\n        <ansiLightRed>type<ansiReset>: 'map',\n        keys: {\n          v: {\n"),
+				bwerror.Error(
+					"unknown word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
+				),
 			},
 		},
 	}

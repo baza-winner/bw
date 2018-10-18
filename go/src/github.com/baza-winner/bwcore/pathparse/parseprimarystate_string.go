@@ -4,7 +4,7 @@ package pathparse
 
 import "strconv"
 
-const _parsePrimaryState_name = "parsePrimaryState_below_expectEOFexpectPathSegmentexpectMapKeyexpectDigitexpectContentOfexpectEscapedContentOfparsePrimaryState_above_"
+const _parsePrimaryState_name = "parsePrimaryStateBelowexpectEOFexpectPathSegmentexpectMapKeyexpectDigitexpectContentOfexpectEscapedContentOfparsePrimaryStateAbove"
 
 var _parsePrimaryState_index = [...]uint8{0, 24, 33, 50, 62, 73, 88, 110, 134}
 

@@ -227,26 +227,31 @@ package defparse
 
 import (
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/pfa"
+	"github.com/baza-winner/bwcore/runeprovider"
 )
 
-type stringRuneProvider struct {
-	pos int
-	src []rune
-}
+// type stringRuneProvider struct {
+// 	pos int
+// 	src []rune
+// }
 
-func (v *stringRuneProvider) PullRune() *rune {
-	v.pos += 1
-	if v.pos >= len(v.src) {
-		return nil
-	} else {
-		result := v.src[v.pos]
-		return &result
-	}
-}
+// func (v *stringRuneProvider) PullRune() (result *rune, err error) {
+// 	v.pos++
+// 	if v.pos < len(v.src) {
+// 		r := v.src[v.pos]
+// 		result = &r
+// 	}
+// 	return
+// }
 
 // Parse - парсит строку
 func Parse(source string) (interface{}, error) {
-	return pfaParse(&stringRuneProvider{pos: -1, src: []rune(source)})
+	return pfa.Run(
+		runeprovider.FromString(source),
+		pfaStateDef,
+		pfa.State{"expectValueOrSpace", ""},
+	)
 }
 
 // MustParse is like Parse but panics if the expression cannot be parsed.

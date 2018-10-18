@@ -4,7 +4,7 @@ package helper
 
 import "strconv"
 
-const _ReturnType_name = "rt_below_rtNonertBoolrtIntrtInterfacertStringrtSetrtSlicertSliceOfStringsrt_above_"
+const _ReturnType_name = "rtBelowrtNonertBoolrtIntrtInterfacertStringrtSetrtSlicertSliceOfStringsrtAbove"
 
 var _ReturnType_index = [...]uint8{0, 9, 15, 21, 26, 37, 45, 50, 57, 73, 82}
 

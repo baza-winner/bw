@@ -3,6 +3,9 @@
 	[
 		{
 			"path": "."
+		},
+		{
+			"path": "/Users/yurybikuzin/bw/go/src/github.com/baza-winner/bwcore/pfa"
 		}
 	]
 }

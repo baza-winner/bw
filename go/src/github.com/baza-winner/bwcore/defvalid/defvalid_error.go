@@ -7,6 +7,7 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/jimlawless/whereami"
+
 	// "log"
 	"reflect"
 	"sort"
@@ -17,7 +18,7 @@ import (
 type valueErrorType uint16
 
 const (
-	valueError_below_ valueErrorType = iota
+	valueErrorBelow valueErrorType = iota
 	valueErrorIsNotOfType
 	valueErrorHasUnexpectedKeys
 	valueErrorHasNoKey
@@ -26,7 +27,7 @@ const (
 	valueErrorConflictingKeys
 	valueErrorArrayOf
 	valueErrorOutOfRange
-	valueError_above_
+	valueErrorAbove
 )
 
 //go:generate stringer -type=valueErrorType
@@ -39,7 +40,7 @@ type valueError struct {
 }
 
 func valueErrorMake(v value, errorType valueErrorType, args ...interface{}) (result valueError) {
-	if !(valueError_below_ < errorType && errorType < valueError_above_) {
+	if !(valueErrorBelow < errorType && errorType < valueErrorAbove) {
 		bwerror.Panic(v.String()+" errorType == %s", errorType)
 	}
 	fmtString, fmtArgs := valueErrorValidators[errorType](v, args...)
@@ -57,8 +58,8 @@ type valueErrorValidator func(v value, args ...interface{}) (string, []interface
 var valueErrorValidators map[valueErrorType]valueErrorValidator
 
 func valueErrorValidatorsCheck() {
-	valueErrorType := valueError_below_ + 1
-	for valueErrorType < valueError_above_ {
+	valueErrorType := valueErrorBelow + 1
+	for valueErrorType < valueErrorAbove {
 		if _, ok := valueErrorValidators[valueErrorType]; !ok {
 			bwerror.Panic("not defined <ansiOutline>valueErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", valueErrorType)
 		}

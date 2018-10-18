@@ -4,7 +4,7 @@ package pathparse
 
 import "strconv"
 
-const _parseStackItemType_name = "parseStackItem_below_parseStackItemNumberparseStackItemKeyparseStackItemStringparseStackItem_above_"
+const _parseStackItemType_name = "parseStackItemBelowparseStackItemNumberparseStackItemKeyparseStackItemStringparseStackItemAbove"
 
 var _parseStackItemType_index = [...]uint8{0, 21, 41, 58, 78, 99}
 

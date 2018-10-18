@@ -64,7 +64,7 @@ type someStruct struct {
 	strField  string
 }
 
-func (v someStruct) DataForJson() interface{} {
+func (v someStruct) DataForJSON() interface{} {
 	result := map[string]interface{}{}
 	result["boolField"] = v.boolField
 	result["numField"] = v.numField

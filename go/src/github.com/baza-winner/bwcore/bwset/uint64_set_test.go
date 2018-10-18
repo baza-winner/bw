@@ -56,7 +56,7 @@ func TestUint64Set(t *testing.T) {
 		In:  []interface{}{Uint64Set{_Uint64SetTestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.PrettyJson([]uint64{_Uint64SetTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Uint64Set.DataForJson, map[string]bwtesting.TestCaseStruct{"Uint64Set.DataForJson": {
+	bwtesting.BwRunTests(t, Uint64Set.DataForJSON, map[string]bwtesting.TestCaseStruct{"Uint64Set.DataForJSON": {
 		In:  []interface{}{Uint64Set{_Uint64SetTestItemA: struct{}{}}},
 		Out: []interface{}{[]interface{}{_Uint64SetTestItemA}},
 	}})

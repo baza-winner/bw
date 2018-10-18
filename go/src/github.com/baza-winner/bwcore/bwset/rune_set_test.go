@@ -55,7 +55,7 @@ func TestRuneSet(t *testing.T) {
 		In:  []interface{}{RuneSet{_RuneSetTestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.PrettyJson([]rune{_RuneSetTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, RuneSet.DataForJson, map[string]bwtesting.TestCaseStruct{"RuneSet.DataForJson": {
+	bwtesting.BwRunTests(t, RuneSet.DataForJSON, map[string]bwtesting.TestCaseStruct{"RuneSet.DataForJSON": {
 		In:  []interface{}{RuneSet{_RuneSetTestItemA: struct{}{}}},
 		Out: []interface{}{[]interface{}{_RuneSetTestItemA}},
 	}})

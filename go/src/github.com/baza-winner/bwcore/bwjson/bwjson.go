@@ -8,7 +8,7 @@ import (
 )
 
 type Jsonable interface {
-	DataForJson() interface{}
+	DataForJSON() interface{}
 }
 
 // PrettyJson - wrapper для json.MarshalIndent
@@ -22,5 +22,5 @@ func PrettyJson(v interface{}) (result string) {
 }
 
 func PrettyJsonOf(v Jsonable) string {
-	return PrettyJson(v.DataForJson())
+	return PrettyJson(v.DataForJSON())
 }

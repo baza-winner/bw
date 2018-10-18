@@ -67,15 +67,15 @@ func MustDef(v interface{}) (result *Def) {
 	return
 }
 
-func (v *Def) DataForJson() interface{} {
+func (v *Def) DataForJSON() interface{} {
 	if v == nil {
 		return nil
 	}
 	result := map[string]interface{}{}
-	result["tp"] = v.tp.DataForJson()
+	result["tp"] = v.tp.DataForJSON()
 	result["isOptional"] = v.isOptional
 	if v.enum != nil {
-		result["enum"] = v.enum.DataForJson()
+		result["enum"] = v.enum.DataForJSON()
 	}
 	if v.minInt != nil {
 		result["minInt"] = v.minInt
@@ -92,15 +92,15 @@ func (v *Def) DataForJson() interface{} {
 	if v.keys != nil {
 		keysJsonData := map[string]interface{}{}
 		for k, v := range v.keys {
-			keysJsonData[k] = v.DataForJson()
+			keysJsonData[k] = v.DataForJSON()
 		}
 		result["keys"] = keysJsonData
 	}
 	if v.elem != nil {
-		result["elem"] = (*(v.elem)).DataForJson()
+		result["elem"] = (*(v.elem)).DataForJSON()
 	}
 	if v.arrayElem != nil {
-		result["arrayElem"] = (*(v.arrayElem)).DataForJson()
+		result["arrayElem"] = (*(v.arrayElem)).DataForJSON()
 	}
 	if v.dflt != nil {
 		result["dflt"] = v.dflt

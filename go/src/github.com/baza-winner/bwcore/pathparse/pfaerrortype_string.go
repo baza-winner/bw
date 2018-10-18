@@ -4,7 +4,7 @@ package pathparse
 
 import "strconv"
 
-const _pfaErrorType_name = "pfaError_below_unexpectedRuneErrorfailedToGetNumberErrorpfaError_above_"
+const _pfaErrorType_name = "pfaErrorBelowunexpectedRuneErrorfailedToGetNumberErrorpfaErrorAbove"
 
 var _pfaErrorType_index = [...]uint8{0, 15, 34, 56, 71}
 

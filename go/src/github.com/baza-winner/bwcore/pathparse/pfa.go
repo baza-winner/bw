@@ -20,7 +20,7 @@ func init() {
 type parseStackItemType uint16
 
 const (
-	parseStackItem_below_ parseStackItemType = iota
+	parseStackItemBelow parseStackItemType = iota
 	// parseStackItemOpenIndex
 	// parseStackItemArrayIndex
 	parseStackItemNumber
@@ -30,7 +30,7 @@ const (
 	// parseStackItemArray
 	// parseStackItemQw
 	// parseStackItemQwItem
-	parseStackItem_above_
+	parseStackItemAbove
 )
 
 //go:generate stringer -type=parseStackItemType
@@ -48,10 +48,10 @@ type parseStackItem struct {
 	value      interface{}
 }
 
-func (stackItem *parseStackItem) DataForJson() interface{} {
+func (stackItem *parseStackItem) DataForJSON() interface{} {
 	result := map[string]interface{}{}
 	result["itemType"] = stackItem.itemType.String()
-	result["start"] = stackItem.start.DataForJson()
+	result["start"] = stackItem.start.DataForJSON()
 	if stackItem.itemType == parseStackItemNumber && stackItem.delimiter != nil {
 		result["delimiter"] = stackItem.delimiter
 	}
@@ -67,10 +67,10 @@ func (stackItem *parseStackItem) String() (result string) {
 
 type parseStack []parseStackItem
 
-func (stack *parseStack) DataForJson() interface{} {
+func (stack *parseStack) DataForJSON() interface{} {
 	result := []interface{}{}
 	for _, item := range *stack {
-		result = append(result, item.DataForJson())
+		result = append(result, item.DataForJSON())
 	}
 	return result
 }
@@ -84,7 +84,7 @@ func (stack *parseStack) String() (result string) {
 type parsePrimaryState uint16
 
 const (
-	parsePrimaryState_below_ parsePrimaryState = iota
+	parsePrimaryStateBelow parsePrimaryState = iota
 	expectEOF
 	expectPathSegment
 	// expectRocket
@@ -96,7 +96,7 @@ const (
 	// expectSpaceOrMapKey
 	// expectSpaceOrQwItemOrDelimiter
 	// expectEndOfQwItem
-	parsePrimaryState_above_
+	parsePrimaryStateAbove
 )
 
 //go:generate stringer -type=parsePrimaryState
@@ -177,7 +177,7 @@ func (v runePtrStruct) copyPtr() *runePtrStruct {
 	return &runePtrStruct{v.runePtr, v.pos, v.line, v.col, v.prefix, v.prefixStart}
 }
 
-func (v runePtrStruct) DataForJson() interface{} {
+func (v runePtrStruct) DataForJSON() interface{} {
 	result := map[string]interface{}{}
 	if v.runePtr == nil {
 		result["rune"] = "EOF"
@@ -204,18 +204,18 @@ type pfaStruct struct {
 	postLineCount int
 }
 
-func (pfa pfaStruct) DataForJson() interface{} {
+func (pfa pfaStruct) DataForJSON() interface{} {
 	result := map[string]interface{}{}
-	result["stack"] = pfa.stack.DataForJson()
+	result["stack"] = pfa.stack.DataForJSON()
 	result["state"] = pfa.state.String()
 	result["result"] = pfa.result
 	result["pos"] = strconv.FormatInt(int64(pfa.curr.pos), 10)
-	result["curr"] = pfa.curr.DataForJson()
+	result["curr"] = pfa.curr.DataForJSON()
 	if pfa.prev != nil {
-		result["prev"] = pfa.prev.DataForJson()
+		result["prev"] = pfa.prev.DataForJSON()
 	}
 	if pfa.next != nil {
-		result["next"] = pfa.prev.DataForJson()
+		result["next"] = pfa.prev.DataForJSON()
 	}
 	return result
 }

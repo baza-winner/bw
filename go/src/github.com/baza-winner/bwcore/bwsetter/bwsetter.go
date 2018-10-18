@@ -20,7 +20,7 @@ var (
 	setFlag           = flag.String("set", "", `Set type name; default is "${type}Set"`)
 	nosortFlag        = flag.Bool("nosort", false, `when item has no v[i] < v[j] support, as bool"`)
 	nostringFlag      = flag.Bool("nostring", false, `when item has no .String() method"`)
-	nodataforjsonFlag = flag.Bool("nodataforjson", false, `when item has no .DataForJson() method"`)
+	nodataforjsonFlag = flag.Bool("nodataforjson", false, `when item has no .DataForJSON() method"`)
 	omitprefixFlag    = flag.Bool("omitprefix", false, `omit prefix for From/FromSlice`)
 	testFlag          = flag.Bool("test", false, `generate tests as well`)
 )
@@ -166,18 +166,18 @@ func main() {
 
 		code.SetMethod(
 			"поддержка интерфейса bwjson.Jsonable",
-			"DataForJson", ParamNone, ReturnInterface,
+			"DataForJSON", ParamNone, ReturnInterface,
 			[]*jen.Statement{
 				jen.Id("result").Op(":=").Index().Interface().Values(),
 				code.RangeSet("v").Block(
-					jen.Id("result").Op("=").Append(jen.Id("result"), code.ToDataForJson("k")),
+					jen.Id("result").Op("=").Append(jen.Id("result"), code.ToDataForJSON("k")),
 				),
 				jen.Return(jen.Id("result")),
 			},
 			TestCase{
 				In: []interface{}{[]TestItem{A}},
 				Out: []interface{}{
-					jen.Index().Interface().Values(code.ToDataForJson(code.TestItemString(A))),
+					jen.Index().Interface().Values(code.ToDataForJSON(code.TestItemString(A))),
 				},
 			},
 		)

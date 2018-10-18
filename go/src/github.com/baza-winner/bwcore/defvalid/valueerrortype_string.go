@@ -4,7 +4,7 @@ package defvalid
 
 import "strconv"
 
-const _valueErrorType_name = "valueError_below_valueErrorIsNotOfTypevalueErrorHasUnexpectedKeysvalueErrorHasNoKeyvalueErrorHasNonSupportedValuevalueErrorValuesCannotBeCombinedvalueErrorConflictingKeysvalueErrorArrayOfvalueErrorOutOfRangevalueError_above_"
+const _valueErrorType_name = "valueErrorBelowvalueErrorIsNotOfTypevalueErrorHasUnexpectedKeysvalueErrorHasNoKeyvalueErrorHasNonSupportedValuevalueErrorValuesCannotBeCombinedvalueErrorConflictingKeysvalueErrorArrayOfvalueErrorOutOfRangevalueErrorAbove"
 
 var _valueErrorType_index = [...]uint8{0, 17, 38, 65, 83, 113, 145, 170, 187, 207, 224}
 

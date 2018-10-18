@@ -1,0 +1,459 @@
+%YAML 1.2
+---
+name: PFA
+# See http://www.sublimetext.com/docs/3/syntax.html
+file_extensions:
+  - pfa
+scope: source.pfa
+variables:
+  ident: '[A-Za-z_][A-Za-z_0-9]*'
+contexts:
+  main:
+    - include: space
+    - match: \b{{ident}}\b
+      scope: entity.name
+      push: equalSignExpected
+    - match: '[\s]+'
+
+  space:
+    - match: '[\s]+'
+    - match: '(//|#)'
+      scope: punctuation.definition.comment
+      push: singleLineComment
+    - match: '/\*'
+      scope: punctuation.definition.comment.begin
+      push: multiLineComment
+
+  illegal:
+    - match: .
+      scope: invalid.illegal
+
+  equalSignExpected:
+    - include: space
+    - match: =
+      scope: keyword.operator.assignment
+      set: expressionExpected
+    - include: illegal
+
+  expressionExpected:
+    - include: space
+    - match: \(
+      scope: punctuation.section.braces.begin
+      set: rule
+    - match: \[
+      scope: punctuation.section.brackets.begin
+      set: rules
+    - include: illegal
+
+  rules:
+    - include: space
+    - match: \(
+      scope: punctuation.section.braces.begin
+      push: rule
+    - match: '\]'
+      pop: true
+      scope: punctuation.section.brackets.end
+    - match: '\b[_a-z][\w\d]*\b'
+      scope: entity.name
+    - include: illegal
+
+  rune:
+    - match: \'(\\)?.\'
+      scope: constant.character
+
+  rule:
+    - include: space
+    - include: rune
+
+    - match: '\b[_a-z][\w\d]*\b'
+      scope: entity.name
+
+    - match: '\)'
+      scope: punctuation.section.braces.end
+      pop: true
+
+    - match: \[
+      scope: punctuation.section.brackets.begin
+      push: rules
+
+    - match: \b(TopItem(String)?|(SubItem|Primary|Secondary))Is\b
+      scope: variable.language
+      push: multiStringParamBlockExpected
+
+    - match: \bDelimiterIs\b
+      scope: variable.language
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - include: space
+            - match: \'(\\)?.\'
+              scope: constant.character
+              set:
+                - include: space
+                - match: \}
+                  scope: punctuation.section.block.end
+                  pop: true
+                - include: illegal
+            - include: illegal
+        - include: illegal
+
+    - match: \bStackLenIs\b
+      scope: variable.language
+      push: uintParamBlockExpected
+
+    - match: \bVarIs\b
+      scope: variable.language
+      push: SetVar
+
+    - match: \bIs(DelimiterRune|EOF|Unicode(OpenBraces|Punct|Symbol|Space|Letter|Digit))\b
+      scope: variable.language
+
+    - match: \bAppendRune\b
+      scope: variable.function
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - include: space
+            - match: \'(\\)?.\'
+              scope: constant.character
+              set: paramBlockEnd
+            - include: illegal
+        - include: illegal
+
+    - match: \bPullRune|PushRune|PopSubItem|SetTopItem(String|MapKeyValue)FromSubItem|Unreachable|AppendCurrRune|SetTopItemValueAs(String|Map|Number)\b
+      scope: variable.function
+
+    - match: \bSetError\b
+      scope: variable.function
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - include: space
+            - match: \b(UnexpectedRune|UnknownWord)\b
+              scope: constant.language
+              set: paramBlockEnd
+            - include: illegal
+        - include: illegal
+
+    - match: \bSetTopItemDelimiter\b
+      scope: variable.function
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - match: \b(PairForCurrRune)\b
+              scope: constant.language
+            - include: paramBlockEnd
+            - include: illegal
+        - include: illegal
+
+    - match: \bSetTopItemType|SetPrimary|Change(Primary|Secondary)\b
+      scope: variable.function
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - include: space
+            - match: \b[\w][\w\d]*\b
+              scope: string.quoted.double
+              set: endOfBlockExpected
+            - match: '"'
+              set:
+              - meta_scope: string.quoted.double.pfa
+              - match: '\\.'
+                scope: constant.character.escape.pfa
+              - match: '"'
+                scope: punctuation.definition.string.end.pfa
+                set: paramBlockEnd
+            - include: illegal
+        - include: illegal
+
+    - match: \bSetSecondary\b
+      scope: variable.function
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - match: \b[\w][\w\d]*\b
+              scope: string.quoted.double
+              set: stringParamOrParamBlockEnd
+            - match: '"'
+              set:
+              - meta_scope: string.quoted.double.pfa
+              - match: '\\.'
+                scope: constant.character.escape.pfa
+              - match: '"'
+                scope: punctuation.definition.string.end.pfa
+                set: stringParamOrParamBlockEnd
+            - include: illegal
+        - include: illegal
+
+    - match: \bSetTopItemValueAsBool\b
+      scope: variable.function
+      push: boolParamBlockExpected
+
+    - match: \bSetVar\b
+      scope: variable.function
+      push: SetVar
+
+    - match: \bPushItem\b
+      scope: variable.function
+      push: PushItem
+
+    - match: \bAppendItemArray\b
+      scope: variable.function
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - include: space
+            - match: \bFromSubItemValue|FromSubItemArray\b
+              scope: constant.language
+              set: paramBlockEnd
+            - include: illegal
+        - include: illegal
+
+    - include: illegal
+
+  PushItem:
+    - match: \{
+      scope: punctuation.section.block.begin
+      set: PushItemParamKeyExpected
+    - include: illegal
+
+  PushItemParamKeyExpected:
+    - include: space
+    - match: \bItemType\b
+      set: PushItemTypeExpected
+    - match: \bItemString\b
+      set: PushItemStringExpected
+    - match: \bDelimiter\b
+      set: PushItemDelimiterExpected
+    - include: paramBlockEnd
+
+  PushItemTypeExpected:
+    - include: space
+    - match: \b[\w][\w\d]*\b
+      scope: string.quoted.double
+      set: PushItemParamKeyExpected
+    - match: '"'
+      set:
+      - meta_scope: string.quoted.double.pfa
+      - match: '\\.'
+        scope: constant.character.escape.pfa
+      - match: '"'
+        scope: punctuation.definition.string.end.pfa
+        set: PushItemParamKeyExpected
+    - include: illegal
+
+  PushItemStringExpected:
+    - include: space
+    - match: \bFromCurrRune\b
+      scope: constant.language
+      set: PushItemParamKeyExpected
+    - include: illegal
+
+  PushItemDelimiterExpected:
+    - include: space
+    - match: \bFromCurrRune|PairForCurrRune|FromParentItem\b
+      scope: constant.language
+      set: PushItemParamKeyExpected
+    - include: illegal
+
+  SetVar:
+    - match: \{
+      scope: punctuation.section.block.begin
+      set: SetVarNameExpected
+    - include: illegal
+
+  SetVarNameExpected:
+    - include: space
+    - match: \b[\w][\w\d]*\b
+      scope: string.quoted.double
+      set: SetVarValueExpected
+    - match: '"'
+      set: SetVarNameQuotedString
+    - include: illegal
+
+  SetVarNameQuotedString:
+    - meta_scope: string.quoted.double.pfa
+    - match: '\\.'
+      scope: constant.character.escape.pfa
+    - match: '"'
+      scope: punctuation.definition.string.end.pfa
+      set: SetVarValueExpected
+
+  SetVarValueExpected:
+    - include: space
+    - match: \b(true|false)\b
+      scope: constant.language
+      set: endOfParamBlockExpected
+    - include: illegal
+
+  multiStringParamBlockExpected:
+    - match: \{
+      scope: punctuation.section.block.begin
+      set:
+        - include: space
+        - match: \b[\w][\w\d]*\b
+          scope: string.quoted.double
+          set: stringParamOrParamBlockEnd
+        - match: '"'
+          set:
+            - meta_scope: string.quoted.double
+            - include: escapedChar
+            - match: '"'
+              scope: punctuation.definition.string.end
+              set: stringParamOrParamBlockEnd
+        - include: illegal
+    - include: illegal
+
+  escapedChar:
+    - match: '\\.'
+      scope: constant.character.escape.pfa
+
+  stringParamOrParamBlockEnd:
+      - match: \b[\w][\w\d]*\b
+        scope: string.quoted.double
+      - match: '"'
+        set:
+          - meta_scope: string.quoted.double.pfa
+          - include: escapedChar
+          - match: '"'
+            scope: punctuation.definition.string.end.pfa
+            set: stringParamOrParamBlockEnd
+      - include: paramBlockEnd
+      - include: illegal
+
+  paramBlockEnd:
+    - include: space
+    - match: \}
+      scope: punctuation.section.block.end
+      pop: true
+    - include: illegal
+
+  uintParamBlockExpected:
+    - match: \{
+      scope: punctuation.section.block.begin
+      set: uintParamBlock
+    - include: illegal
+
+  uintParamBlock:
+    - include: uintExpected
+    - include: endOfBlockExpected
+    - include: illegal
+
+  uintExpected:
+    - match: (\d+)
+      scope: constant.numeric.integer
+
+  boolParamBlockExpected:
+    - match: \{
+      scope: punctuation.section.block.begin
+      set: boolParamBlock
+    - include: illegal
+
+  boolParamBlock:
+    - include: boolExpected
+    - include: endOfBlockExpected
+    - include: illegal
+
+  boolExpected:
+    - match: \b(true|false)\b
+      scope: constant.language
+
+# ========================================
+
+  endOfParamBlockExpected:
+    - include: space
+    - include: endOfBlockExpected
+    - include: illegal
+
+  endOfBlockExpected:
+    - match: \}
+      scope: punctuation.section.block.end
+      pop: true
+
+  doubleQuotedStringExpected:
+    - match: \b[\w][\w\d]*\b
+      scope: string.quoted.double
+    - match: '"'
+      push: doubleQuotedString
+
+  doubleQuotedString:
+    - meta_scope: string.quoted.double.pfa
+    - match: '\\.'
+      scope: constant.character.escape.pfa
+    - match: '"'
+      scope: punctuation.definition.string.end.pfa
+      pop: true
+
+  singleQuotedString:
+    - meta_scope: string.quoted.single.pfa
+    - match: '\\.'
+      scope: constant.character.escape.pfa
+    - match: \'
+      scope: punctuation.definition.string.end.pfa
+      pop: true
+
+  multiLineComment:
+    - meta_scope: comment
+    - match: '\*/'
+      scope: punctuation.definition.comment.end
+      pop: true
+
+  singleLineComment:
+    - meta_scope: comment.line
+    - match: $
+      pop: true
+
+  # content:
+  #   # Strings begin and end with quotes, and use backslashes as an escape
+  #   # character
+  #   - match: \'
+  #     scope: punctuation.definition.string.begin.pfa
+  #     push: singleQuotedString
+
+  #   - match: '"'
+  #     scope: punctuation.definition.string.begin.pfa
+  #     push: doubleQuotedString
+
+  #   # Comments begin with a '//' and finish at the end of the line
+  #   - match: '//'
+  #     scope: punctuation.definition.comment.pfa
+  #     push: singleLineComment
+
+  #   - match: '\['
+  #     scope: punctuation.section.brackets.begin
+  #     push: brackets
+  #   - match: '\]'
+  #     scope: invalid.illegal.stray-bracket-end
+
+  #   - match: '\('
+  #     scope: punctuation.section.braces.begin
+  #     push: braces
+  #   - match: '\)'
+  #     scope: invalid.illegal.stray-brace-end
+
+    # Keywords are if, else for and while.
+    # Note that blackslashes don't need to be escaped within single quoted
+    # strings in YAML. When using single quoted strings, only single quotes
+    # need to be escaped: this is done by using two single quotes next to each
+    # other.
+    # - match: '\b(if|else|for|while)\b'
+    #  scope: keyword.control.pfa
+
+    # Numbers
+    # - match: '\b(-)?[0-9.]+\b'
+    #   # scope: string.quoted.double.pfa
+    #   scope: constant.numeric.pfa
+
+  # brackets:
+  #   - match: '\]'
+  #     pop: true
+  #     scope: punctuation.section.brackets.end
+  #   - include: content
+

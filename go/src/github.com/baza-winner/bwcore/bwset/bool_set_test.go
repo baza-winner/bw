@@ -52,7 +52,7 @@ func TestBoolSet(t *testing.T) {
 		In:  []interface{}{BoolSet{_BoolSetTestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.PrettyJson([]bool{_BoolSetTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, BoolSet.DataForJson, map[string]bwtesting.TestCaseStruct{"BoolSet.DataForJson": {
+	bwtesting.BwRunTests(t, BoolSet.DataForJSON, map[string]bwtesting.TestCaseStruct{"BoolSet.DataForJSON": {
 		In:  []interface{}{BoolSet{_BoolSetTestItemA: struct{}{}}},
 		Out: []interface{}{[]interface{}{_BoolSetTestItemA}},
 	}})

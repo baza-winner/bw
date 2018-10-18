@@ -15,14 +15,14 @@ import (
 type ParamType uint8
 
 const (
-	Param_below_ ParamType = iota
+	ParamBelow ParamType = iota
 	ParamNone
 	ParamArg
 	ParamArgs
 	ParamSlice
 	ParamSet
 	ParamIJ
-	Param_above_
+	ParamAbove
 )
 
 //go:generate stringer -type=ParamsType
@@ -30,7 +30,7 @@ const (
 type ReturnType uint8
 
 const (
-	Return_below_ ReturnType = iota
+	ReturnBelow ReturnType = iota
 	ReturnNone
 	ReturnBool
 	ReturnInt
@@ -39,7 +39,7 @@ const (
 	ReturnSet
 	ReturnSlice
 	ReturnSliceOfStrings
-	Return_above_
+	ReturnAbove
 )
 
 //go:generate stringer -type=ReturnType
@@ -327,7 +327,7 @@ func (v *Helper) ToString(id string) (codeString *Statement) {
 	return
 }
 
-func (v *Helper) ToDataForJson(id string) (codeString *Statement) {
+func (v *Helper) ToDataForJSON(id string) (codeString *Statement) {
 	switch v.IdItem {
 	case "string":
 		codeString = Id(id)
@@ -349,7 +349,7 @@ func (v *Helper) ToDataForJson(id string) (codeString *Statement) {
 	case "interface{}":
 		codeString = Id(id)
 	default:
-		codeString = Id(id).Dot("DataForJson").Call()
+		codeString = Id(id).Dot("DataForJSON").Call()
 	}
 	return
 }
