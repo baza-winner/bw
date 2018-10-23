@@ -89,20 +89,38 @@ func (v PushRune) execute(pfa *pfaStruct) {
 	pfa.p.PushRune()
 }
 
+func (v PushRune) GetAction() processorAction {
+	return v
+}
+
 type PullRune struct{}
 
 func (v PullRune) execute(pfa *pfaStruct) {
 	pfa.p.PullRune()
 }
 
+func (v PullRune) GetAction() processorAction {
+	return v
+}
+
 type PushItem struct{}
 
 func (v PushItem) execute(pfa *pfaStruct) {
+	bwerror.Spew.Printf("PushItem, pfa.err: %#v\n", pfa.err)
 	pfa.pushStackItem()
+	bwerror.Spew.Printf("PushItem")
+}
+
+func (v PushItem) GetAction() processorAction {
+	return v
 }
 
 type SubRules struct {
 	Def Rules
+}
+
+func (v SubRules) GetAction() processorAction {
+	return v
 }
 
 func (v SubRules) execute(pfa *pfaStruct) {
@@ -113,6 +131,10 @@ type PopItem struct{}
 
 func (v PopItem) execute(pfa *pfaStruct) {
 	pfa.popStackItem()
+}
+
+func (v PopItem) GetAction() processorAction {
+	return v
 }
 
 type Var struct {
@@ -217,7 +239,23 @@ func (v _setVarBy) execute(pfa *pfaStruct) {
 				pfa.setVarVal(v.varPath, val)
 			} else {
 				if orig := pfa.getVarValue(v.varPath); pfa.err == nil {
-					if s, ok := orig.val.(string); ok {
+					if orig.val == nil {
+						if a, ok := val.(string); ok {
+							val = a
+						} else if r, ok := val.(rune); ok {
+							val = string(r)
+						} else {
+							// valueOfVal := reflect.ValueOf(val)
+							if !v.appendSlice {
+								val = []interface{}{val}
+								// val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
+							} else if reflect.TypeOf(val).Kind() != reflect.Slice {
+								pfa.err = bwerror.Error("%#v expected to be slice", val)
+							}
+							// pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+						}
+						// pfa.err = bwerror.Error("_setVarBy: varPath: %#v", v.varPath)
+					} else if s, ok := orig.val.(string); ok {
 						if a, ok := val.(string); ok {
 							val = s + a
 						} else if r, ok := val.(rune); ok {

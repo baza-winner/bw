@@ -4,7 +4,6 @@
 package bwerror
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -36,12 +35,27 @@ func ExitWithError(exitCode int, fmtString string, fmtArgs ...interface{}) {
 	os.Exit(exitCode)
 }
 
+type WhereError struct {
+	Where  string
+	errStr string
+}
+
+func (v WhereError) Error() string {
+	return v.errStr
+}
+
 func Error(msgFmt string, args ...interface{}) error {
-	return errors.New(Spew.Sprintf(ansi.Ansi(ansiErr, errPrefix+msgFmt), args...))
+	return WhereError{
+		whereami.WhereAmI(2),
+		Spew.Sprintf(ansi.Ansi(ansiErr, errPrefix+msgFmt), args...),
+	}
 }
 
 func ErrorErr(err error) error {
-	return Error(err.Error())
+	return WhereError{
+		whereami.WhereAmI(2),
+		Spew.Sprintf(ansi.Ansi(ansiErr, errPrefix+err.Error())),
+	}
 }
 
 func PanicErr(err error) {

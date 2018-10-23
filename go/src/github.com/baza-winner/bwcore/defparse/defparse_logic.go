@@ -12,7 +12,7 @@ func init() {
 
 func prepareLogicDef() Rules {
 
-	unexpectedEOF := []interface{}{IsEOF{}, SetVar{"error", "unexpectedRune"}}
+	unexpectedEOF := []interface{}{EOF{}, SetVar{"error", "unexpectedRune"}}
 
 	unexpectedRune := []interface{}{SetVar{"error", "unexpectedRune"}}
 
@@ -82,7 +82,7 @@ func prepareLogicDef() Rules {
 					SetVar{"skipPostProcess", true},
 				},
 				[]interface{}{
-					SetVar{"error", UnknownWord},
+					SetVar{"error", "unknownWord"},
 				},
 			)},
 		},
@@ -141,7 +141,7 @@ func prepareLogicDef() Rules {
 	primaryStateLogic := CreateRules(
 		[]interface{}{VarIs{"primary", "end"},
 			SubRules{CreateRules(
-				[]interface{}{IsEOF{}, SetVar{"primary", "end"}, SetVar{"secondary", ""}},
+				[]interface{}{EOF{}, SetVar{"primary", "end"}, SetVar{"secondary", ""}},
 				[]interface{}{UnicodeSpace},
 				unexpectedRune,
 			)},
@@ -290,7 +290,7 @@ func prepareLogicDef() Rules {
 		},
 		[]interface{}{VarIs{"primary", "begin"},
 			SubRules{CreateRules(
-				[]interface{}{IsEOF{}, VarIs{"stackLen", 0},
+				[]interface{}{EOF{}, VarIs{"stackLen", 0},
 					SetVar{"primary", "end"}, SetVar{"secondary", ""},
 				},
 				unexpectedEOF,
@@ -361,6 +361,11 @@ func prepareLogicDef() Rules {
 	result := CreateRules(
 		[]interface{}{
 			PullRune{},
+			SubRules{CreateRules(
+				[]interface{}{VarIs{"primary", nil},
+					SetVar{"primary", "begin"},
+				},
+			)},
 			SetVar{"needFinish", false},
 			SubRules{primaryStateLogic},
 			SubRules{CreateRules(

@@ -413,11 +413,12 @@ me'`},
 		// },
 	}
 
-	testsToRun := tests
-	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "{some: true}")
+	// testsToRun := tests
+	bwmap.CropMap(tests)
+	// bwmap.CropMap(tests, "zero number", "int number with underscore")
+	bwmap.CropMap(tests, "int number with underscore")
 	// bwmap.CropMap(testsToRun, "UnknownWord")
-	bwtesting.BwRunTests(t, Parse, testsToRun)
+	bwtesting.BwRunTests(t, Parse, tests)
 }
 
 func ExampleParse_1() {

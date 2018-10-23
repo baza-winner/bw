@@ -59,6 +59,7 @@ type pfaStruct struct {
 	p     *runeprovider.Proxy
 	err   error
 	vars  map[string]interface{}
+	trace bool
 }
 
 func (pfa pfaStruct) DataForJSON() interface{} {
@@ -80,6 +81,7 @@ func Run(p runeprovider.RuneProvider, logicDef Rules) (result interface{}, err e
 		stack: parseStack{},
 		p:     runeprovider.ProxyFrom(p),
 		vars:  map[string]interface{}{},
+		trace: true,
 	}
 	for {
 		pfa.processRules(logicDef)
@@ -166,7 +168,8 @@ func (v VarValue) GetVal(varPath VarPath) (result VarValue) {
 				valueOfKey := vValue.MapIndex(keyValue)
 				zeroValue := reflect.Value{}
 				if valueOfKey == zeroValue {
-					v.pfa.err = bwerror.Error("no key %s", key)
+					result.val = nil
+					// v.pfa.err = bwerror.Error("no key %s", key)
 				} else {
 					result.val = valueOfKey.Interface()
 				}
@@ -293,7 +296,9 @@ func (pfa *pfaStruct) getVarValue(varPath VarPath) (result VarValue) {
 	result = VarValue{nil, pfa}
 	pfa.getSetHelper(varPath, nil,
 		func(stackItemVars VarValue, varVal interface{}) {
-			result = stackItemVars.GetVal(varPath[1:])
+			if stackItemVars.val != nil {
+				result = stackItemVars.GetVal(varPath[1:])
+			}
 			return
 		},
 		func(key string) {
@@ -349,17 +354,18 @@ func (pfa *pfaStruct) getSetHelper(
 		if err != nil {
 			pfa.err = err
 		} else if isIdx {
+			stackItemVars := VarValue{nil, pfa}
 			if len(pfa.stack) == 0 {
-				pfa.err = bwerror.Error("stack is empty")
+				// pfa.err = bwerror.Error("stack is empty")
 			} else if 0 > idx || idx >= len(pfa.stack) {
-				pfa.err = bwerror.Error("%d is out of range [%d, %d]", idx, 0, len(pfa.stack)-1)
+				// pfa.err = bwerror.Error("%d is out of range [%d, %d]", idx, 0, len(pfa.stack)-1)
 			} else if len(varPath) == 1 {
 				pfa.err = bwerror.Error("%#v requires var name", varPath)
 			} else {
-				onStackItemVar(
-					VarValue{pfa.getTopStackItem(uint(idx)).vars, pfa},
-					varVal,
-				)
+				stackItemVars.val = pfa.getTopStackItem(uint(idx)).vars
+			}
+			if pfa.err == nil {
+				onStackItemVar(stackItemVars, varVal)
 			}
 		} else {
 			if key == "rune" || key == "stackLen" {
@@ -374,7 +380,18 @@ func (pfa *pfaStruct) getSetHelper(
 func (pfa *pfaStruct) setVarVal(varPath VarPath, varVal interface{}) {
 	pfa.getSetHelper(varPath, varVal,
 		func(stackItemVars VarValue, varVal interface{}) {
-			stackItemVars.SetVal(varPath[1:], varVal)
+			if stackItemVars.val == nil {
+				if len(pfa.stack) == 0 {
+					pfa.err = bwerror.Error("stack is empty")
+				} else {
+					_, idx, _, _ := varPath[0].GetIdxKey(pfa)
+					if 0 > idx || idx >= len(pfa.stack) {
+						pfa.err = bwerror.Error("%d is out of range [%d, %d]", idx, 0, len(pfa.stack)-1)
+					}
+				}
+			} else {
+				stackItemVars.SetVal(varPath[1:], varVal)
+			}
 		},
 		func(key string) {
 			pfa.err = bwerror.Error("<ansiOutline>%s<ansi> is read only", key)
@@ -578,7 +595,7 @@ func createRule(args []interface{}) rule {
 		if typedArg, ok := arg.(rune); ok {
 			getVarIs(varIsMap, "rune").AddRune(typedArg)
 		} else if _, ok := arg.(EOF); ok {
-			getVarIs(varIsMap, "rune").isEOF = true
+			getVarIs(varIsMap, "rune").isNil = true
 		} else if typedArg, ok := arg.(UnicodeCategory); ok {
 			getVarIs(varIsMap, "rune").AddValChecker(typedArg)
 		} else if typedArg, ok := arg.(VarIs); ok {
@@ -607,12 +624,19 @@ func createRule(args []interface{}) rule {
 					r, _ := typedArg.VarValue.(rune)
 					varIs.AddRune(r)
 				case EOF:
-					varIs.isEOF = true
+					varIs.isNil = true
 				case ValChecker:
 					vc, _ := typedArg.VarValue.(ValChecker)
 					varIs.AddValChecker(vc)
+				case Var:
+					vp, _ := typedArg.VarValue.(Var)
+					if varPath, err := VarPathFrom(vp.VarPathStr); err == nil {
+						varIs.AddValChecker(varVal{varPath})
+					} else {
+						bwerror.PanicErr(err)
+					}
 				default:
-					bwerror.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
+					bwerror.Panic("arg: %#v", arg)
 				}
 			} else if varPath[0].val == "stackLen" {
 				if len(varPath) > 1 {
@@ -628,67 +652,45 @@ func createRule(args []interface{}) rule {
 				}
 			} else {
 				varIs := getVarIs(varIsMap, typedArg.VarPathStr)
-				switch typedArg.VarValue.(type) {
-				case rune:
-					r, _ := typedArg.VarValue.(rune)
-					varIs.AddRune(r)
-				case EOF:
-					bwerror.Panic("EOF is appliable only for rune, varPath: %s", typedArg.VarPathStr)
-				case int:
-					i, _ := typedArg.VarValue.(int)
-					varIs.AddInt(i)
-				case string:
-					s, _ := typedArg.VarValue.(string)
-					varIs.AddStr(s)
-				case int8, int16 /*int32, */, int64:
-					_int64 := reflect.ValueOf(typedArg.VarValue).Int()
-					if int64(bwint.MinInt) <= _int64 && _int64 <= int64(bwint.MaxInt) {
-						varIs.AddInt(int(_int64))
-					} else {
+				if typedArg.VarValue == nil {
+					varIs.isNil = true
+				} else {
+					switch typedArg.VarValue.(type) {
+					case rune:
+						r, _ := typedArg.VarValue.(rune)
+						varIs.AddRune(r)
+					case EOF:
+						bwerror.Panic("EOF is appliable only for rune, varPath: %s", typedArg.VarPathStr)
+					case int:
+						i, _ := typedArg.VarValue.(int)
+						varIs.AddInt(i)
+					case string:
+						s, _ := typedArg.VarValue.(string)
+						varIs.AddStr(s)
+					case int8, int16 /*int32, */, int64:
+						_int64 := reflect.ValueOf(typedArg.VarValue).Int()
+						if int64(bwint.MinInt) <= _int64 && _int64 <= int64(bwint.MaxInt) {
+							varIs.AddInt(int(_int64))
+						} else {
+							varIs.AddValChecker(justVal{typedArg.VarValue})
+						}
+					case bool:
 						varIs.AddValChecker(justVal{typedArg.VarValue})
+					case uint, uint8, uint16, uint32, uint64:
+						_uint64 := reflect.ValueOf(typedArg.VarValue).Uint()
+						if _uint64 <= uint64(bwint.MaxInt) {
+							varIs.AddInt(int(_uint64))
+						} else {
+							varIs.AddValChecker(justVal{typedArg.VarValue})
+						}
+					case ValChecker:
+						vc, _ := typedArg.VarValue.(ValChecker)
+						varIs.AddValChecker(vc)
+					default:
+						bwerror.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
 					}
-				case uint, uint8, uint16, uint32, uint64:
-					_uint64 := reflect.ValueOf(typedArg.VarValue).Uint()
-					if _uint64 <= uint64(bwint.MaxInt) {
-						varIs.AddInt(int(_uint64))
-					} else {
-						varIs.AddValChecker(justVal{typedArg.VarValue})
-					}
-				case ValChecker:
-					vc, _ := typedArg.VarValue.(ValChecker)
-					varIs.AddValChecker(vc)
-				default:
-					bwerror.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
 				}
 			}
-
-			// var val interface{}
-			// if varPath[0]
-			// if b, ok = typedArg.VarValue.(bool) {
-
-			// }
-			// switch typedArg.VarPathStr {
-			// case "currRune":
-			// 	if r, ok := typedArg.VarValue.(rune); ok {
-			// 		currRuneValues.Add(r)
-			// 	} else if r, ok := typedArg.VarValue.(hasRune); ok {
-			// 		if r.Len() > 0 {
-			// 			runeChecker = append(runeChecker, r)
-			// 		}
-			// 	} else if v, ok := typedArg.VarValue.(Var); ok {
-			// 		currRuneVarPathValues = append(currRuneVarPathValues, MustVarPathFrom(v.VarPathStr))
-			// 	} else {
-			// 		bwerror.Panic("arg: %#v", arg)
-			// 	}
-			// default:
-			// varIs := varIsMap[typedArg.VarPathStr]
-			// if varIs == nil {
-			// 	varIs = &_varIs{MustVarPathFrom(typedArg.VarPathStr), []ValChecker{}, false, nil}
-			// 	varIsMap[typedArg.VarPathStr] = varIs
-			// }
-			// varIs := getVarIs(varIsMap, typedArg.VarPathStr)
-			// varIs.valCheckers = append(varIs.valCheckers, MustValProviderFrom(typedArg.VarValue))
-			// }
 		} else if typedArg, ok := arg.(ProccessorActionProvider); ok {
 			result.processorActions = append(result.processorActions,
 				typedArg.GetAction(),
@@ -697,19 +699,10 @@ func createRule(args []interface{}) rule {
 			bwerror.Panic("unexpected %#v", arg)
 		}
 	}
-	// if len(currRuneValues) > 0 {
-	// 	runeChecker = append(runeChecker, runeSet{currRuneValues})
-	// }
-	// if len(currRuneVarPathValues) > 0 {
-	// 	runeChecker = append(runeChecker, currRuneVarPaths{currRuneVarPathValues})
-	// }
-	// if len(runeChecker) > 0 {
-	// 	result.conditions = append(result.conditions, runeChecker)
-	// }
 	for _, v := range varIsMap {
 		result.conditions = append(result.conditions, v)
 	}
-	bwerror.Spew.Printf("result: %#v\n", result)
+	// bwerror.Spew.Printf("result: %#v\n", result)
 	return result
 }
 
@@ -718,9 +711,15 @@ func (pfa *pfaStruct) processRules(def Rules) {
 def:
 	for _, r := range def {
 		if r.conditions.conformsTo(pfa) {
+			if pfa.err != nil {
+				bwerror.Panic("r.conditions: %#v, pfa.err: %#v", r.conditions, pfa.err)
+			}
 			for _, pa := range r.processorActions {
 				pa.execute(pfa)
-				if pfa.err != nil || pfa.vars["error"] != nil {
+				if pfa.err != nil {
+					// bwerror.PanicErr(pfa.err)
+					bwerror.Panic("pa: %#v, pfa.err: %#v,\n<ansiOutline>pfa.vars<ansi>: %#v,\n<ansiOutline>pfa.stack<ansi>: %#v", pa, pfa.err, pfa.vars, pfa.stack)
+				} else if pfa.vars["error"] != nil {
 					break
 				}
 			}
@@ -768,7 +767,7 @@ type ruleCondition interface {
 type _varIs struct {
 	varPath     VarPath
 	valCheckers []ValChecker
-	isEOF       bool
+	isNil       bool
 	runeSet     bwset.Rune
 	intSet      bwset.Int
 	strSet      bwset.String
@@ -778,10 +777,12 @@ func (v *_varIs) ConformsTo(pfa *pfaStruct) (result bool) {
 	if v.varPath[0].val == "rune" {
 		var ofs int
 		if len(v.varPath) > 1 {
-			ofs, _ = v.varPath[1].val.(int)
+			ofs, _ = VarValue{v.varPath[1].val, nil}.Int()
 		}
 		r, isEOF := pfa.p.Rune(ofs)
-		if v.isEOF && isEOF {
+		// bwerror.Spew.Printf("ConformsTo r: %#q, varPath: %#v, ofs: %d\n", r, v.varPath, ofs)
+		if v.isNil && isEOF {
+			fmt.Printf("<ansiGreen>isEOF<ansi>\n")
 			result = true
 		} else if !isEOF {
 			if v.runeSet != nil && v.runeSet.Has(r) {
@@ -801,7 +802,7 @@ func (v *_varIs) ConformsTo(pfa *pfaStruct) (result bool) {
 			result = true
 		} else {
 			for _, p := range v.valCheckers {
-				if p.conforms(pfa, r) {
+				if p.conforms(pfa, i) {
 					result = true
 					break
 				}
@@ -809,7 +810,16 @@ func (v *_varIs) ConformsTo(pfa *pfaStruct) (result bool) {
 		}
 	} else {
 		varValue := pfa.getVarValue(v.varPath)
-		if pfa.err == nil {
+		if varValue.val == nil && v.isNil {
+			result = true
+		} else if r, err := varValue.Rune(); err == nil {
+			result = v.runeSet != nil && v.runeSet.Has(r)
+		} else if i, err := varValue.Int(); err == nil {
+			result = v.intSet != nil && v.intSet.Has(i)
+		} else if s, err := varValue.String(); err == nil {
+			result = v.strSet != nil && v.strSet.Has(s)
+		}
+		if !result && pfa.err == nil {
 			for _, p := range v.valCheckers {
 				if p.conforms(pfa, varValue.val) {
 					result = true

@@ -289,8 +289,6 @@ func TestPfaConditions(t *testing.T) {
 	p.PullRune()
 	p.PullRune()
 	p.PullRune()
-	// r, isEOF := p.Rune()
-	// bwerror.Panic("%q, %s", r, isEOF)
 	pfa := pfaStruct{
 		parseStack{
 			parseStackItem{
@@ -327,7 +325,6 @@ func TestPfaConditions(t *testing.T) {
 			},
 		},
 	}
-	// bwerror.Panic("%q", pfa.getVarValue(MustVarPathFrom("rune")).Val)
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary is begin => true": {
 			In:  []interface{}{VarIs{"primary", "begin"}},
@@ -340,6 +337,26 @@ func TestPfaConditions(t *testing.T) {
 		"rune is 'e' => true": {
 			In:  []interface{}{VarIs{"rune", 'e'}},
 			Out: []interface{}{true, nil},
+		},
+		"is 'e' => true": {
+			In:  []interface{}{'e'},
+			Out: []interface{}{true, nil},
+		},
+		"is 'e' or 'o' => true": {
+			In:  []interface{}{[]interface{}{'e', 'o'}},
+			Out: []interface{}{true, nil},
+		},
+		"is 'm' or 'o' => false": {
+			In:  []interface{}{[]interface{}{'m', 'o'}},
+			Out: []interface{}{false, nil},
+		},
+		"is UnicodeLetter => true": {
+			In:  []interface{}{UnicodeLetter},
+			Out: []interface{}{true, nil},
+		},
+		"is UnicodeDigit => false": {
+			In:  []interface{}{UnicodeDigit},
+			Out: []interface{}{false, nil},
 		},
 		"rune.-1 is 'm' => true": {
 			In:  []interface{}{VarIs{"rune.-1", 'm'}},
@@ -369,35 +386,32 @@ func TestPfaConditions(t *testing.T) {
 			In:  []interface{}{VarIs{"rune.5", 'g'}},
 			Out: []interface{}{true, nil},
 		},
-		// "rune.6 is EOF => true": {
-		// 	In:  []interface{}{VarIs{"rune.5", EOF{}}},
-		// 	Out: []interface{}{true, nil},
-		// },
-		// "0.type": {
-		// 	In:  []interface{}{MustVarPathFrom("0.type"), []interface{}{SetVarBy{"0.type", Var{"1.type"}, By{Append{}}}}},
-		// 	Out: []interface{}{VarValue{"keymap", nil}},
-		// },
-		// "0.array": {
-		// 	In:  []interface{}{MustVarPathFrom("0.array"), []interface{}{SetVarBy{"0.array", Var{"1.value.{0.string}"}, By{Append{}}}}},
-		// 	Out: []interface{}{VarValue{[]interface{}{"c", "d", true}, nil}},
-		// },
-		// "array": {
-		// 	In:  []interface{}{MustVarPathFrom("array"), []interface{}{SetVarBy{"array", Var{"1.array"}, By{Append{}}}}},
-		// 	Out: []interface{}{VarValue{[]interface{}{"i", "j", []interface{}{"g", "h"}}, nil}},
-		// },
-		// "1.value.arrayKey": {
-		// 	In:  []interface{}{MustVarPathFrom("1.value.arrayKey"), []interface{}{SetVarBy{"1.value.arrayKey", Var{"0.value.arrayKey"}, By{AppendSlice{}}}}},
-		// 	Out: []interface{}{VarValue{[]interface{}{"a", "b", "e", "f"}, nil}},
-		// },
+		"rune.5 is UnicodeLetter => true": {
+			In:  []interface{}{VarIs{"rune.5", UnicodeLetter}},
+			Out: []interface{}{true, nil},
+		},
+		"rune.5 is UnicodeDigit => false": {
+			In:  []interface{}{VarIs{"rune.5", UnicodeDigit}},
+			Out: []interface{}{false, nil},
+		},
+		"rune.6 is EOF => true": {
+			In:  []interface{}{VarIs{"rune.6", EOF{}}},
+			Out: []interface{}{true, nil},
+		},
 	}
 	bwmap.CropMap(tests)
-	bwmap.CropMap(tests, "primary is begin => true")
+	// bwmap.CropMap(tests, "rune.-2 is 'o' => true")
+	// bwerror.Spew.Printf("%#q\n", pfa.getVarValue(MustVarPathFrom("rune.-2")).val)
 	bwtesting.BwRunTests(t, pfa.pfaConditionsTestHelper, tests)
 }
 
 func (pfa *pfaStruct) pfaConditionsTestHelper(arg interface{}) (interface{}, error) {
 	pfa.vars["result"] = false
-	args := []interface{}{arg}
+	var args []interface{}
+	var ok bool
+	if args, ok = arg.([]interface{}); !ok {
+		args = []interface{}{arg}
+	}
 	args = append(args, SetVar{"result", true})
 	pfa.processRules(CreateRules(args))
 	return pfa.vars["result"], pfa.err
