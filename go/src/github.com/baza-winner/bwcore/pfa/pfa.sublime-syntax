@@ -12,7 +12,7 @@ contexts:
     - include: space
     - match: \b{{ident}}\b
       scope: entity.name
-      push: equalSignExpected
+      push: expressionExpected
     - match: '[\s]+'
 
   space:
@@ -28,13 +28,6 @@ contexts:
     - match: .
       scope: invalid.illegal
 
-  equalSignExpected:
-    - include: space
-    - match: =
-      scope: keyword.operator.assignment
-      set: expressionExpected
-    - include: illegal
-
   expressionExpected:
     - include: space
     - match: \(
@@ -43,6 +36,9 @@ contexts:
     - match: \[
       scope: punctuation.section.brackets.begin
       set: rules
+    - match: \<
+      embed: action
+      escape: \>
     - include: illegal
 
   rules:
@@ -61,21 +57,8 @@ contexts:
     - match: \'(\\)?.\'
       scope: constant.character
 
-  rule:
-    - include: space
+  checker:
     - include: rune
-
-    - match: '\b[_a-z][\w\d]*\b'
-      scope: entity.name
-
-    - match: '\)'
-      scope: punctuation.section.braces.end
-      pop: true
-
-    - match: \[
-      scope: punctuation.section.brackets.begin
-      push: rules
-
     - match: \b(TopItem(String)?|(SubItem|Primary|Secondary))Is\b
       scope: variable.language
       push: multiStringParamBlockExpected
@@ -106,9 +89,23 @@ contexts:
       scope: variable.language
       push: SetVar
 
-    - match: \bIs(DelimiterRune|EOF|Unicode(OpenBraces|Punct|Symbol|Space|Letter|Digit))\b
+    # - match: \bIs(DelimiterRune|EOF|Unicode(OpenBraces|Punct|Symbol|Space|Letter|Digit))\b
+    - match: \bIs(DelimiterRune|EOF)\b
       scope: variable.language
 
+    - match: \bIsUnicode\b
+      scope: variable.language
+      push:
+        - match: \{
+          scope: punctuation.section.block.begin
+          set:
+            - include: space
+            - match: \bOpenBraces|Punct|Symbol|Space|Letter|Lower|Upper|Digit\b
+              scope: constant.language
+            - include: paramBlockEnd
+        - include: illegal
+
+  action:
     - match: \bAppendRune\b
       scope: variable.function
       push:
@@ -122,7 +119,7 @@ contexts:
             - include: illegal
         - include: illegal
 
-    - match: \bPullRune|PushRune|PopSubItem|SetTopItem(String|MapKeyValue)FromSubItem|Unreachable|AppendCurrRune|SetTopItemValueAs(String|Map|Number)\b
+    - match: \bPullRune|PushRune|PopItem|SetTopItem(String|MapKeyValue)FromSubItem|Unreachable|AppendCurrRune|SetTopItemValueAs(String|Map|Number)\b
       scope: variable.function
 
     - match: \bSetError\b
@@ -150,7 +147,7 @@ contexts:
             - include: illegal
         - include: illegal
 
-    - match: \bSetTopItemType|SetPrimary|Change(Primary|Secondary)\b
+    - match: \bSetTopItemType|SetState|Change(Primary|Secondary)\b
       scope: variable.function
       push:
         - match: \{
@@ -216,6 +213,23 @@ contexts:
             - include: illegal
         - include: illegal
 
+
+  rule:
+    - include: space
+
+    - match: '\)'
+      scope: punctuation.section.braces.end
+      pop: true
+
+    - match: \[
+      scope: punctuation.section.brackets.begin
+      push: rules
+
+    - match: '\b[_a-z][\w\d]*\b'
+      scope: entity.name
+
+    - include: checker
+    - include: action
     - include: illegal
 
   PushItem:

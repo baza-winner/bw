@@ -61,7 +61,7 @@ func valueErrorValidatorsCheck() {
 	valueErrorType := valueErrorBelow + 1
 	for valueErrorType < valueErrorAbove {
 		if _, ok := valueErrorValidators[valueErrorType]; !ok {
-			bwerror.Panic("not defined <ansiOutline>valueErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", valueErrorType)
+			bwerror.Panic("not defined <ansiOutline>valueErrorValidators<ansi>[<ansiPrimary>%s<ansi>]", valueErrorType)
 		}
 		valueErrorType += 1
 	}
@@ -69,7 +69,7 @@ func valueErrorValidatorsCheck() {
 
 func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil {
-		bwerror.Panic("expects at least one arg instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("expects at least one arg instead of <ansiSecondary>%#v", args)
 	}
 	var expectedTypes = bwset.StringSet{}
 	for _, i := range args {
@@ -89,16 +89,16 @@ func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}
 	var result string
 	for _, s := range expectedTypes.ToSlice() {
 		if len(result) > 0 {
-			result += "<ansi>, or <ansiPrimaryLiteral>"
+			result += "<ansi>, or <ansiPrimary>"
 		}
 		result += s
 	}
-	return v.String() + ` is not of type <ansiPrimaryLiteral>` + result, nil
+	return v.String() + ` is not of type <ansiPrimary>` + result, nil
 }
 
 func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) != 1 {
-		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("expects 1 arg instead of <ansiSecondary>%#v", args)
 	}
 	var fmtString string
 	unexpectedKeys := _mustBeSliceOfStrings(args[0])
@@ -106,11 +106,11 @@ func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []inter
 	case len(unexpectedKeys) == 0:
 		bwerror.Panic("expects non empty slice as <ansiOutline>unexpectedKeys")
 	case len(unexpectedKeys) == 1:
-		fmtString = `has unexpected key <ansiPrimaryLiteral>%s`
+		fmtString = `has unexpected key <ansiPrimary>%s`
 		args = []interface{}{unexpectedKeys[0]}
 	default:
 		sort.Strings(unexpectedKeys)
-		fmtString = `has unexpected keys <ansiSecondaryLiteral>%s`
+		fmtString = `has unexpected keys <ansiSecondary>%s`
 		args = []interface{}{bwjson.PrettyJson(unexpectedKeys)}
 	}
 	return v.String() + ` ` + fmtString, args
@@ -118,62 +118,62 @@ func _valueErrorHasUnexpectedKeys(v value, args ...interface{}) (string, []inter
 
 func _valueErrorHasNoKey(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) != 1 {
-		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("expects 1 arg instead of <ansiSecondary>%#v", args)
 	}
 	_ = _mustBeString(args[0])
-	return v.String() + ` has no key <ansiPrimaryLiteral>%s`, args
+	return v.String() + ` has no key <ansiPrimary>%s`, args
 }
 
 func _valueErrorHasNonSupportedValue(v value, args ...interface{}) (string, []interface{}) {
 	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
 	}
 	return v.String() + ` has non supported value`, nil
 }
 
 func _valueErrorValuesCannotBeCombined(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) < 2 {
-		bwerror.Panic("expects at least 2 arg instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("expects at least 2 arg instead of <ansiSecondary>%#v", args)
 	}
-	return v.String() + ` following values can not be combined: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(args)}
+	return v.String() + ` following values can not be combined: <ansiSecondary>%s`, []interface{}{bwjson.PrettyJson(args)}
 }
 
 func _valueErrorConflictingKeys(v value, args ...interface{}) (string, []interface{}) {
 	if args == nil || len(args) != 1 {
-		bwerror.Panic("expects 1 arg instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("expects 1 arg instead of <ansiSecondary>%#v", args)
 	}
 	var ck map[string]interface{}
 	var ok bool
 	if ck, ok = args[0].(map[string]interface{}); !ok {
-		bwerror.Panic("expects map[string]interface{} instead of <ansiSecondaryLiteral>%#v", args[0])
+		bwerror.Panic("expects map[string]interface{} instead of <ansiSecondary>%#v", args[0])
 	}
-	return v.String() + ` has conflicting keys: <ansiSecondaryLiteral>%s`, []interface{}{bwjson.PrettyJson(ck)}
+	return v.String() + ` has conflicting keys: <ansiSecondary>%s`, []interface{}{bwjson.PrettyJson(ck)}
 }
 
 func _valueErrorArrayOf(v value, args ...interface{}) (string, []interface{}) {
 	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
 	}
 	return v.String() + ` must be followed by some type`, nil
 }
 
 func _valueErrorOutOfRange(v value, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 	if args == nil || len(args) != 2 {
-		bwerror.Panic("expects exact 2 arg instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("expects exact 2 arg instead of <ansiSecondary>%#v", args)
 	}
 	minFmt, min := getFmtStringArg(args[0])
 	maxFmt, max := getFmtStringArg(args[1])
 
 	if len(minFmt) > 0 {
 		if len(maxFmt) > 0 {
-			fmtString = v.String() + " is out of <ansiOutline>range <ansiSecondaryLiteral>[" + minFmt + ", " + maxFmt + "]"
+			fmtString = v.String() + " is out of <ansiOutline>range <ansiSecondary>[" + minFmt + ", " + maxFmt + "]"
 			fmtArgs = []interface{}{min, max}
 		} else {
-			fmtString = v.String() + " is less then <ansiOutline>minLimit <ansiPrimaryLiteral>" + minFmt
+			fmtString = v.String() + " is less then <ansiOutline>minLimit <ansiPrimary>" + minFmt
 			fmtArgs = []interface{}{min}
 		}
 	} else if len(maxFmt) > 0 {
-		fmtString = v.String() + " is greater then <ansiOutline>maxLimit <ansiPrimaryLiteral>" + maxFmt
+		fmtString = v.String() + " is greater then <ansiOutline>maxLimit <ansiPrimary>" + maxFmt
 		fmtArgs = []interface{}{max}
 	}
 	return

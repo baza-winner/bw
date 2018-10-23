@@ -135,7 +135,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"failed to get number from string <ansiPrimaryLiteral>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"failed to get number from string <ansiPrimary>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"1_000_000_000_000_000_000_000", 17, "{ someBigNumber: ", "1_000_000_000_000_000_000_000", " }",
 				),
 			},
@@ -145,7 +145,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"unknown word <ansiPrimary>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"Something", 7, "[ Bool ", "Something", " String ]",
 				),
 			},
@@ -166,7 +166,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"unknown word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"def", 4, 3, 25, "[\n  qw/one two three/\n  ", "def", "\n  qw/\n    four",
 				),
 			},
@@ -183,7 +183,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected char <ansiPrimaryLiteral>'*'<ansiReset> (charCode: 42, pfa.state: expectValueOrSpace.orArrayItemSeparator) at line <ansiCmd>5<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>20<ansi>):\n<ansiDarkGreen>  1000,\n  true\n  <ansiLightRed>*<ansiReset>\n  'value',\n]\n",
+					"unexpected char <ansiPrimary>'*'<ansiReset> (charCode: 42, pfa.state: begin.orArrayItemSeparator) at line <ansiCmd>5<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>20<ansi>):\n<ansiDarkGreen>  1000,\n  true\n  <ansiLightRed>*<ansiReset>\n  'value',\n]\n",
 				),
 			},
 		},
@@ -192,7 +192,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected end of string (pfa.state: expectValueOrSpace) at pos <ansiCmd>22<ansi>: <ansiDarkGreen> [1000, true 'value', \n",
+					"unexpected end of string (pfa.state: begin) at pos <ansiCmd>22<ansi>: <ansiDarkGreen> [1000, true 'value', \n",
 				),
 			},
 		},
@@ -220,7 +220,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"unknown word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
 				),
 			},
@@ -274,7 +274,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected char <ansiPrimaryLiteral>'B'<ansiReset> (charCode: 66, pfa.state: expectEOF.orSpace) at pos <ansiCmd>4<ansi>: <ansiDarkGreen>Map <ansiLightRed>B<ansiReset>ool\n",
+					"unexpected char <ansiPrimary>'B'<ansiReset> (charCode: 66, pfa.state: end.orSpace) at pos <ansiCmd>4<ansi>: <ansiDarkGreen>Map <ansiLightRed>B<ansiReset>ool\n",
 				),
 			},
 		},
@@ -283,7 +283,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected char <ansiPrimaryLiteral>'B'<ansiReset> (charCode: 66, pfa.state: expectRocket) at pos <ansiCmd>7<ansi>: <ansiDarkGreen>{ key =<ansiLightRed>B<ansiReset>ool\n",
+					"unexpected char <ansiPrimary>'B'<ansiReset> (charCode: 66, pfa.state: expectRocket) at pos <ansiCmd>7<ansi>: <ansiDarkGreen>{ key =<ansiLightRed>B<ansiReset>ool\n",
 				),
 			},
 		},
@@ -301,7 +301,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected char <ansiPrimaryLiteral>','<ansiReset> (charCode: 44, pfa.state: expectSpaceOrMapKey) at pos <ansiCmd>2<ansi>: <ansiDarkGreen>{ <ansiLightRed>,<ansiReset>\n",
+					"unexpected char <ansiPrimary>','<ansiReset> (charCode: 44, pfa.state: expectSpaceOrMapKey) at pos <ansiCmd>2<ansi>: <ansiDarkGreen>{ <ansiLightRed>,<ansiReset>\n",
 				),
 			},
 		},
@@ -311,7 +311,7 @@ me'`},
 				nil,
 				bwerror.Error(
 					"unexpected end of string (pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
-					"expectValueOrSpace.orMapKeySeparator", 5, "{ key",
+					"begin.orMapKeySeparator", 5, "{ key",
 				),
 			},
 		},
@@ -359,7 +359,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+					"unexpected char <ansiPrimary>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
 					'j', "expectEscapedContentOf.stringToken", 2, "\"\\", "j",
 				),
 			},
@@ -396,7 +396,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+					"unexpected char <ansiPrimary>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
 					' ', "expectWord", 2, "qw", " ",
 				),
 			},
@@ -406,7 +406,7 @@ me'`},
 		// 	Out: []interface{}{
 		// 		nil,
 		// 		bwerror.Error(
-		// 			"unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+		// 			"unexpected char <ansiPrimary>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
 		// 			' ', expectSpaceOrQwItemOrDelimiter, 2, "qw", " ",
 		// 		),
 		// 	},
@@ -415,8 +415,8 @@ me'`},
 
 	testsToRun := tests
 	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "qw ")
-	// bwmap.CropMap(testsToRun, "qw && fa.curr.runePtr == EOF")
+	// bwmap.CropMap(testsToRun, "{some: true}")
+	// bwmap.CropMap(testsToRun, "UnknownWord")
 	bwtesting.BwRunTests(t, Parse, testsToRun)
 }
 
@@ -943,7 +943,7 @@ func TestParseMap(t *testing.T) {
 			Out: []interface{}{
 				map[string]interface{}(nil),
 				bwerror.Error(
-					"unknown word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"unknown word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
 				),
 			},

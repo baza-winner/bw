@@ -22,7 +22,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has non supported value",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has non supported value",
 						test.In[0],
 					)
 				},
@@ -32,7 +32,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`false`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>map[string]<ansi>, or <ansiPrimaryLiteral>string", false),
+				bwerror.Error("<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>[]string<ansi>, or <ansiPrimary>map[string]<ansi>, or <ansiPrimary>string", false),
 			},
 		},
 		"def: no .type": {
@@ -41,7 +41,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has no key <ansiPrimaryLiteral>type",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has no key <ansiPrimary>type",
 						test.In[0],
 					)
 				},
@@ -51,7 +51,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type false }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>[]string<ansi>, or <ansiPrimaryLiteral>string", false),
+				bwerror.Error("<ansiOutline>def<ansiCmd>.type<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>[]string<ansi>, or <ansiPrimary>string", false),
 			},
 		},
 		"def: simple valid": {
@@ -65,7 +65,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`[ qw/ Bool Int some / ]`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd>.#2<ansi> (<ansiSecondaryLiteral>%#v<ansi>) has non supported value", "some"),
+				bwerror.Error("<ansiOutline>def<ansiCmd>.#2<ansi> (<ansiSecondary>%#v<ansi>) has non supported value", "some"),
 			},
 		},
 		"def: enum": {
@@ -79,7 +79,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "String", enum: [qw/one two three/ true]}`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd>.enum<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>[]string", defparse.MustParse(`[qw/one two three/ true]`)),
+				bwerror.Error("<ansiOutline>def<ansiCmd>.enum<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>[]string", defparse.MustParse(`[qw/one two three/ true]`)),
 			},
 		},
 		"def: map with keys": {
@@ -106,7 +106,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				// nil,
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.keys<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>map[string]",
+					"<ansiOutline>def<ansiCmd>.keys<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>map[string]",
 					map[int]interface{}{0: nil},
 				),
 			},
@@ -118,7 +118,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.keys.keyBool.type<ansi> (<ansiSecondaryLiteral>%#v<ansi>) has non supported value",
+					"<ansiOutline>def<ansiCmd>.keys.keyBool.type<ansi> (<ansiSecondary>%#v<ansi>) has non supported value",
 					"Boolean",
 				),
 			},
@@ -145,7 +145,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.elem<ansi> (<ansiSecondaryLiteral>%#v<ansi>) has non supported value",
+					"<ansiOutline>def<ansiCmd>.elem<ansi> (<ansiSecondary>%#v<ansi>) has non supported value",
 					"Boolean",
 				),
 			},
@@ -156,7 +156,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has unexpected keys <ansiSecondaryLiteral>%s",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has unexpected keys <ansiSecondary>%s",
 						test.In[0],
 						bwjson.PrettyJson(defparse.MustParse(`[qw/kyes some/]`)),
 					)
@@ -178,7 +178,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.arrayElem<ansi> (<ansiSecondaryLiteral>%#v<ansi>) has non supported value",
+					"<ansiOutline>def<ansiCmd>.arrayElem<ansi> (<ansiSecondary>%#v<ansi>) has non supported value",
 					"Integer",
 				),
 			},
@@ -189,7 +189,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has unexpected key <ansiPrimaryLiteral>elem",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has unexpected key <ansiPrimary>elem",
 						test.In[0],
 					)
 				},
@@ -200,7 +200,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.minInt<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>int64",
+					"<ansiOutline>def<ansiCmd>.minInt<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>int64",
 					true,
 				),
 			},
@@ -210,7 +210,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.maxInt<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>int64",
+					"<ansiOutline>def<ansiCmd>.maxInt<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>int64",
 					true,
 				),
 			},
@@ -232,7 +232,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has conflicting keys: <ansiSecondaryLiteral>%s",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has conflicting keys: <ansiSecondary>%s",
 						test.In[0], bwjson.PrettyJson(defparse.MustParse("{ minInt: 6, maxInt: -10 }")),
 					)
 				},
@@ -243,7 +243,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.minNumber<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>float64",
+					"<ansiOutline>def<ansiCmd>.minNumber<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>float64",
 					true,
 				),
 			},
@@ -253,7 +253,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.maxNumber<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>float64",
+					"<ansiOutline>def<ansiCmd>.maxNumber<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>float64",
 					true,
 				),
 			},
@@ -275,7 +275,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has conflicting keys: <ansiSecondaryLiteral>%s",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has conflicting keys: <ansiSecondary>%s",
 						test.In[0], bwjson.PrettyJson(defparse.MustParse("{ minNumber: 3.14, maxNumber: -2.71 }")),
 					)
 				},
@@ -286,7 +286,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.isOptional<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>bool",
+					"<ansiOutline>def<ansiCmd>.isOptional<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>bool",
 					int8(0),
 				),
 			},
@@ -306,7 +306,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Bool", default: "string" }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd>.default<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>Bool", "string"),
+				bwerror.Error("<ansiOutline>def<ansiCmd>.default<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>Bool", "string"),
 			},
 		},
 		"def: isOptional": {
@@ -325,7 +325,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has conflicting keys: <ansiSecondaryLiteral>%s",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has conflicting keys: <ansiSecondary>%s",
 						test.In[0], bwjson.PrettyJson(defparse.MustParse("{ isOptional: false, default: false }")),
 					)
 				},
@@ -335,14 +335,14 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "ArrayOf"  }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd>.type<ansi> (<ansiSecondaryLiteral>%#v<ansi>) must be followed by some type", "ArrayOf"),
+				bwerror.Error("<ansiOutline>def<ansiCmd>.type<ansi> (<ansiSecondary>%#v<ansi>) must be followed by some type", "ArrayOf"),
 			},
 		},
 		"simple.def: ArrayOf without follower": {
 			In: []interface{}{defparse.MustParse(`"ArrayOf"`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				bwerror.Error("<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) must be followed by some type", "ArrayOf"),
+				bwerror.Error("<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) must be followed by some type", "ArrayOf"),
 			},
 		},
 		"simple.def: ArrayOf can not be combined with array": {
@@ -351,7 +351,7 @@ func TestCompileDef(t *testing.T) {
 				(*Def)(nil),
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) following values can not be combined: <ansiSecondaryLiteral>%s",
+						"<ansiOutline>def<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) following values can not be combined: <ansiSecondary>%s",
 						test.In[0], bwjson.PrettyJson(defparse.MustParse("[ 'Array', 'ArrayOf' ]")),
 					)
 				},
@@ -365,7 +365,7 @@ func TestCompileDef(t *testing.T) {
 			Out: []interface{}{
 				(*Def)(nil),
 				bwerror.Error(
-					"<ansiOutline>def<ansiCmd>.default<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>Array", int8(3),
+					"<ansiOutline>def<ansiCmd>.default<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>Array", int8(3),
 				),
 			},
 		},
@@ -402,7 +402,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>Bool", nil),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>Bool", nil),
 			},
 		},
 		"val: nil, def: bool.isOptional": {
@@ -449,7 +449,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has non supported value", "One"),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has non supported value", "One"),
 			},
 		},
 
@@ -463,7 +463,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>Int", "1"),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>Int", "1"),
 			},
 		},
 		"val: valid, def: int": {
@@ -496,7 +496,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is less then <ansiOutline>minLimit <ansiPrimaryLiteral>2", 1),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is less then <ansiOutline>minLimit <ansiPrimary>2", 1),
 			},
 		},
 		"val: invalid, def: int.min.max": {
@@ -507,7 +507,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is out of <ansiOutline>range <ansiSecondaryLiteral>[2, 3]", 1),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is out of <ansiOutline>range <ansiSecondary>[2, 3]", 1),
 			},
 		},
 		"val: invalid, def: int.max": {
@@ -518,7 +518,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is greater then <ansiOutline>maxLimit <ansiPrimaryLiteral>0", 1),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is greater then <ansiOutline>maxLimit <ansiPrimary>0", 1),
 			},
 		},
 
@@ -532,7 +532,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>Number", "3.14"),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>Number", "3.14"),
 			},
 		},
 		"val: valid, def: Number": {
@@ -565,7 +565,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is less then <ansiOutline>minLimit <ansiPrimaryLiteral>3.14", 2.71),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is less then <ansiOutline>minLimit <ansiPrimary>3.14", 2.71),
 			},
 		},
 		"val: invalid, def: Number.min.max": {
@@ -576,7 +576,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is out of <ansiOutline>range <ansiSecondaryLiteral>[3.14, 273]", 2.71),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is out of <ansiOutline>range <ansiSecondary>[3.14, 273]", 2.71),
 			},
 		},
 		"val: invalid, def: Number.max": {
@@ -587,7 +587,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) is greater then <ansiOutline>maxLimit <ansiPrimaryLiteral>2.71", 3.14),
+				bwerror.Error("<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) is greater then <ansiOutline>maxLimit <ansiPrimary>2.71", 3.14),
 			},
 		},
 
@@ -652,7 +652,7 @@ func TestValidateVal(t *testing.T) {
 				nil,
 				func(test bwtesting.TestCaseStruct) error {
 					return bwerror.Error(
-						"<ansiOutline>val<ansiCmd><ansi> (<ansiSecondaryLiteral>%#v<ansi>) has unexpected keys <ansiSecondaryLiteral>%s",
+						"<ansiOutline>val<ansiCmd><ansi> (<ansiSecondary>%#v<ansi>) has unexpected keys <ansiSecondary>%s",
 						test.In[1], bwjson.PrettyJson(defparse.MustParse(`[qw/numberKey stringKey/]`)),
 					)
 				},
@@ -674,7 +674,7 @@ func TestValidateVal(t *testing.T) {
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"<ansiOutline>val<ansiCmd>.boolKey<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>Bool",
+					"<ansiOutline>val<ansiCmd>.boolKey<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>Bool",
 					0,
 				),
 			},
@@ -695,7 +695,7 @@ func TestValidateVal(t *testing.T) {
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"<ansiOutline>val<ansiCmd>.intKey<ansi> (<ansiSecondaryLiteral>%#v<ansi>) is not of type <ansiPrimaryLiteral>Int",
+					"<ansiOutline>val<ansiCmd>.intKey<ansi> (<ansiSecondary>%#v<ansi>) is not of type <ansiPrimary>Int",
 					false,
 				),
 			},

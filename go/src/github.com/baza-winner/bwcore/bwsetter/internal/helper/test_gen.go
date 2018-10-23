@@ -76,7 +76,7 @@ func (v *Helper) GenTestsFor(
 		testDict[Lit(testName)] = v.TestCaseValues(fgt != SimpleFunc, funcName, pt, rt, testCase)
 	} else if testCases, ok = testData.(TestCases); !ok {
 		bwerror.Panic(
-			"<ansiCmd>%s<ansi> <ansiOutline>TestData<ansi> expected to be <ansiPrimaryLiteral>%s<ansi> or <ansiPrimaryLiteral>%s",
+			"<ansiCmd>%s<ansi> <ansiOutline>TestData<ansi> expected to be <ansiPrimary>%s<ansi> or <ansiPrimary>%s",
 			testName, "TestCase", "TestCases",
 		)
 	} else {
@@ -122,7 +122,7 @@ func (v *Helper) TestCaseValues(
 	}
 	if len(testCase.In) != len(Params) {
 		bwerror.Panic(
-			"<ansiCmd>%s<ansi> <ansiOutline>testCase.In<ansi> expects to have <ansiPrimaryLiteral>%d<ansi> item(s), but found <ansiSecondaryLiteral>%d",
+			"<ansiCmd>%s<ansi> <ansiOutline>testCase.In<ansi> expects to have <ansiPrimary>%d<ansi> item(s), but found <ansiSecondary>%d",
 			testeeName, len(Params), len(testCase.In),
 		)
 	}
@@ -151,7 +151,7 @@ func (v *Helper) TestCaseValues(
 	}
 	if len(testCase.Out) != len(Returns) {
 		bwerror.Panic(
-			"<ansiCmd>%s<ansi> <ansiOutline>testCase.Out<ansi> expects to have <ansiPrimaryLiteral>%d<ansi> item(s), but found <ansiSecondaryLiteral>%d",
+			"<ansiCmd>%s<ansi> <ansiOutline>testCase.Out<ansi> expects to have <ansiPrimary>%d<ansi> item(s), but found <ansiSecondary>%d",
 			testeeName, len(Returns), len(testCase.Out),
 		)
 	}
@@ -239,7 +239,7 @@ func (v *Helper) getValuesOfString(testCaseData interface{}) (result Code, err e
 
 func (v *Helper) errOfGetValues(typeName string, testCaseData interface{}) error {
 	return fmt.Errorf(
-		"to be <ansiPrimaryLiteral>%s<ansi>, instead of <ansiSecondaryLiteral>%#v",
+		"to be <ansiPrimary>%s<ansi>, instead of <ansiSecondary>%#v",
 		typeName, testCaseData,
 	)
 }

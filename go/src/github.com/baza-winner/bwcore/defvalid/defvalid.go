@@ -4,6 +4,7 @@ package defvalid
 import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwjson"
+
 	// "github.com/baza-winner/bwcore/bwmap"
 	// "github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/defparse"
@@ -78,7 +79,7 @@ func GetValOfPath(val interface{}, path string) (result interface{}, valueError 
 func MustValOfPath(val interface{}, path string) (result interface{}) {
 	var err error
 	if result, err = GetValOfPath(val, path); err != nil {
-		bwerror.Panic("path <ansiCmd>%s<ansi> not found in <ansiSecondaryLiteral>%s", path, bwjson.PrettyJson(val))
+		bwerror.Panic("path <ansiCmd>%s<ansi> not found in <ansiSecondary>%s", path, bwjson.PrettyJson(val))
 	}
 	return
 }

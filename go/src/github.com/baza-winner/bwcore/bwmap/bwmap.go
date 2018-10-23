@@ -4,8 +4,9 @@
 package bwmap
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
 	"reflect"
+
+	"github.com/baza-winner/bwcore/bwerror"
 )
 
 func GetUnexpectedKeys(m interface{}, expected ...interface{}) []string {
@@ -14,11 +15,11 @@ func GetUnexpectedKeys(m interface{}, expected ...interface{}) []string {
 	}
 	v := reflect.ValueOf(m)
 	if v.Kind() != reflect.Map {
-		bwerror.Panic("<ansiOutline>m<ansi> (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteral>map", m)
+		bwerror.Panic("<ansiOutline>m<ansi> (<ansiSecondary>%+v<ansi>) is not <ansiPrimary>map", m)
 	}
 	for _, vk := range v.MapKeys() {
 		if vk.Kind() != reflect.String {
-			bwerror.Panic("<ansiOutline>m<ansi> (<ansiSecondaryLiteral>%+v<ansi>) is not <ansiPrimaryLiteralmap[string]", m)
+			bwerror.Panic("<ansiOutline>m<ansi> (<ansiSecondary>%+v<ansi>) is not <ansiPrimaryLiteralmap[string]", m)
 		}
 		break
 	}
@@ -40,7 +41,7 @@ func GetUnexpectedKeys(m interface{}, expected ...interface{}) []string {
 				expectedKeys[k] = struct{}{}
 			}
 		} else {
-			bwerror.Panic("<ansiOutline>expected<ansi> (<ansiPrimaryLiteral>%+v<ansi>) neither <ansiSecondaryLiteral>string<ansi>, nor <ansiSecondaryLiteral>[]string<ansi>, nor <ansiSecondaryLiteral>map[string]interface", expected)
+			bwerror.Panic("<ansiOutline>expected<ansi> (<ansiPrimary>%+v<ansi>) neither <ansiSecondary>string<ansi>, nor <ansiSecondary>[]string<ansi>, nor <ansiSecondary>map[string]interface", expected)
 		}
 	}
 	var unexpectedKeys = []string{}
@@ -65,4 +66,3 @@ func CropMap(m interface{}, crop ...interface{}) {
 		}
 	}
 }
-

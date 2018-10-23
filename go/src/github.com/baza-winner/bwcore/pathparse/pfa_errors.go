@@ -60,7 +60,7 @@ func pfaErrorValidatorsCheck() {
 	pfaErrorType := pfaErrorBelow + 1
 	for pfaErrorType < pfaErrorAbove {
 		if _, ok := pfaErrorValidators[pfaErrorType]; !ok {
-			bwerror.Panic("not defined <ansiOutline>pfaErrorValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", pfaErrorType)
+			bwerror.Panic("not defined <ansiOutline>pfaErrorValidators<ansi>[<ansiPrimary>%s<ansi>]", pfaErrorType)
 		}
 		pfaErrorType += 1
 	}
@@ -68,7 +68,7 @@ func pfaErrorValidatorsCheck() {
 
 func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
 	}
 	if pfa.curr.runePtr == nil {
 		suffix := getSuffix(pfa, pfa.curr, "")
@@ -77,7 +77,7 @@ func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string
 	} else {
 		rune := *pfa.curr.runePtr
 		suffix := getSuffix(pfa, pfa.curr, string(rune))
-		fmtString = "unexpected char <ansiPrimaryLiteral>%q<ansiReset> (charCode: %v, pfa.state: %s)" + suffix
+		fmtString = "unexpected char <ansiPrimary>%q<ansiReset> (charCode: %v, pfa.state: %s)" + suffix
 		fmtArgs = []interface{}{rune, rune, pfa.state}
 	}
 	return
@@ -85,20 +85,20 @@ func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string
 
 func _failedToGetNumberError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
 	}
 	stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
 	suffix := getSuffix(pfa, stackItem.start, stackItem.itemString)
-	return "failed to get number from string <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
+	return "failed to get number from string <ansiPrimary>%s" + suffix, []interface{}{stackItem.itemString}
 }
 
 // func _unknownWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 // 	if args != nil {
-// 		bwerror.Panic("does not expect args instead of <ansiSecondaryLiteral>%#v", args)
+// 		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
 // 	}
 // 	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
 // 	suffix := getSuffix(pfa, stackItem.start, stackItem.itemString)
-// 	return "unknown word <ansiPrimaryLiteral>%s" + suffix, []interface{}{stackItem.itemString}
+// 	return "unknown word <ansiPrimary>%s" + suffix, []interface{}{stackItem.itemString}
 // }
 
 // =============

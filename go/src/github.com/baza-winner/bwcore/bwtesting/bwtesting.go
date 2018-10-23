@@ -55,13 +55,13 @@ func BwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct) {
 	fValue := reflect.ValueOf(f)
 
 	for testName, test := range tests {
-		testPrefix := "<ansiCmd>" + testFunc + "::<ansiOutline>test" + "<ansiCmd>.<ansiSecondaryLiteral>[\"" + testName + "\"]<ansiCmd>"
-		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimaryLiteral>%s"), testName)
+		testPrefix := "<ansiCmd>" + testFunc + "::<ansiOutline>test" + "<ansiCmd>.<ansiSecondary>[\"" + testName + "\"]<ansiCmd>"
+		t.Logf(ansi.Ansi(`Header`, "Running test case <ansiPrimary>%s"), testName)
 		if len(test.In) != numIn {
-			bwerror.Panic(testPrefix+".In<ansi>: ожидается <ansiPrimaryLiteral>%d<ansi> %s вместо <ansiSecondaryLiteral>%d", numIn, getPluralWord(numIn, "параметр", "", "а", "ов"), len(test.In))
+			bwerror.Panic(testPrefix+".In<ansi>: ожидается <ansiPrimary>%d<ansi> %s вместо <ansiSecondary>%d", numIn, getPluralWord(numIn, "параметр", "", "а", "ов"), len(test.In))
 		}
 		if len(test.Out) != numOut {
-			bwerror.Panic(testPrefix+".Out<ansi>: ожидается <ansiPrimaryLiteral>%d<ansi> %s вместо <ansiSecondaryLiteral>%d", numOut, getPluralWord(numOut, "параметр", "", "а", "ов"), len(test.Out))
+			bwerror.Panic(testPrefix+".Out<ansi>: ожидается <ansiPrimary>%d<ansi> %s вместо <ansiSecondary>%d", numOut, getPluralWord(numOut, "параметр", "", "а", "ов"), len(test.Out))
 		}
 		in := []reflect.Value{}
 		for i := 0; i < numIn; i++ {
@@ -73,7 +73,7 @@ func BwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct) {
 			}
 			if inDef[i].Kind() != reflect.Interface && inItem.Kind() != inDef[i].Kind() {
 				bwerror.Panic(
-					testPrefix+".In[%d]<ansi>: ожидается <ansiPrimaryLiteral>%s<ansi> вместо <ansiPrimaryLiteral>%s<ansi> (<ansiSecondaryLiteral>%#v<ansi>)",
+					testPrefix+".In[%d]<ansi>: ожидается <ansiPrimary>%s<ansi> вместо <ansiPrimary>%s<ansi> (<ansiSecondary>%#v<ansi>)",
 					i,
 					inDef[i].Kind(),
 					inItem.Kind(),
@@ -99,12 +99,12 @@ func BwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct) {
 					true {
 					if vType.NumOut() != 1 {
 						bwerror.Panic(
-							testPrefix+".Out[%d]<ansi>: ожидается <ansiPrimaryLiteral>1<ansi> одно возвращаемое значение вместо <ansiSecondaryLiteral>%d",
+							testPrefix+".Out[%d]<ansi>: ожидается <ansiPrimary>1<ansi> одно возвращаемое значение вместо <ansiSecondary>%d",
 							vType.NumOut(),
 						)
 					} else if vType.Out(0) != outDef[i] {
 						bwerror.Panic(
-							testPrefix+".Out[%d]<ansi>: в качесте возвращаемого значения ожидается <ansiPrimaryLiteral>%s<ansi> вместо <ansiPrimaryLiteral>%s<ansi>",
+							testPrefix+".Out[%d]<ansi>: в качесте возвращаемого значения ожидается <ansiPrimary>%s<ansi> вместо <ansiPrimary>%s<ansi>",
 							outDef[i],
 							vType.Out(0),
 						)

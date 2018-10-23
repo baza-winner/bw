@@ -21,7 +21,7 @@ func pfaPrimaryStateMethodsCheck() {
 	expect := parsePrimaryStateBelow + 1
 	for expect < parsePrimaryStateAbove {
 		if _, ok := pfaPrimaryStateMethods[expect]; !ok {
-			bwerror.Panic("not defined <ansiOutline>pfaPrimaryStateMethods<ansi>[<ansiPrimaryLiteral>%s<ansi>]", expect)
+			bwerror.Panic("not defined <ansiOutline>pfaPrimaryStateMethods<ansi>[<ansiPrimary>%s<ansi>]", expect)
 		}
 		expect += 1
 	}

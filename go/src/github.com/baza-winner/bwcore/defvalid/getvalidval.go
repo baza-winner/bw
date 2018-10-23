@@ -81,7 +81,7 @@ func getValidValHelpersCheck() {
 	deftypeItem := deftype.ItemBelow + 1
 	for deftypeItem < deftype.ItemAbove {
 		if _, ok := getValidValHelpers[deftypeItem]; !ok {
-			bwerror.Panic("not defined <ansiOutline>deftype.ItemValidators<ansi>[<ansiPrimaryLiteral>%s<ansi>]", deftypeItem)
+			bwerror.Panic("not defined <ansiOutline>deftype.ItemValidators<ansi>[<ansiPrimary>%s<ansi>]", deftypeItem)
 		}
 		deftypeItem += 1
 	}

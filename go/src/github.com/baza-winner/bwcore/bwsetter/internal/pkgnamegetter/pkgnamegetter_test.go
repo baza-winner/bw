@@ -71,7 +71,7 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			Out: []interface{}{
 				"",
 				bwerror.Error(
-					"unexpected word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+					"unexpected word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
 					"pac", 1, 3, 2, getTestFileSpec("pack age main"),
 				),
 			},
@@ -81,7 +81,7 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			Out: []interface{}{
 				"",
 				bwerror.Error(
-					"unexpected rune <ansiPrimaryLiteral>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+					"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
 					's', 2, 2, 4, getTestFileSpec("some"),
 				),
 			},
@@ -91,7 +91,7 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			Out: []interface{}{
 				"",
 				bwerror.Error(
-					"unexpected rune <ansiPrimaryLiteral>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+					"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
 					'3', 2, 10, 12, getTestFileSpec("package 3"),
 				),
 			},
@@ -101,7 +101,7 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			Out: []interface{}{
 				"",
 				bwerror.Error(
-					"unexpected rune <ansiPrimaryLiteral>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+					"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
 					'=', 2, 3, 5, getTestFileSpec("invalid comment start"),
 				),
 			},

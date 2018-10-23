@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/davecgh/go-spew/spew"
@@ -56,4 +57,16 @@ func Panicd(depth uint, msgFmt string, args ...interface{}) {
 }
 
 func Noop(args ...interface{}) {
+}
+
+func Unreachable(args ...string) {
+	var suffix string
+	if args != nil {
+		suffix = " <ansi>" + strings.Join(args, " ")
+	}
+	Panicd(1, "<ansiErr>UNREACHABLE"+suffix)
+}
+
+func TODO() {
+	Panicd(1, "<ansiErr>UNREACHABLE")
 }

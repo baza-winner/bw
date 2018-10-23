@@ -250,7 +250,7 @@ func Parse(source string) (interface{}, error) {
 	return pfa.Run(
 		runeprovider.FromString(source),
 		pfaStateDef,
-		pfa.State{"expectValueOrSpace", ""},
+		// pfa.State{"begin", ""},
 	)
 }
 
@@ -270,7 +270,7 @@ func ParseMap(source string) (result map[string]interface{}, err error) {
 	if _result, err = Parse(source); err == nil {
 		var ok bool
 		if result, ok = _result.(map[string]interface{}); !ok {
-			err = bwerror.Error("is not Map definition: <ansiSecondaryLiteral>%s", source)
+			err = bwerror.Error("is not Map definition: <ansiSecondary>%s", source)
 		}
 	}
 	return result, err

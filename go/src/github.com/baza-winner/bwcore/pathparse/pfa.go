@@ -315,7 +315,7 @@ func (pfa *pfaStruct) currRune() (result rune) {
 }
 
 func (pfa *pfaStruct) panic(args ...interface{}) {
-	fmtString := "<ansiOutline>pfa<ansi> <ansiSecondaryLiteral>%s<ansi>"
+	fmtString := "<ansiOutline>pfa<ansi> <ansiSecondary>%s<ansi>"
 	if args != nil {
 		fmtString += " " + args[0].(string)
 	}
@@ -332,7 +332,7 @@ func (pfa *pfaStruct) ifStackLen(minLen int) bool {
 
 func (pfa *pfaStruct) mustStackLen(minLen int) {
 	if !pfa.ifStackLen(minLen) {
-		pfa.panic("<ansiOutline>minLen <ansiSecondaryLiteral>%d", minLen)
+		pfa.panic("<ansiOutline>minLen <ansiSecondary>%d", minLen)
 	}
 }
 
@@ -343,7 +343,7 @@ func (pfa *pfaStruct) mustStackLen(minLen int) {
 func (pfa *pfaStruct) getTopStackItemOfType(itemType parseStackItemType) (stackItem *parseStackItem) {
 	stackItem = pfa.getTopStackItem()
 	if stackItem.itemType != itemType {
-		pfa.panic("<ansiOutline>itemType<ansiSecondaryLiteral>%s", itemType)
+		pfa.panic("<ansiOutline>itemType<ansiSecondary>%s", itemType)
 	}
 	return
 }

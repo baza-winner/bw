@@ -1,6 +1,8 @@
 package pfa
 
 import (
+	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -8,13 +10,15 @@ import (
 
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwint"
+	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
+	"github.com/jimlawless/whereami"
 )
 
 // ============================== hasRune =====================================
 
 type hasRune interface {
-	HasRune(rune) bool
+	HasRune(pfa *pfaStruct) bool
 	Len() int
 }
 
@@ -22,12 +26,36 @@ type runeSet struct {
 	values bwset.RuneSet
 }
 
-func (v runeSet) HasRune(r rune) (result bool) {
-	result = v.values.Has(r)
+func (v runeSet) HasRune(pfa *pfaStruct) (result bool) {
+	r, isEOF := pfa.p.Rune()
+	result = !isEOF && v.values.Has(r)
 	return result
 }
 
 func (v runeSet) Len() int {
+	return len(v.values)
+}
+
+type currRuneVarPaths struct {
+	values []VarPath
+}
+
+func (v currRuneVarPaths) HasRune(pfa *pfaStruct) (result bool) {
+	currRune, isEOF := pfa.p.Rune()
+	if !isEOF {
+		for _, k := range v.values {
+			if r, err := pfa.getVarValue(k).AsRune(); err == nil {
+				if r == currRune {
+					result = true
+					break
+				}
+			}
+		}
+	}
+	return
+}
+
+func (v currRuneVarPaths) Len() int {
 	return len(v.values)
 }
 
@@ -36,28 +64,37 @@ type UnicodeCategory uint8
 const (
 	IsUnicodeSpace UnicodeCategory = iota
 	IsUnicodeLetter
+	IsUnicodeLower
+	IsUnicodeUpper
 	IsUnicodeDigit
 	IsUnicodeOpenBraces
 	IsUnicodePunct
 	IsUnicodeSymbol
 )
 
-func (v UnicodeCategory) HasRune(r rune) (result bool) {
-	switch v {
-	case IsUnicodeSpace:
-		result = unicode.IsSpace(r)
-	case IsUnicodeLetter:
-		result = unicode.IsLetter(r) || r == '_'
-	case IsUnicodeDigit:
-		result = unicode.IsDigit(r)
-	case IsUnicodeOpenBraces:
-		result = r == '(' || r == '{' || r == '[' || r == '<'
-	case IsUnicodePunct:
-		result = unicode.IsPunct(r)
-	case IsUnicodeSymbol:
-		result = unicode.IsSymbol(r)
-	default:
-		bwerror.Panic("UnicodeCategory: %s", v)
+func (v UnicodeCategory) HasRune(pfa *pfaStruct) (result bool) {
+	r, isEOF := pfa.p.Rune()
+	if !isEOF {
+		switch v {
+		case IsUnicodeSpace:
+			result = unicode.IsSpace(r)
+		case IsUnicodeLetter:
+			result = unicode.IsLetter(r) || r == '_'
+		case IsUnicodeLower:
+			result = unicode.IsLower(r)
+		case IsUnicodeUpper:
+			result = unicode.IsUpper(r)
+		case IsUnicodeDigit:
+			result = unicode.IsDigit(r)
+		case IsUnicodeOpenBraces:
+			result = r == '(' || r == '{' || r == '[' || r == '<'
+		case IsUnicodePunct:
+			result = unicode.IsPunct(r)
+		case IsUnicodeSymbol:
+			result = unicode.IsSymbol(r)
+		default:
+			bwerror.Panic("UnicodeCategory: %s", v)
+		}
 	}
 	return
 }
@@ -66,135 +103,22 @@ func (v UnicodeCategory) Len() int {
 	return 1
 }
 
-type hasRuneSlice []hasRune
-
 type IsEOF struct{}
 
-func (v IsEOF) HasRune(r rune) (result bool) {
-	bwerror.Panic("Unreachable")
-	return
+func (v IsEOF) HasRune(pfa *pfaStruct) (result bool) {
+	_, isEOF := pfa.p.Rune()
+	return isEOF
 }
 
 func (v IsEOF) Len() int {
 	return 1
 }
 
-func (v hasRuneSlice) HasRune(pfa *pfaStruct, r rune) (result bool) {
-	result = false
-	for _, i := range v {
-		if _, ok := i.(IsDelimiterRune); ok {
-			if len(pfa.stack) > 0 {
-				stackItem := pfa.getTopStackItem()
-				result = stackItem.delimiter != nil && *stackItem.delimiter == r
-			}
-		} else {
-			result = i.HasRune(r)
-		}
-		if result {
-			break
-		}
-	}
-	return result
-}
-
-type IsDelimiterRune struct{}
-
-func (v IsDelimiterRune) HasRune(r rune) (result bool) {
-	bwerror.Panic("Unreachable")
-	return
-}
-
-func (v IsDelimiterRune) Len() int {
-	return 1
-}
-
 // ============================================================================
 
-type DelimiterIs struct {
-	Value rune
-}
-
-type StackLenIs struct {
-	Value int
-}
-
 type VarIs struct {
-	VarName  string
-	VarValue interface{}
-}
-
-type TopItemIs struct {
-	Value string
-}
-
-type SubItemIs struct {
-	Value string
-}
-
-type TopItemStringIs struct {
-	Value string
-}
-
-type TopItemStringIsOneOf struct {
-	Value bwset.StringSet
-}
-
-type PrimaryIs struct {
-	Value string
-}
-
-type SecondaryIs struct {
-	Value string
-}
-
-// ============== DelimiterProvider, ItemStringProvider ========================
-
-type DelimiterProvider interface {
-	Delimiter(pfa *pfaStruct) *rune
-}
-
-type ItemStringProvider interface {
-	ItemString(pfa *pfaStruct) string
-}
-
-type Delim struct{ r rune }
-
-func (v Delim) Delimiter(pfa *pfaStruct, currRune rune) *rune {
-	return &v.r
-}
-
-type FromParentItem struct{}
-
-func (v FromParentItem) Delimiter(pfa *pfaStruct) *rune {
-	return pfa.getTopStackItem().delimiter
-}
-
-type FromCurrRune struct{}
-
-func (v FromCurrRune) ItemString(pfa *pfaStruct) string {
-	return string(pfa.mustCurrRune())
-}
-
-func (v FromCurrRune) Delimiter(pfa *pfaStruct) *rune {
-	currRune := pfa.mustCurrRune()
-	return &currRune
-}
-
-type PairForCurrRune struct{}
-
-func (v PairForCurrRune) Delimiter(pfa *pfaStruct) *rune {
-	r := pfa.mustCurrRune()
-	switch r {
-	case '<':
-		r = '>'
-	case '[':
-		r = ']'
-	case '(':
-		r = ')'
-	case '{':
-		r = '}'
-	}
-	return &r
+	VarPathStr string
+	VarValue   interface{}
 }
 
 // ======================== processorAction ====================================
@@ -203,218 +127,251 @@ type processorAction interface {
 	execute(pfa *pfaStruct)
 }
 
-type SetError struct {
-	Value ErrorType
-}
-
-func (v SetError) execute(pfa *pfaStruct) {
-	pfa.errorType = v.Value
-}
-
 type PushRune struct{}
 
 func (v PushRune) execute(pfa *pfaStruct) {
-	pfa.PushRune()
+	pfa.p.PushRune()
 }
 
 type PullRune struct{}
 
 func (v PullRune) execute(pfa *pfaStruct) {
-	pfa.PullRune()
-
+	pfa.p.PullRune()
 }
 
-type ChangePrimary struct {
-	Value string
-}
-
-func (v ChangePrimary) execute(pfa *pfaStruct) {
-	pfa.state.Primary = v.Value
-}
-
-type SetPrimary struct {
-	Value string
-}
-
-func (v SetPrimary) execute(pfa *pfaStruct) {
-	pfa.state.SetPrimary(v.Value)
-}
-
-type ChangeSecondary struct {
-	Value string
-}
-
-func (v ChangeSecondary) execute(pfa *pfaStruct) {
-	pfa.state.Secondary = v.Value
-}
-
-type SetSecondary struct {
-	Primary   string
-	Secondary string
-}
-
-func (v SetSecondary) execute(pfa *pfaStruct) {
-	pfa.state.SetSecondary(v.Primary, v.Secondary)
-}
-
-type AppendCurrRune struct{}
-
-func (v AppendCurrRune) execute(pfa *pfaStruct) {
-	pfa.getTopStackItem().itemString += string(pfa.mustCurrRune())
-}
-
-type AppendRune struct {
-	Value rune
-}
-
-func (v AppendRune) execute(pfa *pfaStruct) {
-	pfa.getTopStackItem().itemString += string(v.Value)
-}
-
-type SetTopItemDelimiter struct {
-	P DelimiterProvider
-}
-
-func (v SetTopItemDelimiter) execute(pfa *pfaStruct) {
-	pfa.getTopStackItem().delimiter = v.P.Delimiter(pfa)
-}
-
-type SetTopItemType struct {
-	Value string
-}
-
-func (v SetTopItemType) execute(pfa *pfaStruct) {
-	pfa.getTopStackItem().itemType = v.Value
-}
-
-type PushItem struct {
-	ItemType   string
-	ItemString ItemStringProvider
-	Delimiter  DelimiterProvider
-}
+type PushItem struct{}
 
 func (v PushItem) execute(pfa *pfaStruct) {
-	var itemString string
-	if v.ItemString != nil {
-		itemString = v.ItemString.ItemString(pfa)
+	pfa.pushStackItem()
+}
+
+type SubRules struct {
+	Def Rules
+}
+
+func (v SubRules) execute(pfa *pfaStruct) {
+	pfa.processRules(v.Def)
+}
+
+type PopItem struct{}
+
+func (v PopItem) execute(pfa *pfaStruct) {
+	pfa.popStackItem()
+}
+
+type Var struct {
+	VarPathStr string
+}
+
+type justVal struct {
+	val interface{}
+}
+
+func (v justVal) GetVal(pfa *pfaStruct) (val interface{}, err error) {
+	val = v.val
+	return
+}
+
+type varVal struct {
+	varPath VarPath
+}
+
+func (v varVal) GetVal(pfa *pfaStruct) (val interface{}, err error) {
+	varValue := pfa.getVarValue(v.varPath)
+	if varValue.Err == nil {
+		val = varValue.Val
+	} else {
+		err = varValue.Err
 	}
-	var delimiter *rune
-	if v.Delimiter != nil {
-		delimiter = v.Delimiter.Delimiter(pfa)
-	}
-	pfa.pushStackItem(
-		v.ItemType,
-		itemString,
-		delimiter,
-	)
+	return
 }
 
-type SetTopItemValueAsString struct{}
-
-func (v SetTopItemValueAsString) execute(pfa *pfaStruct) {
-	stackItem := pfa.getTopStackItem()
-	stackItem.value = stackItem.itemString
-}
-
-type SetTopItemValueAsMap struct{}
-
-func (v SetTopItemValueAsMap) execute(pfa *pfaStruct) {
-	stackItem := pfa.getTopStackItem()
-	stackItem.value = stackItem.itemMap
-}
-
-type SetTopItemValueAsArray struct{}
-
-func (v SetTopItemValueAsArray) execute(pfa *pfaStruct) {
-	stackItem := pfa.getTopStackItem()
-	stackItem.value = stackItem.itemArray
-}
-
-type SetTopItemValueAsNumber struct{}
-
-func (v SetTopItemValueAsNumber) execute(pfa *pfaStruct) {
-	stackItem := pfa.getTopStackItem()
-	var err error
-	if stackItem.value, err = _parseNumber(stackItem.itemString); err != nil {
-		pfa.errorType = FailedToGetNumber
-	}
-}
-
-type SetTopItemValueAsBool struct {
-	Value bool
-}
-
-func (v SetTopItemValueAsBool) execute(pfa *pfaStruct) {
-	pfa.getTopStackItem().value = v.Value
-}
-
-type SubLogic struct {
-	Def *LogicDef
-}
-
-func (v SubLogic) execute(pfa *pfaStruct) {
-	pfa.processLogic(v.Def)
-}
-
-type PopSubItem struct{}
-
-func (v PopSubItem) execute(pfa *pfaStruct) {
-	pfa.stackSubItem = pfa.popStackItem()
-}
-
-type AppendItemArray struct {
-	P ArrayProvider
-}
-
-func (v AppendItemArray) execute(pfa *pfaStruct) {
-	stackItem := pfa.getTopStackItem()
-	stackItem.itemArray = append(stackItem.itemArray, v.P.GetArray(pfa)...)
-}
-
-type SetTopItemStringFromSubItem struct{}
-
-func (v SetTopItemStringFromSubItem) execute(pfa *pfaStruct) {
-	pfa.getTopStackItem().itemString = pfa.stackSubItem.itemString
-}
-
-type SetTopItemMapKeyValueFromSubItem struct{}
-
-func (v SetTopItemMapKeyValueFromSubItem) execute(pfa *pfaStruct) {
-	stackItem := pfa.getTopStackItem()
-	stackItem.itemMap[stackItem.itemString] = pfa.stackSubItem.value
-}
-
-type Unreachable struct{}
-
-func (v Unreachable) execute(pfa *pfaStruct) {
-	pfa.panic("unreachabe")
+type ProccessorActionProvider interface {
+	GetAction() processorAction
 }
 
 type SetVar struct {
-	VarName  string
-	VarValue interface{}
+	VarPathStr string
+	VarValue   interface{}
 }
 
-func (v SetVar) execute(pfa *pfaStruct) {
-	pfa.vars[v.VarName] = v.VarValue
+func (v SetVar) GetAction() processorAction {
+	return _setVar{
+		MustVarPathFrom(v.VarPathStr),
+		MustValProviderFrom(v.VarValue),
+	}
+}
+
+type SetVarBy struct {
+	VarPathStr   string
+	VarValue     interface{}
+	Transformers By
+}
+
+func (v SetVarBy) GetAction() processorAction {
+	by := By{}
+	var needAppend, appendSlice bool
+	for _, b := range v.Transformers {
+		if _, ok := b.(Append); ok {
+			needAppend = true
+		} else if _, ok := b.(AppendSlice); ok {
+			needAppend = true
+			appendSlice = true
+		} else {
+			by = append(by, b)
+		}
+	}
+	return _setVarBy{
+		MustVarPathFrom(v.VarPathStr),
+		MustValProviderFrom(v.VarValue),
+		by,
+		needAppend,
+		appendSlice,
+	}
+}
+
+type _setVarBy struct {
+	varPath     VarPath
+	valProvider ValProvider
+	by          By
+	needAppend  bool
+	appendSlice bool
+}
+
+func (v _setVarBy) execute(pfa *pfaStruct) {
+	val, err := v.valProvider.GetVal(pfa)
+	if err == nil {
+		for _, b := range v.by {
+			val = b.TransformValue(pfa, val)
+			if pfa.err != nil {
+				break
+			}
+		}
+		if err == nil {
+			if !v.needAppend {
+				err = pfa.setVarVal(v.varPath, val)
+			} else {
+				if orig := pfa.getVarValue(v.varPath); orig.Err != nil {
+					err = orig.Err
+				} else if s, ok := orig.Val.(string); ok {
+					if a, ok := val.(string); ok {
+						val = s + a
+					} else if r, ok := val.(rune); ok {
+						val = s + string(r)
+					} else {
+						err = bwerror.Error("%#v expected to be string or rune", val)
+					}
+				} else if reflect.TypeOf(orig.Val).Kind() == reflect.Slice {
+					valueOfOrigVal := reflect.ValueOf(orig.Val)
+					valueOfVal := reflect.ValueOf(val)
+					if !v.appendSlice {
+						val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
+					} else if reflect.TypeOf(val).Kind() == reflect.Slice {
+						val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
+					} else {
+						err = bwerror.Error("%#v expected to be slice", val)
+					}
+
+					// if reflect.TypeOf(val).Kind() == reflect.Slice {
+					// 	val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
+					// } else {
+					// 	val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
+					// }
+				} else {
+					err = bwerror.Error(
+						"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>string<ansi> or <ansiSecondary>slice<ansi> to be <ansiOutline>Appendable",
+						val, v.varPath,
+					)
+				}
+				if err == nil {
+					err = pfa.setVarVal(v.varPath, val)
+				}
+			}
+		}
+	}
+	pfa.err = err
+}
+
+type ValTransformer interface {
+	TransformValue(pfa *pfaStruct, i interface{}) interface{}
+}
+
+type By []ValTransformer
+
+type _setVar struct {
+	varPath     VarPath
+	valProvider ValProvider
+}
+
+type ValProvider interface {
+	GetVal(pfa *pfaStruct) (val interface{}, err error)
+}
+
+func ValProviderFrom(i interface{}) (result ValProvider, err error) {
+	if v, ok := i.(Var); !ok {
+		result = justVal{i}
+	} else {
+		var varPath VarPath
+		varPath, err = VarPathFrom(v.VarPathStr)
+		if err == nil {
+			result = varVal{varPath}
+		}
+	}
+	return
+}
+
+func MustValProviderFrom(i interface{}) (result ValProvider) {
+	var err error
+	if result, err = ValProviderFrom(i); err != nil {
+		bwerror.PanicErr(err)
+	}
+	return
+}
+
+func (v _setVar) execute(pfa *pfaStruct) {
+	val, err := v.valProvider.GetVal(pfa)
+	if err == nil {
+		err = pfa.setVarVal(v.varPath, val)
+	}
+	pfa.err = err
+}
+
+type Debug struct{ Message string }
+
+func (v *Debug) execute(pfa *pfaStruct) {
+	fmt.Printf("%s: %s\n", v.Message, bwjson.PrettyJsonOf(pfa))
 }
 
 // ============================================================================
 
-type ArrayProvider interface {
-	GetArray(pfa *pfaStruct) []interface{}
+type ParseNumber struct{}
+
+func (v ParseNumber) TransformValue(pfa *pfaStruct, i interface{}) (result interface{}) {
+	if s, ok := i.(string); !ok {
+		pfa.err = bwerror.Error("ParseNumber expects string for TransformValue, not %#v", i)
+	} else {
+		result, pfa.err = _parseNumber(s)
+		if pfa.err != nil {
+			stackItem := pfa.getTopStackItem()
+			errStr := pfa.p.WordError("failed to get number from string <ansiPrimary>%s<ansi>", s, stackItem.start).Error()
+			pfa.err = pfaError{pfa, "failedToGetNumber", errStr, whereami.WhereAmI(2)}
+		}
+	}
+	return
 }
 
-type FromSubItemValue struct{}
+type Append struct{}
 
-func (v FromSubItemValue) GetArray(pfa *pfaStruct) []interface{} {
-	return []interface{}{pfa.stackSubItem.value}
+func (v Append) TransformValue(pfa *pfaStruct, i interface{}) (result interface{}) {
+	bwerror.Unreachable()
+	return
 }
 
-type FromSubItemArray struct{}
+type AppendSlice struct{}
 
-func (v FromSubItemArray) GetArray(pfa *pfaStruct) []interface{} {
-	return pfa.stackSubItem.itemArray
+func (v AppendSlice) TransformValue(pfa *pfaStruct, i interface{}) (result interface{}) {
+	bwerror.Unreachable()
+	return
 }
 
 // ============================================================================

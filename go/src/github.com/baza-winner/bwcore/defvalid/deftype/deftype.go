@@ -36,7 +36,7 @@ func (v Item) DataForJSON() interface{} {
 func ItemFromString(s string) (result Item, err error) {
 	var ok bool
 	if result, ok = mapItemFromString[s]; !ok {
-		err = bwerror.Error("<ansiCmd>ItemFromString<ansi>: uknown <ansiPrimaryLiteral>%s", result)
+		err = bwerror.Error("<ansiCmd>ItemFromString<ansi>: uknown <ansiPrimary>%s", result)
 	}
 	return
 }

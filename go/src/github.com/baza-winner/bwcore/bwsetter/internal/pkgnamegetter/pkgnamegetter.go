@@ -83,7 +83,7 @@ func GetPackageName(fileSpec string) (packageName string, err error) {
 						state = parseState{ppsSeekPackageName, pssSeekNonSpace}
 					} else {
 						err = bwerror.Error(
-							"unexpected word <ansiPrimaryLiteral>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+							"unexpected word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
 							word, wordLine, wordCol, wordPos, fileSpec,
 						)
 					}
@@ -148,7 +148,7 @@ func GetPackageName(fileSpec string) (packageName string, err error) {
 						)
 					} else {
 						err = bwerror.Error(
-							"unexpected rune <ansiPrimaryLiteral>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+							"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
 							currRune, p.Line(), p.Col(), p.Pos(), fileSpec,
 						)
 					}
