@@ -4,7 +4,7 @@ package pfa
 
 import "strconv"
 
-const _UnicodeCategory_name = "IsUnicodeSpaceIsUnicodeLetterIsUnicodeLowerIsUnicodeUpperIsUnicodeDigitIsUnicodeOpenBracesIsUnicodePunctIsUnicodeSymbol"
+const _UnicodeCategory_name = "UnicodeSpaceUnicodeLetterUnicodeLowerUnicodeUpperUnicodeDigitUnicodeOpenBracesUnicodePunctUnicodeSymbol"
 
 var _UnicodeCategory_index = [...]uint8{0, 14, 29, 43, 57, 71, 90, 104, 119}
 

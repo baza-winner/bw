@@ -3,113 +3,113 @@
 package bwset
 
 const (
-	_StringSetTestItemA string = "a"
-	_StringSetTestItemB string = "b"
+	_StringTestItemA string = "a"
+	_StringTestItemB string = "b"
 )
 
-//go:generate bwsetter -type=string -set=StringSet -test
+//go:generate bwsetter -type=string -set=String -test
 
 const (
-	_BoolSetTestItemA bool = false
-	_BoolSetTestItemB bool = true
+	_BoolTestItemA bool = false
+	_BoolTestItemB bool = true
 )
 
-//go:generate bwsetter -type=bool -set=BoolSet -test -nosort
+//go:generate bwsetter -type=bool -set=Bool -test -nosort
 
 const (
-	_IntSetTestItemA int = 0
-	_IntSetTestItemB int = 1
+	_IntTestItemA int = 0
+	_IntTestItemB int = 1
 )
 
-//go:generate bwsetter -type=int -set=IntSet -test
+//go:generate bwsetter -type=int -set=Int -test
 
 const (
-	_Int8SetTestItemA int8 = 0
-	_Int8SetTestItemB int8 = 1
+	_Int8TestItemA int8 = 0
+	_Int8TestItemB int8 = 1
 )
 
-//go:generate bwsetter -type=int8 -set=Int8Set -test
+//go:generate bwsetter -type=int8 -set=Int8 -test
 
 const (
-	_Int16SetTestItemA int16 = 0
-	_Int16SetTestItemB int16 = 1
+	_Int16TestItemA int16 = 0
+	_Int16TestItemB int16 = 1
 )
 
-//go:generate bwsetter -type=int16 -set=Int16Set -test
+//go:generate bwsetter -type=int16 -set=Int16 -test
 
 const (
-	_Int32SetTestItemA int32 = 0
-	_Int32SetTestItemB int32 = 1
+	_Int32TestItemA int32 = 0
+	_Int32TestItemB int32 = 1
 )
 
-//go:generate bwsetter -type=int32 -set=Int32Set -test
+//go:generate bwsetter -type=int32 -set=Int32 -test
 
 const (
-	_Int64SetTestItemA int64 = 0
-	_Int64SetTestItemB int64 = 1
+	_Int64TestItemA int64 = 0
+	_Int64TestItemB int64 = 1
 )
 
-//go:generate bwsetter -type=int64 -set=Int64Set -test
+//go:generate bwsetter -type=int64 -set=Int64 -test
 
 const (
-	_UintSetTestItemA uint = 0
-	_UintSetTestItemB uint = 1
+	_UintTestItemA uint = 0
+	_UintTestItemB uint = 1
 )
 
-//go:generate bwsetter -type=uint -set=UintSet -test
+//go:generate bwsetter -type=uint -set=Uint -test
 
 const (
-	_Uint8SetTestItemA uint8 = 0
-	_Uint8SetTestItemB uint8 = 1
+	_Uint8TestItemA uint8 = 0
+	_Uint8TestItemB uint8 = 1
 )
 
-//go:generate bwsetter -type=uint8 -set=Uint8Set -test
+//go:generate bwsetter -type=uint8 -set=Uint8 -test
 
 const (
-	_Uint16SetTestItemA uint16 = 0
-	_Uint16SetTestItemB uint16 = 1
+	_Uint16TestItemA uint16 = 0
+	_Uint16TestItemB uint16 = 1
 )
 
-//go:generate bwsetter -type=uint16 -set=Uint16Set -test
+//go:generate bwsetter -type=uint16 -set=Uint16 -test
 
 const (
-	_Uint32SetTestItemA uint32 = 0
-	_Uint32SetTestItemB uint32 = 1
+	_Uint32TestItemA uint32 = 0
+	_Uint32TestItemB uint32 = 1
 )
 
-//go:generate bwsetter -type=uint32 -set=Uint32Set -test
+//go:generate bwsetter -type=uint32 -set=Uint32 -test
 
 const (
-	_Uint64SetTestItemA uint64 = 0
-	_Uint64SetTestItemB uint64 = 1
+	_Uint64TestItemA uint64 = 0
+	_Uint64TestItemB uint64 = 1
 )
 
-//go:generate bwsetter -type=uint64 -set=Uint64Set -test
+//go:generate bwsetter -type=uint64 -set=Uint64 -test
 
 const (
-	_Float32SetTestItemA float32 = 0
-	_Float32SetTestItemB float32 = 1
+	_Float32TestItemA float32 = 0
+	_Float32TestItemB float32 = 1
 )
 
-//go:generate bwsetter -type=float32 -set=Float32Set -test
+//go:generate bwsetter -type=float32 -set=Float32 -test
 
 const (
-	_Float64SetTestItemA float64 = 0
-	_Float64SetTestItemB float64 = 1
+	_Float64TestItemA float64 = 0
+	_Float64TestItemB float64 = 1
 )
 
-//go:generate bwsetter -type=float64 -set=Float64Set -test
+//go:generate bwsetter -type=float64 -set=Float64 -test
 
 const (
-	_RuneSetTestItemA rune = 'a'
-	_RuneSetTestItemB rune = 'b'
+	_RuneTestItemA rune = 'a'
+	_RuneTestItemB rune = 'b'
 )
 
-//go:generate bwsetter -type=rune -set=RuneSet -test
+//go:generate bwsetter -type=rune -set=Rune -test
 
 const (
-	_InterfaceSetTestItemA bool   = true
-	_InterfaceSetTestItemB string = "a"
+	_InterfaceTestItemA bool   = true
+	_InterfaceTestItemB string = "a"
 )
 
-//go:generate bwsetter -type=interface{} -set=InterfaceSet -test  -nosort
+//go:generate bwsetter -type=interface{} -set=Interface -test  -nosort

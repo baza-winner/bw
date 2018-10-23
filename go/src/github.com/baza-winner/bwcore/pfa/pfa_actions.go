@@ -11,86 +11,42 @@ import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwint"
 	"github.com/baza-winner/bwcore/bwjson"
-	"github.com/baza-winner/bwcore/bwset"
 	"github.com/jimlawless/whereami"
 )
 
 // ============================== hasRune =====================================
 
-type hasRune interface {
-	HasRune(pfa *pfaStruct) bool
-	Len() int
-}
-
-type runeSet struct {
-	values bwset.RuneSet
-}
-
-func (v runeSet) HasRune(pfa *pfaStruct) (result bool) {
-	r, isEOF := pfa.p.Rune()
-	result = !isEOF && v.values.Has(r)
-	return result
-}
-
-func (v runeSet) Len() int {
-	return len(v.values)
-}
-
-type currRuneVarPaths struct {
-	values []VarPath
-}
-
-func (v currRuneVarPaths) HasRune(pfa *pfaStruct) (result bool) {
-	currRune, isEOF := pfa.p.Rune()
-	if !isEOF {
-		for _, k := range v.values {
-			if r, err := pfa.getVarValue(k).AsRune(); err == nil {
-				if r == currRune {
-					result = true
-					break
-				}
-			}
-		}
-	}
-	return
-}
-
-func (v currRuneVarPaths) Len() int {
-	return len(v.values)
-}
-
 type UnicodeCategory uint8
 
 const (
-	IsUnicodeSpace UnicodeCategory = iota
-	IsUnicodeLetter
-	IsUnicodeLower
-	IsUnicodeUpper
-	IsUnicodeDigit
-	IsUnicodeOpenBraces
-	IsUnicodePunct
-	IsUnicodeSymbol
+	UnicodeSpace UnicodeCategory = iota
+	UnicodeLetter
+	UnicodeLower
+	UnicodeUpper
+	UnicodeDigit
+	UnicodeOpenBraces
+	UnicodePunct
+	UnicodeSymbol
 )
 
-func (v UnicodeCategory) HasRune(pfa *pfaStruct) (result bool) {
-	r, isEOF := pfa.p.Rune()
-	if !isEOF {
+func (v UnicodeCategory) conforms(pfa *pfaStruct, val interface{}) (result bool) {
+	if r, ok := val.(rune); ok {
 		switch v {
-		case IsUnicodeSpace:
+		case UnicodeSpace:
 			result = unicode.IsSpace(r)
-		case IsUnicodeLetter:
+		case UnicodeLetter:
 			result = unicode.IsLetter(r) || r == '_'
-		case IsUnicodeLower:
+		case UnicodeLower:
 			result = unicode.IsLower(r)
-		case IsUnicodeUpper:
+		case UnicodeUpper:
 			result = unicode.IsUpper(r)
-		case IsUnicodeDigit:
+		case UnicodeDigit:
 			result = unicode.IsDigit(r)
-		case IsUnicodeOpenBraces:
+		case UnicodeOpenBraces:
 			result = r == '(' || r == '{' || r == '[' || r == '<'
-		case IsUnicodePunct:
+		case UnicodePunct:
 			result = unicode.IsPunct(r)
-		case IsUnicodeSymbol:
+		case UnicodeSymbol:
 			result = unicode.IsSymbol(r)
 		default:
 			bwerror.Panic("UnicodeCategory: %s", v)
@@ -99,20 +55,20 @@ func (v UnicodeCategory) HasRune(pfa *pfaStruct) (result bool) {
 	return
 }
 
-func (v UnicodeCategory) Len() int {
-	return 1
-}
+// func (v UnicodeCategory) Len() int {
+// 	return 1
+// }
 
-type IsEOF struct{}
+type EOF struct{}
 
-func (v IsEOF) HasRune(pfa *pfaStruct) (result bool) {
-	_, isEOF := pfa.p.Rune()
-	return isEOF
-}
+// func (v IsEOF) HasRune(pfa *pfaStruct) (result bool) {
+// 	_, isEOF := pfa.p.Rune()
+// 	return isEOF
+// }
 
-func (v IsEOF) Len() int {
-	return 1
-}
+// func (v IsEOF) Len() int {
+// 	return 1
+// }
 
 // ============================================================================
 
@@ -167,21 +123,30 @@ type justVal struct {
 	val interface{}
 }
 
-func (v justVal) GetVal(pfa *pfaStruct) (val interface{}, err error) {
-	val = v.val
-	return
+func (v justVal) conforms(pfa *pfaStruct, val interface{}) bool {
+	return val == v.val
+}
+
+func (v justVal) getVal(pfa *pfaStruct) interface{} {
+	return v.val
 }
 
 type varVal struct {
 	varPath VarPath
 }
 
-func (v varVal) GetVal(pfa *pfaStruct) (val interface{}, err error) {
+func (v varVal) conforms(pfa *pfaStruct, val interface{}) (result bool) {
 	varValue := pfa.getVarValue(v.varPath)
-	if varValue.Err == nil {
-		val = varValue.Val
-	} else {
-		err = varValue.Err
+	if pfa.err == nil {
+		result = varValue.val == val
+	}
+	return
+}
+
+func (v varVal) getVal(pfa *pfaStruct) (result interface{}) {
+	varValue := pfa.getVarValue(v.varPath)
+	if pfa.err == nil {
+		result = varValue.val
 	}
 	return
 }
@@ -239,57 +204,50 @@ type _setVarBy struct {
 }
 
 func (v _setVarBy) execute(pfa *pfaStruct) {
-	val, err := v.valProvider.GetVal(pfa)
-	if err == nil {
+	val := v.valProvider.getVal(pfa)
+	if pfa.err == nil {
 		for _, b := range v.by {
 			val = b.TransformValue(pfa, val)
 			if pfa.err != nil {
 				break
 			}
 		}
-		if err == nil {
+		if pfa.err == nil {
 			if !v.needAppend {
-				err = pfa.setVarVal(v.varPath, val)
+				pfa.setVarVal(v.varPath, val)
 			} else {
-				if orig := pfa.getVarValue(v.varPath); orig.Err != nil {
-					err = orig.Err
-				} else if s, ok := orig.Val.(string); ok {
-					if a, ok := val.(string); ok {
-						val = s + a
-					} else if r, ok := val.(rune); ok {
-						val = s + string(r)
+				if orig := pfa.getVarValue(v.varPath); pfa.err == nil {
+					if s, ok := orig.val.(string); ok {
+						if a, ok := val.(string); ok {
+							val = s + a
+						} else if r, ok := val.(rune); ok {
+							val = s + string(r)
+						} else {
+							pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+						}
+					} else if reflect.TypeOf(orig.val).Kind() == reflect.Slice {
+						valueOfOrigVal := reflect.ValueOf(orig.val)
+						valueOfVal := reflect.ValueOf(val)
+						if !v.appendSlice {
+							val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
+						} else if reflect.TypeOf(val).Kind() == reflect.Slice {
+							val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
+						} else {
+							pfa.err = bwerror.Error("%#v expected to be slice", val)
+						}
 					} else {
-						err = bwerror.Error("%#v expected to be string or rune", val)
+						pfa.err = bwerror.Error(
+							"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>string<ansi> or <ansiSecondary>slice<ansi> to be <ansiOutline>Appendable",
+							val, v.varPath,
+						)
 					}
-				} else if reflect.TypeOf(orig.Val).Kind() == reflect.Slice {
-					valueOfOrigVal := reflect.ValueOf(orig.Val)
-					valueOfVal := reflect.ValueOf(val)
-					if !v.appendSlice {
-						val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
-					} else if reflect.TypeOf(val).Kind() == reflect.Slice {
-						val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
-					} else {
-						err = bwerror.Error("%#v expected to be slice", val)
-					}
-
-					// if reflect.TypeOf(val).Kind() == reflect.Slice {
-					// 	val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
-					// } else {
-					// 	val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
-					// }
-				} else {
-					err = bwerror.Error(
-						"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>string<ansi> or <ansiSecondary>slice<ansi> to be <ansiOutline>Appendable",
-						val, v.varPath,
-					)
 				}
-				if err == nil {
-					err = pfa.setVarVal(v.varPath, val)
+				if pfa.err == nil {
+					pfa.setVarVal(v.varPath, val)
 				}
 			}
 		}
 	}
-	pfa.err = err
 }
 
 type ValTransformer interface {
@@ -303,11 +261,15 @@ type _setVar struct {
 	valProvider ValProvider
 }
 
-type ValProvider interface {
-	GetVal(pfa *pfaStruct) (val interface{}, err error)
+type ValChecker interface {
+	conforms(pfa *pfaStruct, val interface{}) bool
 }
 
-func ValProviderFrom(i interface{}) (result ValProvider, err error) {
+type ValProvider interface {
+	getVal(pfa *pfaStruct) interface{}
+}
+
+func valProviderFrom(i interface{}) (result ValProvider, err error) {
 	if v, ok := i.(Var); !ok {
 		result = justVal{i}
 	} else {
@@ -322,18 +284,17 @@ func ValProviderFrom(i interface{}) (result ValProvider, err error) {
 
 func MustValProviderFrom(i interface{}) (result ValProvider) {
 	var err error
-	if result, err = ValProviderFrom(i); err != nil {
+	if result, err = valProviderFrom(i); err != nil {
 		bwerror.PanicErr(err)
 	}
 	return
 }
 
 func (v _setVar) execute(pfa *pfaStruct) {
-	val, err := v.valProvider.GetVal(pfa)
-	if err == nil {
-		err = pfa.setVarVal(v.varPath, val)
+	val := v.valProvider.getVal(pfa)
+	if pfa.err == nil {
+		pfa.setVarVal(v.varPath, val)
 	}
-	pfa.err = err
 }
 
 type Debug struct{ Message string }

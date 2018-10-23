@@ -93,7 +93,7 @@ contexts:
     - match: \bIs(DelimiterRune|EOF)\b
       scope: variable.language
 
-    - match: \bIsUnicode\b
+    - match: \bUnicode\b
       scope: variable.language
       push:
         - match: \{

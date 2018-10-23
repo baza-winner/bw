@@ -22,7 +22,7 @@ finish [ /* some */
       (TopItemStringIs{qw}
         PullRune
         [
-          (IsUnicode{OpenBraces Punct Symbol}
+          (Unicode{OpenBraces Punct Symbol}
             SetState{//
               expectSpaceOrQwItemOrDelimiter//
             }
@@ -82,7 +82,7 @@ primaryState = [
   (PrimaryIs{end}
     [
       (IsEOF SetState{end})
-      (IsUnicode{Space})
+      (Unicode{Space})
       unexpectedRune
     ]
   )
@@ -94,14 +94,14 @@ primaryState = [
   )
   (PrimaryIs{expectWord}
     [
-      (IsUnicode{Letter Digit} AppendCurrRune)
+      (Unicode{Letter Digit} AppendCurrRune)
       (PushRune SetVar{needFinish true})
     ]
   )
   (PrimaryIs{expectSpaceOrQwItemOrDelimiter}
     [
       unexpectedEOF
-      (IsUnicode{Space})
+      (Unicode{Space})
       (IsDelimiterRune SetVar{needFinish true})
       (
         PushItem{
@@ -116,7 +116,7 @@ primaryState = [
   (PrimaryIs{expectEndOfQwItem}
     [
       unexpectedEOF
-      (IsUnicode{Space} IsDelimiterRune
+      (Unicode{Space} IsDelimiterRune
         PushRune
         SetVar{needFinish true}
       )
@@ -137,7 +137,7 @@ primaryState = [
   )
   (PrimaryIs{expectDigit}
     [
-      (IsUnicode{Digit} SecondaryIs{""}
+      (Unicode{Digit} SecondaryIs{""}
         AppendCurrRune
         SetSecondary{orUnderscoreOrDot}
       )
@@ -145,7 +145,7 @@ primaryState = [
         AppendCurrRune
         SetSecondary{orUnderscore}
       )
-      ('_' IsUnicode{Digit} SecondaryIs{orUnderscoreOrDot orUnderscore}
+      ('_' Unicode{Digit} SecondaryIs{orUnderscoreOrDot orUnderscore}
         AppendCurrRune
       )
       (SecondaryIs{""} SetError{UnexpectedRune})
@@ -157,8 +157,8 @@ primaryState = [
   )
   (PrimaryIs{expectSpaceOrMapKey}
     [
-      (IsUnicode{Space})
-      (IsUnicode{Letter}
+      (Unicode{Space})
+      (Unicode{Letter}
         PushItem{ItemType key ItemString FromCurrRune}
         SetState{expectWord}
       )
@@ -212,7 +212,7 @@ primaryState = [
       (',' SecondaryIs{orArrayItemSeparator}
         SetState{begin}
       )
-      (IsUnicode{Space})
+      (Unicode{Space})
       ('{'
         PushItem{
           ItemType map
@@ -235,7 +235,7 @@ primaryState = [
         PushItem{ItemType number ItemString FromCurrRune}
         SetState{expectDigit}
       )
-      (IsUnicode{Digit}
+      (Unicode{Digit}
         PushItem{ItemType number ItemString FromCurrRune}
         SetState{expectDigit orUnderscoreOrDot}
       )
@@ -243,7 +243,7 @@ primaryState = [
         PushItem{ItemType string Delimiter FromCurrRune}
         SetState{expectContentOf stringToken}
       )
-      (IsUnicode{Letter}
+      (Unicode{Letter}
         PushItem{ItemType word ItemString FromCurrRune}
         SetState{expectWord}
       )

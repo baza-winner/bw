@@ -50,30 +50,44 @@ func (v RunePtrStruct) DataForJSON() interface{} {
 }
 
 type Proxy struct {
-	Prev          *RunePtrStruct
-	Curr          RunePtrStruct
-	Next          *RunePtrStruct
-	Prov          RuneProvider
-	preLineCount  int
-	postLineCount int
+	Curr               RunePtrStruct
+	Prev               RunePtrStructs
+	Next               RunePtrStructs
+	Prov               RuneProvider
+	preLineCount       int
+	postLineCount      int
+	maxBehindRuneCount int
 }
 
 func ProxyFrom(p RuneProvider) *Proxy {
 	return &Proxy{
-		Prov:          p,
-		Curr:          RunePtrStruct{Pos: -1, Line: 1},
-		preLineCount:  3,
-		postLineCount: 3,
+		RunePtrStruct{Pos: -1, Line: 1},
+		RunePtrStructs{},
+		RunePtrStructs{},
+		p,
+		3,
+		3,
+		2,
 	}
+}
+
+type RunePtrStructs []RunePtrStruct
+
+func (v RunePtrStructs) DataForJSON() interface{} {
+	result := []interface{}{}
+	for _, i := range v {
+		result = append(result, i.DataForJSON())
+	}
+	return result
 }
 
 func (p *Proxy) DataForJSON() interface{} {
 	result := map[string]interface{}{}
 	result["curr"] = p.Curr.DataForJSON()
-	if p.Prev != nil {
+	if len(p.Prev) > 0 {
 		result["prev"] = p.Prev.DataForJSON()
 	}
-	if p.Next != nil {
+	if len(p.Next) > 0 {
 		result["next"] = p.Next.DataForJSON()
 	}
 	return result
@@ -81,57 +95,98 @@ func (p *Proxy) DataForJSON() interface{} {
 
 func (p *Proxy) PullRune() {
 	if p.Curr.Pos < 0 || p.Curr.RunePtr != nil {
-		p.Prev = p.Curr.copyPtr()
-		if p.Next != nil {
-			p.Curr = *(p.Next)
-			p.Next = nil
+		p.Prev = append(p.Prev, p.Curr)
+		if len(p.Prev) > p.maxBehindRuneCount {
+			p.Prev = p.Prev[len(p.Prev)-p.maxBehindRuneCount:]
+		}
+		if len(p.Next) > 0 {
+			p.Curr = p.Next[len(p.Next)-1]
+			p.Next = p.Next[:len(p.Next)-1]
 		} else {
-			runePtr, err := p.Prov.PullRune()
-			if err != nil {
-				bwerror.PanicErr(err)
-			}
-			pos := p.Prev.Pos + 1
-			line := p.Prev.Line
-			col := p.Prev.Col
-			prefix := p.Prev.Prefix
-			prefixStart := p.Prev.PrefixStart
-			if runePtr != nil && p.Prev.RunePtr != nil {
-				if *(p.Prev.RunePtr) != '\n' {
-					col += 1
-				} else {
-					line += 1
-					col = 1
-					if int(line) > p.preLineCount {
-						i := strings.Index(prefix, "\n")
-						prefix = prefix[i+1:]
-						prefixStart += i + 1
-					}
-				}
-			}
-			isEOF := runePtr == nil
-			if !isEOF {
-				prefix += string(*runePtr)
-			}
-			p.Curr = RunePtrStruct{isEOF, runePtr, pos, line, col, prefix, prefixStart}
+			p.pullRune(&p.Curr)
 		}
 	}
 }
 
-func (p *Proxy) PushRune() {
-	if p.Prev == nil {
-		bwerror.Panic("p.Prev == nil")
-	} else {
-		p.Next = p.Curr.copyPtr()
-		p.Curr = *(p.Prev)
+func (p *Proxy) pullRune(rps *RunePtrStruct) {
+	runePtr, err := p.Prov.PullRune()
+	if err != nil {
+		bwerror.PanicErr(err)
+	}
+	rps.Pos++
+	if runePtr != nil && rps.RunePtr != nil {
+		if *(rps.RunePtr) != '\n' {
+			rps.Col++
+		} else {
+			rps.Line++
+			rps.Col = 1
+			if int(rps.Line) > p.preLineCount {
+				i := strings.Index(rps.Prefix, "\n")
+				rps.Prefix = rps.Prefix[i+1:]
+				rps.PrefixStart += i + 1
+			}
+		}
+	}
+	rps.RunePtr = runePtr
+	rps.IsEOF = runePtr == nil
+	if !rps.IsEOF {
+		rps.Prefix += string(*runePtr)
 	}
 }
 
-func (p *Proxy) Rune() (result rune, isEOF bool) {
-	if p.Curr.RunePtr == nil {
+func (p *Proxy) PushRune() {
+	if len(p.Prev) == 0 {
+		bwerror.Panic("len(p.Prev) == 0")
+	} else {
+		p.Next = append(p.Next, p.Curr)
+		p.Curr = p.Prev[len(p.Prev)-1]
+		p.Prev = p.Prev[:len(p.Prev)-1]
+	}
+}
+
+func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool) {
+	var ofs int
+	if optOfs != nil {
+		ofs = optOfs[0]
+	}
+	var rps RunePtrStruct
+	if ofs < 0 {
+		if len(p.Prev) >= -ofs {
+			rps = p.Prev[len(p.Prev)+ofs]
+		} else {
+			bwerror.Panic("len(p.Prev) < %d", -ofs)
+		}
+	} else if ofs > 0 {
+		if len(p.Next) >= ofs {
+			rps = p.Next[len(p.Next)-ofs]
+		} else {
+			if len(p.Next) > 0 {
+				rps = p.Next[0]
+			} else {
+				rps = p.Curr
+			}
+			lookahead := RunePtrStructs{}
+			for i := ofs - len(p.Next); i > 0; i-- {
+				p.pullRune(&rps)
+				lookahead = append(lookahead, rps)
+				if rps.IsEOF {
+					break
+				}
+			}
+			newNext := RunePtrStructs{}
+			for i := len(lookahead) - 1; i >= 0; i-- {
+				newNext = append(newNext, lookahead[i])
+			}
+			p.Next = append(newNext, p.Next...)
+		}
+	} else {
+		rps = p.Curr
+	}
+	if rps.RunePtr == nil {
 		result = '\000'
 		isEOF = true
 	} else {
-		result = *p.Curr.RunePtr
+		result = *rps.RunePtr
 		isEOF = false
 	}
 	return

@@ -39,19 +39,19 @@ func TestVarPathFrom(t *testing.T) {
 		},
 		"0": {
 			In:  []interface{}{"0"},
-			Out: []interface{}{[]interface{}{0}, nil},
+			Out: []interface{}{VarPath{VarPathItem{0}}, nil},
 		},
 		"0.key": {
 			In:  []interface{}{"0.key"},
-			Out: []interface{}{[]interface{}{0, "key"}, nil},
+			Out: []interface{}{VarPath{VarPathItem{0}, VarPathItem{"key"}}, nil},
 		},
 		"0.key.{1.some}": {
 			In: []interface{}{"0.key.{1.some}"},
 			Out: []interface{}{
-				[]interface{}{
-					0,
-					"key",
-					[]interface{}{1, "some"},
+				VarPath{
+					VarPathItem{0},
+					VarPathItem{"key"},
+					VarPathItem{VarPath{VarPathItem{1}, VarPathItem{"some"}}},
 				},
 				nil,
 			},
@@ -64,7 +64,7 @@ func TestVarPathFrom(t *testing.T) {
 
 func TestPfa_getVarValue(t *testing.T) {
 	p := runeprovider.ProxyFrom(runeprovider.FromString("some"))
-	pfa := pfaStruct{
+	pfa := &pfaStruct{
 		parseStack{
 			parseStackItem{
 				vars: map[string]interface{}{
@@ -95,33 +95,39 @@ func TestPfa_getVarValue(t *testing.T) {
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
-			In:  []interface{}{MustVarPathFrom("primary")},
-			Out: []interface{}{VarValue{"begin", nil}},
+			In:  []interface{}{"primary"},
+			Out: []interface{}{"begin", nil},
 		},
 		"result.some": {
-			In:  []interface{}{MustVarPathFrom("result.some")},
-			Out: []interface{}{VarValue{"thing", nil}},
+			In:  []interface{}{"result.some"},
+			Out: []interface{}{"thing", nil},
 		},
 		"stackLen": {
-			In:  []interface{}{MustVarPathFrom("stackLen")},
-			Out: []interface{}{VarValue{2, nil}},
+			In:  []interface{}{"stackLen"},
+			Out: []interface{}{2, nil},
 		},
 		"0.type": {
-			In:  []interface{}{MustVarPathFrom("0.type")},
-			Out: []interface{}{VarValue{"key", nil}},
+			In:  []interface{}{"0.type"},
+			Out: []interface{}{"key", nil},
 		},
 		"1.value.numberKey": {
-			In:  []interface{}{MustVarPathFrom("1.value.numberKey")},
-			Out: []interface{}{VarValue{273, nil}},
+			In:  []interface{}{"1.value.numberKey"},
+			Out: []interface{}{273, nil},
 		},
 		"1.value.{0.string}": {
-			In:  []interface{}{MustVarPathFrom("1.value.{0.string}")},
-			Out: []interface{}{VarValue{true, nil}},
+			In:  []interface{}{"1.value.{0.string}"},
+			Out: []interface{}{true, nil},
 		},
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "0.type")
-	bwtesting.BwRunTests(t, pfa.getVarValue, tests)
+	// bwmap.CropMap(tests, "primary")
+	bwtesting.BwRunTests(t, pfa.TestPfa_getVarValueTestHelper, tests)
+}
+
+func (pfa *pfaStruct) TestPfa_getVarValueTestHelper(varPathStr string) (val interface{}, err error) {
+	pfa.err = nil
+	varValue := pfa.getVarValue(MustVarPathFrom(varPathStr))
+	return varValue.val, pfa.err
 }
 
 func TestPfa_setVarVal(t *testing.T) {
@@ -159,45 +165,48 @@ func TestPfa_setVarVal(t *testing.T) {
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
-			In:  []interface{}{MustVarPathFrom("primary"), "end"},
-			Out: []interface{}{VarValue{"end", nil}, nil},
+			In:  []interface{}{"primary", "end"},
+			Out: []interface{}{"end", nil},
 		},
 		"result.some": {
-			In:  []interface{}{MustVarPathFrom("result.some"), "another"},
-			Out: []interface{}{VarValue{"another", nil}, nil},
+			In:  []interface{}{"result.some", "another"},
+			Out: []interface{}{"another", nil},
 		},
 		"stackLen": {
-			In:  []interface{}{MustVarPathFrom("stackLen"), 4},
-			Out: []interface{}{VarValue{nil, nil}, bwerror.Error("<ansiOutline>stackLen<ansi> is read only")},
+			In:  []interface{}{"stackLen", 4},
+			Out: []interface{}{nil, bwerror.Error("<ansiOutline>stackLen<ansi> is read only")},
 		},
 		"0.type": {
-			In:  []interface{}{MustVarPathFrom("0.type"), "map"},
-			Out: []interface{}{VarValue{"map", nil}, nil},
+			In:  []interface{}{"0.type", "map"},
+			Out: []interface{}{"map", nil},
 		},
 		"0.item": {
-			In:  []interface{}{MustVarPathFrom("0.item"), "word"},
-			Out: []interface{}{VarValue{"word", nil}, nil},
+			In:  []interface{}{"0.item", "word"},
+			Out: []interface{}{"word", nil},
 		},
 		"1.value.numberKey": {
-			In:  []interface{}{MustVarPathFrom("1.value.numberKey"), "2.71"},
-			Out: []interface{}{VarValue{"2.71", nil}, nil},
+			In:  []interface{}{"1.value.numberKey", "2.71"},
+			Out: []interface{}{"2.71", nil},
 		},
 		"1.value.{0.string}": {
-			In:  []interface{}{MustVarPathFrom("1.value.{0.string}"), false},
-			Out: []interface{}{VarValue{false, nil}, nil},
+			In:  []interface{}{"1.value.{0.string}", false},
+			Out: []interface{}{false, nil},
 		},
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "0.type")
+	// bwmap.CropMap(tests, "result.some")
 	bwtesting.BwRunTests(t, pfa.setVarValTestHelper, tests)
 }
 
-func (pfa *pfaStruct) setVarValTestHelper(varPath VarPath, varVal interface{}) (result VarValue, err error) {
-	err = pfa.setVarVal(varPath, varVal)
-	if err == nil {
-		result = pfa.getVarValue(varPath)
+func (pfa *pfaStruct) setVarValTestHelper(varPathStr string, varVal interface{}) (interface{}, error) {
+	varPath := MustVarPathFrom(varPathStr)
+	pfa.err = nil
+	pfa.setVarVal(varPath, varVal)
+	if pfa.err == nil {
+		return pfa.getVarValue(varPath).val, pfa.err
+	} else {
+		return nil, pfa.err
 	}
-	return
 }
 
 func TestPfaActions(t *testing.T) {
@@ -240,35 +249,38 @@ func TestPfaActions(t *testing.T) {
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
-			In:  []interface{}{MustVarPathFrom("primary"), []interface{}{SetVar{"primary", "end"}}},
-			Out: []interface{}{VarValue{"end", nil}},
+			In:  []interface{}{"primary", SetVar{"primary", "end"}},
+			Out: []interface{}{"end", nil},
 		},
 		"0.type": {
-			In:  []interface{}{MustVarPathFrom("0.type"), []interface{}{SetVarBy{"0.type", Var{"1.type"}, By{Append{}}}}},
-			Out: []interface{}{VarValue{"keymap", nil}},
+			In:  []interface{}{"0.type", SetVarBy{"0.type", Var{"1.type"}, By{Append{}}}},
+			Out: []interface{}{"keymap", nil},
 		},
 		"0.array": {
-			In:  []interface{}{MustVarPathFrom("0.array"), []interface{}{SetVarBy{"0.array", Var{"1.value.{0.string}"}, By{Append{}}}}},
-			Out: []interface{}{VarValue{[]interface{}{"c", "d", true}, nil}},
+			In:  []interface{}{"0.array", SetVarBy{"0.array", Var{"1.value.{0.string}"}, By{Append{}}}},
+			Out: []interface{}{[]interface{}{"c", "d", true}, nil},
 		},
 		"array": {
-			In:  []interface{}{MustVarPathFrom("array"), []interface{}{SetVarBy{"array", Var{"1.array"}, By{Append{}}}}},
-			Out: []interface{}{VarValue{[]interface{}{"i", "j", []interface{}{"g", "h"}}, nil}},
+			In:  []interface{}{"array", SetVarBy{"array", Var{"1.array"}, By{Append{}}}},
+			Out: []interface{}{[]interface{}{"i", "j", []interface{}{"g", "h"}}, nil},
 		},
 		"1.value.arrayKey": {
-			In:  []interface{}{MustVarPathFrom("1.value.arrayKey"), []interface{}{SetVarBy{"1.value.arrayKey", Var{"0.value.arrayKey"}, By{AppendSlice{}}}}},
-			Out: []interface{}{VarValue{[]interface{}{"a", "b", "e", "f"}, nil}},
+			In:  []interface{}{"1.value.arrayKey", SetVarBy{"1.value.arrayKey", Var{"0.value.arrayKey"}, By{AppendSlice{}}}},
+			Out: []interface{}{[]interface{}{"a", "b", "e", "f"}, nil},
 		},
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "0.type")
+	// bwmap.CropMap(tests, "primary")
 	bwtesting.BwRunTests(t, pfa.pfaActionsTestHelper, tests)
 }
 
-func (pfa *pfaStruct) pfaActionsTestHelper(varPath VarPath, args []interface{}) (result VarValue) {
-	pfa.processRules(CreateRules(args))
-	result = pfa.getVarValue(varPath)
-	return
+func (pfa *pfaStruct) pfaActionsTestHelper(varPathStr string, action interface{}) (val interface{}, err error) {
+	pfa.processRules(CreateRules([]interface{}{action}))
+	if pfa.err != nil {
+		return nil, pfa.err
+	} else {
+		return pfa.getVarValue(MustVarPathFrom(varPathStr)).val, pfa.err
+	}
 }
 
 func TestPfaConditions(t *testing.T) {
@@ -277,6 +289,8 @@ func TestPfaConditions(t *testing.T) {
 	p.PullRune()
 	p.PullRune()
 	p.PullRune()
+	// r, isEOF := p.Rune()
+	// bwerror.Panic("%q, %s", r, isEOF)
 	pfa := pfaStruct{
 		parseStack{
 			parseStackItem{
@@ -313,6 +327,7 @@ func TestPfaConditions(t *testing.T) {
 			},
 		},
 	}
+	// bwerror.Panic("%q", pfa.getVarValue(MustVarPathFrom("rune")).Val)
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary is begin => true": {
 			In:  []interface{}{VarIs{"primary", "begin"}},
@@ -322,10 +337,42 @@ func TestPfaConditions(t *testing.T) {
 			In:  []interface{}{VarIs{"primary", "end"}},
 			Out: []interface{}{false, nil},
 		},
-		"curr is 'e' => true": {
-			In:  []interface{}{VarIs{"currRune", 'e'}},
-			Out: []interface{}{false, nil},
+		"rune is 'e' => true": {
+			In:  []interface{}{VarIs{"rune", 'e'}},
+			Out: []interface{}{true, nil},
 		},
+		"rune.-1 is 'm' => true": {
+			In:  []interface{}{VarIs{"rune.-1", 'm'}},
+			Out: []interface{}{true, nil},
+		},
+		"rune.-2 is 'o' => true": {
+			In:  []interface{}{VarIs{"rune.-2", 'o'}},
+			Out: []interface{}{true, nil},
+		},
+		"rune.0 is 'e' => true": {
+			In:  []interface{}{VarIs{"rune.0", 'e'}},
+			Out: []interface{}{true, nil},
+		},
+		"rune.1 is 't' => true": {
+			In:  []interface{}{VarIs{"rune.1", 't'}},
+			Out: []interface{}{true, nil},
+		},
+		"rune.2 is 'h' => true": {
+			In:  []interface{}{VarIs{"rune.2", 'h'}},
+			Out: []interface{}{true, nil},
+		},
+		"rune.3 is 'i' => true": {
+			In:  []interface{}{VarIs{"rune.3", 'i'}},
+			Out: []interface{}{true, nil},
+		},
+		"rune.5 is 'g' => true": {
+			In:  []interface{}{VarIs{"rune.5", 'g'}},
+			Out: []interface{}{true, nil},
+		},
+		// "rune.6 is EOF => true": {
+		// 	In:  []interface{}{VarIs{"rune.5", EOF{}}},
+		// 	Out: []interface{}{true, nil},
+		// },
 		// "0.type": {
 		// 	In:  []interface{}{MustVarPathFrom("0.type"), []interface{}{SetVarBy{"0.type", Var{"1.type"}, By{Append{}}}}},
 		// 	Out: []interface{}{VarValue{"keymap", nil}},
@@ -344,7 +391,7 @@ func TestPfaConditions(t *testing.T) {
 		// },
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "0.type")
+	bwmap.CropMap(tests, "primary is begin => true")
 	bwtesting.BwRunTests(t, pfa.pfaConditionsTestHelper, tests)
 }
 
