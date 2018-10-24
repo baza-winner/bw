@@ -249,12 +249,12 @@ func (p *Proxy) UnexpectedRuneError(infix ...string) error {
 		fmtString += ")" + suffix
 		fmtArgs = []interface{}{rune, rune}
 	}
-	return bwerror.Error(fmtString, fmtArgs...)
+	return bwerror.Errord(1, fmtString, fmtArgs...)
 }
 
 func (p *Proxy) WordError(fmtString string, word string, start RunePtrStruct) error {
 	suffix := p.GetSuffix(start, word)
-	return bwerror.Error(fmtString+suffix, word)
+	return bwerror.Errord(1, fmtString+suffix, word)
 }
 
 // func (p *Proxy) unknownWordError(start int, word string) {

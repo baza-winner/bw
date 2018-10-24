@@ -98,7 +98,7 @@ func ParseLogic(p runeprovider.RuneProvider) (data interface{}, errinitialState 
 	// 	// SetState{"start"},
 	// },
 	)
-	return Run(p, logicParseDef)
+	return Run(p, logicParseDef, TraceBrief)
 }
 
 func CompileLogic(data interface{}) (result Rules, err error) {

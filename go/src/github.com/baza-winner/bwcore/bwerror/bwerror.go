@@ -51,6 +51,13 @@ func Error(msgFmt string, args ...interface{}) error {
 	}
 }
 
+func Errord(depth uint, msgFmt string, args ...interface{}) error {
+	return WhereError{
+		whereami.WhereAmI(int(depth) + 2),
+		Spew.Sprintf(ansi.Ansi(ansiErr, errPrefix+msgFmt), args...),
+	}
+}
+
 func ErrorErr(err error) error {
 	return WhereError{
 		whereami.WhereAmI(2),

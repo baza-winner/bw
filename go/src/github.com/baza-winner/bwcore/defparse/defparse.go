@@ -231,25 +231,13 @@ import (
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
-// type stringRuneProvider struct {
-// 	pos int
-// 	src []rune
-// }
-
-// func (v *stringRuneProvider) PullRune() (result *rune, err error) {
-// 	v.pos++
-// 	if v.pos < len(v.src) {
-// 		r := v.src[v.pos]
-// 		result = &r
-// 	}
-// 	return
-// }
-
 // Parse - парсит строку
 func Parse(source string) (interface{}, error) {
 	return pfa.Run(
 		runeprovider.FromString(source),
 		pfaStateDef,
+		// pfa.TraceBrief,
+		// pfa.TraceAll,
 		// pfa.State{"begin", ""},
 	)
 }

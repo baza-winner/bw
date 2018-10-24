@@ -6,7 +6,7 @@ import "strconv"
 
 const _UnicodeCategory_name = "UnicodeSpaceUnicodeLetterUnicodeLowerUnicodeUpperUnicodeDigitUnicodeOpenBracesUnicodePunctUnicodeSymbol"
 
-var _UnicodeCategory_index = [...]uint8{0, 14, 29, 43, 57, 71, 90, 104, 119}
+var _UnicodeCategory_index = [...]uint8{0, 12, 25, 37, 49, 61, 78, 90, 103}
 
 func (i UnicodeCategory) String() string {
 	if i >= UnicodeCategory(len(_UnicodeCategory_index)-1) {
