@@ -1,10 +1,13 @@
 package pfa
 
-import "github.com/baza-winner/bwcore/runeprovider"
+import (
+	"github.com/baza-winner/bwcore/pfa/core"
+	"github.com/baza-winner/bwcore/runeprovider"
+)
 
 func ParseLogic(p runeprovider.RuneProvider) (data interface{}, errinitialState error) {
 
-	logicParseDef := CreateRules(
+	rules := CreateRules(
 
 	// []interface{}{PrimaryIs{"begin"},
 	// 	PushItem{},
@@ -98,7 +101,7 @@ func ParseLogic(p runeprovider.RuneProvider) (data interface{}, errinitialState 
 	// 	// SetState{"start"},
 	// },
 	)
-	return Run(p, logicParseDef, TraceBrief)
+	return Run(p, rules, core.TraceBrief)
 }
 
 func CompileLogic(data interface{}) (result Rules, err error) {

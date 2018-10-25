@@ -2,6 +2,7 @@ package defparse
 
 import (
 	. "github.com/baza-winner/bwcore/pfa"
+	"github.com/baza-winner/bwcore/pfa/e"
 )
 
 var pfaStateDef Rules
@@ -12,9 +13,9 @@ func init() {
 
 func prepareLogicDef() Rules {
 
-	unexpectedEOF := []interface{}{EOF{}, UnexpectedRune{}}
+	unexpectedEOF := []interface{}{EOF{}, e.UnexpectedRune{}}
 
-	unexpectedRune := []interface{}{UnexpectedRune{}}
+	unexpectedRune := []interface{}{e.UnexpectedRune{}}
 
 	finishLogic := CreateRules(
 		[]interface{}{VarIs{"0.type", "string"}, VarIs{"0.type", "qwItem"},
@@ -82,7 +83,7 @@ func prepareLogicDef() Rules {
 					SetVar{"skipPostProcess", true},
 				},
 				[]interface{}{
-					UnexpectedItem{},
+					e.UnexpectedItem{},
 				},
 			)},
 		},
@@ -232,7 +233,7 @@ func prepareLogicDef() Rules {
 					// AppendToVar{"0.string", Var{"rune"}},
 				},
 				[]interface{}{VarIs{"secondary", ""},
-					UnexpectedRune{},
+					e.UnexpectedRune{},
 				},
 				[]interface{}{
 					PushRune{},

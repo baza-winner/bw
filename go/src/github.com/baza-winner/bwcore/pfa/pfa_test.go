@@ -63,9 +63,9 @@ func TestVarPathFrom(t *testing.T) {
 }
 
 func TestPfa_getVarValue(t *testing.T) {
-	pfa := pfaFrom(runeprovider.FromString("some"), TraceNone)
-	pfa.stack = parseStack{
-		parseStackItem{
+	pfa := PfaFrom(runeprovider.FromString("some"), TraceNone)
+	pfa.Stack = ParseStack{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type": "map",
 				"value": map[string]interface{}{
@@ -76,7 +76,7 @@ func TestPfa_getVarValue(t *testing.T) {
 				},
 			},
 		},
-		parseStackItem{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
@@ -120,16 +120,16 @@ func TestPfa_getVarValue(t *testing.T) {
 	bwtesting.BwRunTests(t, pfa.TestPfa_getVarValueTestHelper, tests)
 }
 
-func (pfa *pfaStruct) TestPfa_getVarValueTestHelper(varPathStr string) (val interface{}, err error) {
+func (pfa *PfaStruct) TestPfa_getVarValueTestHelper(varPathStr string) (val interface{}, err error) {
 	pfa.err = nil
 	varValue := pfa.getVarValue(MustVarPathFrom(varPathStr))
 	return varValue.val, pfa.err
 }
 
 func TestPfa_setVarVal(t *testing.T) {
-	pfa := pfaFrom(runeprovider.FromString("some"), TraceNone)
-	pfa.stack = parseStack{
-		parseStackItem{
+	pfa := PfaFrom(runeprovider.FromString("some"), TraceNone)
+	pfa.Stack = ParseStack{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type": "map",
 				"value": map[string]interface{}{
@@ -141,7 +141,7 @@ func TestPfa_setVarVal(t *testing.T) {
 				},
 			},
 		},
-		parseStackItem{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
@@ -190,7 +190,7 @@ func TestPfa_setVarVal(t *testing.T) {
 	bwtesting.BwRunTests(t, pfa.setVarValTestHelper, tests)
 }
 
-func (pfa *pfaStruct) setVarValTestHelper(varPathStr string, varVal interface{}) (interface{}, error) {
+func (pfa *PfaStruct) setVarValTestHelper(varPathStr string, varVal interface{}) (interface{}, error) {
 	varPath := MustVarPathFrom(varPathStr)
 	pfa.err = nil
 	pfa.setVarVal(varPath, varVal)
@@ -202,11 +202,11 @@ func (pfa *pfaStruct) setVarValTestHelper(varPathStr string, varVal interface{})
 }
 
 func TestPfaActions(t *testing.T) {
-	pfa := pfaFrom(runeprovider.FromString("some"), TraceNone)
+	pfa := PfaFrom(runeprovider.FromString("some"), TraceNone)
 	// p := runeprovider.ProxyFrom(runeprovider.FromString("some"))
-	// pfa := pfaStruct{
-	pfa.stack = parseStack{
-		parseStackItem{
+	// pfa := PfaStruct{
+	pfa.Stack = ParseStack{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type":  "map",
 				"array": []interface{}{"g", "h"},
@@ -219,7 +219,7 @@ func TestPfaActions(t *testing.T) {
 				},
 			},
 		},
-		parseStackItem{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
@@ -270,7 +270,7 @@ func TestPfaActions(t *testing.T) {
 	bwtesting.BwRunTests(t, pfa.pfaActionsTestHelper, tests)
 }
 
-func (pfa *pfaStruct) pfaActionsTestHelper(varPathStr string, action interface{}) (val interface{}, err error) {
+func (pfa *PfaStruct) pfaActionsTestHelper(varPathStr string, action interface{}) (val interface{}, err error) {
 	pfa.processRules(CreateRules([]interface{}{action}))
 	if pfa.err != nil {
 		return nil, pfa.err
@@ -280,15 +280,15 @@ func (pfa *pfaStruct) pfaActionsTestHelper(varPathStr string, action interface{}
 }
 
 func TestPfaConditions(t *testing.T) {
-	pfa := pfaFrom(runeprovider.FromString("something"), TraceNone)
+	pfa := PfaFrom(runeprovider.FromString("something"), TraceNone)
 	// p := runeprovider.ProxyFrom(runeprovider.FromString("something"))
 	pfa.p.PullRune()
 	pfa.p.PullRune()
 	pfa.p.PullRune()
 	pfa.p.PullRune()
-	// pfa := pfaStruct{
-	pfa.stack = parseStack{
-		parseStackItem{
+	// pfa := PfaStruct{
+	pfa.Stack = ParseStack{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type":  "map",
 				"array": []interface{}{"g", "h"},
@@ -301,7 +301,7 @@ func TestPfaConditions(t *testing.T) {
 				},
 			},
 		},
-		parseStackItem{
+		ParseStackItem{
 			vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
@@ -405,7 +405,7 @@ func TestPfaConditions(t *testing.T) {
 	bwtesting.BwRunTests(t, pfa.pfaConditionsTestHelper, tests)
 }
 
-func (pfa *pfaStruct) pfaConditionsTestHelper(arg interface{}) (interface{}, error) {
+func (pfa *PfaStruct) pfaConditionsTestHelper(arg interface{}) (interface{}, error) {
 	pfa.vars["result"] = false
 	var args []interface{}
 	var ok bool
