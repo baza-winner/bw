@@ -71,7 +71,7 @@ func _valueErrorIsNotOfType(v value, args ...interface{}) (string, []interface{}
 	if args == nil {
 		bwerror.Panic("expects at least one arg instead of <ansiSecondary>%#v", args)
 	}
-	var expectedTypes = bwset.StringSet{}
+	var expectedTypes = bwset.String{}
 	for _, i := range args {
 		if _isOfType(i, "string") {
 			expectedTypes.Add(_mustBeString(i))

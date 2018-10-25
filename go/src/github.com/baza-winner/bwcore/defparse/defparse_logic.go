@@ -12,9 +12,9 @@ func init() {
 
 func prepareLogicDef() Rules {
 
-	unexpectedEOF := []interface{}{EOF{}, SetVar{"error", UnexpectedRune{}}}
+	unexpectedEOF := []interface{}{EOF{}, UnexpectedRune{}}
 
-	unexpectedRune := []interface{}{SetVar{"error", UnexpectedRune{}}}
+	unexpectedRune := []interface{}{UnexpectedRune{}}
 
 	finishLogic := CreateRules(
 		[]interface{}{VarIs{"0.type", "string"}, VarIs{"0.type", "qwItem"},
@@ -43,7 +43,7 @@ func prepareLogicDef() Rules {
 				},
 				[]interface{}{
 					VarIs{"0.string", "nil"}, VarIs{"0.string", "null"},
-					// TopItemStringIsOneOf{bwset.StringSetFrom("nil", "null")}
+					// TopItemStringIsOneOf{bwset.StringFrom("nil", "null")}
 				},
 				[]interface{}{
 					VarIs{"0.string", "Bool"},
@@ -53,7 +53,7 @@ func prepareLogicDef() Rules {
 					VarIs{"0.string", "Map"},
 					VarIs{"0.string", "Array"},
 					VarIs{"0.string", "ArrayOf"},
-					// TopItemStringIsOneOf{bwset.StringSetFrom("Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf")},
+					// TopItemStringIsOneOf{bwset.StringFrom("Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf")},
 					SetVar{"0.result", Var{"0.string"}},
 					// SetTopItemValueAsString{},
 				},
@@ -82,8 +82,7 @@ func prepareLogicDef() Rules {
 					SetVar{"skipPostProcess", true},
 				},
 				[]interface{}{
-					SetVar{"0.word", Var{"0.string"}},
-					SetVar{"error", UnknownWord{}},
+					UnexpectedItem{},
 				},
 			)},
 		},
@@ -132,7 +131,7 @@ func prepareLogicDef() Rules {
 					)},
 				},
 				[]interface{}{
-					SetVar{"error", "unreachable"},
+					Panic{"unreachable", nil},
 				},
 			)},
 			PopItem{},
@@ -178,6 +177,7 @@ func prepareLogicDef() Rules {
 					SetVar{"0.delimiter", Var{"1.delimiter"}},
 					// SetTopItemDelimiter{FromParentItem{}},
 					SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
+					// SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
 					// AppendToVar{"0.string", Var{"rune"}},
 					SetVar{"primary", "expectEndOfQwItem"}, SetVar{"secondary", ""},
 				},
@@ -232,7 +232,7 @@ func prepareLogicDef() Rules {
 					// AppendToVar{"0.string", Var{"rune"}},
 				},
 				[]interface{}{VarIs{"secondary", ""},
-					SetVar{"error", UnexpectedRune{}},
+					UnexpectedRune{},
 				},
 				[]interface{}{
 					PushRune{},
@@ -252,6 +252,7 @@ func prepareLogicDef() Rules {
 				[]interface{}{'"', '\'',
 					PushItem{},
 					SetVar{"0.type", "key"},
+					SetVar{"0.string", ""},
 					SetVar{"0.delimiter", Var{"rune"}},
 					// SetTopItemDelimiter{FromCurrRune{}},
 					SetVar{"primary", "expectContentOf"}, SetVar{"secondary", "keyToken"},
@@ -332,18 +333,19 @@ func prepareLogicDef() Rules {
 				[]interface{}{'-', '+',
 					PushItem{},
 					SetVar{"0.type", "number"},
-					SetVar{"0.string", Var{"rune"}},
+					SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
 					SetVar{"primary", "expectDigit"}, SetVar{"secondary", ""},
 				},
 				[]interface{}{UnicodeDigit,
 					PushItem{},
 					SetVar{"0.type", "number"},
-					SetVar{"0.string", Var{"rune"}},
+					SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
 					SetVar{"primary", "expectDigit"}, SetVar{"secondary", "orUnderscoreOrDot"},
 				},
 				[]interface{}{'"', '\'',
 					PushItem{},
 					SetVar{"0.type", "string"},
+					SetVar{"0.string", ""},
 					SetVar{"0.delimiter", Var{"rune"}},
 					// SetTopItemDelimiter{FromCurrRune{}},
 					SetVar{"primary", "expectContentOf"}, SetVar{"secondary", "stringToken"},
@@ -351,14 +353,14 @@ func prepareLogicDef() Rules {
 				[]interface{}{UnicodeLetter,
 					PushItem{},
 					SetVar{"0.type", "word"},
-					SetVar{"0.string", Var{"rune"}},
+					SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
 					SetVar{"primary", "expectWord"}, SetVar{"secondary", ""},
 				},
 				unexpectedRune,
 			)},
 		},
 		[]interface{}{VarIs{"primary", "begin"},
-			SetVar{"error", "unreachable"},
+			Panic{"unreachable", nil},
 		},
 	)
 

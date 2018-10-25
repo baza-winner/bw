@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/davecgh/go-spew/spew"
@@ -58,15 +57,23 @@ func Errord(depth uint, msgFmt string, args ...interface{}) error {
 	}
 }
 
-func ErrorErr(err error) error {
+func ErrorErr(err error, optDepth ...uint) error {
+	var depth uint
+	if optDepth != nil {
+		depth = optDepth[0]
+	}
 	return WhereError{
-		whereami.WhereAmI(2),
+		whereami.WhereAmI(int(depth) + 2),
 		Spew.Sprintf(ansi.Ansi(ansiErr, errPrefix+err.Error())),
 	}
 }
 
-func PanicErr(err error) {
-	log.Panic(err.Error() + wherePrefix + whereami.WhereAmI(2))
+func PanicErr(err error, optDepth ...uint) {
+	var depth uint
+	if optDepth != nil {
+		depth = optDepth[0]
+	}
+	log.Panic(err.Error() + ansi.Ansi("", wherePrefix+whereami.WhereAmI(int(depth)+2)))
 }
 
 func Panic(msgFmt string, args ...interface{}) {
@@ -80,14 +87,14 @@ func Panicd(depth uint, msgFmt string, args ...interface{}) {
 func Noop(args ...interface{}) {
 }
 
-func Unreachable(args ...string) {
-	var suffix string
-	if args != nil {
-		suffix = " <ansi>" + strings.Join(args, " ")
-	}
-	Panicd(1, "<ansiErr>UNREACHABLE"+suffix)
-}
+// func Unreachable(args ...string) {
+// 	var suffix string
+// 	if args != nil {
+// 		suffix = " <ansi>" + strings.Join(args, " ")
+// 	}
+// 	Panicd(1, "<ansiErr>UNREACHABLE"+suffix)
+// }
 
-func TODO() {
-	Panicd(1, "<ansiErr>UNREACHABLE")
-}
+// func TODO() {
+// 	Panicd(1, "<ansiErr>UNREACHABLE")
+// }

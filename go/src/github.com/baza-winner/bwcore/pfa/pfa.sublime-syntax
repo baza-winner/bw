@@ -129,7 +129,7 @@ contexts:
           scope: punctuation.section.block.begin
           set:
             - include: space
-            - match: \b(UnexpectedRune|UnknownWord)\b
+            - match: \b(UnexpectedRune|UnexpectedItem)\b
               scope: constant.language
               set: paramBlockEnd
             - include: illegal

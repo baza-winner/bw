@@ -71,7 +71,7 @@ func TestCompileDef(t *testing.T) {
 		"def: enum": {
 			In: []interface{}{defparse.MustParse(`{ type: "String", enum: [qw/one two three/]}`)},
 			Out: []interface{}{
-				&Def{tp: deftype.From(deftype.String), enum: bwset.StringSetFrom("one", "two", "three")},
+				&Def{tp: deftype.From(deftype.String), enum: bwset.StringFrom("one", "two", "three")},
 				nil,
 			},
 		},

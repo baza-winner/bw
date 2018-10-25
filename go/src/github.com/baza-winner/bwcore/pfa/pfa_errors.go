@@ -1,10 +1,10 @@
 package pfa
 
 type pfaError struct {
-	pfa    *pfaStruct
-	errVal interface{}
-	err    error
-	Where  string
+	pfa *pfaStruct
+	// errVal interface{}
+	err   error
+	Where string
 }
 
 func (err pfaError) Error() string {

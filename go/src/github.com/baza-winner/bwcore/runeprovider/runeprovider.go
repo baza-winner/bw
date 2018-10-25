@@ -44,8 +44,8 @@ func (v RunePtrStruct) DataForJSON() interface{} {
 	result["line"] = v.Line
 	result["col"] = v.Col
 	result["pos"] = v.Pos
-	result["prefix"] = v.Prefix
-	result["prefixStart"] = v.PrefixStart
+	// result["prefix"] = v.Prefix
+	// result["prefixStart"] = v.PrefixStart
 	return result
 }
 
@@ -84,12 +84,12 @@ func (v RunePtrStructs) DataForJSON() interface{} {
 func (p *Proxy) DataForJSON() interface{} {
 	result := map[string]interface{}{}
 	result["curr"] = p.Curr.DataForJSON()
-	if len(p.Prev) > 0 {
-		result["prev"] = p.Prev.DataForJSON()
-	}
-	if len(p.Next) > 0 {
-		result["next"] = p.Next.DataForJSON()
-	}
+	// if len(p.Prev) > 0 {
+	// 	result["prev"] = p.Prev.DataForJSON()
+	// }
+	// if len(p.Next) > 0 {
+	// 	result["next"] = p.Next.DataForJSON()
+	// }
 	return result
 }
 
@@ -192,7 +192,7 @@ func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool) {
 	return
 }
 
-func (p *Proxy) GetSuffix(start RunePtrStruct, redString string) (suffix string) {
+func (p *Proxy) GetSuffix(start RunePtrStruct) (suffix string) {
 	preLineCount := p.preLineCount
 	postLineCount := p.postLineCount
 	if p.Curr.RunePtr == nil {
@@ -208,10 +208,14 @@ func (p *Proxy) GetSuffix(start RunePtrStruct, redString string) (suffix string)
 	}
 	suffix += ":" + separator + "<ansiDarkGreen>"
 
+	// if p.Curr.Pos == start.Pos {
+	// suffix += p.Curr.Prefix[0 : start.Pos-p.Curr.PrefixStart]
+	// }
 	suffix += p.Curr.Prefix[0 : start.Pos-p.Curr.PrefixStart]
 	if p.Curr.RunePtr != nil {
 		suffix += "<ansiLightRed>"
-		suffix += redString
+		suffix += p.Curr.Prefix[start.Pos-p.Curr.PrefixStart:]
+		// suffix += redString
 		suffix += "<ansiReset>"
 		for p.Curr.RunePtr != nil && postLineCount > 0 {
 			p.PullRune()
@@ -233,7 +237,7 @@ func (p *Proxy) UnexpectedRuneError(infix ...string) error {
 	var fmtString string
 	fmtArgs := []interface{}{}
 	if p.Curr.RunePtr == nil {
-		suffix := p.GetSuffix(p.Curr, "")
+		suffix := p.GetSuffix(p.Curr)
 		fmtString = "unexpected end of string"
 		if infix != nil {
 			fmtString += "(" + strings.Join(infix, " ") + ")"
@@ -241,7 +245,7 @@ func (p *Proxy) UnexpectedRuneError(infix ...string) error {
 		fmtString += suffix
 	} else {
 		rune := *p.Curr.RunePtr
-		suffix := p.GetSuffix(p.Curr, string(rune))
+		suffix := p.GetSuffix(p.Curr)
 		fmtString = "unexpected char <ansiPrimary>%q<ansiReset> (charCode: %v"
 		if infix != nil {
 			fmtString += ", " + strings.Join(infix, " ")
@@ -252,9 +256,9 @@ func (p *Proxy) UnexpectedRuneError(infix ...string) error {
 	return bwerror.Errord(1, fmtString, fmtArgs...)
 }
 
-func (p *Proxy) WordError(fmtString string, word string, start RunePtrStruct) error {
-	suffix := p.GetSuffix(start, word)
-	return bwerror.Errord(1, fmtString+suffix, word)
+func (p *Proxy) ItemError(start RunePtrStruct, fmtString string, fmtArgs ...interface{}) error {
+	fmtString += p.GetSuffix(start)
+	return bwerror.Errord(1, fmtString, fmtArgs...)
 }
 
 // func (p *Proxy) unknownWordError(start int, word string) {

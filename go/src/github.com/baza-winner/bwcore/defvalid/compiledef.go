@@ -12,7 +12,7 @@ func compileDef(def value) (result *Def, err error) {
 	}
 	var defType value
 	var isSimple bool
-	validDefKeys := bwset.StringSet{}
+	validDefKeys := bwset.String{}
 	if isSimple = _isOfType(def.value, "string", "[]string"); isSimple {
 		defType = def
 	} else if !_isOfType(def.value, "map[string]") {
@@ -36,7 +36,7 @@ func compileDef(def value) (result *Def, err error) {
 				return nil, err
 			}
 			if enumVal.value != nil {
-				result.enum = bwset.StringSetFromSlice(_mustBeSliceOfStrings(enumVal.value))
+				result.enum = bwset.StringFromSlice(_mustBeSliceOfStrings(enumVal.value))
 			}
 		}
 		if tp.Has(deftype.Map) {
@@ -156,7 +156,7 @@ func compileDef(def value) (result *Def, err error) {
 	return
 }
 
-func getDefKey(validDefKeys *bwset.StringSet, def value, keyName string, ofType interface{}, defaultValue ...interface{}) (keyValue value, err error) {
+func getDefKey(validDefKeys *bwset.String, def value, keyName string, ofType interface{}, defaultValue ...interface{}) (keyValue value, err error) {
 	opts := []interface{}{ofType}
 	if defaultValue != nil {
 		opts = append(opts, defaultValue[0])

@@ -123,10 +123,10 @@ me'`},
 			},
 			Out: []interface{}{
 				map[string]interface{}{
-					"some":  []interface{}{0, 100000, 5000.5, -3.14},
-					"thing": true,
-					"go'od": "str\ning",
-					// "go\"od\\": nil,
+					"some":     []interface{}{0, 100000, 5000.5, -3.14},
+					"thing":    true,
+					"go'od":    "str\ning",
+					"go\"od\\": nil,
 				},
 				nil},
 		},
@@ -135,8 +135,14 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"failed to get number from string <ansiPrimary>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
-					"1_000_000_000_000_000_000_000", 17, "{ someBigNumber: ", "1_000_000_000_000_000_000_000", " }",
+					"failed to transform <ansi><ansiCmd>%s<ansi>(<ansi><ansiPrimary>\"%s\"<ansi>) to number (%s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"0.string",
+					"1_000_000_000_000_000_000_000",
+					"strconv.ParseInt: parsing \"1000000000000000000000\": value out of range",
+					17,
+					"{ someBigNumber: ",
+					"1_000_000_000_000_000_000_000",
+					" }",
 				),
 			},
 		},
@@ -145,13 +151,15 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimary>%s<ansi> at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
-					"Something", 7, "[ Bool ", "Something", " String ]",
+					"unexpected \"<ansiPrimary>%s<ansi>\" at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"Something",
+					7,
+					"[ Bool ", "Something", " String ]",
 				),
 			},
 		},
 
-		"UnknownWord": {
+		"UnexpectedItem": {
 			In: []interface{}{`
 [
   qw/one two three/
@@ -166,7 +174,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"unexpected \"<ansiPrimary>%s<ansi>\" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"def", 4, 3, 25, "[\n  qw/one two three/\n  ", "def", "\n  qw/\n    four",
 				),
 			},
@@ -220,7 +228,7 @@ me'`},
 			Out: []interface{}{
 				nil,
 				bwerror.Error(
-					"unknown word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"unexpected \"<ansiPrimary>%s<ansi>\" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
 				),
 			},
@@ -416,7 +424,7 @@ me'`},
 	// testsToRun := tests
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "zero number", "int number with underscore")
-	bwmap.CropMap(tests, "_expectSpaceOrMapKey && fa.curr.runePtr == EOF")
+	// bwmap.CropMap(tests, "map")
 	// bwmap.CropMap(tests, "qw/Bool String Int Number Map Array ArrayOf/")
 	bwtesting.BwRunTests(t, Parse, tests)
 }
@@ -944,7 +952,7 @@ func TestParseMap(t *testing.T) {
 			Out: []interface{}{
 				map[string]interface{}(nil),
 				bwerror.Error(
-					"unknown word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+					"unexpected \"<ansiPrimary>%s<ansi>\" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
 				),
 			},

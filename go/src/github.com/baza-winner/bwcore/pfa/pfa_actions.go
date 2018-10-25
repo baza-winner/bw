@@ -11,7 +11,6 @@ import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwint"
 	"github.com/baza-winner/bwcore/bwjson"
-	"github.com/jimlawless/whereami"
 )
 
 // ============================== hasRune =====================================
@@ -70,6 +69,10 @@ type VarIs struct {
 }
 
 // ======================== processorAction ====================================
+
+type ProccessorActionProvider interface {
+	GetAction() processorAction
+}
 
 type processorAction interface {
 	execute(pfa *pfaStruct)
@@ -177,45 +180,125 @@ func (v Array) String() string {
 
 type UnexpectedRune struct{}
 
-func (v UnexpectedRune) getVal(pfa *pfaStruct) interface{} {
+func (v UnexpectedRune) GetAction() processorAction {
 	return v
 }
-
-func (v UnexpectedRune) getSource(pfa *pfaStruct) formattedString {
-	return pfa.traceVal(v)
+func (v UnexpectedRune) execute(pfa *pfaStruct) {
+	// pfa.isUnexpectedRune = true
+	pfa.errVal = v
+	pfa.traceAction("<ansiGreen>UnexpectedRune")
+	// word, pfa.err = pfa.getVarValue(v.varPath).String()
+	// if pfa.err == nil {
+	// 	pfa.err = pfa.p.WordError(
+	// 		"unknown word <ansiPrimary>%s<ansi>",
+	// 		word,
+	// 		pfa.getTopStackItem().start,
+	// 	)
+	// 	pfa.traceAction("<ansiGreen>UnexpectedItem{%s}", v.varPath)
+	// }
 }
 
-func (v UnexpectedRune) String() string {
-	return "UnexpectedRune"
+// func (v UnexpectedRune) getVal(pfa *pfaStruct) interface{} {
+// 	return v
+// }
+
+// func (v UnexpectedRune) getSource(pfa *pfaStruct) formattedString {
+// 	return pfa.traceVal(v)
+// }
+
+// func (v UnexpectedRune) String() string {
+// 	return "UnexpectedRune"
+// }
+
+type UnexpectedItem struct {
+	// VarPathStr string
 }
 
-type UnknownWord struct{}
-
-func (v UnknownWord) getVal(pfa *pfaStruct) interface{} {
+func (v UnexpectedItem) GetAction() processorAction {
 	return v
+	// return unexpectedItemAction{MustVarPathFrom(v.VarPathStr)}
 }
 
-func (v UnknownWord) getSource(pfa *pfaStruct) formattedString {
-	return pfa.traceVal(v)
+// type unexpectedItemAction struct{ varPath VarPath }
+
+func (v UnexpectedItem) execute(pfa *pfaStruct) {
+	// var word string
+	// word, pfa.err = pfa.getVarValue(v.varPath).String()
+	// if pfa.err == nil {
+	// pfa.err = pfa.p.ItemError(
+	// 	pfa.getTopStackItem().start,
+	// 	"unexpected item",
+	// )
+
+	pfa.errVal = v
+	pfa.traceAction("<ansiGreen>UnexpectedItem")
+	// }
 }
 
-func (v UnknownWord) String() string {
-	return "UnknownWord"
+// func (v UnexpectedItem) String() string {
+// 	return "UnexpectedItem"
+// }
+
+type Panic struct {
+	FmtString string
+	FmtArgs   []interface{}
 }
 
-type Panic struct{}
-
-func (v Panic) getVal(pfa *pfaStruct) interface{} {
-	return v
+func (v Panic) GetAction() processorAction {
+	fmtArgs := []ValProvider{}
+	for _, i := range v.FmtArgs {
+		switch t := i.(type) {
+		case bool, rune, string, int, int8, int16 /* int32, */, int64, uint, uint8, uint16, uint32, uint64:
+			fmtArgs = append(fmtArgs, justVal{t})
+		case Var:
+			fmtArgs = append(fmtArgs, varVal{MustVarPathFrom(t.VarPathStr)})
+		default:
+			bwerror.Panic("%#v", i)
+		}
+	}
+	return panicAction{v.FmtString, fmtArgs}
 }
 
-func (v Panic) getSource(pfa *pfaStruct) formattedString {
-	return pfa.traceVal(v)
+type panicAction struct {
+	fmtString string
+	fmtArgs   []ValProvider
 }
 
-func (v Panic) String() string {
-	return "Panic"
+func (v panicAction) execute(pfa *pfaStruct) {
+	var s string
+	for _, i := range v.fmtArgs {
+		var val interface{}
+		switch t := i.(type) {
+		case justVal:
+			val = t.val
+		case varVal:
+			val = t.varPath
+		default:
+			bwerror.Panic("%#v", i)
+		}
+		s += ", " + string(pfa.traceVal(val))
+	}
+	pfa.traceAction("<ansiGreen>Panic{%s%s}", v.fmtString, s)
+	fmtArgs := []interface{}{v.fmtString}
+	for _, i := range v.fmtArgs {
+		fmtArgs = append(fmtArgs, i.getVal(pfa))
+	}
+	pfa.panic(fmtArgs...)
 }
+
+// func (v Panic) getVal(pfa *pfaStruct) interface{} {
+
+// 	return unexpectedItemAction{MustVarPathFrom(v.VarPathStr)}
+// 	return v
+// }
+
+// func (v Panic) getSource(pfa *pfaStruct) formattedString {
+// 	return pfa.traceVal(v)
+// }
+
+// func (v Panic) String() string {
+// 	return "Panic"
+// }
 
 type justVal struct {
 	val interface{}
@@ -259,10 +342,6 @@ func (v varVal) getVal(pfa *pfaStruct) (result interface{}) {
 func (v varVal) getSource(pfa *pfaStruct) formattedString {
 	// return fmt.Sprintf(ansi.Ansi("", "%s"), pfa.traceVarPath(v.varPath))
 	return pfa.traceVal(v.varPath)
-}
-
-type ProccessorActionProvider interface {
-	GetAction() processorAction
 }
 
 type SetVar struct {
@@ -324,29 +403,37 @@ type _setVarBy struct {
 
 func (v _setVarBy) execute(pfa *pfaStruct) {
 	val := v.valProvider.getVal(pfa)
-	if pfa.err == nil {
-		for _, b := range v.by {
-			val = b.TransformValue(pfa, val)
-			if pfa.err != nil {
-				break
-			}
+	if pfa.err != nil {
+		return
+	}
+	for _, b := range v.by {
+		val = b.TransformValue(pfa, val)
+		if pfa.err != nil {
+			return
 		}
-		if pfa.err == nil {
-			var source formattedString
-			var target formattedString
-			op := ""
-			if pfa.traceLevel > TraceNone {
-				source = v.valProvider.getSource(pfa)
-				target = pfa.traceVal(v.varPath)
-			}
-			if v.at == noAppend {
-				pfa.setVarVal(v.varPath, val)
-				op = ">"
-			} else {
-				op = ">>"
-				if orig := pfa.getVarValue(v.varPath); pfa.err == nil {
+		if pfa.errVal != nil {
+			break
+		}
+	}
+	op := ""
+	var isNotAppendee bool
+	var expectedToBeAppendable formattedString
+	if pfa.err == nil {
+		if v.at == noAppend {
+			op = ">"
+		} else {
+			op = ">>"
+			if orig := pfa.getVarValue(v.varPath); pfa.err == nil {
+				if v.at == appendScalar {
 					if orig.val == nil {
-						pfa.err = bwerror.Error("can not append to nil")
+						switch aval := val.(type) {
+						case string:
+							val = aval
+						case rune:
+							val = string(aval)
+						default:
+							val = []interface{}{val}
+						}
 					} else {
 						switch oval := orig.val.(type) {
 						case string:
@@ -356,7 +443,7 @@ func (v _setVarBy) execute(pfa *pfaStruct) {
 							case rune:
 								val = oval + string(aval)
 							default:
-								pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+								expectedToBeAppendable = formattedStringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
 							}
 						case rune:
 							switch aval := val.(type) {
@@ -365,81 +452,130 @@ func (v _setVarBy) execute(pfa *pfaStruct) {
 							case rune:
 								val = string(oval) + string(aval)
 							default:
-								pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+								expectedToBeAppendable = formattedStringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
 							}
 						case []interface{}:
-							if v.at == appendScalar {
-								// val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
-								val = append(oval, val)
-							} else {
-								switch aval := val.(type) {
-								case []interface{}:
-									val = append(oval, aval...)
-									op = ">>>"
-								default:
-									pfa.err = bwerror.Error("%#v expected to be Array", val)
-								}
-							}
-							// if reflect.TypeOf(val).Kind() == reflect.Slice {
-							// 	val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
-							// 	op = ">>>"
-							// } else {
-							// 	pfa.err = bwerror.Error("%#v expected to be slice", val)
-							// }
+							val = append(oval, val)
 						default:
-							pfa.err = bwerror.Error(
-								"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>String<ansi>, <ansiSecondary>Rune<ansi> or <ansiSecondary>Array<ansi> to be <ansiOutline>Appendable",
-								val, v.varPath,
-							)
+							isNotAppendee = true
 						}
 					}
-					// if s, ok := orig.val.(string); ok {
-					// 	if a, ok := val.(string); ok {
-					// 		val = s + a
-					// 	} else if r, ok := val.(rune); ok {
-					// 		val = s + string(r)
-					// 	} else {
-					// 		pfa.err = bwerror.Error("%#v expected to be string or rune", val)
-					// 	}
-					// } else if s, ok := orig.val.(rune); ok {
-					// 	if a, ok := val.(string); ok {
-					// 		val = string(s) + a
-					// 	} else if r, ok := val.(rune); ok {
-					// 		val = string(s) + string(r)
-					// 	} else {
-					// 		pfa.err = bwerror.Error("%#v expected to be string or rune", val)
-					// 	}
-					// } else if reflect.TypeOf(orig.val).Kind() == reflect.Slice {
-					// 	valueOfOrigVal := reflect.ValueOf(orig.val)
-					// 	valueOfVal := reflect.ValueOf(val)
-					// 	if v.at == appendScalar {
-					// 		val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
-					// 	} else if reflect.TypeOf(val).Kind() == reflect.Slice {
-					// 		val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
-					// 		op = ">>>"
-					// 	} else {
-					// 		pfa.err = bwerror.Error("%#v expected to be slice", val)
-					// 	}
-					// } else {
-					// 	pfa.err = bwerror.Error(
-					// 		"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>String<ansi>, <ansiSecondary>Rune<ansi> or <ansiSecondary>Array<ansi> to be <ansiOutline>Appendable",
-					// 		val, v.varPath,
-					// 	)
-					// }
+				} else if aval, ok := val.([]interface{}); !ok {
+					expectedToBeAppendable = formattedStringFrom("<ansiPrimary>Array<ansi>")
+				} else {
+					if orig.val == nil {
+						val = aval
+					} else if oval, ok := orig.val.([]interface{}); !ok {
+						isNotAppendee = true
+					} else {
+						val = append(oval, aval...)
+					}
 				}
-				if pfa.err == nil {
-					pfa.setVarVal(v.varPath, val)
-				}
-			}
-			if pfa.err == nil {
-				pfa.traceAction("%s %s %s: %s", source, formattedString(ansi.Ansi("Green", op)), target, v.varPath)
+
+				// } else {
+
+				// }
+
+				// switch aval := val.(type) {
+
+				// // if orig.val == nil {
+
+				// }
+				// if orig.val == nil {
+				// 	// isNotAppendee = true
+				// 	switch aval := val.(type) {
+				// 	case string:
+				// 		val = aval
+				// 	case rune:
+				// 		val = string(aval)
+				// 	default:
+				// 		val = []interface{}{val}
+				// 		// expectedToBeAppendable = formattedStringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
+				// 	}
+				// } else {
+				// 	switch oval := orig.val.(type) {
+				// 	case string:
+				// 		switch aval := val.(type) {
+				// 		case string:
+				// 			val = oval + aval
+				// 		case rune:
+				// 			val = oval + string(aval)
+				// 		default:
+				// 			expectedToBeAppendable = formattedStringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
+				// 		}
+				// 	case rune:
+				// 		switch aval := val.(type) {
+				// 		case string:
+				// 			val = string(oval) + aval
+				// 		case rune:
+				// 			val = string(oval) + string(aval)
+				// 		default:
+				// 			expectedToBeAppendable = formattedStringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
+				// 		}
+				// 	case []interface{}:
+				// 		if v.at == appendScalar {
+				// 			val = append(oval, val)
+				// 		} else {
+				// 			switch aval := val.(type) {
+				// 			case []interface{}:
+				// 				val = append(oval, aval...)
+				// 				op = ">>>"
+				// 			default:
+				// 				expectedToBeAppendable = formattedStringFrom("<ansiPrimary>Array<ansi>")
+				// 			}
+				// 		}
+				// 	default:
+				// 		isNotAppendee = true
+				// 	}
+				// }
+
 			}
 		}
+		if pfa.err != nil {
+			return
+		}
 	}
+	if isNotAppendee {
+		pfa.panic("can not append to %s", string(pfa.traceVal(v.varPath)))
+	}
+	var source formattedString
+	var target formattedString
+	if pfa.traceLevel > TraceNone || len(expectedToBeAppendable) > 0 || pfa.errVal != nil {
+		source = v.valProvider.getSource(pfa)
+		target = pfa.traceVal(v.varPath)
+		for _, b := range v.by {
+			if pfa.traceLevel > TraceNone {
+				source = source.concat(formattedStringFrom(" <ansiGreen>| %s<ansi> ", b.String()))
+			}
+		}
+		if pfa.errVal != nil {
+			switch t := pfa.errVal.(type) {
+			case parseNumberFailed:
+				pfa.errVal = failedToTransformToNumber{fmt.Sprintf("failed to transform %s to number (%s)", source, t.s)}
+			case getValFailed:
+			default:
+				pfa.panic("%#v", pfa.errVal)
+			}
+		} else if len(expectedToBeAppendable) > 0 {
+			pfa.panic("%s expected to be %s", string(source), string(expectedToBeAppendable))
+		}
+	}
+	pfa.setVarVal(v.varPath, val)
+	if pfa.traceLevel > TraceNone {
+		pfa.traceAction("%s %s %s: %s", source, formattedString(ansi.Ansi("Green", op)), target, v.varPath)
+	}
+	// if pfa.err != nil {
+	// return
+	// }
 }
+
+type parseNumberFailed struct{ s string }
+
+type failedToTransformToNumber struct{ s string }
 
 type ValTransformer interface {
 	TransformValue(pfa *pfaStruct, i interface{}) interface{}
+	String() string
 }
 
 type By []ValTransformer
@@ -485,31 +621,53 @@ func (v *Debug) execute(pfa *pfaStruct) {
 type ParseNumber struct{}
 
 func (v ParseNumber) TransformValue(pfa *pfaStruct, i interface{}) (result interface{}) {
-	if s, ok := i.(string); !ok {
-		pfa.err = bwerror.Error("ParseNumber expects string for TransformValue, not %#v", i)
-	} else {
-		result, pfa.err = _parseNumber(s)
-		if pfa.err != nil {
-			stackItem := pfa.getTopStackItem()
-			err := pfa.p.WordError("failed to get number from string <ansiPrimary>%s<ansi>", s, stackItem.start)
-			pfa.err = pfaError{pfa, "failedToGetNumber", err, whereami.WhereAmI(2)}
-		}
+	var s string
+	switch t := i.(type) {
+	case string:
+		s = t
+	case rune:
+		s = string(t)
+	default:
+		pfa.errVal = parseNumberFailed{"niether String, nor Rune"}
+		// pfa.err = bwerror.Error("niether String, nor Rune")
+		// pfa.errVal = parseNumberFailed{}
+	}
+	if pfa.err != nil {
+		return
+	}
+
+	result, err := _parseNumber(s)
+	if err != nil {
+		pfa.errVal = parseNumberFailed{err.Error()}
 	}
 	return
+}
+
+func (v ParseNumber) String() string {
+	return "ParseNumber"
 }
 
 type Append struct{}
 
 func (v Append) TransformValue(pfa *pfaStruct, i interface{}) (result interface{}) {
-	bwerror.Unreachable()
+	bwerror.Panic("unreachable")
 	return
+}
+
+func (v Append) String() string {
+	return "Append"
 }
 
 type AppendSlice struct{}
 
 func (v AppendSlice) TransformValue(pfa *pfaStruct, i interface{}) (result interface{}) {
-	bwerror.Unreachable()
+	bwerror.Panic("unreachable")
+	// bwerror.Unreachable()
 	return
+}
+
+func (v AppendSlice) String() string {
+	return "AppendSlice"
 }
 
 // ============================================================================

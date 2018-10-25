@@ -63,38 +63,31 @@ func TestVarPathFrom(t *testing.T) {
 }
 
 func TestPfa_getVarValue(t *testing.T) {
-	p := runeprovider.ProxyFrom(runeprovider.FromString("some"))
-	pfa := &pfaStruct{
-		parseStack{
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type": "map",
-					"value": map[string]interface{}{
-						"boolKey":   true,
-						"numberKey": 273,
-						"stringKey": "string value",
-						"runeKey":   '\n',
-					},
-				},
-			},
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type":   "key",
-					"string": "boolKey",
+	pfa := pfaFrom(runeprovider.FromString("some"), TraceNone)
+	pfa.stack = parseStack{
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type": "map",
+				"value": map[string]interface{}{
+					"boolKey":   true,
+					"numberKey": 273,
+					"stringKey": "string value",
+					"runeKey":   '\n',
 				},
 			},
 		},
-		p,
-		nil,
-		map[string]interface{}{
-			"primary": "begin",
-			"result": map[string]interface{}{
-				"some": "thing",
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type":   "key",
+				"string": "boolKey",
 			},
 		},
-		TraceNone,
-		nil,
-		0,
+	}
+	pfa.vars = map[string]interface{}{
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
@@ -134,40 +127,33 @@ func (pfa *pfaStruct) TestPfa_getVarValueTestHelper(varPathStr string) (val inte
 }
 
 func TestPfa_setVarVal(t *testing.T) {
-	p := runeprovider.ProxyFrom(runeprovider.FromString("some"))
-	pfa := pfaStruct{
-		parseStack{
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type": "map",
-					"value": map[string]interface{}{
-						"boolKey":   true,
-						"numberKey": 273,
-						"stringKey": "string value",
-						"runeKey":   '\n',
-						"arrayKey":  []interface{}{"a", "b"},
-					},
-				},
-			},
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type":   "key",
-					"string": "boolKey",
-					"array":  []interface{}{"c", "d"},
+	pfa := pfaFrom(runeprovider.FromString("some"), TraceNone)
+	pfa.stack = parseStack{
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type": "map",
+				"value": map[string]interface{}{
+					"boolKey":   true,
+					"numberKey": 273,
+					"stringKey": "string value",
+					"runeKey":   '\n',
+					"arrayKey":  []interface{}{"a", "b"},
 				},
 			},
 		},
-		p,
-		nil,
-		map[string]interface{}{
-			"primary": "begin",
-			"result": map[string]interface{}{
-				"some": "thing",
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type":   "key",
+				"string": "boolKey",
+				"array":  []interface{}{"c", "d"},
 			},
 		},
-		TraceNone,
-		nil,
-		0,
+	}
+	pfa.vars = map[string]interface{}{
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
@@ -216,46 +202,47 @@ func (pfa *pfaStruct) setVarValTestHelper(varPathStr string, varVal interface{})
 }
 
 func TestPfaActions(t *testing.T) {
-	p := runeprovider.ProxyFrom(runeprovider.FromString("some"))
-	pfa := pfaStruct{
-		parseStack{
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type":  "map",
-					"array": []interface{}{"g", "h"},
-					"value": map[string]interface{}{
-						"boolKey":   true,
-						"numberKey": 273,
-						"stringKey": "string value",
-						"runeKey":   '\n',
-						"arrayKey":  []interface{}{"a", "b"},
-					},
-				},
-			},
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type":   "key",
-					"string": "boolKey",
-					"array":  []interface{}{"c", "d"},
-					"value": map[string]interface{}{
-						"arrayKey": []interface{}{"e", "f"},
-					},
+	pfa := pfaFrom(runeprovider.FromString("some"), TraceNone)
+	// p := runeprovider.ProxyFrom(runeprovider.FromString("some"))
+	// pfa := pfaStruct{
+	pfa.stack = parseStack{
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type":  "map",
+				"array": []interface{}{"g", "h"},
+				"value": map[string]interface{}{
+					"boolKey":   true,
+					"numberKey": 273,
+					"stringKey": "string value",
+					"runeKey":   '\n',
+					"arrayKey":  []interface{}{"a", "b"},
 				},
 			},
 		},
-		p,
-		nil,
-		map[string]interface{}{
-			"array":   []interface{}{"i", "j"},
-			"primary": "begin",
-			"result": map[string]interface{}{
-				"some": "thing",
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type":   "key",
+				"string": "boolKey",
+				"array":  []interface{}{"c", "d"},
+				"value": map[string]interface{}{
+					"arrayKey": []interface{}{"e", "f"},
+				},
 			},
 		},
-		TraceNone,
-		nil,
-		0,
 	}
+	// p,
+	// nil,
+	pfa.vars = map[string]interface{}{
+		"array":   []interface{}{"i", "j"},
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
+	}
+	// 	TraceNone,
+	// 	nil,
+	// 	0,
+	// }
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
 			In:  []interface{}{"primary", SetVar{"primary", "end"}},
@@ -293,50 +280,51 @@ func (pfa *pfaStruct) pfaActionsTestHelper(varPathStr string, action interface{}
 }
 
 func TestPfaConditions(t *testing.T) {
-	p := runeprovider.ProxyFrom(runeprovider.FromString("something"))
-	p.PullRune()
-	p.PullRune()
-	p.PullRune()
-	p.PullRune()
-	pfa := pfaStruct{
-		parseStack{
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type":  "map",
-					"array": []interface{}{"g", "h"},
-					"value": map[string]interface{}{
-						"boolKey":   true,
-						"numberKey": 273,
-						"stringKey": "string value",
-						"runeKey":   '\n',
-						"arrayKey":  []interface{}{"a", "b"},
-					},
-				},
-			},
-			parseStackItem{
-				vars: map[string]interface{}{
-					"type":   "key",
-					"string": "boolKey",
-					"array":  []interface{}{"c", "d"},
-					"value": map[string]interface{}{
-						"arrayKey": []interface{}{"e", "f"},
-					},
+	pfa := pfaFrom(runeprovider.FromString("something"), TraceNone)
+	// p := runeprovider.ProxyFrom(runeprovider.FromString("something"))
+	pfa.p.PullRune()
+	pfa.p.PullRune()
+	pfa.p.PullRune()
+	pfa.p.PullRune()
+	// pfa := pfaStruct{
+	pfa.stack = parseStack{
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type":  "map",
+				"array": []interface{}{"g", "h"},
+				"value": map[string]interface{}{
+					"boolKey":   true,
+					"numberKey": 273,
+					"stringKey": "string value",
+					"runeKey":   '\n',
+					"arrayKey":  []interface{}{"a", "b"},
 				},
 			},
 		},
-		p,
-		nil,
-		map[string]interface{}{
-			"array":   []interface{}{"i", "j"},
-			"primary": "begin",
-			"result": map[string]interface{}{
-				"some": "thing",
+		parseStackItem{
+			vars: map[string]interface{}{
+				"type":   "key",
+				"string": "boolKey",
+				"array":  []interface{}{"c", "d"},
+				"value": map[string]interface{}{
+					"arrayKey": []interface{}{"e", "f"},
+				},
 			},
 		},
-		TraceNone,
-		nil,
-		0,
 	}
+	// p,
+	// nil,
+	pfa.vars = map[string]interface{}{
+		"array":   []interface{}{"i", "j"},
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
+	}
+	// 	TraceNone,
+	// 	nil,
+	// 	0,
+	// }
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary is begin => true": {
 			In:  []interface{}{VarIs{"primary", "begin"}},

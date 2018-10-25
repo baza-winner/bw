@@ -209,7 +209,7 @@ func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
 			case "bool":
 				ok = vType.Kind() == reflect.Bool
 			case "bwset.Strings":
-				_, ok = v.(bwset.StringSet)
+				_, ok = v.(bwset.String)
 			case "deftype.Set":
 				_, ok = v.(deftype.Set)
 			case "interface{}":
@@ -288,8 +288,8 @@ func _mustBeSliceOfStrings(v interface{}) (result []string) {
 	return
 }
 
-func _mustBeBwsetStrings(v interface{}) (result bwset.StringSet) {
-	result, _ = _mustBeOfType(v, "bwset.Strings").(bwset.StringSet)
+func _mustBeBwsetStrings(v interface{}) (result bwset.String) {
+	result, _ = _mustBeOfType(v, "bwset.Strings").(bwset.String)
 	return
 }
 

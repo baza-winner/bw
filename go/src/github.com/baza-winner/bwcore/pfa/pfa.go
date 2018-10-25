@@ -60,12 +60,23 @@ func (stack *parseStack) String() (result string) {
 type pfaStruct struct {
 	stack parseStack
 	p     *runeprovider.Proxy
-	err   error
-	vars  map[string]interface{}
+	// isUnexpectedRune bool
+	errVal interface{}
+	err    error
+	vars   map[string]interface{}
 	// trace support
 	traceLevel      TraceLevel
 	traceConditions []string
 	ruleLevel       int
+}
+
+func pfaFrom(p runeprovider.RuneProvider, traceLevel TraceLevel) *pfaStruct {
+	return &pfaStruct{
+		stack:      parseStack{},
+		p:          runeprovider.ProxyFrom(p),
+		vars:       map[string]interface{}{},
+		traceLevel: traceLevel,
+	}
 }
 
 func (pfa pfaStruct) DataForJSON() interface{} {
@@ -95,12 +106,7 @@ func Run(p runeprovider.RuneProvider, rules Rules, optTraceLevel ...TraceLevel) 
 	if optTraceLevel != nil {
 		traceLevel = optTraceLevel[0]
 	}
-	pfa := pfaStruct{
-		stack:      parseStack{},
-		p:          runeprovider.ProxyFrom(p),
-		vars:       map[string]interface{}{},
-		traceLevel: traceLevel,
-	}
+	pfa := pfaFrom(p, traceLevel)
 	for {
 		pfa.processRules(rules)
 		if pfa.err != nil || pfa.p.Curr.IsEOF {
@@ -125,14 +131,24 @@ func runePtr(r rune) *rune {
 
 func (pfa *pfaStruct) panic(args ...interface{}) {
 	fmtString := "<ansiOutline>pfa<ansi> <ansiSecondary>%s<ansi>"
-	if args != nil {
-		fmtString += " " + args[0].(string)
-	}
 	fmtArgs := []interface{}{pfa}
-	if len(args) > 1 {
-		fmtArgs = append(fmtArgs, args[1:])
+	if args == nil {
+		bwerror.Panicd(1, fmtString, fmtArgs...)
+	} else {
+		switch t := args[0].(type) {
+		case string:
+			fmtString += " " + t
+			// fmtArgs = append(fmtArgs, args[1:]...)
+			if len(args) > 1 {
+				fmtArgs = append(fmtArgs, args[1:]...)
+			}
+			bwerror.Panicd(1, fmtString, fmtArgs...)
+		case error:
+			bwerror.PanicErr(fmt.Errorf(t.Error()+"\n"+ansi.Ansi("", fmtString), fmtArgs), 1)
+		default:
+			bwerror.Panic("%#v", args)
+		}
 	}
-	bwerror.Panicd(1, fmtString, fmtArgs...)
 }
 
 func (pfa *pfaStruct) ifStackLen(minLen int) bool {
@@ -172,6 +188,7 @@ type VarValue struct {
 }
 
 func (v VarValue) GetVal(varPath VarPath) (result VarValue) {
+	// fmt.Printf("GetVal: %s\n", varPath.formattedString(nil))
 	if v.pfa.err != nil || len(varPath) == 0 {
 		result = v
 	} else {
@@ -192,6 +209,7 @@ func (v VarValue) GetVal(varPath VarPath) (result VarValue) {
 			result = result.GetVal(varPath[1:])
 		}
 	}
+
 	return
 }
 
@@ -205,32 +223,42 @@ func (v VarValue) helper(
 		return
 	}
 	isIdx, idx, key, err := varPath[0].GetIdxKey(v.pfa)
+	// fmt.Printf("helper: %s,isIdx: %s, idx: %s, key: %s, err: %s \n", varPath.formattedString(nil), isIdx, idx, key, err)
 	if err != nil {
 		v.pfa.err = err
 	} else if isIdx {
 		if s, ok := v.val.([]interface{}); !ok {
-			v.pfa.err = bwerror.Error("<ansiPrimary>%#v<ansi> is not <ansiOutline>Array", v)
+			v.pfa.errVal = helperFailed{formattedStringFrom("%s is not <ansiOutline>Array", varPath.formattedString())}
+			// v.pfa.panic()
 		} else {
 			onSlice(s, idx, varVal)
 		}
 	} else {
 		if m, ok := v.val.(map[string]interface{}); !ok {
-			v.pfa.err = bwerror.Error("<ansiPrimary>%#v<ansi> is not <ansiOutline>Map<ansi>", v)
+			v.pfa.errVal = helperFailed{formattedStringFrom("%s is not <ansiOutline>Map", varPath.formattedString())}
+			// v.pfa.err = bwerror.Error("<ansiPrimary>%#v<ansi> is not <ansiOutline>Map<ansi>", v)
 		} else {
 			onMap(m, key, varVal)
 		}
 	}
 }
 
+type helperFailed struct{ s formattedString }
+type getValFailed struct{ s formattedString }
+type setValFailed struct{ s formattedString }
+
 func (v VarValue) SetVal(varPath VarPath, varVal interface{}) {
 	if len(varPath) == 0 {
-		v.pfa.err = bwerror.Error("varPath is empty")
+		v.pfa.panic("varPath: %#v", varPath)
 	} else {
 		target := VarValue{nil, v.pfa}
 		v.helper(varPath, varVal,
 			func(s []interface{}, idx int, varVal interface{}) {
 				if 0 > idx || idx >= len(s) {
-					v.pfa.err = bwerror.Error("%d is out of range [%d, %d]", idx, 0, len(s)-1)
+					v.pfa.errVal = setValFailed{
+						formattedStringFrom("%d is out of range [%d, %d] of %s", idx, 0, len(s)-1, v.pfa.traceVal(varPath)),
+					}
+					// v.pfa.err = bwerror.Error("%d is out of range [%d, %d]", idx, 0, len(s)-1)
 				} else {
 					if len(varPath) == 1 {
 						s[idx] = varVal
@@ -309,7 +337,13 @@ func (v VarValue) String() (result string, err error) {
 }
 
 func (pfa *pfaStruct) getVarValue(varPath VarPath) (result VarValue) {
+	// fmt.Printf("getVarValue: %s\n", varPath.formattedString(nil))
 	result = VarValue{nil, pfa}
+	// if pfa.errVal != nil {
+
+	// pfa.panic("%#v", pfa.errVal)
+	// return
+	// }
 	pfa.getSetHelper(varPath, nil,
 		func(stackItemVars VarValue, varVal interface{}) {
 			if stackItemVars.val != nil {
@@ -317,45 +351,30 @@ func (pfa *pfaStruct) getVarValue(varPath VarPath) (result VarValue) {
 			}
 			return
 		},
-		func(key string) {
-			switch key {
-			case "rune":
-				var ofs int
-				if len(varPath) > 2 {
-					pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
-				} else if len(varPath) > 1 {
-					isIdx, idx, _, err := varPath[1].GetIdxKey(pfa)
-					if err != nil {
-						pfa.err = err
-					} else {
-						if !isIdx {
-							pfa.err = bwerror.Error("%#v expects idx after rune", varPath)
-						} else {
-							ofs = idx
-						}
-					}
-				}
-				if pfa.err == nil {
-					currRune, _ := pfa.p.Rune(ofs)
-					result = VarValue{currRune, pfa}
-				}
-			case "stackLen":
-				if len(varPath) > 1 {
-					pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
-				} else {
-					result.val = len(pfa.stack)
-				}
-			case "error":
-				pfa.err = bwerror.Error("%#v is write only", varPath)
-			}
-			return
+		func(name string, ofs int) {
+			currRune, _ := pfa.p.Rune(ofs)
+			result.val = currRune
+		},
+		func(name string) {
+			result.val = len(pfa.stack)
 		},
 		func(pfaVars VarValue, varVal interface{}) {
-
 			result = pfaVars.GetVal(varPath)
 			return
 		},
 	)
+	if pfa.errVal != nil {
+		switch t := pfa.errVal.(type) {
+		case helperFailed:
+			pfa.errVal = nil
+			pfa.err = pfaError{
+				pfa,
+				bwerror.Error("failed to get %s: "+string(t.s), varPath.formattedString(nil)),
+				whereami.WhereAmI(2),
+			}
+			pfa.panic(pfa.err)
+		}
+	}
 	return
 }
 
@@ -363,7 +382,8 @@ func (pfa *pfaStruct) getSetHelper(
 	varPath VarPath,
 	varVal interface{},
 	onStackItemVar func(stackItemVars VarValue, varVal interface{}),
-	onSpecial func(key string),
+	onRune func(name string, ofs int),
+	onStackLen func(name string),
 	onPfaVar func(pfaVars VarValue, varVal interface{}),
 ) {
 	if len(varPath) == 0 {
@@ -388,39 +408,33 @@ func (pfa *pfaStruct) getSetHelper(
 			}
 		} else {
 			if key == "rune" || key == "stackLen" || key == "error" {
-							switch key {
-			case "rune":
-				var ofs int
-				if len(varPath) > 2 {
-					pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
-				} else if len(varPath) > 1 {
-					isIdx, idx, _, err := varPath[1].GetIdxKey(pfa)
-					if err != nil {
-						pfa.err = err
-					} else {
-						if !isIdx {
-							pfa.err = bwerror.Error("%#v expects idx after rune", varPath)
+				switch key {
+				case "rune":
+					var ofs int
+					if len(varPath) > 2 {
+						pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
+					} else if len(varPath) > 1 {
+						isIdx, idx, _, err := varPath[1].GetIdxKey(pfa)
+						if err != nil {
+							pfa.err = err
 						} else {
-							ofs = idx
+							if !isIdx {
+								pfa.err = bwerror.Error("%#v expects idx after rune", varPath)
+							} else {
+								ofs = idx
+							}
 						}
 					}
+					if pfa.err == nil {
+						onRune(key, ofs)
+					}
+				case "stackLen":
+					if len(varPath) > 1 {
+						pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
+					} else {
+						onStackLen(key)
+					}
 				}
-				if pfa.err == nil {
-					currRune, _ := pfa.p.Rune(ofs)
-					result = VarValue{currRune, pfa}
-				}
-			case "stackLen":
-				if len(varPath) > 1 {
-					pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
-				} else {
-					result.val = len(pfa.stack)
-				}
-			case "error":
-				pfa.err = bwerror.Error("%#v is write only", varPath)
-			}
-			return
-		},
-				onSpecial(key)
 			} else {
 				onPfaVar(VarValue{pfa.vars, pfa}, varVal)
 			}
@@ -444,17 +458,35 @@ func (pfa *pfaStruct) setVarVal(varPath VarPath, varVal interface{}) {
 				stackItemVars.SetVal(varPath[1:], varVal)
 			}
 		},
-		func(key string) {
-			if key == "error" {
-				pfaVars.SetVal(varPath, varVal)
-			} else {
-				pfa.err = bwerror.Error("<ansiOutline>%s<ansi> is read only", key)
-			}
+		func(name string, idx int) {
+			pfa.err = bwerror.Error("<ansiOutline>%s<ansi> is read only", name)
 		},
+		func(name string) {
+			pfa.err = bwerror.Error("<ansiOutline>%s<ansi> is read only", name)
+		},
+		// func(key string) {
+		// 	if key == "error" {
+		// 		pfaVars.SetVal(varPath, varVal)
+		// 	} else {
+		// 		pfa.err = bwerror.Error("<ansiOutline>%s<ansi> is read only", key)
+		// 	}
+		// },
 		func(pfaVars VarValue, varVal interface{}) {
 			pfaVars.SetVal(varPath, varVal)
 		},
 	)
+	if pfa.errVal != nil {
+		switch t := pfa.errVal.(type) {
+		case helperFailed:
+			pfa.errVal = nil
+			pfa.err = pfaError{
+				pfa,
+				bwerror.Error("failed to set %s: "+string(t.s), varPath.formattedString(nil)),
+				whereami.WhereAmI(2),
+			}
+			// pfa.panic(pfa.err)
+		}
+	}
 }
 
 // ============================================================================
@@ -586,12 +618,20 @@ func MustVarPathFrom(s string) (result VarPath) {
 	return
 }
 
-func (v VarPath) formattedString(pfa *pfaStruct) formattedString {
+func (v VarPath) formattedString(optPfa ...*pfaStruct) formattedString {
+	var pfa *pfaStruct
+	if optPfa != nil {
+		pfa = optPfa[0]
+	}
 	ss := []string{}
 	for _, i := range v {
 		switch t := i.val.(type) {
 		case VarPath:
-			ss = append(ss, fmt.Sprintf("{%s(%s)}", t.formattedString(pfa), pfa.traceVal(pfa.getVarValue(t).val)))
+			if pfa == nil {
+				ss = append(ss, fmt.Sprintf("{%s}", t.formattedString(nil)))
+			} else {
+				ss = append(ss, fmt.Sprintf("{%s(%s)}", t.formattedString(pfa), pfa.traceVal(pfa.getVarValue(t).val)))
+			}
 		case string:
 			ss = append(ss, t)
 		default:
@@ -601,7 +641,7 @@ func (v VarPath) formattedString(pfa *pfaStruct) formattedString {
 			}
 		}
 	}
-	return formattedString(fmt.Sprintf(ansi.Ansi("", "<ansiCmd>%s"), strings.Join(ss, ".")))
+	return formattedStringFrom("<ansiCmd>%s", strings.Join(ss, "."))
 }
 
 // ============================================================================
@@ -665,13 +705,18 @@ func createRule(args []interface{}) rule {
 	}
 	varIsMap := map[string]*_varIs{}
 	for _, arg := range args {
-		if typedArg, ok := arg.(rune); ok {
+		switch typedArg := arg.(type) {
+		case rune:
 			getVarIs(varIsMap, "rune").AddRune(typedArg)
-		} else if _, ok := arg.(EOF); ok {
+		case EOF:
 			getVarIs(varIsMap, "rune").isNil = true
-		} else if typedArg, ok := arg.(UnicodeCategory); ok {
+		case UnicodeCategory:
 			getVarIs(varIsMap, "rune").AddValChecker(typedArg)
-		} else if typedArg, ok := arg.(VarIs); ok {
+		case ProccessorActionProvider:
+			result.processorActions = append(result.processorActions,
+				typedArg.GetAction(),
+			)
+		case VarIs:
 			if len(typedArg.VarPathStr) == 0 {
 				bwerror.Panic("len(typedArg.VarPathStr) == 0, typedArg: %#v", typedArg)
 			}
@@ -724,10 +769,6 @@ func createRule(args []interface{}) rule {
 				default:
 					bwerror.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
 				}
-			case "error":
-				if len(varPath) > 1 {
-					bwerror.Panic("varPath: %s is not valid for VarIs", typedArg.VarPathStr)
-				}
 			default:
 				varIs := getVarIs(varIsMap, typedArg.VarPathStr)
 				if typedArg.VarValue == nil {
@@ -765,12 +806,7 @@ func createRule(args []interface{}) rule {
 					}
 				}
 			}
-
-		} else if typedArg, ok := arg.(ProccessorActionProvider); ok {
-			result.processorActions = append(result.processorActions,
-				typedArg.GetAction(),
-			)
-		} else {
+		default:
 			bwerror.Panic("unexpected %#v", arg)
 		}
 	}
@@ -783,6 +819,7 @@ func createRule(args []interface{}) rule {
 
 func (pfa *pfaStruct) processRules(rules Rules) {
 	pfa.err = nil
+	pfa.errVal = nil
 rules:
 	for _, rule := range rules {
 		pfa.traceBeginConditions()
@@ -805,24 +842,28 @@ rules:
 		}
 	}
 	if pfa.err == nil {
-		if errVal := pfa.vars["error"]; errVal != nil {
+		if pfa.errVal != nil {
 			var err error
-			switch errVal.(type) {
+			switch t := pfa.errVal.(type) {
 			case UnexpectedRune:
 				err = pfa.p.UnexpectedRuneError()
-			case UnknownWord:
+			case UnexpectedItem:
 				stackItem := pfa.getTopStackItem()
-				if word, ok := stackItem.vars["word"].(string); !ok {
-					pfa.panic("<ansiCmd>0.word<ansi> is not specified")
-				} else {
-					err = pfa.p.WordError("unknown word <ansiPrimary>%s<ansi>", word, stackItem.start)
-				}
-			case Panic:
-				pfa.panic()
+				start := stackItem.start
+				item := pfa.p.Curr.Prefix[start.Pos-pfa.p.Curr.PrefixStart:]
+				err = pfa.p.ItemError(start, "unexpected \"<ansiPrimary>%s<ansi>\"", item)
+			case failedToTransformToNumber:
+				stackItem := pfa.getTopStackItem()
+				start := stackItem.start
+				err = pfa.p.ItemError(start, t.s)
 			default:
-				bwerror.Unreachable(bwerror.Spew.Sprintf("errVal: %#v", errVal))
+				pfa.panic("pfa.errVal: %#v", pfa.errVal)
 			}
-			pfa.err = pfaError{pfa, errVal, err, whereami.WhereAmI(2)}
+			pfa.err = pfaError{
+				pfa,
+				err,
+				whereami.WhereAmI(2),
+			}
 		}
 	}
 	return
@@ -899,50 +940,60 @@ func (pfa *pfaStruct) fmtArgs(fmtArgs ...interface{}) []interface{} {
 type formattedString string
 
 func (pfa *pfaStruct) traceVal(val interface{}) (result formattedString) {
-	if pfa.traceLevel > TraceNone {
-		switch t := val.(type) {
-		case formattedString:
-			result = t
-		case rune, string:
-			result = formattedString(fmt.Sprintf(ansi.Ansi("", "<ansiPrimary>%q"), val))
-		case UnicodeCategory, EOF, Map, Array, UnexpectedRune, UnknownWord, Panic:
-			result = formattedString(fmt.Sprintf(ansi.Ansi("", "<ansiOutline>%s"), t))
-		case VarPath:
-			var val interface{}
-			if t[0].val == "rune" {
-				ofs := 0
-				if len(t) > 1 {
-					isIdx, idx, _, err := t[1].GetIdxKey(pfa)
-					if err == nil && isIdx {
-						ofs = idx
-					}
+	// if pfa.traceLevel > TraceNone {
+	switch t := val.(type) {
+	case formattedString:
+		result = t
+	case rune, string:
+		result = formattedStringFrom("<ansiPrimary>%q", val)
+		// result = formattedString(fmt.Sprintf(ansi.Ansi("", "<ansiPrimary>%q"), val))
+	case UnicodeCategory, EOF, Map, Array, UnexpectedRune, UnexpectedItem, Panic:
+		result = formattedStringFrom("<ansiOutline>%s", t)
+		// result = formattedString(fmt.Sprintf(ansi.Ansi("", "<ansiOutline>%s"), t))
+	case VarPath:
+		var val interface{}
+		if t[0].val == "rune" {
+			ofs := 0
+			if len(t) > 1 {
+				isIdx, idx, _, err := t[1].GetIdxKey(pfa)
+				if err == nil && isIdx {
+					ofs = idx
 				}
-				if r, isEOF := pfa.p.Rune(ofs); isEOF {
-					val = EOF{}
-				} else {
-					val = r
-				}
+			}
+			if r, isEOF := pfa.p.Rune(ofs); isEOF {
+				val = EOF{}
 			} else {
-				val = pfa.getVarValue(t).val
+				val = r
 			}
-			result = formattedString(fmt.Sprintf("%s(%s)", t.formattedString(pfa), pfa.traceVal(val)))
-		case bwset.String, bwset.Rune, bwset.Int:
-			value := reflect.ValueOf(t)
-			keys := value.MapKeys()
-			if len(keys) == 1 {
-				result = formattedString(fmt.Sprintf(ansi.Ansi("", "<ansiPrimary>%s"), traceValHelper(keys[0].Interface())))
-			} else if len(keys) > 1 {
-				ss := []string{}
-				for _, k := range keys {
-					ss = append(ss, traceValHelper(k.Interface()))
-				}
-				result = formattedString(fmt.Sprintf(ansi.Ansi("", "<<ansiSecondary>%s>"), strings.Join(ss, " ")))
-			}
-		default:
-			result = formattedString(fmt.Sprintf(ansi.Ansi("", "<ansiPrimary>%#v"), val))
+		} else {
+			val = pfa.getVarValue(t).val
 		}
+		result = formattedString(fmt.Sprintf("%s(%s)", t.formattedString(pfa), pfa.traceVal(val)))
+	case bwset.String, bwset.Rune, bwset.Int:
+		value := reflect.ValueOf(t)
+		keys := value.MapKeys()
+		if len(keys) == 1 {
+			result = formattedStringFrom("<ansiPrimary>%s", traceValHelper(keys[0].Interface()))
+		} else if len(keys) > 1 {
+			ss := []string{}
+			for _, k := range keys {
+				ss = append(ss, traceValHelper(k.Interface()))
+			}
+			result = formattedStringFrom("<<ansiSecondary>%s>", strings.Join(ss, " "))
+		}
+	default:
+		result = formattedStringFrom("<ansiPrimary>%#v", val)
 	}
+	// }
 	return
+}
+
+func formattedStringFrom(fmtString string, fmtArgs ...interface{}) formattedString {
+	return formattedString(fmt.Sprintf(ansi.Ansi("", fmtString), fmtArgs...))
+}
+
+func (v formattedString) concat(s formattedString) formattedString {
+	return formattedString(string(v) + string(s))
 }
 
 func traceValHelper(i interface{}) (s string) {
