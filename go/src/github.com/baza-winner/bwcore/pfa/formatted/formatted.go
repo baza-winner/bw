@@ -12,7 +12,7 @@ func StringFrom(fmtString string, fmtArgs ...interface{}) String {
 	return String(fmt.Sprintf(ansi.Ansi("", fmtString), fmtArgs...))
 }
 
-func (v String) concat(s String) String {
+func (v String) Concat(s String) String {
 	return String(string(v) + string(s))
 }
 

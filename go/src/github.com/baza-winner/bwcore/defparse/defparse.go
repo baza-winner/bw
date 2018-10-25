@@ -235,10 +235,9 @@ import (
 func Parse(source string) (interface{}, error) {
 	return pfa.Run(
 		runeprovider.FromString(source),
-		pfaStateDef,
+		rules,
 		// pfa.TraceBrief,
 		// pfa.TraceAll,
-		// pfa.State{"begin", ""},
 	)
 }
 

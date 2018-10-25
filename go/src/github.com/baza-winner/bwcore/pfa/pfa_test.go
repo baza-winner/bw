@@ -122,7 +122,7 @@ func TestPfa_getVarValue(t *testing.T) {
 
 func (pfa *PfaStruct) TestPfa_getVarValueTestHelper(varPathStr string) (val interface{}, err error) {
 	pfa.err = nil
-	varValue := pfa.getVarValue(MustVarPathFrom(varPathStr))
+	varValue := pfa.VarValue(MustVarPathFrom(varPathStr))
 	return varValue.val, pfa.err
 }
 
@@ -190,12 +190,12 @@ func TestPfa_setVarVal(t *testing.T) {
 	bwtesting.BwRunTests(t, pfa.setVarValTestHelper, tests)
 }
 
-func (pfa *PfaStruct) setVarValTestHelper(varPathStr string, varVal interface{}) (interface{}, error) {
+func (pfa *PfaStruct) setVarValTestHelper(varPathStr string, VarVal interface{}) (interface{}, error) {
 	varPath := MustVarPathFrom(varPathStr)
 	pfa.err = nil
-	pfa.setVarVal(varPath, varVal)
+	pfa.SetVarVal(varPath, VarVal)
 	if pfa.err == nil {
-		return pfa.getVarValue(varPath).val, pfa.err
+		return pfa.VarValue(varPath).val, pfa.err
 	} else {
 		return nil, pfa.err
 	}
@@ -271,11 +271,11 @@ func TestPfaActions(t *testing.T) {
 }
 
 func (pfa *PfaStruct) pfaActionsTestHelper(varPathStr string, action interface{}) (val interface{}, err error) {
-	pfa.processRules(CreateRules([]interface{}{action}))
+	pfa.processRules(RulesFrom([]interface{}{action}))
 	if pfa.err != nil {
 		return nil, pfa.err
 	} else {
-		return pfa.getVarValue(MustVarPathFrom(varPathStr)).val, pfa.err
+		return pfa.VarValue(MustVarPathFrom(varPathStr)).val, pfa.err
 	}
 }
 
@@ -401,7 +401,7 @@ func TestPfaConditions(t *testing.T) {
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "rune.-2 is 'o' => true")
-	// bwerror.Spew.Printf("%#q\n", pfa.getVarValue(MustVarPathFrom("rune.-2")).val)
+	// bwerror.Spew.Printf("%#q\n", pfa.VarValue(MustVarPathFrom("rune.-2")).val)
 	bwtesting.BwRunTests(t, pfa.pfaConditionsTestHelper, tests)
 }
 
@@ -413,6 +413,6 @@ func (pfa *PfaStruct) pfaConditionsTestHelper(arg interface{}) (interface{}, err
 		args = []interface{}{arg}
 	}
 	args = append(args, SetVar{"result", true})
-	pfa.processRules(CreateRules(args))
+	pfa.processRules(RulesFrom(args))
 	return pfa.vars["result"], pfa.err
 }

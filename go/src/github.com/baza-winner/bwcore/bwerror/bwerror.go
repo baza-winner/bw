@@ -87,14 +87,10 @@ func Panicd(depth uint, msgFmt string, args ...interface{}) {
 func Noop(args ...interface{}) {
 }
 
-// func Unreachable(args ...string) {
-// 	var suffix string
-// 	if args != nil {
-// 		suffix = " <ansi>" + strings.Join(args, " ")
-// 	}
-// 	Panicd(1, "<ansiErr>UNREACHABLE"+suffix)
-// }
+func Unreachable() {
+	Panicd(1, "<ansiErr>UNREACHABLE")
+}
 
-// func TODO() {
-// 	Panicd(1, "<ansiErr>UNREACHABLE")
-// }
+func TODO() {
+	Panicd(1, "<ansiErr>TODO")
+}

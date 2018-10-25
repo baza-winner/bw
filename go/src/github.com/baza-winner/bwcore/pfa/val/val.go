@@ -4,11 +4,41 @@ import (
 	"unicode"
 
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/pfa/common"
+	"github.com/baza-winner/bwcore/pfa/core"
+	"github.com/baza-winner/bwcore/pfa/formatted"
 )
 
-//go:generate stringer -type=UnicodeCategory
+// ============================================================================
+
+func valProviderFrom(i interface{}) (result core.ValProvider, err error) {
+	switch t := i.(type) {
+	case Array:
+		result = t
+	case Map:
+		result = t
+	case Var:
+		// result = common.VarIsFrom(t.VarPathStr)
+		result = common.VarVal{core.MustVarPathFrom(t.VarPathStr)}
+	default:
+		result = common.JustVal{i}
+	}
+	return
+}
+
+func MustValProviderFrom(i interface{}) (result core.ValProvider) {
+	var err error
+	if result, err = valProviderFrom(i); err != nil {
+		bwerror.PanicErr(err)
+	}
+	return
+}
+
+// ============================================================================
 
 type UnicodeCategory uint8
+
+//go:generate stringer -type=UnicodeCategory
 
 const (
 	UnicodeSpace UnicodeCategory = iota
@@ -21,7 +51,7 @@ const (
 	UnicodeSymbol
 )
 
-func (v UnicodeCategory) conforms(pfa *PfaStruct, val interface{}, varPath VarPath) (result bool) {
+func (v UnicodeCategory) Conforms(pfa *core.PfaStruct, val interface{}, varPath core.VarPath) (result bool) {
 	if r, ok := val.(rune); ok {
 		switch v {
 		case UnicodeSpace:
@@ -44,7 +74,9 @@ func (v UnicodeCategory) conforms(pfa *PfaStruct, val interface{}, varPath VarPa
 			bwerror.Panic("UnicodeCategory: %s", v)
 		}
 	}
-	pfa.traceCondition(varPath, v, result)
+	if pfa.TraceLevel > core.TraceNone {
+		pfa.TraceCondition(varPath, v, result)
+	}
 	return
 }
 
@@ -66,14 +98,24 @@ func (t EOF) FormattedString() formatted.String {
 
 // ============================================================================
 
+type Var struct {
+	VarPathStr string
+}
+
+func (t Var) GetChecker() core.ValChecker {
+	return common.VarVal{core.MustVarPathFrom(t.VarPathStr)}
+}
+
+// ============================================================================
+
 type Map struct{}
 
-func (v Map) GetVal(pfa *PfaStruct) interface{} {
+func (v Map) GetVal(pfa *core.PfaStruct) interface{} {
 	return map[string]interface{}{}
 }
 
-func (v Map) GetSource(pfa *PfaStruct) formatted.String {
-	return pfa.traceVal(v)
+func (v Map) GetSource(pfa *core.PfaStruct) formatted.String {
+	return pfa.TraceVal(v)
 }
 
 func (v Map) String() string {
@@ -88,12 +130,12 @@ func (t Map) FormattedString() formatted.String {
 
 type Array struct{}
 
-func (v Array) GetVal(pfa *PfaStruct) interface{} {
+func (v Array) GetVal(pfa *core.PfaStruct) interface{} {
 	return []interface{}{}
 }
 
-func (v Array) GetSource(pfa *PfaStruct) formatted.String {
-	return pfa.traceVal(v)
+func (v Array) GetSource(pfa *core.PfaStruct) formatted.String {
+	return pfa.TraceVal(v)
 }
 
 func (v Array) String() string {

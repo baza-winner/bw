@@ -2,12 +2,13 @@ package pfa
 
 import (
 	"github.com/baza-winner/bwcore/pfa/core"
+	"github.com/baza-winner/bwcore/pfa/r"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
-func ParseLogic(p runeprovider.RuneProvider) (data interface{}, errinitialState error) {
+func ParseLogic(p runeprovider.RuneProvider) (interface{}, error) {
 
-	rules := CreateRules(
+	rules := r.RulesFrom(
 
 	// []interface{}{PrimaryIs{"begin"},
 	// 	PushItem{},
@@ -16,7 +17,7 @@ func ParseLogic(p runeprovider.RuneProvider) (data interface{}, errinitialState 
 	// },
 	// []interface{}{
 	// 	PullRune{},
-	// 	SubRules{CreateRules(
+	// 	SubRules{RulesFrom(
 	// 		[]interface{}{SecondaryIs{"waitForSpace"}, UnicodeSpace, SetSecondary{"waitForNonSpace"}},
 	// 		[]interface{}{SecondaryIs{"waitForNonSpace"}, UnicodeSpace},
 	// 		[]interface{}{SecondaryIs{"waitForNonSpace"}, SecondaryIs{"waitForSpace"}, '/', SetSecondary{"waitForSecondCommentRune"}},
@@ -90,7 +91,7 @@ func ParseLogic(p runeprovider.RuneProvider) (data interface{}, errinitialState 
 	// },
 	// []interface{}{PrimaryIs{"start"},
 	// 	PullRune{},
-	// 	SubRules{CreateRules(
+	// 	SubRules{RulesFrom(
 	// 		[]interface{}{'/',
 	// 			SetState{"waitForSecondCommentRune"},
 	// 		},
@@ -104,6 +105,6 @@ func ParseLogic(p runeprovider.RuneProvider) (data interface{}, errinitialState 
 	return Run(p, rules, core.TraceBrief)
 }
 
-func CompileLogic(data interface{}) (result Rules, err error) {
+func CompileLogic(data interface{}) (result r.Rules, err error) {
 	return
 }
