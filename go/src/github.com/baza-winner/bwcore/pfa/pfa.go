@@ -347,13 +347,6 @@ func (pfa *pfaStruct) getVarValue(varPath VarPath) (result VarValue) {
 				}
 			case "error":
 				pfa.err = bwerror.Error("%#v is write only", varPath)
-				// }
-
-				// if len(varPath) > 1 {
-				// 	pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
-				// } else {
-				// 	result.val = len(pfa.stack)
-				// }
 			}
 			return
 		},
@@ -395,6 +388,38 @@ func (pfa *pfaStruct) getSetHelper(
 			}
 		} else {
 			if key == "rune" || key == "stackLen" || key == "error" {
+							switch key {
+			case "rune":
+				var ofs int
+				if len(varPath) > 2 {
+					pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
+				} else if len(varPath) > 1 {
+					isIdx, idx, _, err := varPath[1].GetIdxKey(pfa)
+					if err != nil {
+						pfa.err = err
+					} else {
+						if !isIdx {
+							pfa.err = bwerror.Error("%#v expects idx after rune", varPath)
+						} else {
+							ofs = idx
+						}
+					}
+				}
+				if pfa.err == nil {
+					currRune, _ := pfa.p.Rune(ofs)
+					result = VarValue{currRune, pfa}
+				}
+			case "stackLen":
+				if len(varPath) > 1 {
+					pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
+				} else {
+					result.val = len(pfa.stack)
+				}
+			case "error":
+				pfa.err = bwerror.Error("%#v is write only", varPath)
+			}
+			return
+		},
 				onSpecial(key)
 			} else {
 				onPfaVar(VarValue{pfa.vars, pfa}, varVal)
@@ -420,7 +445,11 @@ func (pfa *pfaStruct) setVarVal(varPath VarPath, varVal interface{}) {
 			}
 		},
 		func(key string) {
-			pfa.err = bwerror.Error("<ansiOutline>%s<ansi> is read only", key)
+			if key == "error" {
+				pfaVars.SetVal(varPath, varVal)
+			} else {
+				pfa.err = bwerror.Error("<ansiOutline>%s<ansi> is read only", key)
+			}
 		},
 		func(pfaVars VarValue, varVal interface{}) {
 			pfaVars.SetVal(varPath, varVal)
