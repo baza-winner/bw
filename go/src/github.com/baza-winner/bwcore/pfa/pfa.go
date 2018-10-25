@@ -177,19 +177,14 @@ func (v VarValue) GetVal(varPath VarPath) (result VarValue) {
 	} else {
 		result = VarValue{nil, v.pfa}
 		v.helper(varPath, nil,
-			func(vIndex reflect.Value, varVal interface{}) {
-				result.val = vIndex.Interface()
+			func(s []interface{}, idx int, varVal interface{}) {
+				if 0 <= idx && idx < len(s) {
+					result.val = s[idx]
+				}
 				return
 			},
-			func(vValue reflect.Value, key string, varVal interface{}) {
-				keyValue := reflect.ValueOf(key)
-				valueOfKey := vValue.MapIndex(keyValue)
-				zeroValue := reflect.Value{}
-				if valueOfKey == zeroValue {
-					result.val = nil
-				} else {
-					result.val = valueOfKey.Interface()
-				}
+			func(m map[string]interface{}, key string, varVal interface{}) {
+				result.val = m[key]
 				return
 			},
 		)
@@ -203,29 +198,26 @@ func (v VarValue) GetVal(varPath VarPath) (result VarValue) {
 func (v VarValue) helper(
 	varPath VarPath,
 	varVal interface{},
-	onSlice func(vIndex reflect.Value, varVal interface{}),
-	onMap func(vValue reflect.Value, key string, varVal interface{}),
+	onSlice func(s []interface{}, idx int, varVal interface{}),
+	onMap func(m map[string]interface{}, key string, varVal interface{}),
 ) {
-	vType := reflect.TypeOf(v.val)
-	vValue := reflect.ValueOf(v.val)
+	if v.val == nil {
+		return
+	}
 	isIdx, idx, key, err := varPath[0].GetIdxKey(v.pfa)
 	if err != nil {
 		v.pfa.err = err
 	} else if isIdx {
-		if vType.Kind() != reflect.Slice {
-			v.pfa.err = bwerror.Error("%#v is not Slice", v)
-		} else if 0 > idx || idx >= vValue.Len() {
-			v.pfa.err = bwerror.Error("%d is out of range [%d, %d]", idx, 0, vValue.Len()-1)
+		if s, ok := v.val.([]interface{}); !ok {
+			v.pfa.err = bwerror.Error("<ansiPrimary>%#v<ansi> is not <ansiOutline>Array", v)
 		} else {
-			vIndex := vValue.Index(idx)
-			onSlice(vIndex, varVal)
+			onSlice(s, idx, varVal)
 		}
-	} else if v.val != nil {
-		if vType.Kind() != reflect.Map || vType.Key().Kind() != reflect.String {
-			bwerror.Panic("%#v is not map[string]", v)
-			v.pfa.err = bwerror.Error("%#v is not map[string]", v)
+	} else {
+		if m, ok := v.val.(map[string]interface{}); !ok {
+			v.pfa.err = bwerror.Error("<ansiPrimary>%#v<ansi> is not <ansiOutline>Map<ansi>", v)
 		} else {
-			onMap(vValue, key, varVal)
+			onMap(m, key, varVal)
 		}
 	}
 }
@@ -236,24 +228,26 @@ func (v VarValue) SetVal(varPath VarPath, varVal interface{}) {
 	} else {
 		target := VarValue{nil, v.pfa}
 		v.helper(varPath, varVal,
-			func(vIndex reflect.Value, varVal interface{}) {
-				if len(varPath) == 1 {
-					vIndex.Set(reflect.ValueOf(varVal)) // https://stackoverflow.com/questions/18115785/set-slice-index-using-reflect-in-go
+			func(s []interface{}, idx int, varVal interface{}) {
+				if 0 > idx || idx >= len(s) {
+					v.pfa.err = bwerror.Error("%d is out of range [%d, %d]", idx, 0, len(s)-1)
 				} else {
-					target.val = vIndex.Interface()
+					if len(varPath) == 1 {
+						s[idx] = varVal
+					} else {
+						target.val = s[idx]
+					}
 				}
 			},
-			func(vValue reflect.Value, key string, varVal interface{}) {
-				keyValue := reflect.ValueOf(key)
+			func(m map[string]interface{}, key string, varVal interface{}) {
 				if len(varPath) == 1 {
-					vValue.SetMapIndex(keyValue, reflect.ValueOf(varVal))
+					m[key] = varVal
 				} else {
-					elemValue := vValue.MapIndex(keyValue)
-					zeroValue := reflect.Value{}
-					if elemValue == zeroValue {
-						v.pfa.err = bwerror.Error("key <ansiPrimary>%s<ansi> is nil", key)
+					if kv, ok := m[key]; !ok {
+						v.pfa.err = bwerror.Error("Map (#%v) has no key <ansiPrimary>%s<ansi>", m, key)
+					} else {
+						target.val = kv
 					}
-					target.val = vValue.MapIndex(keyValue).Interface()
 				}
 			},
 		)
@@ -351,10 +345,20 @@ func (pfa *pfaStruct) getVarValue(varPath VarPath) (result VarValue) {
 				} else {
 					result.val = len(pfa.stack)
 				}
+			case "error":
+				pfa.err = bwerror.Error("%#v is write only", varPath)
+				// }
+
+				// if len(varPath) > 1 {
+				// 	pfa.err = bwerror.Error("%#v requires no additional VarPathItem", varPath)
+				// } else {
+				// 	result.val = len(pfa.stack)
+				// }
 			}
 			return
 		},
 		func(pfaVars VarValue, varVal interface{}) {
+
 			result = pfaVars.GetVal(varPath)
 			return
 		},
@@ -390,7 +394,7 @@ func (pfa *pfaStruct) getSetHelper(
 				onStackItemVar(stackItemVars, varVal)
 			}
 		} else {
-			if key == "rune" || key == "stackLen" {
+			if key == "rune" || key == "stackLen" || key == "error" {
 				onSpecial(key)
 			} else {
 				onPfaVar(VarValue{pfa.vars, pfa}, varVal)

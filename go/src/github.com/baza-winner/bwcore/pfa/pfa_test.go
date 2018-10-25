@@ -92,6 +92,9 @@ func TestPfa_getVarValue(t *testing.T) {
 				"some": "thing",
 			},
 		},
+		TraceNone,
+		nil,
+		0,
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
@@ -162,6 +165,9 @@ func TestPfa_setVarVal(t *testing.T) {
 				"some": "thing",
 			},
 		},
+		TraceNone,
+		nil,
+		0,
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
@@ -246,6 +252,9 @@ func TestPfaActions(t *testing.T) {
 				"some": "thing",
 			},
 		},
+		TraceNone,
+		nil,
+		0,
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
@@ -324,6 +333,9 @@ func TestPfaConditions(t *testing.T) {
 				"some": "thing",
 			},
 		},
+		TraceNone,
+		nil,
+		0,
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary is begin => true": {

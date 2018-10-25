@@ -42,7 +42,7 @@ func prepareLogicDef() Rules {
 					// SetTopItemValueAsBool{false},
 				},
 				[]interface{}{
-					VarIs{"0.string", "nil"}, VarIs{"0.string", "nul"},
+					VarIs{"0.string", "nil"}, VarIs{"0.string", "null"},
 					// TopItemStringIsOneOf{bwset.StringSetFrom("nil", "null")}
 				},
 				[]interface{}{
@@ -332,13 +332,13 @@ func prepareLogicDef() Rules {
 				[]interface{}{'-', '+',
 					PushItem{},
 					SetVar{"0.type", "number"},
-					SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
+					SetVar{"0.string", Var{"rune"}},
 					SetVar{"primary", "expectDigit"}, SetVar{"secondary", ""},
 				},
 				[]interface{}{UnicodeDigit,
 					PushItem{},
 					SetVar{"0.type", "number"},
-					SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
+					SetVar{"0.string", Var{"rune"}},
 					SetVar{"primary", "expectDigit"}, SetVar{"secondary", "orUnderscoreOrDot"},
 				},
 				[]interface{}{'"', '\'',
@@ -351,7 +351,7 @@ func prepareLogicDef() Rules {
 				[]interface{}{UnicodeLetter,
 					PushItem{},
 					SetVar{"0.type", "word"},
-					SetVarBy{"0.string", Var{"rune"}, By{Append{}}},
+					SetVar{"0.string", Var{"rune"}},
 					SetVar{"primary", "expectWord"}, SetVar{"secondary", ""},
 				},
 				unexpectedRune,

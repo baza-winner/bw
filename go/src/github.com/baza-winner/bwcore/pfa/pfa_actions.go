@@ -2,7 +2,6 @@ package pfa
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -347,43 +346,86 @@ func (v _setVarBy) execute(pfa *pfaStruct) {
 				op = ">>"
 				if orig := pfa.getVarValue(v.varPath); pfa.err == nil {
 					if orig.val == nil {
-						if a, ok := val.(string); ok {
-							val = a
-						} else if r, ok := val.(rune); ok {
-							val = string(r)
-						} else if v.at == appendScalar {
-							val = []interface{}{val}
-						} else if reflect.TypeOf(val).Kind() != reflect.Slice {
-							pfa.err = bwerror.Error("%#v expected to be slice", val)
-						} else {
-							op = ">>>"
-						}
-
-					} else if s, ok := orig.val.(string); ok {
-						if a, ok := val.(string); ok {
-							val = s + a
-						} else if r, ok := val.(rune); ok {
-							val = s + string(r)
-						} else {
-							pfa.err = bwerror.Error("%#v expected to be string or rune", val)
-						}
-					} else if reflect.TypeOf(orig.val).Kind() == reflect.Slice {
-						valueOfOrigVal := reflect.ValueOf(orig.val)
-						valueOfVal := reflect.ValueOf(val)
-						if v.at == appendScalar {
-							val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
-						} else if reflect.TypeOf(val).Kind() == reflect.Slice {
-							val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
-							op = ">>>"
-						} else {
-							pfa.err = bwerror.Error("%#v expected to be slice", val)
-						}
+						pfa.err = bwerror.Error("can not append to nil")
 					} else {
-						pfa.err = bwerror.Error(
-							"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>string<ansi> or <ansiSecondary>slice<ansi> to be <ansiOutline>Appendable",
-							val, v.varPath,
-						)
+						switch oval := orig.val.(type) {
+						case string:
+							switch aval := val.(type) {
+							case string:
+								val = oval + aval
+							case rune:
+								val = oval + string(aval)
+							default:
+								pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+							}
+						case rune:
+							switch aval := val.(type) {
+							case string:
+								val = string(oval) + aval
+							case rune:
+								val = string(oval) + string(aval)
+							default:
+								pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+							}
+						case []interface{}:
+							if v.at == appendScalar {
+								// val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
+								val = append(oval, val)
+							} else {
+								switch aval := val.(type) {
+								case []interface{}:
+									val = append(oval, aval...)
+									op = ">>>"
+								default:
+									pfa.err = bwerror.Error("%#v expected to be Array", val)
+								}
+							}
+							// if reflect.TypeOf(val).Kind() == reflect.Slice {
+							// 	val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
+							// 	op = ">>>"
+							// } else {
+							// 	pfa.err = bwerror.Error("%#v expected to be slice", val)
+							// }
+						default:
+							pfa.err = bwerror.Error(
+								"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>String<ansi>, <ansiSecondary>Rune<ansi> or <ansiSecondary>Array<ansi> to be <ansiOutline>Appendable",
+								val, v.varPath,
+							)
+						}
 					}
+					// if s, ok := orig.val.(string); ok {
+					// 	if a, ok := val.(string); ok {
+					// 		val = s + a
+					// 	} else if r, ok := val.(rune); ok {
+					// 		val = s + string(r)
+					// 	} else {
+					// 		pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+					// 	}
+					// } else if s, ok := orig.val.(rune); ok {
+					// 	if a, ok := val.(string); ok {
+					// 		val = string(s) + a
+					// 	} else if r, ok := val.(rune); ok {
+					// 		val = string(s) + string(r)
+					// 	} else {
+					// 		pfa.err = bwerror.Error("%#v expected to be string or rune", val)
+					// 	}
+					// } else if reflect.TypeOf(orig.val).Kind() == reflect.Slice {
+					// 	valueOfOrigVal := reflect.ValueOf(orig.val)
+					// 	valueOfVal := reflect.ValueOf(val)
+					// 	if v.at == appendScalar {
+					// 		val = reflect.Append(valueOfOrigVal, valueOfVal).Interface()
+					// 	} else if reflect.TypeOf(val).Kind() == reflect.Slice {
+					// 		val = reflect.AppendSlice(valueOfOrigVal, valueOfVal).Interface()
+					// 		op = ">>>"
+					// 	} else {
+					// 		pfa.err = bwerror.Error("%#v expected to be slice", val)
+					// 	}
+					// } else {
+					// 	pfa.err = bwerror.Error(
+					// 		"value (<ansiPrimary>%#v<ansi>) at <ansiCmd>%s<ansi> expected to be <ansiSecondary>String<ansi>, <ansiSecondary>Rune<ansi> or <ansiSecondary>Array<ansi> to be <ansiOutline>Appendable",
+					// 		val, v.varPath,
+					// 	)
+					// }
 				}
 				if pfa.err == nil {
 					pfa.setVarVal(v.varPath, val)

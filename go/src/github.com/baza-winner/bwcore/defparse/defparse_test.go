@@ -416,7 +416,7 @@ me'`},
 	// testsToRun := tests
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "zero number", "int number with underscore")
-	// bwmap.CropMap(tests, "int number with underscore")
+	bwmap.CropMap(tests, "_expectSpaceOrMapKey && fa.curr.runePtr == EOF")
 	// bwmap.CropMap(tests, "qw/Bool String Int Number Map Array ArrayOf/")
 	bwtesting.BwRunTests(t, Parse, tests)
 }
