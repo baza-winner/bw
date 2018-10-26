@@ -26,13 +26,14 @@ func prepareRules() r.Rules {
 		[]interface{}{c.VarIs{"0.type", "string"}, c.VarIs{"0.type", "qwItem"},
 			a.SetVar{"0.result", val.Var{"0.string"}},
 		},
-		[]interface{}{c.VarIs{"0.type", "map"}},
+		// []interface{}{c.VarIs{"0.type", "map"}},
 
-		[]interface{}{c.VarIs{"0.type", "array"}, c.VarIs{"0.type", "qw"}},
+		// []interface{}{c.VarIs{"0.type", "array"}, c.VarIs{"0.type", "qw"}},
 
 		[]interface{}{c.VarIs{"0.type", "number"},
 			a.SetVarBy{"0.result", val.Var{"0.string"}, b.By{b.ParseNumber{}}},
 		},
+
 		[]interface{}{c.VarIs{"0.type", "word"},
 			pfa.SubRules{r.RulesFrom(
 				[]interface{}{c.VarIs{"0.string", "true"},
@@ -57,18 +58,12 @@ func prepareRules() r.Rules {
 				[]interface{}{c.VarIs{"0.string", "qw"},
 					a.PullRune{},
 					pfa.SubRules{r.RulesFrom(
-						[]interface{}{val.UnicodeOpenBraces, val.UnicodePunct, val.UnicodeSymbol,
+						[]interface{}{val.OpenBraces, val.Punct, val.Symbol,
 							a.SetVar{"primary", "expectSpaceOrQwItemOrDelimiter"},
 							a.SetVar{"secondary", ""},
 							a.SetVar{"0.type", "qw"},
 							a.SetVar{"0.result", val.Array{}},
-							pfa.SubRules{r.RulesFrom(
-								[]interface{}{'<', a.SetVar{"0.delimiter", '>'}},
-								[]interface{}{'[', a.SetVar{"0.delimiter", ']'}},
-								[]interface{}{'(', a.SetVar{"0.delimiter", ')'}},
-								[]interface{}{'{', a.SetVar{"0.delimiter", '}'}},
-								[]interface{}{a.SetVar{"0.delimiter", val.Var{"rune"}}},
-							)},
+							a.SetVarBy{"0.delimiter", val.Var{"rune"}, b.By{b.PairBrace{}}},
 						},
 						unexpectedRune,
 					)},
@@ -127,7 +122,7 @@ func prepareRules() r.Rules {
 		[]interface{}{c.VarIs{"primary", "end"},
 			pfa.SubRules{r.RulesFrom(
 				[]interface{}{val.EOF{}, a.SetVar{"primary", "end"}, a.SetVar{"secondary", ""}},
-				[]interface{}{val.UnicodeSpace},
+				[]interface{}{val.Space},
 				unexpectedRune,
 			)},
 		},
@@ -139,7 +134,7 @@ func prepareRules() r.Rules {
 		},
 		[]interface{}{c.VarIs{"primary", "expectWord"},
 			pfa.SubRules{r.RulesFrom(
-				[]interface{}{val.UnicodeLetter, val.UnicodeDigit,
+				[]interface{}{val.Letter, val.Digit,
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
 				},
 				[]interface{}{
@@ -151,7 +146,7 @@ func prepareRules() r.Rules {
 		[]interface{}{c.VarIs{"primary", "expectSpaceOrQwItemOrDelimiter"},
 			pfa.SubRules{r.RulesFrom(
 				unexpectedEOF,
-				[]interface{}{val.UnicodeSpace},
+				[]interface{}{val.Space},
 				[]interface{}{c.VarIs{"rune", val.Var{"0.delimiter"}},
 					a.SetVar{"needFinish", true},
 				},
@@ -167,7 +162,7 @@ func prepareRules() r.Rules {
 		[]interface{}{c.VarIs{"primary", "expectEndOfQwItem"},
 			pfa.SubRules{r.RulesFrom(
 				unexpectedEOF,
-				[]interface{}{val.UnicodeSpace, c.VarIs{"rune", val.Var{"0.delimiter"}},
+				[]interface{}{val.Space, c.VarIs{"rune", val.Var{"0.delimiter"}},
 					a.PushRune{},
 					a.SetVar{"needFinish", true},
 				},
@@ -192,7 +187,7 @@ func prepareRules() r.Rules {
 		},
 		[]interface{}{c.VarIs{"primary", "expectDigit"},
 			pfa.SubRules{r.RulesFrom(
-				[]interface{}{val.UnicodeDigit, c.VarIs{"secondary", ""},
+				[]interface{}{val.Digit, c.VarIs{"secondary", ""},
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
 					a.SetVar{"secondary", "orUnderscoreOrDot"},
 				},
@@ -200,7 +195,7 @@ func prepareRules() r.Rules {
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
 					a.SetVar{"secondary", "orUnderscore"},
 				},
-				[]interface{}{'_', val.UnicodeDigit, c.VarIs{"secondary", "orUnderscoreOrDot"}, c.VarIs{"secondary", "orUnderscore"},
+				[]interface{}{'_', val.Digit, c.VarIs{"secondary", "orUnderscoreOrDot"}, c.VarIs{"secondary", "orUnderscore"},
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
 				},
 				[]interface{}{c.VarIs{"secondary", ""},
@@ -214,8 +209,8 @@ func prepareRules() r.Rules {
 		},
 		[]interface{}{c.VarIs{"primary", "expectSpaceOrMapKey"},
 			pfa.SubRules{r.RulesFrom(
-				[]interface{}{val.UnicodeSpace},
-				[]interface{}{val.UnicodeLetter,
+				[]interface{}{val.Space},
+				[]interface{}{val.Letter,
 					a.PushItem{},
 					a.SetVar{"0.type", "key"},
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
@@ -245,13 +240,7 @@ func prepareRules() r.Rules {
 				},
 				[]interface{}{c.VarIs{"0.delimiter", '"'},
 					pfa.SubRules{r.RulesFrom(
-						[]interface{}{'a', a.SetVarBy{"0.string", '\a', b.By{b.Append{}}}},
-						[]interface{}{'b', a.SetVarBy{"0.string", '\b', b.By{b.Append{}}}},
-						[]interface{}{'f', a.SetVarBy{"0.string", '\f', b.By{b.Append{}}}},
-						[]interface{}{'n', a.SetVarBy{"0.string", '\n', b.By{b.Append{}}}},
-						[]interface{}{'r', a.SetVarBy{"0.string", '\r', b.By{b.Append{}}}},
-						[]interface{}{'t', a.SetVarBy{"0.string", '\t', b.By{b.Append{}}}},
-						[]interface{}{'v', a.SetVarBy{"0.string", '\v', b.By{b.Append{}}}},
+						[]interface{}{'a', 'b', 'f', 'n', 'r', 't', 'v', a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Escape{}, b.Append{}}}},
 						unexpectedRune,
 					)},
 					a.SetVar{"primary", "expectContentOf"},
@@ -274,7 +263,7 @@ func prepareRules() r.Rules {
 				[]interface{}{',', c.VarIs{"secondary", "orArrayItemSeparator"},
 					a.SetVar{"primary", "begin"}, a.SetVar{"secondary", ""},
 				},
-				[]interface{}{val.UnicodeSpace},
+				[]interface{}{val.Space},
 				[]interface{}{'{',
 					a.PushItem{},
 					a.SetVar{"0.result", val.Map{}},
@@ -305,7 +294,7 @@ func prepareRules() r.Rules {
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
 					a.SetVar{"primary", "expectDigit"}, a.SetVar{"secondary", ""},
 				},
-				[]interface{}{val.UnicodeDigit,
+				[]interface{}{val.Digit,
 					a.PushItem{},
 					a.SetVar{"0.type", "number"},
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
@@ -318,7 +307,7 @@ func prepareRules() r.Rules {
 					a.SetVar{"0.delimiter", val.Var{"rune"}},
 					a.SetVar{"primary", "expectContentOf"}, a.SetVar{"secondary", "stringToken"},
 				},
-				[]interface{}{val.UnicodeLetter,
+				[]interface{}{val.Letter,
 					a.PushItem{},
 					a.SetVar{"0.type", "word"},
 					a.SetVarBy{"0.string", val.Var{"rune"}, b.By{b.Append{}}},
@@ -327,7 +316,7 @@ func prepareRules() r.Rules {
 				unexpectedRune,
 			)},
 		},
-		[]interface{}{c.VarIs{"primary", "begin"},
+		[]interface{}{
 			a.Panic{"unreachable", nil},
 		},
 	)

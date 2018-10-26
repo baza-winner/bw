@@ -41,34 +41,34 @@ type UnicodeCategory uint8
 //go:generate stringer -type=UnicodeCategory
 
 const (
-	UnicodeSpace UnicodeCategory = iota
-	UnicodeLetter
-	UnicodeLower
-	UnicodeUpper
-	UnicodeDigit
-	UnicodeOpenBraces
-	UnicodePunct
-	UnicodeSymbol
+	Space UnicodeCategory = iota
+	Letter
+	Lower
+	Upper
+	Digit
+	OpenBraces
+	Punct
+	Symbol
 )
 
 func (v UnicodeCategory) Conforms(pfa *core.PfaStruct, val interface{}, varPath core.VarPath) (result bool) {
 	if r, ok := val.(rune); ok {
 		switch v {
-		case UnicodeSpace:
+		case Space:
 			result = unicode.IsSpace(r)
-		case UnicodeLetter:
+		case Letter:
 			result = unicode.IsLetter(r) || r == '_'
-		case UnicodeLower:
+		case Lower:
 			result = unicode.IsLower(r)
-		case UnicodeUpper:
+		case Upper:
 			result = unicode.IsUpper(r)
-		case UnicodeDigit:
+		case Digit:
 			result = unicode.IsDigit(r)
-		case UnicodeOpenBraces:
+		case OpenBraces:
 			result = r == '(' || r == '{' || r == '[' || r == '<'
-		case UnicodePunct:
+		case Punct:
 			result = unicode.IsPunct(r)
-		case UnicodeSymbol:
+		case Symbol:
 			result = unicode.IsSymbol(r)
 		default:
 			bwerror.Panic("UnicodeCategory: %s", v)

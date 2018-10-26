@@ -6,6 +6,12 @@ import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
+	"github.com/baza-winner/bwcore/pfa/a"
+	"github.com/baza-winner/bwcore/pfa/b"
+	"github.com/baza-winner/bwcore/pfa/c"
+	"github.com/baza-winner/bwcore/pfa/core"
+	"github.com/baza-winner/bwcore/pfa/r"
+	"github.com/baza-winner/bwcore/pfa/val"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
@@ -39,19 +45,19 @@ func TestVarPathFrom(t *testing.T) {
 		},
 		"0": {
 			In:  []interface{}{"0"},
-			Out: []interface{}{VarPath{VarPathItem{0}}, nil},
+			Out: []interface{}{core.VarPath{core.VarPathItem{0}}, nil},
 		},
 		"0.key": {
 			In:  []interface{}{"0.key"},
-			Out: []interface{}{VarPath{VarPathItem{0}, VarPathItem{"key"}}, nil},
+			Out: []interface{}{core.VarPath{core.VarPathItem{0}, core.VarPathItem{"key"}}, nil},
 		},
 		"0.key.{1.some}": {
 			In: []interface{}{"0.key.{1.some}"},
 			Out: []interface{}{
-				VarPath{
-					VarPathItem{0},
-					VarPathItem{"key"},
-					VarPathItem{VarPath{VarPathItem{1}, VarPathItem{"some"}}},
+				core.VarPath{
+					core.VarPathItem{0},
+					core.VarPathItem{"key"},
+					core.VarPathItem{core.VarPath{core.VarPathItem{1}, core.VarPathItem{"some"}}},
 				},
 				nil,
 			},
@@ -59,14 +65,14 @@ func TestVarPathFrom(t *testing.T) {
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "qw ")
-	bwtesting.BwRunTests(t, VarPathFrom, tests)
+	bwtesting.BwRunTests(t, core.VarPathFrom, tests)
 }
 
 func TestPfa_getVarValue(t *testing.T) {
-	pfa := PfaFrom(runeprovider.FromString("some"), TraceNone)
-	pfa.Stack = ParseStack{
-		ParseStackItem{
-			vars: map[string]interface{}{
+	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
+	pfa.Stack = core.ParseStack{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type": "map",
 				"value": map[string]interface{}{
 					"boolKey":   true,
@@ -76,14 +82,14 @@ func TestPfa_getVarValue(t *testing.T) {
 				},
 			},
 		},
-		ParseStackItem{
-			vars: map[string]interface{}{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 			},
 		},
 	}
-	pfa.vars = map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
 		"primary": "begin",
 		"result": map[string]interface{}{
 			"some": "thing",
@@ -117,20 +123,24 @@ func TestPfa_getVarValue(t *testing.T) {
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "primary")
-	bwtesting.BwRunTests(t, pfa.TestPfa_getVarValueTestHelper, tests)
+	bwtesting.BwRunTests(t, TestHelper{pfa}.VarValue, tests)
 }
 
-func (pfa *PfaStruct) TestPfa_getVarValueTestHelper(varPathStr string) (val interface{}, err error) {
-	pfa.err = nil
-	varValue := pfa.VarValue(MustVarPathFrom(varPathStr))
-	return varValue.val, pfa.err
+type TestHelper struct {
+	pfa *core.PfaStruct
+}
+
+func (v TestHelper) VarValue(varPathStr string) (val interface{}, err error) {
+	v.pfa.Err = nil
+	varValue := v.pfa.VarValue(core.MustVarPathFrom(varPathStr))
+	return varValue.Val, v.pfa.Err
 }
 
 func TestPfa_setVarVal(t *testing.T) {
-	pfa := PfaFrom(runeprovider.FromString("some"), TraceNone)
-	pfa.Stack = ParseStack{
-		ParseStackItem{
-			vars: map[string]interface{}{
+	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
+	pfa.Stack = core.ParseStack{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type": "map",
 				"value": map[string]interface{}{
 					"boolKey":   true,
@@ -141,15 +151,15 @@ func TestPfa_setVarVal(t *testing.T) {
 				},
 			},
 		},
-		ParseStackItem{
-			vars: map[string]interface{}{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 				"array":  []interface{}{"c", "d"},
 			},
 		},
 	}
-	pfa.vars = map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
 		"primary": "begin",
 		"result": map[string]interface{}{
 			"some": "thing",
@@ -187,27 +197,25 @@ func TestPfa_setVarVal(t *testing.T) {
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "result.some")
-	bwtesting.BwRunTests(t, pfa.setVarValTestHelper, tests)
+	bwtesting.BwRunTests(t, TestHelper{pfa}.SetVarValue, tests)
 }
 
-func (pfa *PfaStruct) setVarValTestHelper(varPathStr string, VarVal interface{}) (interface{}, error) {
-	varPath := MustVarPathFrom(varPathStr)
-	pfa.err = nil
-	pfa.SetVarVal(varPath, VarVal)
-	if pfa.err == nil {
-		return pfa.VarValue(varPath).val, pfa.err
+func (v TestHelper) SetVarValue(varPathStr string, VarVal interface{}) (interface{}, error) {
+	varPath := core.MustVarPathFrom(varPathStr)
+	v.pfa.Err = nil
+	v.pfa.SetVarVal(varPath, VarVal)
+	if v.pfa.Err == nil {
+		return v.pfa.VarValue(varPath).Val, v.pfa.Err
 	} else {
-		return nil, pfa.err
+		return nil, v.pfa.Err
 	}
 }
 
 func TestPfaActions(t *testing.T) {
-	pfa := PfaFrom(runeprovider.FromString("some"), TraceNone)
-	// p := runeprovider.ProxyFrom(runeprovider.FromString("some"))
-	// pfa := PfaStruct{
-	pfa.Stack = ParseStack{
-		ParseStackItem{
-			vars: map[string]interface{}{
+	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
+	pfa.Stack = core.ParseStack{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type":  "map",
 				"array": []interface{}{"g", "h"},
 				"value": map[string]interface{}{
@@ -219,8 +227,8 @@ func TestPfaActions(t *testing.T) {
 				},
 			},
 		},
-		ParseStackItem{
-			vars: map[string]interface{}{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 				"array":  []interface{}{"c", "d"},
@@ -230,66 +238,58 @@ func TestPfaActions(t *testing.T) {
 			},
 		},
 	}
-	// p,
-	// nil,
-	pfa.vars = map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
 		"array":   []interface{}{"i", "j"},
 		"primary": "begin",
 		"result": map[string]interface{}{
 			"some": "thing",
 		},
 	}
-	// 	TraceNone,
-	// 	nil,
-	// 	0,
-	// }
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
-			In:  []interface{}{"primary", SetVar{"primary", "end"}},
+			In:  []interface{}{"primary", a.SetVar{"primary", "end"}},
 			Out: []interface{}{"end", nil},
 		},
 		"0.type": {
-			In:  []interface{}{"0.type", SetVarBy{"0.type", Var{"1.type"}, By{Append{}}}},
+			In:  []interface{}{"0.type", a.SetVarBy{"0.type", val.Var{"1.type"}, b.By{b.Append{}}}},
 			Out: []interface{}{"keymap", nil},
 		},
 		"0.array": {
-			In:  []interface{}{"0.array", SetVarBy{"0.array", Var{"1.value.{0.string}"}, By{Append{}}}},
+			In:  []interface{}{"0.array", a.SetVarBy{"0.array", val.Var{"1.value.{0.string}"}, b.By{b.Append{}}}},
 			Out: []interface{}{[]interface{}{"c", "d", true}, nil},
 		},
 		"array": {
-			In:  []interface{}{"array", SetVarBy{"array", Var{"1.array"}, By{Append{}}}},
+			In:  []interface{}{"array", a.SetVarBy{"array", val.Var{"1.array"}, b.By{b.Append{}}}},
 			Out: []interface{}{[]interface{}{"i", "j", []interface{}{"g", "h"}}, nil},
 		},
 		"1.value.arrayKey": {
-			In:  []interface{}{"1.value.arrayKey", SetVarBy{"1.value.arrayKey", Var{"0.value.arrayKey"}, By{AppendSlice{}}}},
+			In:  []interface{}{"1.value.arrayKey", a.SetVarBy{"1.value.arrayKey", val.Var{"0.value.arrayKey"}, b.By{b.AppendSlice{}}}},
 			Out: []interface{}{[]interface{}{"a", "b", "e", "f"}, nil},
 		},
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "primary")
-	bwtesting.BwRunTests(t, pfa.pfaActionsTestHelper, tests)
+	bwtesting.BwRunTests(t, TestHelper{pfa}.Action, tests)
 }
 
-func (pfa *PfaStruct) pfaActionsTestHelper(varPathStr string, action interface{}) (val interface{}, err error) {
-	pfa.processRules(RulesFrom([]interface{}{action}))
-	if pfa.err != nil {
-		return nil, pfa.err
+func (v TestHelper) Action(varPathStr string, action interface{}) (val interface{}, err error) {
+	r.RulesFrom([]interface{}{action}).Process(v.pfa)
+	if v.pfa.Err != nil {
+		return nil, v.pfa.Err
 	} else {
-		return pfa.VarValue(MustVarPathFrom(varPathStr)).val, pfa.err
+		return v.pfa.VarValue(core.MustVarPathFrom(varPathStr)).Val, v.pfa.Err
 	}
 }
 
 func TestPfaConditions(t *testing.T) {
-	pfa := PfaFrom(runeprovider.FromString("something"), TraceNone)
-	// p := runeprovider.ProxyFrom(runeprovider.FromString("something"))
-	pfa.p.PullRune()
-	pfa.p.PullRune()
-	pfa.p.PullRune()
-	pfa.p.PullRune()
-	// pfa := PfaStruct{
-	pfa.Stack = ParseStack{
-		ParseStackItem{
-			vars: map[string]interface{}{
+	pfa := core.PfaFrom(runeprovider.FromString("something"), core.TraceNone)
+	pfa.Proxy.PullRune()
+	pfa.Proxy.PullRune()
+	pfa.Proxy.PullRune()
+	pfa.Proxy.PullRune()
+	pfa.Stack = core.ParseStack{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type":  "map",
 				"array": []interface{}{"g", "h"},
 				"value": map[string]interface{}{
@@ -301,8 +301,8 @@ func TestPfaConditions(t *testing.T) {
 				},
 			},
 		},
-		ParseStackItem{
-			vars: map[string]interface{}{
+		core.ParseStackItem{
+			Vars: map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 				"array":  []interface{}{"c", "d"},
@@ -314,28 +314,28 @@ func TestPfaConditions(t *testing.T) {
 	}
 	// p,
 	// nil,
-	pfa.vars = map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
 		"array":   []interface{}{"i", "j"},
 		"primary": "begin",
 		"result": map[string]interface{}{
 			"some": "thing",
 		},
 	}
-	// 	TraceNone,
+	// 	core.TraceNone,
 	// 	nil,
 	// 	0,
 	// }
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary is begin => true": {
-			In:  []interface{}{VarIs{"primary", "begin"}},
+			In:  []interface{}{c.VarIs{"primary", "begin"}},
 			Out: []interface{}{true, nil},
 		},
 		"primary is end => false": {
-			In:  []interface{}{VarIs{"primary", "end"}},
+			In:  []interface{}{c.VarIs{"primary", "end"}},
 			Out: []interface{}{false, nil},
 		},
 		"rune is 'e' => true": {
-			In:  []interface{}{VarIs{"rune", 'e'}},
+			In:  []interface{}{c.VarIs{"rune", 'e'}},
 			Out: []interface{}{true, nil},
 		},
 		"is 'e' => true": {
@@ -350,69 +350,69 @@ func TestPfaConditions(t *testing.T) {
 			In:  []interface{}{[]interface{}{'m', 'o'}},
 			Out: []interface{}{false, nil},
 		},
-		"is UnicodeLetter => true": {
-			In:  []interface{}{UnicodeLetter},
+		"is Letter => true": {
+			In:  []interface{}{val.Letter},
 			Out: []interface{}{true, nil},
 		},
-		"is UnicodeDigit => false": {
-			In:  []interface{}{UnicodeDigit},
+		"is Digit => false": {
+			In:  []interface{}{val.Digit},
 			Out: []interface{}{false, nil},
 		},
 		"rune.-1 is 'm' => true": {
-			In:  []interface{}{VarIs{"rune.-1", 'm'}},
+			In:  []interface{}{c.VarIs{"rune.-1", 'm'}},
 			Out: []interface{}{true, nil},
 		},
 		"rune.-2 is 'o' => true": {
-			In:  []interface{}{VarIs{"rune.-2", 'o'}},
+			In:  []interface{}{c.VarIs{"rune.-2", 'o'}},
 			Out: []interface{}{true, nil},
 		},
 		"rune.0 is 'e' => true": {
-			In:  []interface{}{VarIs{"rune.0", 'e'}},
+			In:  []interface{}{c.VarIs{"rune.0", 'e'}},
 			Out: []interface{}{true, nil},
 		},
 		"rune.1 is 't' => true": {
-			In:  []interface{}{VarIs{"rune.1", 't'}},
+			In:  []interface{}{c.VarIs{"rune.1", 't'}},
 			Out: []interface{}{true, nil},
 		},
 		"rune.2 is 'h' => true": {
-			In:  []interface{}{VarIs{"rune.2", 'h'}},
+			In:  []interface{}{c.VarIs{"rune.2", 'h'}},
 			Out: []interface{}{true, nil},
 		},
 		"rune.3 is 'i' => true": {
-			In:  []interface{}{VarIs{"rune.3", 'i'}},
+			In:  []interface{}{c.VarIs{"rune.3", 'i'}},
 			Out: []interface{}{true, nil},
 		},
 		"rune.5 is 'g' => true": {
-			In:  []interface{}{VarIs{"rune.5", 'g'}},
+			In:  []interface{}{c.VarIs{"rune.5", 'g'}},
 			Out: []interface{}{true, nil},
 		},
-		"rune.5 is UnicodeLetter => true": {
-			In:  []interface{}{VarIs{"rune.5", UnicodeLetter}},
+		"rune.5 is Letter => true": {
+			In:  []interface{}{c.VarIs{"rune.5", val.Letter}},
 			Out: []interface{}{true, nil},
 		},
-		"rune.5 is UnicodeDigit => false": {
-			In:  []interface{}{VarIs{"rune.5", UnicodeDigit}},
+		"rune.5 is Digit => false": {
+			In:  []interface{}{c.VarIs{"rune.5", val.Digit}},
 			Out: []interface{}{false, nil},
 		},
 		"rune.6 is EOF => true": {
-			In:  []interface{}{VarIs{"rune.6", EOF{}}},
+			In:  []interface{}{c.VarIs{"rune.6", val.EOF{}}},
 			Out: []interface{}{true, nil},
 		},
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "rune.-2 is 'o' => true")
-	// bwerror.Spew.Printf("%#q\n", pfa.VarValue(MustVarPathFrom("rune.-2")).val)
-	bwtesting.BwRunTests(t, pfa.pfaConditionsTestHelper, tests)
+	// bwerror.Spew.Printf("%#q\n", pfa.VarValue(core.MustVarPathFrom("rune.-2")).val)
+	bwtesting.BwRunTests(t, TestHelper{pfa}.Check, tests)
 }
 
-func (pfa *PfaStruct) pfaConditionsTestHelper(arg interface{}) (interface{}, error) {
-	pfa.vars["result"] = false
+func (v TestHelper) Check(arg interface{}) (interface{}, error) {
+	v.pfa.Vars["result"] = false
 	var args []interface{}
 	var ok bool
 	if args, ok = arg.([]interface{}); !ok {
 		args = []interface{}{arg}
 	}
-	args = append(args, SetVar{"result", true})
-	pfa.processRules(RulesFrom(args))
-	return pfa.vars["result"], pfa.err
+	args = append(args, a.SetVar{"result", true})
+	r.RulesFrom(args).Process(v.pfa)
+	return v.pfa.Vars["result"], v.pfa.Err
 }

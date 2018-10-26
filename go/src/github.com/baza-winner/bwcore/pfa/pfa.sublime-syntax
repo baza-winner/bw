@@ -5,53 +5,263 @@ name: PFA
 file_extensions:
   - pfa
 scope: source.pfa
+
 variables:
   ident: '[A-Za-z_][A-Za-z_0-9]*'
+  path: '[\da-z_]+(.(?:[\da-z_]+|{[\da-z_]+(?:.[\da-z_]+)}))*'
+
 contexts:
   main:
     - include: space
     - match: \b{{ident}}\b
-      scope: entity.name
-      push: expressionExpected
-    - match: '[\s]+'
+      scope: variable.language
+      push:
+        - include: space
+        - match: \[
+          scope: punctuation.section.brackets.begin
+          set: rules
+        - match: \(
+          scope: punctuation.section.braces.begin
+          set: ruleCondition
+        - include: illegal
+    - include: illegal
 
   space:
     - match: '[\s]+'
     - match: '(//|#)'
       scope: punctuation.definition.comment
-      push: singleLineComment
+      push:
+        - meta_scope: comment.line
+        - match: $
+          pop: true
     - match: '/\*'
       scope: punctuation.definition.comment.begin
-      push: multiLineComment
+      push:
+        - meta_scope: comment
+        - match: '\*/'
+          scope: punctuation.definition.comment.end
+          # scope: entity.name
+          pop: true
+
+  multiLineComment:
+    - meta_scope: comment
+    - match: '\*/'
+      scope: punctuation.definition.comment.end
+      # scope: entity.name
+      pop: true
+
+  singleLineComment:
+    - meta_scope: comment.line
+    - match: $
+      pop: true
 
   illegal:
     - match: .
       scope: invalid.illegal
 
-  expressionExpected:
-    - include: space
-    - match: \(
-      scope: punctuation.section.braces.begin
-      set: rule
-    - match: \[
-      scope: punctuation.section.brackets.begin
-      set: rules
-    - match: \<
-      embed: action
-      escape: \>
-    - include: illegal
-
   rules:
     - include: space
+
     - match: \(
       scope: punctuation.section.braces.begin
-      push: rule
+      push: ruleCondition
+
     - match: '\]'
-      pop: true
       scope: punctuation.section.brackets.end
-    - match: '\b[_a-z][\w\d]*\b'
-      scope: entity.name
+      pop: true
+
     - include: illegal
+
+  ruleCondition:
+    - include: space
+
+    - match: '(\d+\.[_a-z][_a-z\d]*|[a-z][_a-z\d]*)'
+      set: ruleConditionPath
+
+    - match: \bOpenBraces|Punct|Symbol\b
+      scope: constant.language
+
+    - match: \d+
+      scope: constant.numeric.integer
+
+    - match: ':'
+      scope: punctuation.separator
+      set: ruleAction
+
+    - match: '\)'
+      scope: punctuation.section.braces.end
+      pop: true
+
+    - include: illegal
+
+  ruleConditionPath:
+    - meta_scope: variable.language
+    - match: '\.(\d+|[a-z][_a-z\d]*)'
+    - match: '{(\d+|[a-z][_a-z\d]*)'
+      push: indirectPath
+    - match: '[\s]+'
+      set: ruleConditionPathArg
+    - match: '(//|#)'
+      scope: punctuation.definition.comment
+      set:
+        - meta_scope: comment.line
+        - match: $
+          set: ruleConditionPathArg
+    - match: '/\*'
+      scope: punctuation.definition.comment.begin
+      set:
+        - meta_scope: comment
+        - match: '\*/'
+          scope: punctuation.definition.comment.end
+          set: ruleConditionPathArg
+
+  ruleConditionPathArg:
+    - match: '<[^>]+>'
+      scope: string
+      set: ruleCondition
+
+    - match: '"'
+      set:
+        - meta_scope: string.quoted.double.pfa
+        - match: '\\.'
+          scope: constant.character.escape.pfa
+        - match: '"'
+          scope: punctuation.definition.string.end.pfa
+          set: ruleCondition
+
+    - match: \bOpenBraces|Punct|Symbol\b
+      scope: constant.language
+      set: ruleCondition
+
+    - match: \d+
+      scope: constant.numeric.integer
+      set: ruleCondition
+
+    - include: illegal
+
+  indirectPath:
+    - meta_scope: variable.language
+    - match: '\.(\d+|[a-z][_a-z\d]*)'
+    - match: '}'
+      pop: true
+
+  ruleAction:
+    - include: space
+
+    - match: '"'
+      set: doubleQuotedStringRuleAction
+
+    # - match: \b{{path}}\b
+    #   scope: variable.language
+    #   set: ruleActionOp
+
+    - match: '(\d+\.[_a-z][_a-z\d]*|[a-z][_a-z\d]*)'
+      set: ruleConditionPath
+
+    - match: \bArray|Map\b
+      scope: entity.name.struct
+      set: ruleActionOp
+
+    - match: \bPullRune\b
+      scope: entity.name.function
+
+    - match: \bUnexpectedRune|UnexpectedItem\b
+      scope: entity.name.error
+
+    - match: '\)'
+      scope: punctuation.section.braces.end
+      pop: true
+
+    - match: '\['
+      scope: punctuation.section.braces.begin
+      push: rules
+
+    - include: illegal
+
+  doubleQuotedStringRuleAction:
+    - meta_scope: string.quoted.double.pfa
+    - match: '\\.'
+      scope: constant.character.escape.pfa
+    - match: '"'
+      scope: punctuation.definition.string.end.pfa
+      set: ruleActionOp
+      # pop: true
+
+  ruleActionOp:
+    - include: space
+    - match: '\|'
+      scope: keyword.operator.assignment
+      set: ruleActionTransform
+    - match: '>{1,3}'
+      scope: keyword.operator.assignment
+      set: ruleActionTarget
+
+    - include: illegal
+
+  ruleActionTransform:
+    - include: space
+    - match: \bParseNumber|PairBrace\b
+      scope: variable.function
+      set: ruleActionOp
+    - include: illegal
+
+
+  ruleActionTarget:
+    - include: space
+    - match: '(\d+\.[_a-z][_a-z\d]*|[a-z][_a-z\d]*)'
+      set: ruleActionTargetPath
+    - include: illegal
+
+  ruleActionTargetPath:
+    - meta_scope: variable.language
+    - match: '\.(\d+|[a-z][_a-z\d]*)'
+    - match: '{(\d+|[a-z][_a-z\d]*)'
+      push: indirectPath
+    - match: '[\s]+'
+      set: ruleAction
+    - match: '(//|#)'
+      scope: punctuation.definition.comment
+      set:
+        - meta_scope: comment.line
+        - match: $
+          set: ruleAction
+    - match: '/\*'
+      scope: punctuation.definition.comment.begin
+      set:
+        - meta_scope: comment
+        - match: '\*/'
+          scope: punctuation.definition.comment.end
+          set: ruleAction
+
+
+  # pathSep:
+    # - match: '[\s+]'
+      # set: ruleConditionVal
+
+  # pathItem:
+  #   - match: '[\da-z_]+'
+  #     scope: variable.parameter
+  #     set: pathSep
+  #   - include: illegal
+
+  # ruleConditionVal:
+  #   - match: '<[^>+>]'
+  #     scope: string
+  #     set:
+  #       - include: space
+
+
+
+
+
+
+
+    # - match: '\b[_a-z][\w\d]*\b'
+    #   scope: entity.name
+
+    # - include: checker
+    # - include: action
+    # - include: illegal
 
   rune:
     - match: \'(\\)?.\'
@@ -213,24 +423,6 @@ contexts:
             - include: illegal
         - include: illegal
 
-
-  rule:
-    - include: space
-
-    - match: '\)'
-      scope: punctuation.section.braces.end
-      pop: true
-
-    - match: \[
-      scope: punctuation.section.brackets.begin
-      push: rules
-
-    - match: '\b[_a-z][\w\d]*\b'
-      scope: entity.name
-
-    - include: checker
-    - include: action
-    - include: illegal
 
   PushItem:
     - match: \{
@@ -411,17 +603,6 @@ contexts:
       scope: constant.character.escape.pfa
     - match: \'
       scope: punctuation.definition.string.end.pfa
-      pop: true
-
-  multiLineComment:
-    - meta_scope: comment
-    - match: '\*/'
-      scope: punctuation.definition.comment.end
-      pop: true
-
-  singleLineComment:
-    - meta_scope: comment.line
-    - match: $
       pop: true
 
   # content:

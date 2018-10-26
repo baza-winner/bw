@@ -4,9 +4,9 @@ package val
 
 import "strconv"
 
-const _UnicodeCategory_name = "UnicodeSpaceUnicodeLetterUnicodeLowerUnicodeUpperUnicodeDigitUnicodeOpenBracesUnicodePunctUnicodeSymbol"
+const _UnicodeCategory_name = "SpaceLetterLowerUpperDigitOpenBracesPunctSymbol"
 
-var _UnicodeCategory_index = [...]uint8{0, 12, 25, 37, 49, 61, 78, 90, 103}
+var _UnicodeCategory_index = [...]uint8{0, 5, 11, 16, 21, 26, 36, 41, 47}
 
 func (i UnicodeCategory) String() string {
 	if i >= UnicodeCategory(len(_UnicodeCategory_index)-1) {

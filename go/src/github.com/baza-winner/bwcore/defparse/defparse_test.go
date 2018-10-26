@@ -424,7 +424,7 @@ me'`},
 	// testsToRun := tests
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "zero number", "int number with underscore")
-	// bwmap.CropMap(tests, "map")
+	// bwmap.CropMap(tests, "FailedToGetNumber")
 	// bwmap.CropMap(tests, "qw/Bool String Int Number Map Array ArrayOf/")
 	bwtesting.BwRunTests(t, Parse, tests)
 }

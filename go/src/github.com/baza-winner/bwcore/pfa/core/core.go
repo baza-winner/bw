@@ -397,7 +397,7 @@ type PfaStruct struct {
 	Proxy           *runeprovider.Proxy
 	ErrVal          ErrorProvider
 	Err             error
-	vars            map[string]interface{}
+	Vars            map[string]interface{}
 	TraceLevel      TraceLevel
 	traceConditions []string
 	ruleLevel       int
@@ -407,7 +407,7 @@ func PfaFrom(p runeprovider.RuneProvider, TraceLevel TraceLevel) *PfaStruct {
 	return &PfaStruct{
 		Stack:      ParseStack{},
 		Proxy:      runeprovider.ProxyFrom(p),
-		vars:       map[string]interface{}{},
+		Vars:       map[string]interface{}{},
 		TraceLevel: TraceLevel,
 	}
 }
@@ -570,7 +570,7 @@ func (pfa *PfaStruct) getSetHelper(
 					}
 				}
 			} else {
-				onPfaVar(VarValue{pfa.vars, pfa}, VarVal)
+				onPfaVar(VarValue{pfa.Vars, pfa}, VarVal)
 			}
 		}
 	}
@@ -658,9 +658,9 @@ func (pfa *PfaStruct) PushStackItem() {
 func (pfa PfaStruct) DataForJSON() interface{} {
 	result := map[string]interface{}{}
 	result["Stack"] = pfa.Stack.DataForJSON()
-	result["p"] = pfa.Proxy.DataForJSON()
-	if len(pfa.vars) > 0 {
-		result["vars"] = pfa.vars
+	result["Proxy"] = pfa.Proxy.DataForJSON()
+	if len(pfa.Vars) > 0 {
+		result["Vars"] = pfa.Vars
 	}
 	return result
 }

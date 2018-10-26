@@ -26,7 +26,6 @@ func (v SubRules) Execute(pfa *core.PfaStruct) {
 		pfa.TraceIncLevel()
 	}
 	v.R.Process(pfa)
-	// pfa.processRules(v.Def)
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceDecLevel()
 	}

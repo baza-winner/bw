@@ -1,8 +1,6 @@
 package a
 
 import (
-	"fmt"
-
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerror"
 
@@ -274,11 +272,9 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 			}
 		}
 		if pfa.ErrVal != nil {
-			switch t := pfa.ErrVal.(type) {
-			case b.ParseNumberFailed:
-				pfa.ErrVal = FailedToTransformToNumber{fmt.Sprintf("failed to transform %s to number (%s)", source, t.S)}
-			// case getValFailed:
-			default:
+			if t, ok := pfa.ErrVal.(b.FailedToTransform); ok {
+				t.Prepare(source)
+			} else {
 				pfa.Panic("%#v", pfa.ErrVal)
 			}
 		} else if len(expectedToBeAppendable) > 0 {
@@ -289,10 +285,4 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceAction("%s %s %s: %s", source, formatted.String(ansi.Ansi("Green", op)), target, v.varPath)
 	}
-}
-
-type FailedToTransformToNumber struct{ s string }
-
-func (v FailedToTransformToNumber) Error(pfa *core.PfaStruct) error {
-	return pfa.Proxy.ItemError(pfa.GetTopStackItem().Start, v.s)
 }

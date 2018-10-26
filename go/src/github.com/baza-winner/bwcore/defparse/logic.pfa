@@ -1,276 +1,217 @@
 // logic
-unexpectedEOF (IsEOF SetError{UnexpectedRune} )
-
-unexpectedRune (SetError{UnexpectedRune})
 
 finish [ /* some */
-  (TopItemIs{string qwItem} SetTopItemValueAsString )
-  (TopItemIs{map} SetTopItemValueAsMap )
-  (TopItemIs{array qw} SetTopItemValueAsMap )
-  (TopItemIs{number} SetTopItemValueAsNumber )
-  (TopItemIs{word}
+  ( 0.type <string qwItem> : 0.string > 0.result )
+  ( 0.type "number" : 0.string | ParseNumber > 0.result )
+  ( 0.type "word" :
     [
-      (TopItemStringIs{true}
-        SetTopItemValueAsBool{false}
-      )
-      (TopItemStringIs{nil null})
-      (TopItemStringIs{//
-        Bool String Int Number Map Array /* */ ArrayOf
-      }
-        SetTopItemValueAsString
-      )
-      (TopItemStringIs{qw}
+      ( 0.string "true" : true > 0.result )
+      ( 0.string "false" : false > 0.result )
+      ( 0.string <nil null> )
+      ( 0.string <Bool String Int Number Map Array ArrayOf> : 0.string > 0.result )
+      ( 0.string "qw" :
         PullRune
         [
-          (Unicode{OpenBraces Punct Symbol}
-            SetState{//
-              expectSpaceOrQwItemOrDelimiter//
-            }
-            SetTopItemDelimiter{PairForCurrRune}
-            SetTopItemType{ qw }
+          ( OpenBraces Punct Symbol:
+            "expectSpaceOrQwItemOrDelimiter" > primary
+            "" > secondary
+            "qw" > 0.type
+            Array > 0.result
+            rune | PairBrace > 0.delimiter
           )
-          unexpectedRune
+          (: UnexpectedRune )
         ]
-        SetVar{//
-          skipPostProcess /*some */ true//
-        }
+        true > skipPostProcess
       )
-      (SetError{UnexpectedItem})
+      (: UnexpectedItem )
     ]
   )
 ]
 
 postProcess [
-  (StackLenIs{0})
-  (StackLenIs{1}
-    SetState{end orSpace}
-  )
-  (
-    PopItem
+  (stackLen 0)
+  (stackLen 1: "end" > primary "orSpace" > secondary)
+  (:
     [
-      (TopItemIs{qw}
-        AppendItemArray{FromSubItemValue}
-        SetState{expectSpaceOrQwItemOrDelimiter}
+      (1.type "qw" :
+        0.result >> 1.result
+        "expectSpaceOrQwItemOrDelimiter" > primary
+        "" > secondary
       )
-      (TopItemIs{array}
+      (1.type "array" :
         [
-          (SubItemIs{qw}
-            AppendItemArray{FromSubItemArray}
-          )
-          (AppendItemArray{FromSubItemValue})
+          ( 0.type "qw": 0.result >>> 1.result )
+          ( : 0.result >> 1.result )
         ]
-        SetState{begin orArrayItemSeparator}
+        "begin" > primary "orArrayItemSeparator" > secondary
       )
-      (TopItemIs{map}
+      (1.type "map":
         [
-          (SubItemIs{key}
-            SetTopItemStringFromSubItem
-            SetState{begin orMapKeySeparator}
+          ( 0.type "key":
+            0.string > 1.key
+            "begin" > primary "orMapKeySeparator" > secondary
           )
-          (
-            SetTopItemMapKeyValueFromSubItem
-            SetState{expectSpaceOrMapKey orMapValueSeparator}
+          (:
+            0.result > 1.result.{1.key}
+            "expectSpaceOrMapKey" > primary "orMapValueSeparator" > secondary
           )
         ]
       )
-      (Unreachable)
+      (: UnexpectedItem )
     ]
   )
 ]
 
-primaryState = [
-  (PrimaryIs{end}
-    [
-      (IsEOF SetState{end})
-      (Unicode{Space})
-      unexpectedRune
-    ]
-  )
-  (PrimaryIs{expectRocket}
-    [
-      ('>' SetState{begin})
-      unexpectedRune
-    ]
-  )
-  (PrimaryIs{expectWord}
-    [
-      (Unicode{Letter Digit} AppendCurrRune)
-      (PushRune SetVar{needFinish true})
-    ]
-  )
-  (PrimaryIs{expectSpaceOrQwItemOrDelimiter}
-    [
-      unexpectedEOF
-      (Unicode{Space})
-      (IsDelimiterRune SetVar{needFinish true})
-      (
-        PushItem{
-          ItemType qwItem
-          ItemString FromCurrRune
-          Delimiter FromParentItem
-        }
-        SetState{expectEndOfQwItem}
-      )
-    ]
-  )
-  (PrimaryIs{expectEndOfQwItem}
-    [
-      unexpectedEOF
-      (Unicode{Space} IsDelimiterRune
-        PushRune
-        SetVar{needFinish true}
-      )
-      (AppendCurrRune)
-    ]
-  )
-  (PrimaryIs{expectContentOf}
-    [
-      unexpectedEOF
-      (IsDelimiterRune
-        SetVar{needFinish true}
-      )
-      ('\\'
-        SetPrimary{expectEscapedContentOf}
-      )
-      (AppendCurrRune)
-    ]
-  )
-  (PrimaryIs{expectDigit}
-    [
-      (Unicode{Digit} SecondaryIs{""}
-        AppendCurrRune
-        SetSecondary{orUnderscoreOrDot}
-      )
-      ('.' SecondaryIs{orUnderscoreOrDot}
-        AppendCurrRune
-        SetSecondary{orUnderscore}
-      )
-      ('_' Unicode{Digit} SecondaryIs{orUnderscoreOrDot orUnderscore}
-        AppendCurrRune
-      )
-      (SecondaryIs{""} SetError{UnexpectedRune})
-      (
-        PushRune
-        SetVar{needFinish true}
-      )
-    ]
-  )
-  (PrimaryIs{expectSpaceOrMapKey}
-    [
-      (Unicode{Space})
-      (Unicode{Letter}
-        PushItem{ItemType key ItemString FromCurrRune}
-        SetState{expectWord}
-      )
-      ('"' '\''
-        PushItem{ItemType key Delimiter FromCurrRune}
-        SetState{expectContentOf keyToken}
-      )
-      (',' SecondaryIs{orMapValueSeparator}
-        SetState{expectSpaceOrMapKey}
-      )
-      (IsDelimiterRune TopItemIs{map}
-        SetVar{needFinish true}
-      )
-      unexpectedRune
-    ]
-  )
-  (PrimaryIs{expectEscapedContentOf}
-    [
-      ('"' '\'' '\\'
-        AppendCurrRune
-        SetPrimary{expectContentOf}
-      )
-      (DelimiterIs{'"'}
-        [
-          ('a' AppendRune{'\a'})
-          ('b' AppendRune{'\b'})
-          ('f' AppendRune{'\f'})
-          ('n' AppendRune{'\n'})
-          ('r' AppendRune{'\r'})
-          ('t' AppendRune{'\t'})
-          ('v' AppendRune{'\v'})
-          unexpectedRune
-        ]
-        SetPrimary{expectContentOf}
-      )
-      unexpectedRune
-    ]
-  )
-  (PrimaryIs{begin}
-    [
-      (IsEOF StackLenIs{0}
-        SetState{end}
-      )
-      unexpectedEOF
-      ('=' SecondaryIs{orMapKeySeparator}
-        SetState{expectRocket}
-      )
-      (':' SecondaryIs{orMapKeySeparator}
-        SetState{begin}
-      )
-      (',' SecondaryIs{orArrayItemSeparator}
-        SetState{begin}
-      )
-      (Unicode{Space})
-      ('{'
-        PushItem{
-          ItemType map
-          Delimiter PairForCurrRune
-      }
-        SetState{expectSpaceOrMapKey}
-      )
-      ('<'
-        PushItem{ItemType qw Delimiter PairForCurrRune}
-        SetState{expectSpaceOrQwItemOrDelimiter}
-      )
-      ('['
-        PushItem{ItemType array Delimiter PairForCurrRune}
-        SetState{begin}
-      )
-      (TopItemIs{array} IsDelimiterRune
-        SetVar{needFinish true}
-      )
-      ('-' '+'
-        PushItem{ItemType number ItemString FromCurrRune}
-        SetState{expectDigit}
-      )
-      (Unicode{Digit}
-        PushItem{ItemType number ItemString FromCurrRune}
-        SetState{expectDigit orUnderscoreOrDot}
-      )
-      ('"' '\''
-        PushItem{ItemType string Delimiter FromCurrRune}
-        SetState{expectContentOf stringToken}
-      )
-      (Unicode{Letter}
-        PushItem{ItemType word ItemString FromCurrRune}
-        SetState{expectWord}
-      )
-      unexpectedRune
-    ]
-  )
-  (PrimaryIs{begin}
-    Unreachable
-  )
+primaryState [
+  (primary "end": [
+    (EOF: "end" > primary "" > secondary)
+    (Space)
+    (:UnexpectedRune)
+  ])
+  (primary "expectRocket": [
+     ('>': "begin" > primary "" > secondary )
+     (:UnexpectedRune)
+  ])
+  (primary "expectWord": [
+    (Letter Digit: rune >> 0.string )
+    (: PushRune true > needFinish)
+  ])
+  (primary "expectSpaceOrQwItemOrDelimiter": [
+    (EOF: UnexpectedRune)
+    (Space)
+    (rune 0.delimiter: true > needFinish)
+    (:
+      PushItem
+      "qwItem" > 0.type
+      1.delimiter > 0.delimiter
+      rune >> 0.string
+      "expectEndOfQwItem" > primary "" > secondary
+    )
+  ])
+  (primary "expectEndOfQwItem": [
+    (EOF: UnexpectedRune)
+    (Space rune 0.delimiter: PushRune true > needFinish)
+    (: rune >> 0.string )
+  ])
+  (primary "expectContentOf": [
+    (EOF: UnexpectedRune)
+    (rune 0.delimiter: true > needFinish)
+    ('\\': "expectEscapedContentOf" > primary)
+    (: rune >> 0.string )
+  ])
+  (primary "expectDigit": [
+    (Digit secondary "":
+      rune >> 0.string
+      "orUnderscoreOrDot" > secondary
+    )
+    ('.' secondary "orUnderscoreOrDot"}:
+      rune >> 0.string
+      "orUnderscore" > secondary
+    )
+    ('_' unicodeDigit secondary ["orUnderscoreOrDot" "orUnderscore"]:
+      rune >> 0.string
+    )
+    ( secondary "": UnexpectedRune )
+    (: PushRune true > needFinish )
+  ])
+  (primary "expectSpaceOrMapKey": [
+    (Space)
+    (Letter:
+      PushItem
+      "key" > 0.type
+      rune >> 0.string
+      "expectWord" > primary "" > secondary
+    )
+    ( '"', '\'':
+      PushItem
+      "key" > 0.type
+      "" > 0.string
+      rune > 0.delimiter
+      "expectContentOf" > primary "keyToken" > secondary
+    )
+    ( rune 0.delimiter 0.type "map": true > needFinish )
+  ])
+  (primary "expectEscapedContentOf": [
+    ('"' '\'' '\\':
+      rune >> 0.string "expectContentOf" > primary
+    )
+    (0.delimiter '"': [
+      ('a' 'b' 'f' 'n' 'r' 't' 'v': rune | Escape > 0.string )
+      (: UnexpectedRune)
+    ])
+  ])
+  (primary "begin": [
+    (EOF stackLen 0: "end" > primary "" > secondary)
+    (EOF: UnexpectedRune)
+    ('=' secondary "orMapKeySeparator":
+      "expectRocket" > primary "" > secondary
+    )
+    (':' secondary "orMapKeySeparator":
+      "begin" > primary "" > secondary
+    )
+    (Space)
+    ('{':
+      PushItem
+      Map > 0.result
+      "map" > 0.type
+      '}' > 0.delimiter
+      "expectSpaceOrMapKey" > primary "" > secondary
+    )
+    ('<':
+      PushItem
+      Array > 0.result
+      "qw" > 0.type
+      '>' > 0.delimiter
+      "expectSpaceOrQwItemOrDelimiter" > primary "" > secondary
+    )
+    ('[':
+      PushItem
+      Array > 0.result
+      "array" > 0.type
+      ']' > 0.delimiter
+      "begin" > primary "" > secondary
+    )
+    ( 0.type "array" rune 0.delimiter: true > needFinish )
+    ('-' '+':
+      PushItem
+      "number" > 0.type
+      rune >> 0.string
+      "expectDigit" > primary "" > secondary
+    )
+    (Digit:
+      PushItem
+      "number" > 0.type
+      rune >> 0.string
+      "expectDigit" > primary "orUnderscoreOrDot" > secondary
+    )
+    ('"', '\'':
+      PushItem
+      "string" > 0.type
+      "" > 0.string
+      rune > 0.delimiter
+      "expectContentOf" > primary "stringToken" > secondary
+    )
+    (Letter:
+      PushItem
+      "word" > 0.type
+      rune >> 0.string
+      "expectWord" > primary "" > secondary
+    )
+    (:UnexpectedRune)
+  ])
+  (:Unexpected)
 ]
 
 main [
-  (
+  (:
     PullRune
-    SetVar{"needFinish" false}
-    primaryStateLogic
-    [
-      (VarIs{"needFinish" true}
-        SetVar{"skipPostProcess" false}
-        finishLogic
-        [
-          (VarIs{"skipPostProcess" false}
-            postProcessLogic
-          )
-        ]
-      )
-    ]
+    [(primary nil: "begin" > primary)]
+    false > needFinish
+    [ $primaryState ]
+    [(needFinish true:
+      false > skipPostProcess
+      [ $finish ]
+      [(skipPostProcess false: [$postProcess])]
+    )]
   )
 ]
-
