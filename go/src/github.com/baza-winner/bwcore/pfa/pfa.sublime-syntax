@@ -8,647 +8,739 @@ scope: source.pfa
 
 variables:
   ident: '[A-Za-z_][A-Za-z_0-9]*'
-  path: '[\da-z_]+(.(?:[\da-z_]+|{[\da-z_]+(?:.[\da-z_]+)}))*'
+
+  pathKeyStart: '[_a-z]'
+  pathKey: '{{pathKeyStart}}[_\w\d]*'
+  pathItem: '(?:\.(?:-?\d+|{{pathKey}}))'
+  optPathItems: '(?:\.(?:-?\d+|{{pathKey}}))*'
+
+  pathHash: '(?:\.#)'
+  directPath: '{{pathKey}}{{optPathItems}}'
+  pathStart: '({{directPath}}\.)?\{(?={{directPath}})'
+  pathContinue: '{{directPath}}\}{{optPathItems}}\.\{'
+  pathEnd: '(?:{{directPath}})?\}{{optPathItems}}{{pathHash}}?'
+  indirectPathStart: '{{directPath}}\.\{'
+  justPath: '{{directPath}}{{pathHash}}?'
+
+  directPathInPathGroup: '(?:{{pathKey}}|{{pathItem}}){{optPathItems}}'
+  pathStartInPathGroup: '({{directPathInPathGroup}}\.)?\{(?={{directPathInPathGroup}})'
+  pathContinueInPathGroup: '{{directPathInPathGroup}}\}{{optPathItems}}\.\{'
+  pathEndInPathGroup: '(?:{{directPathInPathGroup}})?\}{{optPathItems}}{{pathHash}}?'
+  indirectPathStartInPathGroup: '{{directPathInPathGroup}}\.\{'
+  justPathInPathGroup: '{{directPathInPathGroup}}{{pathHash}}?|{{pathHash}}|\.'
+
+  rune: \'(?:\\.|.)\'
+  number: \d+(?:\.\d+)?
+  languageConsts: true|false|nil
+  conditionConsts: 'OpenBraces|Punct|Symbol|EOF|Space|Letter|Digit'
+  ruleActionConsts: 'Item|Array|Map|{{languageConsts}}'
+  ruleActions: (?:(?:Pull|Push)Rune)
+  transformers: ParseNumber|PairBrace|Escape|ButLast
 
 contexts:
-  main:
+  prototype:
     - include: space
+
+  main:
     - match: \b{{ident}}\b
-      scope: variable.language
-      push:
-        - include: space
-        - match: \[
-          scope: punctuation.section.brackets.begin
-          set: rules
-        - match: \(
-          scope: punctuation.section.braces.begin
-          set: ruleCondition
-        - include: illegal
+      scope: entity.name.pfa
+      push: entityValue
+
     - include: illegal
 
-  space:
-    - match: '[\s]+'
-    - match: '(//|#)'
-      scope: punctuation.definition.comment
-      push:
-        - meta_scope: comment.line
-        - match: $
-          pop: true
-    - match: '/\*'
-      scope: punctuation.definition.comment.begin
-      push:
-        - meta_scope: comment
-        - match: '\*/'
-          scope: punctuation.definition.comment.end
-          # scope: entity.name
-          pop: true
-
-  multiLineComment:
-    - meta_scope: comment
-    - match: '\*/'
-      scope: punctuation.definition.comment.end
-      # scope: entity.name
-      pop: true
-
-  singleLineComment:
-    - meta_scope: comment.line
-    - match: $
-      pop: true
-
-  illegal:
-    - match: .
-      scope: invalid.illegal
-
-  rules:
-    - include: space
+  entityValue:
+    - match: \{
+      scope: punctuation.section.block.begin.pfa
+      set: rules
 
     - match: \(
-      scope: punctuation.section.braces.begin
+      scope: punctuation.section.parens.begin.pfa
+      set: ruleCondition
+
+    - match: \d+
+      scope: constant.numeric.integer.pfa
+      pop: true
+
+    - match: \b{{ident}}\b
+      scope: entity.name.pfa
+
+    - include: illegal
+
+  rules:
+    - meta_scope: meta.block.pfa
+
+    - match: '\${{ident}}'
+      scope: entity.name.pfa
+
+    - match: '{{pathStart}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinue}}'
+        - match: '{{pathEnd}}'
+          set: beginRulesInPathGroup
+        - match: '{{indirectPathStart}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPath}}'
+      scope: variable.other.pfa
+      push: beginRulesInPathGroup
+
+    - match: \(
+      scope: punctuation.section.parens.begin.pfa
       push: ruleCondition
 
-    - match: '\]'
-      scope: punctuation.section.brackets.end
+    - match: \}
+      scope: punctuation.section.block.begin.pfa
       pop: true
+
+    - include: illegal
+
+  beginRulesInPathGroup:
+    - match: \(
+      scope: punctuation.section.parens.begin.pfa
+      set: rulesInPathGroup
+    - include: illegal
+
+  rulesInPathGroup:
+    - match: '\${{ident}}'
+      scope: entity.name.pfa
+
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          set: rulesInPathGroup
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      push: rulesInPathGroup
+
+    - match: \(
+      scope: punctuation.section.parens.begin.pfa
+      push: ruleConditionOfRulesInPathGroup
+
+    - match: \)
+      pop: true
+
+    - include: illegal
+
+  rulesOfRulesInPathGroup:
+    - meta_scope: meta.block.pfa
+
+    - match: '\${{ident}}'
+      scope: entity.name.pfa
+
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          set: beginRulesInPathGroup
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      push: beginRulesInPathGroup
+
+    - match: \(
+      scope: punctuation.section.parens.begin.pfa
+      push: ruleConditionOfRulesInPathGroup
+
+    - match: \}
+      scope: punctuation.section.block.begin.pfa
+      pop: true
+
+    - include: illegal
+
+  ruleConditionOfRulesInPathGroup:
+    - include: ruleConditionHelper
+
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          set: ruleConditionPathArgOrPathGroupInPathGroup
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      push: ruleConditionPathArgOrPathGroupInPathGroup
+
+    - match: ':'
+      scope: punctuation.separator.pfa
+      set: ruleActionOfRulesInPathGroup
 
     - include: illegal
 
   ruleCondition:
-    - include: space
+    - include: ruleConditionHelper
 
-    - match: '(\d+\.[_a-z][_a-z\d]*|[a-z][_a-z\d]*)'
-      set: ruleConditionPath
-
-    - match: \bOpenBraces|Punct|Symbol\b
-      scope: constant.language
-
-    - match: \d+
-      scope: constant.numeric.integer
+    - match: '{{pathStart}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinue}}'
+        - match: '{{pathEnd}}'
+          set: ruleConditionPathArgOrPathGroup
+        - match: '{{indirectPathStart}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPath}}'
+      scope: variable.other.pfa
+      push: ruleConditionPathArgOrPathGroup
 
     - match: ':'
-      scope: punctuation.separator
+      scope: punctuation.separator.pfa
       set: ruleAction
-
-    - match: '\)'
-      scope: punctuation.section.braces.end
-      pop: true
 
     - include: illegal
 
-  ruleConditionPath:
-    - meta_scope: variable.language
-    - match: '\.(\d+|[a-z][_a-z\d]*)'
-    - match: '{(\d+|[a-z][_a-z\d]*)'
-      push: indirectPath
-    - match: '[\s]+'
-      set: ruleConditionPathArg
-    - match: '(//|#)'
-      scope: punctuation.definition.comment
-      set:
-        - meta_scope: comment.line
-        - match: $
-          set: ruleConditionPathArg
-    - match: '/\*'
-      scope: punctuation.definition.comment.begin
-      set:
-        - meta_scope: comment
-        - match: '\*/'
-          scope: punctuation.definition.comment.end
-          set: ruleConditionPathArg
+  ruleConditionInPathGroup:
+    - include: ruleConditionHelper
 
-  ruleConditionPathArg:
-    - match: '<[^>]+>'
-      scope: string
-      set: ruleCondition
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          set: ruleConditionPathArgOrPathGroupInPathGroup
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      push: ruleConditionPathArgOrPathGroupInPathGroup
 
-    - match: '"'
-      set:
+    - include: illegal
+
+  ruleConditionPathArgOrPathGroupInPathGroup:
+    - include: ruleConditionPathArgOrPathGroupHelper
+    - include: pathInPathGroup
+    - include: illegal
+
+
+  ruleConditionPathArgOrPathGroup:
+    - include: ruleConditionPathArgOrPathGroupHelper
+    - include: path
+    - include: illegal
+
+  ruleConditionPathArgGroup:
+    - meta_scope: meta.brackets
+
+    - match: \]
+      scope: punctuation.section.brackets.end.pfa
+      pop: true
+
+    - match: \"
+      scope: punctuation.definition.string.begin.pfa
+      push:
         - meta_scope: string.quoted.double.pfa
         - match: '\\.'
           scope: constant.character.escape.pfa
         - match: '"'
           scope: punctuation.definition.string.end.pfa
-          set: ruleCondition
+          pop: true
 
-    - match: \bOpenBraces|Punct|Symbol\b
-      scope: constant.language
-      set: ruleCondition
+    - match: \<
+      scope: punctuation.section.group.begin.pfa
+      push:
+        - match: \>
+          scope: punctuation.section.group.end.pfa
+          pop: true
+        - match: .
+          scope: string.quoted.single.pfa
 
-    - match: \d+
-      scope: constant.numeric.integer
-      set: ruleCondition
+    - match: (\${{ident}})|({{rune}})|({{number}})
+      captures:
+        1: entity.name.pfa
+        2: constant.character.pfa
+        3: constant.numeric.pfa
 
     - include: illegal
 
-  indirectPath:
-    - meta_scope: variable.language
-    - match: '\.(\d+|[a-z][_a-z\d]*)'
-    - match: '}'
-      pop: true
+  ruleActionEnd:
+    - include: ruleActionEndHelper
+    - include: illegal
+
+  unexpected:
+    - include: ruleActionEndHelper
+
+    - match: '{{pathStart}}'
+      scope: variable.other.pfa
+      set:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinue}}'
+        - match: '{{pathEnd}}'
+          set: ruleActionEnd
+        - match: '{{indirectPathStart}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPath}}'
+      scope: variable.other.pfa
+      set: ruleActionEnd
+
+    - include: illegal
+
+  unexpectedOfRulesInPathGroup:
+    - include: ruleActionEndHelper
+
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      set:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          set: ruleActionEnd
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      set: ruleActionEnd
+
+    - include: illegal
+
+  ruleActionOfRulesInPathGroup:
+    - include: ruleActionEndHelper
+
+    - match: '{{ruleActions}}'
+      scope: keyword.other.pfa
+
+    - match: \bUnexpected\b
+      scope: keyword.other.pfa
+      set: unexpectedOfRulesInPathGroup
+
+    - match: (\${{ident}})|({{rune}})|({{number}}|({{ruleActionConsts}})|{{languageConsts}})
+      captures:
+        1: entity.name.pfa
+        2: constant.character.pfa
+        3: constant.numeric.pfa
+        4: constant.language
+        5: constant.language
+      push: ruleActionOpInPathGroup
+
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          set: ruleActionOpInPathGroupOrPathGroup
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      push: ruleActionOpInPathGroupOrPathGroup
+
+    - match: \"
+      scope: punctuation.definition.string.begin.pfa
+      set:
+        - meta_scope: string.quoted.double.pfa
+        - match: '\\.'
+          scope: constant.character.escape.pfa
+        - match: \"
+          scope: punctuation.definition.string.end.pfa
+          push: ruleActionOpInPathGroup
+
+    - match: \{
+      scope: punctuation.section.block.begin.pfa
+      push: rulesOfRulesInPathGroup
+
+    - include: illegal
+
 
   ruleAction:
-    - include: space
+    - include: ruleActionEndHelper
 
-    - match: '"'
-      set: doubleQuotedStringRuleAction
+    - match: '{{ruleActions}}'
+      scope: keyword.other.pfa
 
-    # - match: \b{{path}}\b
-    #   scope: variable.language
-    #   set: ruleActionOp
+    - match: \bUnexpected\b
+      scope: keyword.other.pfa
+      set: unexpected
 
-    - match: '(\d+\.[_a-z][_a-z\d]*|[a-z][_a-z\d]*)'
-      set: ruleConditionPath
+    - match: (\${{ident}})|({{rune}})|({{number}}|({{ruleActionConsts}})|{{languageConsts}})
+      captures:
+        1: entity.name.pfa
+        2: constant.character.pfa
+        3: constant.numeric.pfa
+        4: constant.language
+        5: constant.language
+      push: ruleActionOp
 
-    - match: \bArray|Map\b
-      scope: entity.name.struct
-      set: ruleActionOp
+    - match: '{{pathStart}}'
+      scope: variable.other.pfa
+      push:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinue}}'
+        - match: '{{pathEnd}}'
+          set: ruleActionOpOrPathGroup
+        - match: '{{indirectPathStart}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPath}}'
+      scope: variable.other.pfa
+      push: ruleActionOpOrPathGroup
 
-    - match: \bPullRune\b
-      scope: entity.name.function
+    - match: \"
+      scope: punctuation.definition.string.begin.pfa
+      set:
+        - meta_scope: string.quoted.double.pfa
+        - match: '\\.'
+          scope: constant.character.escape.pfa
+        - match: \"
+          scope: punctuation.definition.string.end.pfa
+          push: ruleActionOp
 
-    - match: \bUnexpectedRune|UnexpectedItem\b
-      scope: entity.name.error
-
-    - match: '\)'
-      scope: punctuation.section.braces.end
-      pop: true
-
-    - match: '\['
-      scope: punctuation.section.braces.begin
+    - match: \{
+      scope: punctuation.section.block.begin.pfa
       push: rules
 
     - include: illegal
 
-  doubleQuotedStringRuleAction:
-    - meta_scope: string.quoted.double.pfa
-    - match: '\\.'
-      scope: constant.character.escape.pfa
-    - match: '"'
-      scope: punctuation.definition.string.end.pfa
-      set: ruleActionOp
-      # pop: true
+  ruleActionOpOrPathGroup:
+    - include: ruleActionOpHelper
+
+    - match: \(
+      set: ruleActionInPathGroup
+
+    - include: illegal
+
+  ruleActionOpInPathGroupOrPathGroup:
+    - include: ruleActionOpHelperInPathGroup
+
+    - match: \(
+      set: ruleActionInPathGroup
+
+    - include: illegal
 
   ruleActionOp:
-    - include: space
+    - include: ruleActionOpHelper
+    - include: illegal
+
+  ruleActionOpInPathGroup:
+    - include: ruleActionOpHelperInPathGroup
+    - include: illegal
+
+  ruleActionTransform:
+    - match: '{{transformers}}'
+      scope: keyword.operator.word.pfa
+      pop: true
+
+    - match: (\${{ident}})|({{rune}})|({{number}}|({{ruleActionConsts}})|{{languageConsts}})
+      captures:
+        1: entity.name.pfa
+        2: constant.character.pfa
+        3: constant.numeric.pfa
+        4: constant.language
+        5: constant.language
+      set: ruleActionOpInTransform
+
+    - match: '{{pathStart}}'
+      scope: variable.other.pfa
+      set:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinue}}'
+        - match: '{{pathEnd}}'
+          set: ruleActionOpInTransform
+        - match: '{{indirectPathStart}}'
+          push: indirectPath
+        - include: illegal
+    - match: '{{justPath}}'
+      scope: variable.other.pfa
+      set: ruleActionOpInTransform
+
+    - match: \"
+      scope: punctuation.definition.string.begin.pfa
+      set:
+        - meta_scope: string.quoted.double.pfa
+        - match: '\\.'
+          scope: constant.character.escape.pfa
+        - match: \"
+          scope: punctuation.definition.string.end.pfa
+          set: ruleActionOpInTransform
+
+    - include: illegal
+
+  ruleActionOpInTransform:
     - match: '\|'
-      scope: keyword.operator.assignment
-      set: ruleActionTransform
+      scope: keyword.operator.assignment.pfa
+      push: ruleActionTransform
+
     - match: '>{1,3}'
-      scope: keyword.operator.assignment
+      scope: keyword.operator.assignment.pfa
       set: ruleActionTarget
 
     - include: illegal
 
-  ruleActionTransform:
-    - include: space
-    - match: \bParseNumber|PairBrace\b
-      scope: variable.function
-      set: ruleActionOp
-    - include: illegal
-
-
   ruleActionTarget:
-    - include: space
-    - match: '(\d+\.[_a-z][_a-z\d]*|[a-z][_a-z\d]*)'
-      set: ruleActionTargetPath
+    - include: path
     - include: illegal
 
-  ruleActionTargetPath:
-    - meta_scope: variable.language
-    - match: '\.(\d+|[a-z][_a-z\d]*)'
-    - match: '{(\d+|[a-z][_a-z\d]*)'
-      push: indirectPath
+  # InPathGroup
+
+  ruleActionInPathGroup:
+    - match: \)
+      scope: punctuation.section.parens.end
+      pop: true
+
+    - match: '{{ruleActions}}'
+      scope: keyword.other.pfa
+
+    - match: (\${{ident}})|({{rune}})|({{number}}|({{ruleActionConsts}})|{{languageConsts}})
+      captures:
+        1: entity.name.pfa
+        2: constant.character.pfa
+        3: constant.numeric.pfa
+        4: constant.language
+        5: constant.language
+      push: ruleActionOpInPathGroup
+
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      set:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          push: ruleActionOpInPathGroupOrPathGroup
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPathInPathGroup
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      push: ruleActionOpInPathGroupOrPathGroup
+
+    - match: \"
+      scope: punctuation.definition.string.begin.pfa
+      set:
+        - meta_scope: string.quoted.double.pfa
+        - match: '\\.'
+          scope: constant.character.escape.pfa
+        - match: \"
+          scope: punctuation.definition.string.end.pfa
+          push: ruleActionOpInPathGroup
+
+    - match: \{
+      scope: punctuation.section.block.begin.pfa
+      push: rules
+
+    - include: illegal
+
+  ruleActionTransformInPathGroup:
+    - match: '{{transformers}}'
+      scope: keyword.operator.word.pfa
+      pop: true
+
+    - match: (\${{ident}})|({{rune}})|({{number}}|({{ruleActionConsts}})|{{languageConsts}})
+      captures:
+        1: entity.name.pfa
+        2: constant.character.pfa
+        3: constant.numeric.pfa
+        4: constant.language
+        5: constant.language
+      set: ruleActionOpInTransformInPathGroup
+
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      set:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          set: ruleActionOpInTransformInPathGroup
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPathInPathGroup
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      set: ruleActionOpInTransformInPathGroup
+
+    - match: \"
+      scope: punctuation.definition.string.begin.pfa
+      set:
+        - meta_scope: string.quoted.double.pfa
+        - match: '\\.'
+          scope: constant.character.escape.pfa
+        - match: \"
+          scope: punctuation.definition.string.end.pfa
+          set: ruleActionOpInTransformInPathGroup
+
+    - include: illegal
+
+  ruleActionOpInTransformInPathGroup:
+    - match: '\|'
+      scope: keyword.operator.assignment.pfa
+      push: ruleActionTransformInPathGroup
+
+    - match: '>{1,3}'
+      scope: keyword.operator.assignment.pfa
+      set: ruleActionTargetInPathGroup
+
+    - include: illegal
+
+  ruleActionTargetInPathGroup:
+    - include: pathInPathGroup
+    - include: illegal
+
+# ======================================================
+
+  space:
+    - meta_include_prototype: false
     - match: '[\s]+'
-      set: ruleAction
-    - match: '(//|#)'
-      scope: punctuation.definition.comment
-      set:
-        - meta_scope: comment.line
+    - match: //
+      scope: punctuation.definition.comment.pfa
+      push:
+        - meta_scope: comment.line.pfa
         - match: $
-          set: ruleAction
-    - match: '/\*'
-      scope: punctuation.definition.comment.begin
-      set:
+          pop: true
+    - match: /\*
+      scope: punctuation.definition.comment.begin.pfa
+      push:
         - meta_scope: comment
-        - match: '\*/'
-          scope: punctuation.definition.comment.end
-          set: ruleAction
+        - match: \*/
+          scope: punctuation.definition.comment.end.pfa
+          pop: true
 
+  illegal:
+    - meta_include_prototype: false
+    - match: .
+      scope: invalid.illegal.pfa
 
-  # pathSep:
-    # - match: '[\s+]'
-      # set: ruleConditionVal
-
-  # pathItem:
-  #   - match: '[\da-z_]+'
-  #     scope: variable.parameter
-  #     set: pathSep
-  #   - include: illegal
-
-  # ruleConditionVal:
-  #   - match: '<[^>+>]'
-  #     scope: string
-  #     set:
-  #       - include: space
-
-
-
-
-
-
-
-    # - match: '\b[_a-z][\w\d]*\b'
-    #   scope: entity.name
-
-    # - include: checker
-    # - include: action
-    # - include: illegal
-
-  rune:
-    - match: \'(\\)?.\'
-      scope: constant.character
-
-  checker:
-    - include: rune
-    - match: \b(TopItem(String)?|(SubItem|Primary|Secondary))Is\b
-      scope: variable.language
-      push: multiStringParamBlockExpected
-
-    - match: \bDelimiterIs\b
-      scope: variable.language
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - include: space
-            - match: \'(\\)?.\'
-              scope: constant.character
-              set:
-                - include: space
-                - match: \}
-                  scope: punctuation.section.block.end
-                  pop: true
-                - include: illegal
-            - include: illegal
-        - include: illegal
-
-    - match: \bStackLenIs\b
-      scope: variable.language
-      push: uintParamBlockExpected
-
-    - match: \bVarIs\b
-      scope: variable.language
-      push: SetVar
-
-    # - match: \bIs(DelimiterRune|EOF|Unicode(OpenBraces|Punct|Symbol|Space|Letter|Digit))\b
-    - match: \bIs(DelimiterRune|EOF)\b
-      scope: variable.language
-
-    - match: \bUnicode\b
-      scope: variable.language
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - include: space
-            - match: \bOpenBraces|Punct|Symbol|Space|Letter|Lower|Upper|Digit\b
-              scope: constant.language
-            - include: paramBlockEnd
-        - include: illegal
-
-  action:
-    - match: \bAppendRune\b
-      scope: variable.function
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - include: space
-            - match: \'(\\)?.\'
-              scope: constant.character
-              set: paramBlockEnd
-            - include: illegal
-        - include: illegal
-
-    - match: \bPullRune|PushRune|PopItem|SetTopItem(String|MapKeyValue)FromSubItem|Unreachable|AppendCurrRune|SetTopItemValueAs(String|Map|Number)\b
-      scope: variable.function
-
-    - match: \bSetError\b
-      scope: variable.function
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - include: space
-            - match: \b(UnexpectedRune|UnexpectedItem)\b
-              scope: constant.language
-              set: paramBlockEnd
-            - include: illegal
-        - include: illegal
-
-    - match: \bSetTopItemDelimiter\b
-      scope: variable.function
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - match: \b(PairForCurrRune)\b
-              scope: constant.language
-            - include: paramBlockEnd
-            - include: illegal
-        - include: illegal
-
-    - match: \bSetTopItemType|SetState|Change(Primary|Secondary)\b
-      scope: variable.function
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - include: space
-            - match: \b[\w][\w\d]*\b
-              scope: string.quoted.double
-              set: endOfBlockExpected
-            - match: '"'
-              set:
-              - meta_scope: string.quoted.double.pfa
-              - match: '\\.'
-                scope: constant.character.escape.pfa
-              - match: '"'
-                scope: punctuation.definition.string.end.pfa
-                set: paramBlockEnd
-            - include: illegal
-        - include: illegal
-
-    - match: \bSetSecondary\b
-      scope: variable.function
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - match: \b[\w][\w\d]*\b
-              scope: string.quoted.double
-              set: stringParamOrParamBlockEnd
-            - match: '"'
-              set:
-              - meta_scope: string.quoted.double.pfa
-              - match: '\\.'
-                scope: constant.character.escape.pfa
-              - match: '"'
-                scope: punctuation.definition.string.end.pfa
-                set: stringParamOrParamBlockEnd
-            - include: illegal
-        - include: illegal
-
-    - match: \bSetTopItemValueAsBool\b
-      scope: variable.function
-      push: boolParamBlockExpected
-
-    - match: \bSetVar\b
-      scope: variable.function
-      push: SetVar
-
-    - match: \bPushItem\b
-      scope: variable.function
-      push: PushItem
-
-    - match: \bAppendItemArray\b
-      scope: variable.function
-      push:
-        - match: \{
-          scope: punctuation.section.block.begin
-          set:
-            - include: space
-            - match: \bFromSubItemValue|FromSubItemArray\b
-              scope: constant.language
-              set: paramBlockEnd
-            - include: illegal
-        - include: illegal
-
-
-  PushItem:
-    - match: \{
-      scope: punctuation.section.block.begin
-      set: PushItemParamKeyExpected
+  indirectPath:
+    - meta_include_prototype: false
+    - meta_scope: variable.other.pfa
+    - match: '{{pathContinue}}'
+    - match: '{{indirectPathStart}}'
+      push: indirectPath
+    - match: '{{directPath}}\}{{optPathItems}}'
+      pop: true
     - include: illegal
 
-  PushItemParamKeyExpected:
-    - include: space
-    - match: \bItemType\b
-      set: PushItemTypeExpected
-    - match: \bItemString\b
-      set: PushItemStringExpected
-    - match: \bDelimiter\b
-      set: PushItemDelimiterExpected
-    - include: paramBlockEnd
-
-  PushItemTypeExpected:
-    - include: space
-    - match: \b[\w][\w\d]*\b
-      scope: string.quoted.double
-      set: PushItemParamKeyExpected
-    - match: '"'
+  path:
+    - meta_include_prototype: false
+    - match: '{{pathStart}}'
+      scope: variable.other.pfa
       set:
-      - meta_scope: string.quoted.double.pfa
-      - match: '\\.'
-        scope: constant.character.escape.pfa
-      - match: '"'
-        scope: punctuation.definition.string.end.pfa
-        set: PushItemParamKeyExpected
-    - include: illegal
-
-  PushItemStringExpected:
-    - include: space
-    - match: \bFromCurrRune\b
-      scope: constant.language
-      set: PushItemParamKeyExpected
-    - include: illegal
-
-  PushItemDelimiterExpected:
-    - include: space
-    - match: \bFromCurrRune|PairForCurrRune|FromParentItem\b
-      scope: constant.language
-      set: PushItemParamKeyExpected
-    - include: illegal
-
-  SetVar:
-    - match: \{
-      scope: punctuation.section.block.begin
-      set: SetVarNameExpected
-    - include: illegal
-
-  SetVarNameExpected:
-    - include: space
-    - match: \b[\w][\w\d]*\b
-      scope: string.quoted.double
-      set: SetVarValueExpected
-    - match: '"'
-      set: SetVarNameQuotedString
-    - include: illegal
-
-  SetVarNameQuotedString:
-    - meta_scope: string.quoted.double.pfa
-    - match: '\\.'
-      scope: constant.character.escape.pfa
-    - match: '"'
-      scope: punctuation.definition.string.end.pfa
-      set: SetVarValueExpected
-
-  SetVarValueExpected:
-    - include: space
-    - match: \b(true|false)\b
-      scope: constant.language
-      set: endOfParamBlockExpected
-    - include: illegal
-
-  multiStringParamBlockExpected:
-    - match: \{
-      scope: punctuation.section.block.begin
-      set:
-        - include: space
-        - match: \b[\w][\w\d]*\b
-          scope: string.quoted.double
-          set: stringParamOrParamBlockEnd
-        - match: '"'
-          set:
-            - meta_scope: string.quoted.double
-            - include: escapedChar
-            - match: '"'
-              scope: punctuation.definition.string.end
-              set: stringParamOrParamBlockEnd
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinue}}'
+        - match: '{{pathEnd}}'
+          pop: true
+        - match: '{{indirectPathStart}}'
+          push: indirectPath
         - include: illegal
-    - include: illegal
+    - match: '{{justPath}}'
+      scope: variable.other.pfa
+      pop: true
 
-  escapedChar:
-    - match: '\\.'
-      scope: constant.character.escape.pfa
+  pathInPathGroup:
+    - meta_include_prototype: false
+    - match: '{{pathStartInPathGroup}}'
+      scope: variable.other.pfa
+      set:
+        - meta_scope: variable.other.pfa
+        - match: '{{pathContinueInPathGroup}}'
+        - match: '{{pathEndInPathGroup}}'
+          pop: true
+        - match: '{{indirectPathStartInPathGroup}}'
+          push: indirectPathInPathGroup
+        - include: illegal
+    - match: '{{justPathInPathGroup}}'
+      scope: variable.other.pfa
+      pop: true
 
-  stringParamOrParamBlockEnd:
-      - match: \b[\w][\w\d]*\b
-        scope: string.quoted.double
-      - match: '"'
-        set:
-          - meta_scope: string.quoted.double.pfa
-          - include: escapedChar
-          - match: '"'
-            scope: punctuation.definition.string.end.pfa
-            set: stringParamOrParamBlockEnd
-      - include: paramBlockEnd
-      - include: illegal
+  ruleActionOpHelper:
+    - meta_include_prototype: false
+    - match: '\|'
+      scope: keyword.operator.assignment.pfa
+      push: ruleActionTransform
 
-  paramBlockEnd:
-    - include: space
-    - match: \}
-      scope: punctuation.section.block.end
+    - match: '>{1,3}'
+      scope: keyword.operator.assignment.pfa
+      set: ruleActionTarget
+
+  ruleActionOpHelperInPathGroup:
+    - meta_include_prototype: false
+    - match: '\|'
+      scope: keyword.operator.assignment.pfa
+      push: ruleActionTransformInPathGroup
+
+    - match: '>{1,3}'
+      scope: keyword.operator.assignment.pfa
+      set: ruleActionTargetInPathGroup
+
+  ruleActionEndHelper:
+    - meta_include_prototype: false
+    - match: \)
+      scope: punctuation.section.parens.end
+      pop: true
+
+  ruleConditionPathArgOrPathGroupHelper:
+    - meta_include_prototype: false
+    - match: \(
+      scope: punctuation.section.parens.begin.pfa
+      set: ruleConditionInPathGroup
+
+    - match: (\${{ident}})|({{rune}})|({{number}}|({{conditionConsts}})|{{languageConsts}})
+      captures:
+        1: entity.name.pfa
+        2: constant.character.pfa
+        3: constant.numeric.pfa
+        4: constant.language
+        5: constant.language
+      pop: true
+
+    - match: \"
+      scope: punctuation.definition.string.begin.pfa
+      set:
+        - meta_scope: string.quoted.double.pfa
+        - match: '\\.'
+          scope: constant.character.escape.pfa
+        - match: \"
+          scope: punctuation.definition.string.end.pfa
+          pop: true
+
+    - match: \<
+      scope: punctuation.section.group.begin.pfa
+      set:
+        - match: \>
+          scope: punctuation.section.group.end.pfa
+          pop: true
+        - match: .
+          scope: string.quoted.single.pfa
+
+    - match: \[
+      scope: punctuation.section.brackets.begin.pfa
+      set: ruleConditionPathArgGroup
+
+  indirectPathInPathGroup:
+    - meta_include_prototype: false
+    - meta_scope: variable.other.pfa
+    - match: '{{pathContinueInPathGroup}}'
+    - match: '{{indirectPathStartInPathGroup}}'
+      push: indirectPath
+    - match: '{{directPathInPathGroup}}\}{{optPathItems}}'
       pop: true
     - include: illegal
 
-  uintParamBlockExpected:
-    - match: \{
-      scope: punctuation.section.block.begin
-      set: uintParamBlock
-    - include: illegal
+  ruleConditionHelper:
+    - meta_include_prototype: false
+    - match: '({{conditionConsts}})|({{rune}})'
+      captures:
+        1: constant.language.pfa
+        2: constant.character.pfa
 
-  uintParamBlock:
-    - include: uintExpected
-    - include: endOfBlockExpected
-    - include: illegal
-
-  uintExpected:
-    - match: (\d+)
-      scope: constant.numeric.integer
-
-  boolParamBlockExpected:
-    - match: \{
-      scope: punctuation.section.block.begin
-      set: boolParamBlock
-    - include: illegal
-
-  boolParamBlock:
-    - include: boolExpected
-    - include: endOfBlockExpected
-    - include: illegal
-
-  boolExpected:
-    - match: \b(true|false)\b
-      scope: constant.language
-
-# ========================================
-
-  endOfParamBlockExpected:
-    - include: space
-    - include: endOfBlockExpected
-    - include: illegal
-
-  endOfBlockExpected:
-    - match: \}
-      scope: punctuation.section.block.end
+    - match: \)
+      scope: punctuation.section.parens.end.pfa
       pop: true
-
-  doubleQuotedStringExpected:
-    - match: \b[\w][\w\d]*\b
-      scope: string.quoted.double
-    - match: '"'
-      push: doubleQuotedString
-
-  doubleQuotedString:
-    - meta_scope: string.quoted.double.pfa
-    - match: '\\.'
-      scope: constant.character.escape.pfa
-    - match: '"'
-      scope: punctuation.definition.string.end.pfa
-      pop: true
-
-  singleQuotedString:
-    - meta_scope: string.quoted.single.pfa
-    - match: '\\.'
-      scope: constant.character.escape.pfa
-    - match: \'
-      scope: punctuation.definition.string.end.pfa
-      pop: true
-
-  # content:
-  #   # Strings begin and end with quotes, and use backslashes as an escape
-  #   # character
-  #   - match: \'
-  #     scope: punctuation.definition.string.begin.pfa
-  #     push: singleQuotedString
-
-  #   - match: '"'
-  #     scope: punctuation.definition.string.begin.pfa
-  #     push: doubleQuotedString
-
-  #   # Comments begin with a '//' and finish at the end of the line
-  #   - match: '//'
-  #     scope: punctuation.definition.comment.pfa
-  #     push: singleLineComment
-
-  #   - match: '\['
-  #     scope: punctuation.section.brackets.begin
-  #     push: brackets
-  #   - match: '\]'
-  #     scope: invalid.illegal.stray-bracket-end
-
-  #   - match: '\('
-  #     scope: punctuation.section.braces.begin
-  #     push: braces
-  #   - match: '\)'
-  #     scope: invalid.illegal.stray-brace-end
-
-    # Keywords are if, else for and while.
-    # Note that blackslashes don't need to be escaped within single quoted
-    # strings in YAML. When using single quoted strings, only single quotes
-    # need to be escaped: this is done by using two single quotes next to each
-    # other.
-    # - match: '\b(if|else|for|while)\b'
-    #  scope: keyword.control.pfa
-
-    # Numbers
-    # - match: '\b(-)?[0-9.]+\b'
-    #   # scope: string.quoted.double.pfa
-    #   scope: constant.numeric.pfa
-
-  # brackets:
-  #   - match: '\]'
-  #     pop: true
-  #     scope: punctuation.section.brackets.end
-  #   - include: content
 

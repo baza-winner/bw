@@ -185,16 +185,7 @@ func ruleFrom(args []interface{}) rule {
 						}
 					}
 				case uint, uint8, uint16, uint32, uint64:
-					if varPathItem == "rune" {
-						needPanic = true
-					} else {
-						_uint64 := reflect.ValueOf(typedArg.VarValue).Uint()
-						if _uint64 <= uint64(bwint.MaxInt) {
-							varIs.AddInt(int(_uint64))
-						} else {
-							varIs.AddValChecker(common.JustVal{typedArg.VarValue})
-						}
-					}
+					needPanic = helperRuleFromUint(varPathItem, typedArg.VarValue, varIs)
 				case core.ValChecker:
 					if varPathItem == "stackLen" {
 						needPanic = true
@@ -208,11 +199,15 @@ func ruleFrom(args []interface{}) rule {
 						varIs.AddValChecker(t.GetChecker())
 					}
 				default:
-					needPanic = true
+					switch reflect.TypeOf(typedArg.VarValue).Kind() {
+					case reflect.Uint8:
+						helperRuleFromUint(varPathItem, typedArg.VarValue, varIs)
+					}
 				}
 			}
 			if needPanic {
-				bwerror.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
+				// bwerror.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
+				bwerror.Panic("typedArg.VarValue: %#v, %s", typedArg.VarValue, reflect.TypeOf(typedArg.VarValue).Kind())
 			}
 		default:
 			bwerror.Panic("unexpected %#v", arg)
@@ -222,6 +217,20 @@ func ruleFrom(args []interface{}) rule {
 		result.conditions = append(result.conditions, v)
 	}
 	return result
+}
+
+func helperRuleFromUint(varPathItem interface{}, val interface{}, varIs *common.VarIs) (needPanic bool) {
+	if varPathItem == "rune" {
+		needPanic = true
+	} else {
+		_uint64 := reflect.ValueOf(val).Uint()
+		if _uint64 <= uint64(bwint.MaxInt) {
+			varIs.AddInt(int(_uint64))
+		} else {
+			varIs.AddValChecker(common.JustVal{val})
+		}
+	}
+	return
 }
 
 func getVarIs(varIsMap map[string]*common.VarIs, varPathStr string) (result *common.VarIs) {

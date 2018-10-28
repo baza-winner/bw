@@ -1,217 +1,272 @@
 // logic
 
-finish [ /* some */
-  ( 0.type <string qwItem> : 0.string > 0.result )
-  ( 0.type "number" : 0.string | ParseNumber > 0.result )
-  ( 0.type "word" :
-    [
-      ( 0.string "true" : true > 0.result )
-      ( 0.string "false" : false > 0.result )
-      ( 0.string <nil null> )
-      ( 0.string <Bool String Int Number Map Array ArrayOf> : 0.string > 0.result )
-      ( 0.string "qw" :
+// primary
+begin 0
+expectSpaceOrQwItemOrDelimiter
+expectSpaceOrMapKey
+expectEndOfQwItem
+expectContentOf
+expectWord
+expectEscapedContentOf
+expectRocket
+
+// secondary
+orArrayItemSeparator 0
+orMapKeySeparator
+orUnderscoreOrDot
+orUnderscore
+stringToken
+keyToken
+orSpace
+
+// type
+string 0
+qw
+qwItem
+number
+word
+key
+map
+array
+string
+
+finish { /* some */
+  (stack.-1.type [$string $qwItem]:
+    stack.-1 ( .string > .result )
+  )
+  (stack.-1.type $number:
+    stack.-1 ( .string | ParseNumber >.result )
+  )
+  (stack.-1.type $word:
+    {
+      (stack.-1.string "true":
+        true > stack.-1.result
+      )
+      (stack.-1.string "false" :
+        false > stack.-1.result
+      )
+      (stack.-1.string <nil null>)
+      (stack.-1.string [ "Bool" <String Int Number Map Array> "ArrayOf"]:
+        stack.-1 (.string > .result)
+      )
+      (stack.-1.string "qw" :
         PullRune
-        [
-          ( OpenBraces Punct Symbol:
-            "expectSpaceOrQwItemOrDelimiter" > primary
-            "" > secondary
-            "qw" > 0.type
-            Array > 0.result
-            rune | PairBrace > 0.delimiter
+        {
+          (OpenBraces Punct Symbol:
+            $expectSpaceOrQwItemOrDelimiter > primary nil > secondary
+            stack.-1 (
+              $qw > .type
+              Array > .result
+              rune |PairBrace> .delimiter
+            )
           )
-          (: UnexpectedRune )
-        ]
+          (: Unexpected rune)
+        }
         true > skipPostProcess
       )
-      (: UnexpectedItem )
-    ]
+      (: Unexpected stack.-1 )
+    }
   )
-]
+}
 
-postProcess [
-  (stackLen 0)
-  (stackLen 1: "end" > primary "orSpace" > secondary)
+postProcess {
+  (stack (.# 0) )
+  (stack.# 1: $end > primary $orSpace > secondary )
   (:
-    [
-      (1.type "qw" :
-        0.result >> 1.result
-        "expectSpaceOrQwItemOrDelimiter" > primary
-        "" > secondary
+    {
+      (stack.-2.type $qw :
+        stack (.-1.result >> .-2.result)
+        $expectSpaceOrQwItemOrDelimiter > primary nil > secondary
       )
-      (1.type "array" :
-        [
-          ( 0.type "qw": 0.result >>> 1.result )
-          ( : 0.result >> 1.result )
-        ]
-        "begin" > primary "orArrayItemSeparator" > secondary
+      (stack.-2.type $array :
+        {
+          (stack.-1.type $qw: stack (.-1.result >>> .-2.result) )
+          (: stack (.-1.result >> .-2.result) )
+        }
+        $begin > primary $orArrayItemSeparator > secondary
       )
-      (1.type "map":
-        [
-          ( 0.type "key":
-            0.string > 1.key
-            "begin" > primary "orMapKeySeparator" > secondary
+      (stack.-2.type $map:{
+          ( stack.-1.type $key:
+            stack ( .-1.string > .-2.key )
+            $begin> primary $orMapKeySeparator > secondary
           )
           (:
-            0.result > 1.result.{1.key}
-            "expectSpaceOrMapKey" > primary "orMapValueSeparator" > secondary
+            stack ( .-1.result > .-2.result.{.-2.key} )
+            $expectSpaceOrMapKey > primary $orMapValueSeparator > secondary
           )
-        ]
-      )
-      (: UnexpectedItem )
-    ]
+      })
+      (: Unexpected stack.-1 )
+    }
+    stack | ButLast > stack
   )
-]
+}
 
-primaryState [
-  (primary "end": [
-    (EOF: "end" > primary "" > secondary)
+primaryState {
+  (primary $end: {
+    (EOF: $end > primary nil > secondary )
     (Space)
-    (:UnexpectedRune)
-  ])
-  (primary "expectRocket": [
-     ('>': "begin" > primary "" > secondary )
-     (:UnexpectedRune)
-  ])
-  (primary "expectWord": [
-    (Letter Digit: rune >> 0.string )
-    (: PushRune true > needFinish)
-  ])
-  (primary "expectSpaceOrQwItemOrDelimiter": [
-    (EOF: UnexpectedRune)
-    (Space)
-    (rune 0.delimiter: true > needFinish)
-    (:
-      PushItem
-      "qwItem" > 0.type
-      1.delimiter > 0.delimiter
-      rune >> 0.string
-      "expectEndOfQwItem" > primary "" > secondary
-    )
-  ])
-  (primary "expectEndOfQwItem": [
-    (EOF: UnexpectedRune)
-    (Space rune 0.delimiter: PushRune true > needFinish)
-    (: rune >> 0.string )
-  ])
-  (primary "expectContentOf": [
-    (EOF: UnexpectedRune)
-    (rune 0.delimiter: true > needFinish)
-    ('\\': "expectEscapedContentOf" > primary)
-    (: rune >> 0.string )
-  ])
-  (primary "expectDigit": [
-    (Digit secondary "":
-      rune >> 0.string
-      "orUnderscoreOrDot" > secondary
-    )
-    ('.' secondary "orUnderscoreOrDot"}:
-      rune >> 0.string
-      "orUnderscore" > secondary
-    )
-    ('_' unicodeDigit secondary ["orUnderscoreOrDot" "orUnderscore"]:
-      rune >> 0.string
-    )
-    ( secondary "": UnexpectedRune )
+    (:Unexpected rune)
+  })
+  (primary $expectRocket: {
+     ('>': $begin > primary nil > secondary )
+     (:Unexpected rune)
+  })
+  (primary $expectWord: {
+    (Letter Digit: rune >> stack.-1.string )
     (: PushRune true > needFinish )
-  ])
-  (primary "expectSpaceOrMapKey": [
+  })
+  (primary $expectSpaceOrQwItemOrDelimiter: {
+    (EOF: Unexpected rune)
+    (Space)
+    (rune stack.-1.delimiter: true > needFinish )
+    (:
+      Item
+       | "qwItem" > type
+       | stack.-1.delimiter > delimiter
+       | rune >> string
+      >>> stack
+      $expectEndOfQwItem > primary nil > secondary
+    )
+  })
+  (primary $expectEndOfQwItem: {
+    (EOF: Unexpected rune)
+    (Space rune stack.-1.delimiter: PushRune true > needFinish)
+    (: rune >> stack.-1.string )
+  })
+  (primary $expectContentOf: {
+    (EOF: Unexpected rune)
+    (rune stack.-1.delimiter: true > needFinish)
+    ('\\': $expectEscapedContentOf > primary)
+    (: rune >> stack.-1.string )
+  })
+  (primary $expectDigit: {
+    (Digit secondary nil:
+      rune >> stack.-1.string
+      $orUnderscoreOrDot > secondary
+    )
+    ('.' secondary $orUnderscoreOrDot:
+      rune >> stack.-1.string
+      $orUnderscore > secondary
+    )
+    ('_' Digit secondary [$orUnderscoreOrDot $orUnderscore]:
+      rune >> stack.-1.string
+    )
+    ( secondary nil: Unexpected rune )
+    (: PushRune true > needFinish )
+  })
+  (primary $expectSpaceOrMapKey: {
     (Space)
     (Letter:
-      PushItem
-      "key" > 0.type
-      rune >> 0.string
-      "expectWord" > primary "" > secondary
+      Item
+      | $key > type
+      | rune >> string
+      >>> stack
+      $expectWord > primary nil > secondary
     )
-    ( '"', '\'':
-      PushItem
-      "key" > 0.type
-      "" > 0.string
-      rune > 0.delimiter
-      "expectContentOf" > primary "keyToken" > secondary
+    ( '"' '\'':
+      Item
+      | $key > type
+      | rune > delimiter
+      >>> stack
+      $expectContentOf > primary $keyToken > secondary
     )
-    ( rune 0.delimiter 0.type "map": true > needFinish )
-  ])
-  (primary "expectEscapedContentOf": [
+    ( stack ( .-1 (rune .delimiter .type $map) ) :
+    // (  rune stack.-1.delimiter stack.-1.type $map :
+      true > needFinish
+    )
+  })
+  (primary $expectEscapedContentOf: {
     ('"' '\'' '\\':
-      rune >> 0.string "expectContentOf" > primary
+      rune >> stack.-1.string $expectContentOf > primary
     )
-    (0.delimiter '"': [
-      ('a' 'b' 'f' 'n' 'r' 't' 'v': rune | Escape > 0.string )
-      (: UnexpectedRune)
-    ])
-  ])
-  (primary "begin": [
-    (EOF stackLen 0: "end" > primary "" > secondary)
-    (EOF: UnexpectedRune)
-    ('=' secondary "orMapKeySeparator":
-      "expectRocket" > primary "" > secondary
+    (stack.-1.delimiter '"': {
+      ('a' 'b' 'f' 'n' 'r' 't' 'v': rune | Escape > stack.-1.string )
+      (: Unexpected rune)
+    })
+  })
+  ( primary $begin: {
+    (EOF stack.# 0:
+      $end > primary nil > secondary
     )
-    (':' secondary "orMapKeySeparator":
-      "begin" > primary "" > secondary
+    (EOF: Unexpected rune)
+    ('=' secondary $orMapKeySeparator:
+      $expectRocket > primary nil > secondary
+    )
+    (':' secondary $orMapKeySeparator:
+      $begin> primary nil > secondary
     )
     (Space)
     ('{':
-      PushItem
-      Map > 0.result
-      "map" > 0.type
-      '}' > 0.delimiter
-      "expectSpaceOrMapKey" > primary "" > secondary
+      Item
+      | Map > result
+      | $map > type
+      >>> stack
+      '}' > stack.-1.delimiter
+      $expectSpaceOrMapKey > primary nil > secondary
     )
     ('<':
-      PushItem
-      Array > 0.result
-      "qw" > 0.type
-      '>' > 0.delimiter
-      "expectSpaceOrQwItemOrDelimiter" > primary "" > secondary
+      Item
+      | Array > result
+      | $qw > type
+      | '>' > delimiter
+      >>> stack
+      $expectSpaceOrQwItemOrDelimiter > primary nil > secondary
     )
     ('[':
-      PushItem
-      Array > 0.result
-      "array" > 0.type
-      ']' > 0.delimiter
-      "begin" > primary "" > secondary
+      Item
+      | Array > result
+      | $array > type
+      | ']' > delimiter
+      >>> stack
+
+      $begin> primary nil > secondary
     )
-    ( 0.type "array" rune 0.delimiter: true > needFinish )
+    ( stack.-1.type $array rune stack.-1.delimiter:
+      true > needFinish
+    )
     ('-' '+':
-      PushItem
-      "number" > 0.type
-      rune >> 0.string
-      "expectDigit" > primary "" > secondary
+      Item
+      | $number > type
+      | rune >> string
+      >>> stack
+      $expectDigit > primary nil > secondary
     )
     (Digit:
-      PushItem
-      "number" > 0.type
-      rune >> 0.string
-      "expectDigit" > primary "orUnderscoreOrDot" > secondary
+      Item
+      | $number > type
+      | rune >> string
+      >>> stack
+      $expectDigit > primary $orUnderscoreOrDot > secondary
     )
-    ('"', '\'':
-      PushItem
-      "string" > 0.type
-      "" > 0.string
-      rune > 0.delimiter
-      "expectContentOf" > primary "stringToken" > secondary
+    ('"' '\'':
+      Item
+      | $string > type
+      | rune > delimiter
+      >>> stack
+      $expectContentOf > primary $stringToken > secondary
     )
     (Letter:
-      PushItem
-      "word" > 0.type
-      rune >> 0.string
-      "expectWord" > primary "" > secondary
+      Item
+      | $word > type
+      | rune >> string
+      >>> stack
+      $expectWord > primary nil > secondary
     )
-    (:UnexpectedRune)
-  ])
+    (:Unexpected rune)
+  })
   (:Unexpected)
-]
+}
 
-main [
+main {
   (:
     PullRune
-    [(primary nil: "begin" > primary)]
+    {(primary nil: $begin> primary)}
     false > needFinish
-    [ $primaryState ]
-    [(needFinish true:
+    { $primaryState }
+    {(needFinish true:
       false > skipPostProcess
-      [ $finish ]
-      [(skipPostProcess false: [$postProcess])]
-    )]
+      { $finish }
+      {(skipPostProcess false: {$postProcess})}
+    )}
   )
-]
+}
