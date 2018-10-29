@@ -53,7 +53,7 @@ func RulesFrom(args ...[]interface{}) Rules {
 
 func (rules Rules) Process(pfa *core.PfaStruct) {
 	pfa.Err = nil
-	pfa.ErrVal = nil
+	pfa.Err = nil
 rules:
 	for _, rule := range rules {
 
@@ -73,18 +73,18 @@ rules:
 			}
 			for _, pa := range rule.processorActions {
 				pa.Execute(pfa)
-				if pfa.Err != nil || pfa.ErrVal != nil {
+				if pfa.Err != nil || pfa.Err != nil {
 					break
 				}
 			}
 			break rules
 		}
 	}
-	if pfa.Err == nil {
-		if pfa.ErrVal != nil {
-			pfa.Err = pfa.Error(pfa.ErrVal.Error(pfa))
-		}
-	}
+	// if pfa.Err == nil {
+	// 	if pfa.Err != nil {
+	// 		pfa.Err = pfa.Error(pfa.Err.Error(pfa))
+	// 	}
+	// }
 	return
 }
 
@@ -111,32 +111,33 @@ func ruleFrom(args []interface{}) rule {
 				bwerror.Panic("len(typedArg.VarPathStr) == 0, typedArg: %#v", typedArg)
 			}
 			varPath := core.MustVarPathFrom(typedArg.VarPathStr)
-			varPathItem := varPath[0].Val
-			switch varPathItem {
-			case "rune":
-				if len(varPath) > 2 {
-					bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
-				} else if len(varPath) > 1 {
-					isIdx, _, _, err := varPath[1].GetIdxKey(nil)
-					if err != nil {
-						bwerror.PanicErr(err)
-					} else {
-						if !isIdx {
-							bwerror.Panic("varPath[1] expects to be idx, varPath: %#v, %s", varPath[1], reflect.TypeOf(varPath[1]).Kind())
-						} else if varPath[1].Val == 0 {
-							typedArg.VarPathStr = "rune"
-						}
-					}
-				}
-			case "stackLen":
-				if len(varPath) > 1 {
-					bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
-				}
+			key := varPath[0].Key
+			if (key == "rune" || key == "runePos") && (len(varPath) > 2) {
+				bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
 			}
+			// case "rune", "runePos":
+			// 	if len(varPath) > 2 {
+			// 		bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
+			// 	}
+			// 	// else if len(varPath) > 1 {
+			// 	// 	vt, _, _, err := varPath[1].TypeIdxKey(nil)
+			// 	// 	if err != nil {
+			// 	// 		bwerror.PanicErr(err)
+			// 	// 	} else if vt != core.VarPathItemIdx {
+			// 	// 		bwerror.Panic("varPath[1] expects to be idx, varPath: %#v, %s", varPath[1], reflect.TypeOf(varPath[1]).Kind())
+			// 	// 	} else if varPath[1].Val == 0 {
+			// 	// 		typedArg.VarPathStr = "rune"
+			// 	// 	}
+			// }
+			// case "stackLen":
+			// 	if len(varPath) > 1 {
+			// 		bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
+			// 	}
+			// }
 			var needPanic bool
 			varIs := getVarIs(varIsMap, typedArg.VarPathStr)
 			if typedArg.VarValue == nil {
-				if varPathItem == "rune" || varPathItem == "stackLen" {
+				if key == "rune" || key == "runePos" {
 					needPanic = true
 				} else {
 					varIs.SetIsNil()
@@ -144,37 +145,37 @@ func ruleFrom(args []interface{}) rule {
 			} else {
 				switch t := typedArg.VarValue.(type) {
 				case rune:
-					if varPathItem == "stackLen" {
+					if key == "runePos" {
 						needPanic = true
 					} else {
 						varIs.AddRune(t)
 					}
 				case val.EOF:
-					if varPathItem == "rune" {
+					if key == "rune" {
 						varIs.SetIsNil()
 					} else {
 						needPanic = true
 					}
 				case string:
-					if varPathItem == "rune" || varPathItem == "stackLen" {
+					if key == "rune" || key == "runePos" {
 						needPanic = true
 					} else {
 						varIs.AddStr(t)
 					}
 				case bool:
-					if varPathItem == "rune" || varPathItem == "stackLen" {
+					if key == "rune" || key == "runePos" {
 						needPanic = true
 					} else {
 						varIs.AddValChecker(common.JustVal{typedArg.VarValue})
 					}
 				case int:
-					if varPathItem == "rune" {
+					if key == "rune" {
 						needPanic = true
 					} else {
 						varIs.AddInt(t)
 					}
 				case int8, int16 /*int32, */, int64:
-					if varPathItem == "rune" {
+					if key == "rune" {
 						needPanic = true
 					} else {
 						_int64 := reflect.ValueOf(typedArg.VarValue).Int()
@@ -185,23 +186,23 @@ func ruleFrom(args []interface{}) rule {
 						}
 					}
 				case uint, uint8, uint16, uint32, uint64:
-					needPanic = helperRuleFromUint(varPathItem, typedArg.VarValue, varIs)
+					needPanic = helperRuleFromUint(key, typedArg.VarValue, varIs)
 				case core.ValChecker:
-					if varPathItem == "stackLen" {
-						needPanic = true
-					} else {
-						varIs.AddValChecker(t)
-					}
+					// if varPathItem == "runePos" {
+					// 	needPanic = true
+					// } else {
+					varIs.AddValChecker(t)
+					// }
 				case core.ValCheckerProvider:
-					if varPathItem == "stackLen" {
-						needPanic = true
-					} else {
-						varIs.AddValChecker(t.GetChecker())
-					}
+					// if varPathItem == "runePos" {
+					// 	needPanic = true
+					// } else {
+					varIs.AddValChecker(t.GetChecker())
+					// }
 				default:
 					switch reflect.TypeOf(typedArg.VarValue).Kind() {
 					case reflect.Uint8:
-						helperRuleFromUint(varPathItem, typedArg.VarValue, varIs)
+						helperRuleFromUint(key, typedArg.VarValue, varIs)
 					}
 				}
 			}
@@ -219,8 +220,8 @@ func ruleFrom(args []interface{}) rule {
 	return result
 }
 
-func helperRuleFromUint(varPathItem interface{}, val interface{}, varIs *common.VarIs) (needPanic bool) {
-	if varPathItem == "rune" {
+func helperRuleFromUint(key, val interface{}, varIs *common.VarIs) (needPanic bool) {
+	if key == "rune" {
 		needPanic = true
 	} else {
 		_uint64 := reflect.ValueOf(val).Uint()

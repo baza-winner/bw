@@ -103,36 +103,73 @@ func (v *VarIs) AddValChecker(vc core.ValChecker) {
 }
 
 func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool) {
-	if v.varPath[0].Val == "rune" {
+	if v.varPath[0].Type == core.VarPathItemKey && (v.varPath[0].Key == "rune" || v.varPath[0].Key == "runePos") {
 		var ofs int
-		if len(v.varPath) > 1 {
-			ofs, _ = core.VarValueFrom(v.varPath[1].Val).Int()
-		}
-		r, isEOF := pfa.Proxy.Rune(ofs)
-		if v.isNil {
-			result = isEOF
-			if pfa.TraceLevel > core.TraceNone {
-				pfa.TraceCondition(v.varPath, formatted.StringFrom("<ansiOutline>EOF"), result)
+		if len(v.varPath) > 2 {
+			pfa.SetError("len(varPath) > 2, varPath: %s", v.varPath.FormattedString())
+			// bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
+		} else if len(v.varPath) > 1 {
+			vt, idx, key, err := v.varPath[1].TypeIdxKey(pfa)
+			if err != nil {
+				pfa.Err = err
+			} else if vt != core.VarPathItemIdx {
+				pfa.SetError("<ansiPrimary>%s<ansi> path expects <ansiOutline>idx<ansi> as second item", key)
+			} else {
+				ofs = idx
 			}
 		}
-		if !result && !isEOF {
-			if v.runeSet != nil {
-				result = v.runeSet.Has(r)
+		// if len(varPath) > 2 {
+		// bwerror.Panic
+		// }
+		// if len(v.varPath) > 1 {
+		// 	ofs, _ = core.VarValueFrom(v.varPath[1].Val).Int()
+		// }
+		switch v.varPath[0].Key {
+		case "rune":
+			r, isEOF := pfa.Proxy.Rune(ofs)
+			if v.isNil {
+				result = isEOF
 				if pfa.TraceLevel > core.TraceNone {
-					pfa.TraceCondition(v.varPath, v.runeSet, result)
+					pfa.TraceCondition(v.varPath, formatted.StringFrom("<ansiOutline>EOF"), result)
+				}
+			}
+			if !result && !isEOF {
+				if v.runeSet != nil {
+					result = v.runeSet.Has(r)
+					if pfa.TraceLevel > core.TraceNone {
+						pfa.TraceCondition(v.varPath, v.runeSet, result)
+					}
+				}
+				if !result {
+					for _, p := range v.valCheckers {
+						if p.Conforms(pfa, r, v.varPath) {
+							result = true
+							break
+						}
+					}
+				}
+			}
+		case "runePos":
+			// i := len(pfa.Stack)
+			ps := pfa.Proxy.PosStruct(ofs)
+			if v.intSet != nil {
+				result = v.intSet.Has(ps.Pos)
+				if pfa.TraceLevel > core.TraceNone {
+					pfa.TraceCondition(v.varPath, v.intSet, result)
 				}
 			}
 			if !result {
 				for _, p := range v.valCheckers {
-					if p.Conforms(pfa, r, v.varPath) {
+					if p.Conforms(pfa, ps, v.varPath) {
 						result = true
 						break
 					}
 				}
 			}
 		}
-	} else if v.varPath[0].Val == "stackLen" {
-		i := len(pfa.Stack)
+	} else if v.varPath[len(v.varPath)-1].Type == core.VarPathItemHash {
+		i, _ := pfa.VarValue(v.varPath).Int()
+		// i := len(pfa.Stack)
 		if v.intSet != nil {
 			result = v.intSet.Has(i)
 			if pfa.TraceLevel > core.TraceNone {

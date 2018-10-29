@@ -6,48 +6,46 @@ import (
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/pfa/formatted"
 )
 
 func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
-	// if pfa.TraceLevel > TraceNone {
 	switch t := val.(type) {
 	case formatted.String:
 		result = t
 	case rune, string:
 		result = formatted.StringFrom("<ansiPrimary>%q", val)
-	// result = formatted.String(fmt.Sprintf(ansi.Ansi("", "<ansiPrimary>%q"), val))
 	case formatted.FormattedString:
 		result = t.FormattedString()
-	// case Map, Array:
-	// UnicodeCategory, EOF,
-	// , UnexpectedRune, UnexpectedItem, Panic
-	// result = formatted.StringFrom("<ansiOutline>%s", t)
-	// result = formatted.String(fmt.Sprintf(ansi.Ansi("", "<ansiOutline>%s"), t))
 	case VarPath:
-		// var val interface{}
 		var valStr formatted.String
-		if t[0].Val == "rune" {
+		if t[0].Type == VarPathItemKey && (t[0].Key == "rune" || t[0].Key == "runePos") {
 			ofs := 0
 			if len(t) > 1 {
-				isIdx, idx, _, err := t[1].GetIdxKey(pfa)
-				if err == nil && isIdx {
+				vt, idx, _, err := t[1].TypeIdxKey(pfa)
+				if err == nil && vt == VarPathItemIdx {
 					ofs = idx
 				}
 			}
-			if r, isEOF := pfa.Proxy.Rune(ofs); isEOF {
-				// val = EOF{}
-				valStr = formatted.StringFrom("<ansiOutline>EOF")
-			} else {
-				valStr = pfa.TraceVal(r)
-				// val = r
+			switch t[0].Key {
+			case "rune":
+				if r, isEOF := pfa.Proxy.Rune(ofs); isEOF {
+					valStr = formatted.StringFrom("<ansiOutline>EOF")
+				} else {
+					valStr = pfa.TraceVal(r)
+				}
+			case "runePos":
+				ps := pfa.Proxy.PosStruct(ofs)
+				valStr = pfa.TraceVal(ps.Pos)
+			default:
+				bwerror.Unreachable()
 			}
 		} else {
-			// val = pfa.VarValue(t).val
 			valStr = pfa.TraceVal(pfa.VarValue(t).Val)
 		}
-		result = formatted.String(fmt.Sprintf("%s(%s)", t.formattedString(pfa), valStr))
+		result = formatted.String(fmt.Sprintf("%s(%s)", t.FormattedString(pfa), valStr))
 	case bwset.String, bwset.Rune, bwset.Int:
 		value := reflect.ValueOf(t)
 		keys := value.MapKeys()
@@ -63,7 +61,6 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 	default:
 		result = formatted.StringFrom("<ansiPrimary>%#v", val)
 	}
-	// }
 	return
 }
 

@@ -1,8 +1,6 @@
 package pfa
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/baza-winner/bwcore/bwerror"
@@ -17,27 +15,27 @@ import (
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
-func getTestFileSpec(basename string) string {
-	return filepath.Join(os.Getenv("GOPATH"), "src", "github.com/baza-winner/bwcore/pfa", basename)
-}
+// func getTestFileSpec(basename string) string {
+// 	return filepath.Join(os.Getenv("GOPATH"), "src", "github.com/baza-winner/bwcore/pfa", basename)
+// }
 
-func TestParseLogic(t *testing.T) {
-	p, err := runeprovider.FromFile(getTestFileSpec("logic.pfa"))
-	if err != nil {
-		bwerror.PanicErr(err)
-	}
-	tests := map[string]bwtesting.TestCaseStruct{
-		"": {
-			In:  []interface{}{p},
-			Out: []interface{}{nil, nil},
-		},
-	}
-	testsToRun := tests
-	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "qw ")
-	// bwmap.CropMap(testsToRun, "qw && fa.curr.runePtr == EOF")
-	bwtesting.BwRunTests(t, ParseLogic, testsToRun)
-}
+// func TestParseLogic(t *testing.T) {
+// 	p, err := runeprovider.FromFile(getTestFileSpec("logic.pfa"))
+// 	if err != nil {
+// 		bwerror.PanicErr(err)
+// 	}
+// 	tests := map[string]bwtesting.TestCaseStruct{
+// 		"": {
+// 			In:  []interface{}{p},
+// 			Out: []interface{}{nil, nil},
+// 		},
+// 	}
+// 	testsToRun := tests
+// 	bwmap.CropMap(testsToRun)
+// 	// bwmap.CropMap(testsToRun, "qw ")
+// 	// bwmap.CropMap(testsToRun, "qw && fa.curr.runePtr == EOF")
+// 	bwtesting.BwRunTests(t, ParseLogic, testsToRun)
+// }
 
 func TestVarPathFrom(t *testing.T) {
 	tests := map[string]bwtesting.TestCaseStruct{

@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwfmt"
 )
 
 type RuneProvider interface {
@@ -20,7 +21,7 @@ type RuneProvider interface {
 	IsEOF() bool
 }
 
-type RunePtrStruct struct {
+type PosStruct struct {
 	IsEOF       bool
 	RunePtr     *rune
 	Pos         int
@@ -30,11 +31,11 @@ type RunePtrStruct struct {
 	PrefixStart int
 }
 
-func (v RunePtrStruct) copyPtr() *RunePtrStruct {
-	return &RunePtrStruct{v.IsEOF, v.RunePtr, v.Pos, v.Line, v.Col, v.Prefix, v.PrefixStart}
-}
+// func (v PosStruct) copyPtr() *PosStruct {
+// 	return &PosStruct{v.IsEOF, v.RunePtr, v.Pos, v.Line, v.Col, v.Prefix, v.PrefixStart}
+// }
 
-func (v RunePtrStruct) DataForJSON() interface{} {
+func (v PosStruct) DataForJSON() interface{} {
 	result := map[string]interface{}{}
 	if v.RunePtr == nil {
 		result["rune"] = "EOF"
@@ -50,7 +51,7 @@ func (v RunePtrStruct) DataForJSON() interface{} {
 }
 
 type Proxy struct {
-	Curr               RunePtrStruct
+	Curr               PosStruct
 	Prev               RunePtrStructs
 	Next               RunePtrStructs
 	Prov               RuneProvider
@@ -61,7 +62,7 @@ type Proxy struct {
 
 func ProxyFrom(p RuneProvider) *Proxy {
 	return &Proxy{
-		RunePtrStruct{Pos: -1, Line: 1},
+		PosStruct{Pos: -1, Line: 1},
 		RunePtrStructs{},
 		RunePtrStructs{},
 		p,
@@ -71,7 +72,7 @@ func ProxyFrom(p RuneProvider) *Proxy {
 	}
 }
 
-type RunePtrStructs []RunePtrStruct
+type RunePtrStructs []PosStruct
 
 func (v RunePtrStructs) DataForJSON() interface{} {
 	result := []interface{}{}
@@ -108,29 +109,29 @@ func (p *Proxy) PullRune() {
 	}
 }
 
-func (p *Proxy) pullRune(rps *RunePtrStruct) {
+func (p *Proxy) pullRune(ps *PosStruct) {
 	runePtr, err := p.Prov.PullRune()
 	if err != nil {
 		bwerror.PanicErr(err)
 	}
-	rps.Pos++
-	if runePtr != nil && rps.RunePtr != nil {
-		if *(rps.RunePtr) != '\n' {
-			rps.Col++
+	ps.Pos++
+	if runePtr != nil && ps.RunePtr != nil {
+		if *(ps.RunePtr) != '\n' {
+			ps.Col++
 		} else {
-			rps.Line++
-			rps.Col = 1
-			if int(rps.Line) > p.preLineCount {
-				i := strings.Index(rps.Prefix, "\n")
-				rps.Prefix = rps.Prefix[i+1:]
-				rps.PrefixStart += i + 1
+			ps.Line++
+			ps.Col = 1
+			if int(ps.Line) > p.preLineCount {
+				i := strings.Index(ps.Prefix, "\n")
+				ps.Prefix = ps.Prefix[i+1:]
+				ps.PrefixStart += i + 1
 			}
 		}
 	}
-	rps.RunePtr = runePtr
-	rps.IsEOF = runePtr == nil
-	if !rps.IsEOF {
-		rps.Prefix += string(*runePtr)
+	ps.RunePtr = runePtr
+	ps.IsEOF = runePtr == nil
+	if !ps.IsEOF {
+		ps.Prefix += string(*runePtr)
 	}
 }
 
@@ -145,31 +146,42 @@ func (p *Proxy) PushRune() {
 }
 
 func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool) {
+	ps := p.PosStruct(optOfs...)
+	if ps.RunePtr == nil {
+		result = '\000'
+		isEOF = true
+	} else {
+		result = *ps.RunePtr
+		isEOF = false
+	}
+	return
+}
+
+func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct) {
 	var ofs int
 	if optOfs != nil {
 		ofs = optOfs[0]
 	}
-	var rps RunePtrStruct
 	if ofs < 0 {
 		if len(p.Prev) >= -ofs {
-			rps = p.Prev[len(p.Prev)+ofs]
+			ps = p.Prev[len(p.Prev)+ofs]
 		} else {
 			bwerror.Panic("len(p.Prev) < %d", -ofs)
 		}
 	} else if ofs > 0 {
 		if len(p.Next) >= ofs {
-			rps = p.Next[len(p.Next)-ofs]
+			ps = p.Next[len(p.Next)-ofs]
 		} else {
 			if len(p.Next) > 0 {
-				rps = p.Next[0]
+				ps = p.Next[0]
 			} else {
-				rps = p.Curr
+				ps = p.Curr
 			}
 			lookahead := RunePtrStructs{}
 			for i := ofs - len(p.Next); i > 0; i-- {
-				p.pullRune(&rps)
-				lookahead = append(lookahead, rps)
-				if rps.IsEOF {
+				p.pullRune(&ps)
+				lookahead = append(lookahead, ps)
+				if ps.IsEOF {
 					break
 				}
 			}
@@ -180,19 +192,12 @@ func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool) {
 			p.Next = append(newNext, p.Next...)
 		}
 	} else {
-		rps = p.Curr
-	}
-	if rps.RunePtr == nil {
-		result = '\000'
-		isEOF = true
-	} else {
-		result = *rps.RunePtr
-		isEOF = false
+		ps = p.Curr
 	}
 	return
 }
 
-func (p *Proxy) GetSuffix(start RunePtrStruct) (suffix string) {
+func (p *Proxy) GetSuffix(ps PosStruct) (suffix string) {
 	preLineCount := p.preLineCount
 	postLineCount := p.postLineCount
 	if p.Curr.RunePtr == nil {
@@ -201,20 +206,20 @@ func (p *Proxy) GetSuffix(start RunePtrStruct) (suffix string) {
 
 	separator := "\n"
 	if p.Curr.Line <= 1 {
-		suffix += fmt.Sprintf(" at pos <ansiCmd>%d<ansi>", start.Pos)
+		suffix += fmt.Sprintf(" at pos <ansiCmd>%d<ansi>", ps.Pos)
 		separator = " "
 	} else {
-		suffix += fmt.Sprintf(" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>)", start.Line, start.Col, start.Pos)
+		suffix += fmt.Sprintf(" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>)", ps.Line, ps.Col, ps.Pos)
 	}
 	suffix += ":" + separator + "<ansiDarkGreen>"
 
-	// if p.Curr.Pos == start.Pos {
-	// suffix += p.Curr.Prefix[0 : start.Pos-p.Curr.PrefixStart]
+	// if p.Curr.Pos == ps.Pos {
+	// suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
 	// }
-	suffix += p.Curr.Prefix[0 : start.Pos-p.Curr.PrefixStart]
+	suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
 	if p.Curr.RunePtr != nil {
 		suffix += "<ansiLightRed>"
-		suffix += p.Curr.Prefix[start.Pos-p.Curr.PrefixStart:]
+		suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
 		// suffix += redString
 		suffix += "<ansiReset>"
 		for p.Curr.RunePtr != nil && postLineCount > 0 {
@@ -233,33 +238,77 @@ func (p *Proxy) GetSuffix(start RunePtrStruct) (suffix string) {
 	return suffix
 }
 
-func (p *Proxy) UnexpectedRuneError(infix ...string) error {
+// func (p *Proxy) UnexpectedRuneError(infix ...string) error {
+// 	var fmtString string
+// 	fmtArgs := []interface{}{}
+// 	if p.Curr.RunePtr == nil {
+// 		suffix := p.GetSuffix(p.Curr)
+// 		fmtString = "unexpected end of string"
+// 		if infix != nil {
+// 			fmtString += "(" + strings.Join(infix, " ") + ")"
+// 		}
+// 		fmtString += suffix
+// 	} else {
+// 		rune := *p.Curr.RunePtr
+// 		suffix := p.GetSuffix(p.Curr)
+// 		fmtString = "unexpected char <ansiPrimary>%q<ansiReset> (charCode: %v"
+// 		if infix != nil {
+// 			fmtString += ", " + strings.Join(infix, " ")
+// 		}
+// 		fmtString += ")" + suffix
+// 		fmtArgs = []interface{}{rune, rune}
+// 	}
+// 	return bwerror.Errord(1, fmtString, fmtArgs...)
+// }
+
+// type FmtStruct struct {
+// 	FmtString string
+// 	FmtArgs   []interface{}
+// }
+
+// func FmtStructFrom(fmtString string, fmtArgs ...interface{}) FmtStruct {
+// 	return FmtStruct{fmtString, fmtArgs}
+// }
+
+// func (p *Proxy) Unexpected(ps PosStruct, fmtString string, fmtArgs ...interface{}) error {
+func (p *Proxy) Unexpected(ps PosStruct, optFmtStruct ...bwfmt.Struct) error {
 	var fmtString string
 	fmtArgs := []interface{}{}
 	if p.Curr.RunePtr == nil {
 		suffix := p.GetSuffix(p.Curr)
+		// if fmtString
 		fmtString = "unexpected end of string"
-		if infix != nil {
-			fmtString += "(" + strings.Join(infix, " ") + ")"
+		if optFmtStruct != nil {
+			fmtString += "(" + optFmtStruct[0].FmtString + ")"
+			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs)
 		}
 		fmtString += suffix
-	} else {
-		rune := *p.Curr.RunePtr
+	} else if ps.Pos == p.Curr.Pos {
+		r := *p.Curr.RunePtr
 		suffix := p.GetSuffix(p.Curr)
 		fmtString = "unexpected char <ansiPrimary>%q<ansiReset> (charCode: %v"
-		if infix != nil {
-			fmtString += ", " + strings.Join(infix, " ")
+		fmtArgs = []interface{}{r, r}
+		if optFmtStruct != nil {
+			fmtString += "(" + optFmtStruct[0].FmtString + ")"
+			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs)
 		}
 		fmtString += ")" + suffix
-		fmtArgs = []interface{}{rune, rune}
+	} else if ps.Pos < p.Curr.Pos {
+		if optFmtStruct != nil {
+			fmtString += optFmtStruct[0].FmtString
+			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs)
+		}
+		fmtString += p.GetSuffix(ps)
+	} else {
+		bwerror.Panic("ps.Pos: %#v, p.Curr.Pos: %#v", ps.Pos, p.Curr.Pos)
 	}
 	return bwerror.Errord(1, fmtString, fmtArgs...)
 }
 
-func (p *Proxy) ItemError(start RunePtrStruct, fmtString string, fmtArgs ...interface{}) error {
-	fmtString += p.GetSuffix(start)
-	return bwerror.Errord(1, fmtString, fmtArgs...)
-}
+// func (p *Proxy) ItemError(start PosStruct, fmtString string, fmtArgs ...interface{}) error {
+// 	fmtString += p.GetSuffix(start)
+// 	return bwerror.Errord(1, fmtString, fmtArgs...)
+// }
 
 // func (p *Proxy) unknownWordError(start int, word string) {
 // 	// suffix := pfa.p.GetSuffix(start, word)

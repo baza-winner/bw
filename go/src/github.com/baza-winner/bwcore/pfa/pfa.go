@@ -1,6 +1,7 @@
 package pfa
 
 import (
+	"github.com/baza-winner/bwcore/bwfmt"
 	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/pfa/r"
 	"github.com/baza-winner/bwcore/runeprovider"
@@ -49,7 +50,7 @@ func Run(p runeprovider.RuneProvider, rules r.Rules, optTraceLevel ...core.Trace
 		err = pfa.Err
 	} else {
 		if len(pfa.Stack) > 1 {
-			pfa.Panic("len(pfa.Stack) > 1")
+			pfa.Panic(bwfmt.StructFrom("len(pfa.Stack) > 1"))
 		} else if len(pfa.Stack) > 0 {
 			result = pfa.GetTopStackItem().Vars["result"]
 		}
@@ -57,8 +58,8 @@ func Run(p runeprovider.RuneProvider, rules r.Rules, optTraceLevel ...core.Trace
 	return
 }
 
-func runePtr(r rune) *rune {
-	return &r
-}
+// func runePtr(r rune) *rune {
+// 	return &r
+// }
 
 // ============================================================================

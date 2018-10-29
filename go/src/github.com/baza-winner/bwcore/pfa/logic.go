@@ -1,12 +1,8 @@
 package pfa
 
 import (
-	"github.com/baza-winner/bwcore/pfa/a"
-	"github.com/baza-winner/bwcore/pfa/c"
 	"github.com/baza-winner/bwcore/pfa/core"
-	"github.com/baza-winner/bwcore/pfa/e"
 	"github.com/baza-winner/bwcore/pfa/r"
-	"github.com/baza-winner/bwcore/pfa/val"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
@@ -23,44 +19,44 @@ func ParseLogic(p runeprovider.RuneProvider) (interface{}, error) {
 
 	rules := r.RulesFrom(
 		[]interface{}{
-			a.PullRune{},
-			SubRules{r.RulesFrom(
-				[]interface{}{c.VarIs{"scope", nil},
-					a.SetVarBy{"scope", psMain, b.By{b.Push{}}},
-				},
-			)},
-			SubRules{r.RulesFrom(
-				[]interface{}{c.VarIs{"scope.0", psMain},
-					SubRules{r.RulesFrom(
-						[]interface{}{val.Space},
-						[]interface{}{'/',
-							a.SetVar{"scope", psComment},
-						},
-						[]interface{}{val.Letter,
-							a.SetVar{"scope", psIdent},
-						},
-					)},
-				},
-				[]interface{}{c.VarIs{"scope", psComment},
-					SubRules{r.RulesFrom(
-						[]interface{}{'/',
-							a.SetVar{"scope", psSingleLineComment},
-						},
-						[]interface{}{'*',
-							a.SetVar{"scope", psMultiLineComment},
-						},
-					)},
-				},
-				[]interface{}{c.VarIs{"scope", psSingleLineComment},
-					[]interface{}{'\n',
-						a.SetVar{"scope", psSingleLineComment},
-					},
-					[]interface{}{'*',
-						a.SetVar{"scope", psMultiLineComment},
-					},
-				},
-				[]interface{}{e.UnexpectedRune{}},
-			)},
+			// a.PullRune{},
+			// SubRules{r.RulesFrom(
+			// 	[]interface{}{c.VarIs{"scope", nil},
+			// 		a.SetVarBy{"scope", psMain, b.By{b.Push{}}},
+			// 	},
+			// )},
+			// SubRules{r.RulesFrom(
+			// 	[]interface{}{c.VarIs{"scope.0", psMain},
+			// 		SubRules{r.RulesFrom(
+			// 			[]interface{}{val.Space},
+			// 			[]interface{}{'/',
+			// 				a.SetVar{"scope", psComment},
+			// 			},
+			// 			[]interface{}{val.Letter,
+			// 				a.SetVar{"scope", psIdent},
+			// 			},
+			// 		)},
+			// 	},
+			// 	[]interface{}{c.VarIs{"scope", psComment},
+			// 		SubRules{r.RulesFrom(
+			// 			[]interface{}{'/',
+			// 				a.SetVar{"scope", psSingleLineComment},
+			// 			},
+			// 			[]interface{}{'*',
+			// 				a.SetVar{"scope", psMultiLineComment},
+			// 			},
+			// 		)},
+			// 	},
+			// 	[]interface{}{c.VarIs{"scope", psSingleLineComment},
+			// 		[]interface{}{'\n',
+			// 			a.SetVar{"scope", psSingleLineComment},
+			// 		},
+			// 		[]interface{}{'*',
+			// 			a.SetVar{"scope", psMultiLineComment},
+			// 		},
+			// 	},
+			// 	[]interface{}{e.UnexpectedRune{}},
+			// )},
 		},
 
 	// []interface{}{PrimaryIs{"begin"},

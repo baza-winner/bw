@@ -2,11 +2,10 @@ package a
 
 import (
 	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwfmt"
 
 	// "github.com/baza-winner/bwcore/pfa"
 	"github.com/baza-winner/bwcore/pfa/b"
-	"github.com/baza-winner/bwcore/pfa/common"
 	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/pfa/formatted"
 	"github.com/baza-winner/bwcore/pfa/val"
@@ -47,76 +46,76 @@ func (v PullRune) GetAction() core.ProcessorAction {
 
 // ============================================================================
 
-type PushItem struct{}
+// type PushItem struct{}
 
-func (v PushItem) Execute(pfa *core.PfaStruct) {
-	pfa.PushStackItem()
-	if pfa.TraceLevel > core.TraceNone {
-		pfa.TraceAction("<ansiGreen>PushItem<ansi>: %s", stackLenVarPath)
-	}
-}
+// func (v PushItem) Execute(pfa *core.PfaStruct) {
+// 	pfa.PushStackItem()
+// 	if pfa.TraceLevel > core.TraceNone {
+// 		pfa.TraceAction("<ansiGreen>PushItem<ansi>: %s", stackLenVarPath)
+// 	}
+// }
 
-func (v PushItem) GetAction() core.ProcessorAction {
-	return v
-}
+// func (v PushItem) GetAction() core.ProcessorAction {
+// 	return v
+// }
+
+// // ============================================================================
+
+// type PopItem struct{}
+
+// func (v PopItem) Execute(pfa *core.PfaStruct) {
+// 	pfa.PopStackItem()
+// 	if pfa.TraceLevel > core.TraceNone {
+// 		pfa.TraceAction("<ansiGreen>PopItem<ansi>: %s", stackLenVarPath)
+// 	}
+// 	// pfa.traceAction("<ansiGreen>PopItem<ansi>: <ansiCmd>stackLen<ansi>(<ansiPrimary>%d<ansi>)", len(pfa.Stack))
+// }
+
+// func (v PopItem) GetAction() core.ProcessorAction {
+// 	return v
+// }
 
 // ============================================================================
 
-type PopItem struct{}
+// type Panic struct {
+// 	FmtString string
+// 	FmtArgs   []interface{}
+// }
 
-func (v PopItem) Execute(pfa *core.PfaStruct) {
-	pfa.PopStackItem()
-	if pfa.TraceLevel > core.TraceNone {
-		pfa.TraceAction("<ansiGreen>PopItem<ansi>: %s", stackLenVarPath)
-	}
-	// pfa.traceAction("<ansiGreen>PopItem<ansi>: <ansiCmd>stackLen<ansi>(<ansiPrimary>%d<ansi>)", len(pfa.Stack))
-}
+// func (v Panic) GetAction() core.ProcessorAction {
+// 	fmtArgs := []core.ValProvider{}
+// 	for _, i := range v.FmtArgs {
+// 		switch t := i.(type) {
+// 		case bool, rune, string, int, int8, int16 /* int32, */, int64, uint, uint8, uint16, uint32, uint64:
+// 			fmtArgs = append(fmtArgs, common.JustVal{t})
+// 		case val.Var:
+// 			fmtArgs = append(fmtArgs, common.VarVal{core.MustVarPathFrom(t.VarPathStr)})
+// 		default:
+// 			bwerror.Panic("%#v", i)
+// 		}
+// 	}
+// 	return panicAction{v.FmtString, fmtArgs}
+// }
 
-func (v PopItem) GetAction() core.ProcessorAction {
-	return v
-}
+// type panicAction struct {
+// 	fmtString string
+// 	fmtArgs   []core.ValProvider
+// }
 
-// ============================================================================
-
-type Panic struct {
-	FmtString string
-	FmtArgs   []interface{}
-}
-
-func (v Panic) GetAction() core.ProcessorAction {
-	fmtArgs := []core.ValProvider{}
-	for _, i := range v.FmtArgs {
-		switch t := i.(type) {
-		case bool, rune, string, int, int8, int16 /* int32, */, int64, uint, uint8, uint16, uint32, uint64:
-			fmtArgs = append(fmtArgs, common.JustVal{t})
-		case val.Var:
-			fmtArgs = append(fmtArgs, common.VarVal{core.MustVarPathFrom(t.VarPathStr)})
-		default:
-			bwerror.Panic("%#v", i)
-		}
-	}
-	return panicAction{v.FmtString, fmtArgs}
-}
-
-type panicAction struct {
-	fmtString string
-	fmtArgs   []core.ValProvider
-}
-
-func (v panicAction) Execute(pfa *core.PfaStruct) {
-	var s string
-	for _, i := range v.fmtArgs {
-		s += ", " + string(i.GetSource(pfa))
-	}
-	if pfa.TraceLevel > core.TraceNone {
-		pfa.TraceAction("<ansiGreen>Panic{%s%s}", v.fmtString, s)
-	}
-	fmtArgs := []interface{}{v.fmtString}
-	for _, i := range v.fmtArgs {
-		fmtArgs = append(fmtArgs, i.GetVal(pfa))
-	}
-	pfa.Panic(fmtArgs...)
-}
+// func (v panicAction) Execute(pfa *core.PfaStruct) {
+// 	var s string
+// 	for _, i := range v.fmtArgs {
+// 		s += ", " + string(i.GetSource(pfa))
+// 	}
+// 	if pfa.TraceLevel > core.TraceNone {
+// 		pfa.TraceAction("<ansiGreen>Panic{%s%s}", v.fmtString, s)
+// 	}
+// 	fmtArgs := []interface{}{}
+// 	for _, i := range v.fmtArgs {
+// 		fmtArgs = append(fmtArgs, i.GetVal(pfa))
+// 	}
+// 	pfa.Panic(bwfmt.StructFrom(v.fmtString, fmtArgs))
+// }
 
 // ============================================================================
 
@@ -192,7 +191,7 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 		if pfa.Err != nil {
 			return
 		}
-		if pfa.ErrVal != nil {
+		if pfa.Err != nil {
 			break
 		}
 	}
@@ -259,11 +258,11 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 		}
 	}
 	if isNotAppendee {
-		pfa.Panic("can not append to %s", string(pfa.TraceVal(v.varPath)))
+		pfa.Panic(bwfmt.StructFrom("can not append to %s", string(pfa.TraceVal(v.varPath))))
 	}
 	var source formatted.String
 	var target formatted.String
-	if pfa.TraceLevel > core.TraceNone || len(expectedToBeAppendable) > 0 || pfa.ErrVal != nil {
+	if pfa.TraceLevel > core.TraceNone || len(expectedToBeAppendable) > 0 || pfa.Err != nil {
 		source = v.valProvider.GetSource(pfa)
 		target = pfa.TraceVal(v.varPath)
 		for _, b := range v.by {
@@ -271,14 +270,14 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 				source = source.Concat(formatted.StringFrom(" <ansiGreen>| %s<ansi> ", b.String()))
 			}
 		}
-		if pfa.ErrVal != nil {
-			if t, ok := pfa.ErrVal.(b.FailedToTransform); ok {
-				t.Prepare(source)
-			} else {
-				pfa.Panic("%#v", pfa.ErrVal)
+		if pfa.Err != nil {
+			if t, ok := pfa.Err.(core.PfaError); !ok {
+				pfa.Panic(bwfmt.StructFrom("%#v", pfa.Err))
+			} else if t.State() != core.PecsPrepared {
+				t.PrepareErr(string(source))
 			}
 		} else if len(expectedToBeAppendable) > 0 {
-			pfa.Panic("%s expected to be %s", string(source), string(expectedToBeAppendable))
+			pfa.Panic(bwfmt.StructFrom("%s expected to be %s", string(source), string(expectedToBeAppendable)))
 		}
 	}
 	pfa.SetVarVal(v.varPath, val)

@@ -1,19 +1,51 @@
 package b
 
 import (
-	"fmt"
-
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/pfa/core"
-	"github.com/baza-winner/bwcore/pfa/formatted"
 )
 
 type ValTransformer interface {
-	TransformValue(pfa *core.PfaStruct, i interface{}) interface{}
+	TransformValue(pfa *core.PfaStruct, val interface{}) interface{}
 	String() string
 }
 
 type By []ValTransformer
+
+// ============================================================================
+
+// type TransformError struct {
+// 	content *TransformErrorContent
+// 	Where   string
+// }
+
+// type TransformErrorContent struct {
+// 	pfa       *PfaStruct
+// 	reason    string
+// 	fmtString string
+// 	fmtArgs   []interface{}
+// }
+
+// func (v *TransformError) Prepare(pfa *core.PfaStruct, fmtString string, fmtArgs ...interface{}) {
+// 	v.content.fmtString = t.content.fmtString + " (" + t.content.reason + ")"
+// 	v.content.fmtArgs = fmtArgs
+// 	// t.content.s = fmt.Sprintf(t.content.fmt+" (%s)", source, t.content.reason)
+// }
+
+// func (v TransformError) PfaError(pfa *core.PfaStruct) error {
+// 	// return pfa.Proxy.ItemError(pfa.GetTopStackItem().Start, v.content.s)
+// 	return pfa.Proxy.Unexpected(pfa.GetTopStackItem().Start, bwfmt.StructFrom(v.content.s))
+// }
+
+// func (v PfaError) Error() (result string) {
+// 	switch v.content.state {
+// 	case PecsNeedPrepare:
+// 		bwerror.Panic("%#v", v.content.state)
+// 	case PecsPrepared:
+// 		result = bwerror.Error(v.content.fmtString, v.content.fmtArgs)
+// 	}
+// 	return
+// }
 
 // ============================================================================
 
@@ -26,15 +58,15 @@ var pairs = map[rune]rune{
 	'[': ']',
 }
 
-const fmtPairBrace = "failed to get pair for %s"
+const fmtPairBrace = "failed to get PairBrace for %s"
 
-func (v PairBrace) TransformValue(pfa *core.PfaStruct, i interface{}) (result interface{}) {
+func (v PairBrace) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
 	var r rune
-	switch t := i.(type) {
+	switch t := val.(type) {
 	case rune:
 		r = t
 	default:
-		pfa.ErrVal = FailedToTransformFrom(fmtPairBrace, "nor Rune")
+		pfa.SetTransformError(fmtPairBrace, "nor Rune")
 		return
 	}
 
@@ -64,21 +96,21 @@ var escape = map[rune]rune{
 	'v': '\v',
 }
 
-const fmtEscape = "failed to escape rune for %s"
+const fmtEscape = "failed to get Escape rune for %s"
 
-func (v Escape) TransformValue(pfa *core.PfaStruct, i interface{}) (result interface{}) {
+func (v Escape) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
 	var r rune
-	switch t := i.(type) {
+	switch t := val.(type) {
 	case rune:
 		r = t
 	default:
-		pfa.ErrVal = FailedToTransformFrom(fmtEscape, "nor Rune")
+		pfa.SetTransformError(fmtEscape, "nor Rune")
 		return
 	}
 
 	var ok bool
 	if result, ok = escape[r]; !ok {
-		pfa.ErrVal = FailedToTransformFrom(fmtEscape, "no escape rune")
+		pfa.SetTransformError(fmtEscape, "no escape rune")
 	}
 
 	return
@@ -92,23 +124,23 @@ func (v Escape) String() string {
 
 type ParseNumber struct{}
 
-const fmtParseNumber = "failed to transform %s to number"
+const fmtParseNumber = "failed to ParseNumber from %s"
 
-func (v ParseNumber) TransformValue(pfa *core.PfaStruct, i interface{}) (result interface{}) {
+func (v ParseNumber) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
 	var s string
-	switch t := i.(type) {
+	switch t := val.(type) {
 	case string:
 		s = t
 	case rune:
 		s = string(t)
 	default:
-		pfa.ErrVal = FailedToTransformFrom(fmtParseNumber, "niether String, nor Rune")
+		pfa.SetTransformError(fmtParseNumber, "niether String, nor Rune")
 		return
 	}
 
 	result, err := core.ParseNumber(s)
 	if err != nil {
-		pfa.ErrVal = FailedToTransformFrom(fmtParseNumber, err.Error())
+		pfa.SetTransformError(fmtParseNumber, err.Error())
 	}
 	return
 }
@@ -119,33 +151,40 @@ func (v ParseNumber) String() string {
 
 // ============================================================================
 
-type FailedToTransform struct {
-	content *FailedToTransformContent
+type ButLast struct{}
+
+const fmtButLast = "failed to get ButLast from %s"
+
+func (v ButLast) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
+	var vals []interface{}
+	switch t := val.(type) {
+	case []interface{}:
+		vals = t
+	// case rune:
+	// s = string(t)
+	default:
+		pfa.SetTransformError(fmtButLast, "nor Array")
+		return
+	}
+
+	if len(vals) > 0 {
+		result = vals[:len(vals)-1]
+	} else {
+		pfa.SetTransformError(fmtButLast, "Array is empty")
+	}
+
+	return
 }
 
-type FailedToTransformContent struct {
-	fmt    string
-	reason string
-	s      string
-}
-
-func FailedToTransformFrom(fmt, reason string) FailedToTransform {
-	return FailedToTransform{&FailedToTransformContent{fmt: fmt, reason: reason}}
-}
-
-func (t *FailedToTransform) Prepare(source formatted.String) {
-	t.content.s = fmt.Sprintf(t.content.fmt+" (%s)", source, t.content.reason)
-}
-
-func (v FailedToTransform) Error(pfa *core.PfaStruct) error {
-	return pfa.Proxy.ItemError(pfa.GetTopStackItem().Start, v.content.s)
+func (v ButLast) String() string {
+	return "ButLast"
 }
 
 // ============================================================================
 
 type Append struct{}
 
-func (v Append) TransformValue(pfa *core.PfaStruct, i interface{}) (result interface{}) {
+func (v Append) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
 	bwerror.Unreachable()
 	return
 }
@@ -158,7 +197,7 @@ func (v Append) String() string {
 
 type AppendSlice struct{}
 
-func (v AppendSlice) TransformValue(pfa *core.PfaStruct, i interface{}) (result interface{}) {
+func (v AppendSlice) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
 	bwerror.Unreachable()
 	// bwerror.Unreachable()
 	return
