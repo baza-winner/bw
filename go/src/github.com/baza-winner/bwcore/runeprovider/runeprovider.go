@@ -271,7 +271,7 @@ func (p *Proxy) GetSuffix(ps PosStruct) (suffix string) {
 // }
 
 // func (p *Proxy) Unexpected(ps PosStruct, fmtString string, fmtArgs ...interface{}) error {
-func (p *Proxy) Unexpected(ps PosStruct, optFmtStruct ...bwfmt.Struct) error {
+func (p *Proxy) Unexpected(ps PosStruct, optFmtStruct ...bwfmt.Struct) (err error) {
 	var fmtString string
 	fmtArgs := []interface{}{}
 	if p.Curr.RunePtr == nil {
@@ -302,7 +302,9 @@ func (p *Proxy) Unexpected(ps PosStruct, optFmtStruct ...bwfmt.Struct) error {
 	} else {
 		bwerror.Panic("ps.Pos: %#v, p.Curr.Pos: %#v", ps.Pos, p.Curr.Pos)
 	}
-	return bwerror.Errord(1, fmtString, fmtArgs...)
+	err = bwerror.Errord(1, fmtString, fmtArgs...)
+	bwerror.Panic("%#v", err)
+	return
 }
 
 // func (p *Proxy) ItemError(start PosStruct, fmtString string, fmtArgs ...interface{}) error {
