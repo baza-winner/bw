@@ -45,8 +45,8 @@ func (v PfaError) DataForJSON() interface{} {
 	return result
 }
 
-func (pfa *PfaStruct) SetError(fmtString string, fmtArgs ...interface{}) {
-	pfa.Err = PfaError{
+func (pfa *PfaStruct) Error(fmtString string, fmtArgs ...interface{}) error {
+	return PfaError{
 		pfa: pfa,
 		content: &PfaErrorContent{
 			reason: string(formatted.StringFrom(fmtString, fmtArgs...)),
@@ -55,16 +55,16 @@ func (pfa *PfaStruct) SetError(fmtString string, fmtArgs ...interface{}) {
 	}
 }
 
-func (pfa *PfaStruct) SetTransformError(fmtString, reason string) {
-	pfa.Err = PfaError{
+func (pfa *PfaStruct) TransformError(fmtString, reason string) error {
+	return PfaError{
 		pfa:     pfa,
 		content: &PfaErrorContent{fmtString: fmtString, reason: reason},
 		Where:   whereami.WhereAmI(3),
 	}
 }
 
-func (pfa *PfaStruct) SetUnexpectedError(err error) {
-	pfa.Err = PfaError{
+func (pfa *PfaStruct) UnexpectedError(err error) error {
+	return PfaError{
 		pfa:     pfa,
 		content: &PfaErrorContent{errStr: err.Error(), state: PecsPrepared},
 		Where:   whereami.WhereAmI(3),

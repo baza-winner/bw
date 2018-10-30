@@ -52,7 +52,7 @@ const (
 	Symbol
 )
 
-func (v UnicodeCategory) Conforms(pfa *core.PfaStruct, val interface{}, varPath core.VarPath) (result bool) {
+func (v UnicodeCategory) Conforms(pfa *core.PfaStruct, val interface{}, varPath core.VarPath) (result bool, err error) {
 	if r, ok := val.(rune); ok {
 		switch v {
 		case Space:
@@ -127,28 +127,32 @@ func ValFrom(val interface{}) (result Val) {
 	return
 }
 
-func (v Val) Conforms(pfa *core.PfaStruct, val interface{}, varPath core.VarPath) (result bool) {
-	tst := v.GetVal(pfa)
-	if pfa.Err != nil {
+func (v Val) Conforms(pfa *core.PfaStruct, val interface{}, varPath core.VarPath) (result bool, err error) {
+	tst, err := v.GetVal(pfa)
+	if err != nil {
 		return
 	}
 	result = reflect.DeepEqual(tst, val)
 	return
 }
 
-func (v Val) GetVal(pfa *core.PfaStruct) (result interface{}) {
+func (v Val) GetVal(pfa *core.PfaStruct) (result interface{}, err error) {
 	ProcessVal(v.Val,
 		func(vk ValKind, varPath core.VarPath, valueOf reflect.Value) {
 			switch vk {
 			case VkVarPath:
-				varValue := pfa.VarValue(varPath)
+				var varValue core.VarValue
+				varValue, err = pfa.VarValue(varPath)
 				if pfa.Err == nil {
 					result = varValue.Val
 				}
 			case VkMap:
 				m := map[string]interface{}{}
 				for _, keyValue := range valueOf.MapKeys() {
-					m[keyValue.String()] = Val{valueOf.MapIndex(keyValue).Interface()}.GetVal(pfa)
+					m[keyValue.String()], err = Val{valueOf.MapIndex(keyValue).Interface()}.GetVal(pfa)
+					if err != nil {
+						return
+					}
 				}
 				result = m
 				// pfa.Panic(bwfmt.StructFrom("%#v", result))
@@ -156,7 +160,11 @@ func (v Val) GetVal(pfa *core.PfaStruct) (result interface{}) {
 				len := valueOf.Len()
 				vals := make([]interface{}, 0, len)
 				for i := 0; i < len; i++ {
-					vals = append(vals, Val{valueOf.Index(i).Interface()}.GetVal(pfa))
+					val, err := Val{valueOf.Index(i).Interface()}.GetVal(pfa)
+					if err != nil {
+						return
+					}
+					vals = append(vals, val)
 				}
 				result = vals
 			case VkInvalid:
@@ -285,18 +293,18 @@ func (v *VarIs) AddValChecker(vc core.ValChecker) {
 	v.valCheckers = append(v.valCheckers, vc)
 }
 
-func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool) {
+func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool, err error) {
 	if v.varPath[0].Type == core.VarPathItemKey && (v.varPath[0].Key == "rune" || v.varPath[0].Key == "runePos") {
 		var ofs int
 		if len(v.varPath) > 2 {
-			pfa.SetError("len(varPath) > 2, varPath: %s", v.varPath.FormattedString())
+			err = pfa.Error("len(varPath) > 2, varPath: %s", v.varPath.FormattedString())
 			// bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
 		} else if len(v.varPath) > 1 {
 			vt, idx, key, err := v.varPath[1].TypeIdxKey(pfa)
 			if err != nil {
 				pfa.Err = err
 			} else if vt != core.VarPathItemIdx {
-				pfa.SetError("<ansiPrimary>%s<ansi> path expects <ansiOutline>idx<ansi> as second item", key)
+				err = pfa.Error("<ansiPrimary>%s<ansi> path expects <ansiOutline>idx<ansi> as second item", key)
 			} else {
 				ofs = idx
 			}
@@ -324,8 +332,11 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool) {
 					}
 				}
 				if !result {
+					var ok bool
 					for _, p := range v.valCheckers {
-						if p.Conforms(pfa, r, v.varPath) {
+						if ok, err = p.Conforms(pfa, r, v.varPath); err != nil {
+							return
+						} else if ok {
 							result = true
 							break
 						}
@@ -342,8 +353,11 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool) {
 				}
 			}
 			if !result {
+				var ok bool
 				for _, p := range v.valCheckers {
-					if p.Conforms(pfa, ps, v.varPath) {
+					if ok, err = p.Conforms(pfa, ps, v.varPath); err != nil {
+						return
+					} else if ok {
 						result = true
 						break
 					}
@@ -351,7 +365,11 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool) {
 			}
 		}
 	} else if v.varPath[len(v.varPath)-1].Type == core.VarPathItemHash {
-		i, _ := pfa.VarValue(v.varPath).Int()
+		var varValue core.VarValue
+		if varValue, err = pfa.VarValue(v.varPath); err != nil {
+			return
+		}
+		i, _ := varValue.Int()
 		// i := len(pfa.Stack)
 		if v.intSet != nil {
 			result = v.intSet.Has(i)
@@ -360,15 +378,28 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool) {
 			}
 		}
 		if !result {
+			var ok bool
 			for _, p := range v.valCheckers {
-				if p.Conforms(pfa, i, v.varPath) {
+				if ok, err = p.Conforms(pfa, i, v.varPath); err != nil {
+					return
+				} else if ok {
 					result = true
 					break
 				}
 			}
+			// for _, p := range v.valCheckers {
+			// 	if p.Conforms(pfa, i, v.varPath) {
+			// 		result = true
+			// 		break
+			// 	}
+			// }
 		}
 	} else {
-		varValue := pfa.VarValue(v.varPath)
+		var varValue core.VarValue
+		if varValue, err = pfa.VarValue(v.varPath); err != nil {
+			return
+		}
+		// varValue := pfa.VarValue(v.varPath)
 		if varValue.Val == nil {
 			result = v.isNil
 			if pfa.TraceLevel > core.TraceNone {
@@ -381,30 +412,39 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool) {
 			// 			pfa.TraceCondition(v.varPath, v.runeSet, result)
 			// 		}
 			// 	}
-		} else if i, err := varValue.Int(); err == nil {
-			if v.intSet != nil {
-				result = v.intSet.Has(i)
-				if pfa.TraceLevel > core.TraceNone {
-					pfa.TraceCondition(v.varPath, v.intSet, result)
-				}
-			}
-		} else if s, err := varValue.String(); err == nil {
+		} else if s, ok := varValue.String(); ok {
 			if v.strSet != nil {
 				result = v.strSet.Has(s)
 				if pfa.TraceLevel > core.TraceNone {
 					pfa.TraceCondition(v.varPath, v.strSet, result)
 				}
 			}
+		} else if i, ok := varValue.Int(); ok {
+			if v.intSet != nil {
+				result = v.intSet.Has(i)
+				if pfa.TraceLevel > core.TraceNone {
+					pfa.TraceCondition(v.varPath, v.intSet, result)
+				}
+			}
 		}
 		if !result && pfa.Err == nil {
+			var ok bool
 			for _, p := range v.valCheckers {
-				if p.Conforms(pfa, varValue.Val, v.varPath) {
+				if ok, err = p.Conforms(pfa, varValue.Val, v.varPath); err != nil {
+					return
+				} else if ok {
 					result = true
-					break
-				} else if pfa.Err != nil {
 					break
 				}
 			}
+			// for _, p := range v.valCheckers {
+			// 	if p.Conforms(pfa, varValue.Val, v.varPath) {
+			// 		result = true
+			// 		break
+			// 	} else if pfa.Err != nil {
+			// 		break
+			// 	}
+			// }
 		}
 	}
 	return

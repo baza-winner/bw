@@ -13,21 +13,21 @@ import (
 // ========================= ruleCondition =====================================
 
 type ruleCondition interface {
-	ConformsTo(pfa *core.PfaStruct) bool
+	ConformsTo(pfa *core.PfaStruct) (bool, error)
 }
 
 // =============================================================================
 
 type ruleConditions []ruleCondition
 
-func (v ruleConditions) conformsTo(pfa *core.PfaStruct) (result bool) {
-	result = true
+func (v ruleConditions) conformsTo(pfa *core.PfaStruct) (result bool, err error) {
+	var ok bool
 	for _, i := range v {
-		if !i.ConformsTo(pfa) {
-			result = false
-			break
+		if ok, err = i.ConformsTo(pfa); err != nil || !ok {
+			return
 		}
 	}
+	result = true
 	return
 }
 
@@ -50,34 +50,48 @@ func RulesFrom(args ...[]interface{}) Rules {
 	return result
 }
 
-func (rules Rules) Process(pfa *core.PfaStruct) {
-	pfa.Err = nil
-	pfa.Err = nil
+func (rules Rules) Process(pfa *core.PfaStruct) (err error) {
+	// pfa.Err = nil
+	// pfa.Err = nil
+	var ok bool
 rules:
 	for _, rule := range rules {
 
 		if pfa.TraceLevel > core.TraceNone {
 			pfa.TraceBeginConditions()
 		}
-		if !rule.conditions.conformsTo(pfa) {
-			if pfa.TraceLevel >= core.TraceAll {
-				pfa.TraceFailedConditions()
-			}
-		} else {
+
+		if ok, err = rule.conditions.conformsTo(pfa); err != nil {
+			bwerror.Panic("r.conditions: %#v, pfa.Err: %#v", rule.conditions, pfa.Err)
+		} else if ok {
 			if pfa.TraceLevel > core.TraceNone {
 				pfa.TraceBeginActions()
 			}
-			if pfa.Err != nil {
-				bwerror.Panic("r.conditions: %#v, pfa.Err: %#v", rule.conditions, pfa.Err)
-			}
 			for _, pa := range rule.processorActions {
-				pa.Execute(pfa)
-				if pfa.Err != nil || pfa.Err != nil {
-					break
+				err = pa.Execute(pfa)
+				if err != nil {
+					return
 				}
 			}
 			break rules
+		} else if pfa.TraceLevel >= core.TraceAll {
+			pfa.TraceFailedConditions()
 		}
+
+		// else {
+		// 	if pfa.Err != nil {
+		// 		bwerror.Panic("r.conditions: %#v, pfa.Err: %#v", rule.conditions, pfa.Err)
+		// 	}
+		// }
+		// if !ok {
+		// 	if pfa.TraceLevel >= core.TraceAll {
+		// 		pfa.TraceFailedConditions()
+		// 	}
+		// } else {
+		// 	if pfa.TraceLevel > core.TraceNone {
+		// 		pfa.TraceBeginActions()
+		// 	}
+		// }
 	}
 	// if pfa.Err == nil {
 	// 	if pfa.Err != nil {

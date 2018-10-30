@@ -6,7 +6,7 @@ import (
 )
 
 type ValTransformer interface {
-	TransformValue(pfa *core.PfaStruct, val interface{}) interface{}
+	TransformValue(pfa *core.PfaStruct, val interface{}) (interface{}, error)
 	String() string
 }
 
@@ -60,13 +60,13 @@ var pairs = map[rune]rune{
 
 const fmtPairBrace = "failed to get PairBrace for %s"
 
-func (v PairBrace) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
+func (v PairBrace) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
 	var r rune
 	switch t := val.(type) {
 	case rune:
 		r = t
 	default:
-		pfa.SetTransformError(fmtPairBrace, "nor Rune")
+		err = pfa.TransformError(fmtPairBrace, "nor Rune")
 		return
 	}
 
@@ -98,19 +98,20 @@ var escape = map[rune]rune{
 
 const fmtEscape = "failed to get Escape rune for %s"
 
-func (v Escape) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
+func (v Escape) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
 	var r rune
 	switch t := val.(type) {
 	case rune:
 		r = t
 	default:
-		pfa.SetTransformError(fmtEscape, "nor Rune")
+		err = pfa.TransformError(fmtEscape, "nor Rune")
 		return
 	}
 
 	var ok bool
 	if result, ok = escape[r]; !ok {
-		pfa.SetTransformError(fmtEscape, "no escape rune")
+		err = pfa.TransformError(fmtEscape, "no escape rune")
+		return
 	}
 
 	return
@@ -126,7 +127,7 @@ type ParseNumber struct{}
 
 const fmtParseNumber = "failed to ParseNumber from %s"
 
-func (v ParseNumber) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
+func (v ParseNumber) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
 	var s string
 	switch t := val.(type) {
 	case string:
@@ -134,13 +135,13 @@ func (v ParseNumber) TransformValue(pfa *core.PfaStruct, val interface{}) (resul
 	case rune:
 		s = string(t)
 	default:
-		pfa.SetTransformError(fmtParseNumber, "niether String, nor Rune")
+		pfa.TransformError(fmtParseNumber, "niether String, nor Rune")
 		return
 	}
 
-	result, err := core.ParseNumber(s)
+	result, err = core.ParseNumber(s)
 	if err != nil {
-		pfa.SetTransformError(fmtParseNumber, err.Error())
+		err = pfa.TransformError(fmtParseNumber, err.Error())
 	}
 	return
 }
@@ -155,7 +156,7 @@ type ButLast struct{}
 
 const fmtButLast = "failed to get ButLast from %s"
 
-func (v ButLast) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
+func (v ButLast) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
 	var vals []interface{}
 	switch t := val.(type) {
 	case []interface{}:
@@ -163,14 +164,15 @@ func (v ButLast) TransformValue(pfa *core.PfaStruct, val interface{}) (result in
 	// case rune:
 	// s = string(t)
 	default:
-		pfa.SetTransformError(fmtButLast, "nor Array")
+		err = pfa.TransformError(fmtButLast, "nor Array")
 		return
 	}
 
 	if len(vals) > 0 {
 		result = vals[:len(vals)-1]
 	} else {
-		pfa.SetTransformError(fmtButLast, "Array is empty")
+		err = pfa.TransformError(fmtButLast, "Array is empty")
+		return
 	}
 
 	return
@@ -184,7 +186,7 @@ func (v ButLast) String() string {
 
 type Append struct{}
 
-func (v Append) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
+func (v Append) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
 	bwerror.Unreachable()
 	return
 }
@@ -197,7 +199,7 @@ func (v Append) String() string {
 
 type AppendSlice struct{}
 
-func (v AppendSlice) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}) {
+func (v AppendSlice) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
 	bwerror.Unreachable()
 	// bwerror.Unreachable()
 	return

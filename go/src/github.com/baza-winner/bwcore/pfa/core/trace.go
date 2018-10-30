@@ -43,17 +43,22 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 				bwerror.Unreachable()
 			}
 		} else {
-			{
-				p := MustVarPathFrom("stack")
-				fmt.Printf("%s: %#v\n", p.FormattedString(), pfa.VarValue(p).Val)
+			// {
+			// 	p := MustVarPathFrom("stack")
+			// 	fmt.Printf("%s: %#v\n", p.FormattedString(), pfa.VarValue(p).Val)
+			// }
+			// {
+			// 	p := MustVarPathFrom("stack.-1")
+			// 	fmt.Printf("%s: %#v\n", p.FormattedString(), pfa.VarValue(p).Val)
+			// }
+			varValue, err := pfa.VarValue(t)
+			if err != nil {
+				bwerror.PanicErr(err)
 			}
-			{
-				p := MustVarPathFrom("stack.-1")
-				fmt.Printf("%s: %#v\n", p.FormattedString(), pfa.VarValue(p).Val)
-			}
-			fmt.Printf("%s: %#v\n", t.FormattedString(), pfa.VarValue(t).Val)
+			// val :=
+			fmt.Printf("%s: %#v\n", t.FormattedString(), varValue.Val)
 			// fmt.Printf("||| %#v\n, t: %#v", pfa.VarValue(t).Val, t)
-			valStr = pfa.TraceVal(pfa.VarValue(t).Val)
+			valStr = pfa.TraceVal(varValue.Val)
 		}
 		result = formatted.String(fmt.Sprintf("%s(%s)", t.FormattedString(pfa), valStr))
 	case bwset.String, bwset.Rune, bwset.Int:

@@ -44,14 +44,15 @@ func (v VarPathItem) TypeIdxKey(pfa *PfaStruct) (itemType VarPathItemType, idx i
 	case VarPathItemPath:
 		if pfa == nil {
 			err = bwerror.Error("VarPath requires pfa")
-		} else if varValue := pfa.VarValue(v.Path); pfa.Err != nil {
-			err = pfa.Err
-		} else if idx, err = varValue.Int(); err == nil {
-			itemType = VarPathItemIdx
-		} else if key, err = varValue.String(); err == nil {
-			itemType = VarPathItemKey
-		} else {
-			err = bwerror.Error("%s is nor Idx, neither Key", pfa.TraceVal(v.Path))
+		} else if varValue, err := pfa.VarValue(v.Path); err == nil {
+			var ok bool
+			if idx, ok = varValue.Int(); ok {
+				itemType = VarPathItemIdx
+			} else if key, ok = varValue.String(); ok {
+				itemType = VarPathItemKey
+			} else {
+				err = pfa.Error("%s is nor Idx, neither Key", pfa.TraceVal(v.Path))
+			}
 		}
 	}
 	return

@@ -153,6 +153,62 @@ func TestPfa_getVarValue(t *testing.T) {
 	bwtesting.BwRunTests(t, TestHelper{pfa}.VarValue, tests)
 }
 
+func TestPfa_getVarValue2(t *testing.T) {
+	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
+	runeA := 'a'
+	runeB := 'b'
+	itemPos := runeprovider.PosStruct{
+		IsEOF:       false,
+		RunePtr:     &runeB,
+		Pos:         25,
+		Line:        0x4,
+		Col:         0x3,
+		Prefix:      "[\n  qw/one two three/\n  d",
+		PrefixStart: 1,
+	}
+	pfa.Vars = map[string]interface{}{
+		"skipPostProcess": false,
+		"primary":         "expectWord",
+		"needFinish":      true,
+		"stack": []interface{}{
+			map[string]interface{}{
+				"itemPos": runeprovider.PosStruct{
+					IsEOF: false,
+					// RunePtr: (*int32)(0xc0001b6a60),
+					RunePtr:     &runeA,
+					Pos:         1,
+					Line:        0x2,
+					Col:         0x1,
+					Prefix:      "\n[",
+					PrefixStart: 0,
+				},
+				"result":    []interface{}{"one", "two", "three"},
+				"type":      "array",
+				"delimiter": 93,
+			},
+			map[string]interface{}{
+				"itemPos": itemPos,
+				"type":    "word",
+				"string":  "def",
+			},
+		},
+		"secondary": "",
+	}
+	tests := map[string]bwtesting.TestCaseStruct{
+		"stack.-1.itemPos": {
+			In:  []interface{}{"stack.-1.itemPos"},
+			Out: []interface{}{itemPos, nil},
+		},
+		"retry stack.-1.itemPos": {
+			In:  []interface{}{"stack.-1.itemPos"},
+			Out: []interface{}{itemPos, nil},
+		},
+	}
+	bwmap.CropMap(tests)
+	// bwmap.CropMap(tests, "primary")
+	bwtesting.BwRunTests(t, TestHelper{pfa}.VarValue, tests)
+}
+
 type TestHelper struct {
 	pfa *core.PfaStruct
 }

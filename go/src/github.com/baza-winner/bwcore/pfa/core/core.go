@@ -23,7 +23,7 @@ import (
 // ============================================================================
 
 type ProcessorAction interface {
-	Execute(pfa *PfaStruct)
+	Execute(pfa *PfaStruct) (err error)
 }
 
 // ============================================================================
@@ -42,7 +42,7 @@ type ProccessorActionProvider interface {
 // ============================================================================
 
 type ValChecker interface {
-	Conforms(pfa *PfaStruct, val interface{}, varPath VarPath) bool
+	Conforms(pfa *PfaStruct, val interface{}, varPath VarPath) (bool, error)
 }
 
 // ============================================================================

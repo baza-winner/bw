@@ -1,7 +1,6 @@
 package e
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwfmt"
 	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/runeprovider"
@@ -17,29 +16,33 @@ func (v Unexpected) GetAction() core.ProcessorAction {
 
 type UnexpectedAction struct{ varPath core.VarPath }
 
-func (v UnexpectedAction) Execute(pfa *core.PfaStruct) {
-	var err error
+func (v UnexpectedAction) Execute(pfa *core.PfaStruct) (err error) {
 	if len(v.varPath) == 0 {
-		err = bwerror.Error("unexpected")
+		err = pfa.Error("len(v.varPath)")
 	} else {
-		varValue := pfa.VarValue(v.varPath)
-		if pfa.Err != nil {
-			pfa.PanicErr(pfa.Err)
-		} else if ps, ok := varValue.Val.(runeprovider.PosStruct); !ok {
-			pfa.Panic(bwfmt.StructFrom("%#v, varPath: %#v", varValue.Val, v.varPath))
-		} else if ps.Pos < pfa.Proxy.Curr.Pos {
-			item := pfa.Proxy.Curr.Prefix[ps.Pos-pfa.Proxy.Curr.PrefixStart:]
-			// bwerror.Panic(item)
-			err = pfa.Proxy.Unexpected(ps, bwfmt.StructFrom("unexpected \"<ansiPrimary>%s<ansi>\"", item))
-		} else {
-			err = pfa.Proxy.Unexpected(ps)
+		var varValue core.VarValue
+		if varValue, err = pfa.VarValue(v.varPath); err == nil {
+			if ps, ok := varValue.Val.(runeprovider.PosStruct); !ok {
+				err = pfa.Error("Unexpected varPath must point to runeprovider.PosStruct but it points to %#v", varValue.Val)
+			} else {
+				if ps.Pos < pfa.Proxy.Curr.Pos {
+					item := pfa.Proxy.Curr.Prefix[ps.Pos-pfa.Proxy.Curr.PrefixStart:]
+					err = pfa.Proxy.Unexpected(ps, bwfmt.StructFrom("unexpected \"<ansiPrimary>%s<ansi>\"", item))
+				} else {
+					err = pfa.Proxy.Unexpected(ps)
+				}
+				err = pfa.UnexpectedError(err)
+			}
 		}
 	}
+	if err != nil {
+		return
+	}
 	// bwerror.Panic("%#v, varPath: %#v", err, v.varPath)
-	pfa.SetUnexpectedError(err)
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceAction("<ansiGreen>Unexpected %s", v.varPath)
 	}
+	return
 }
 
 // func (v UnexpectedAction) Error(pfa *core.PfaStruct) (err error) {

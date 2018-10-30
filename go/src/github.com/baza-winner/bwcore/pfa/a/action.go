@@ -15,11 +15,12 @@ import (
 
 type PushRune struct{}
 
-func (v PushRune) Execute(pfa *core.PfaStruct) {
+func (v PushRune) Execute(pfa *core.PfaStruct) (err error) {
 	pfa.Proxy.PushRune()
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceAction("<ansiGreen>PushRune<ansi>: %s", runeVarPath)
 	}
+	return
 }
 
 func (v PushRune) GetAction() core.ProcessorAction {
@@ -33,11 +34,12 @@ type PullRune struct{}
 var runeVarPath core.VarPath = core.MustVarPathFrom("rune")
 var stackLenVarPath core.VarPath = core.MustVarPathFrom("stackLen")
 
-func (v PullRune) Execute(pfa *core.PfaStruct) {
+func (v PullRune) Execute(pfa *core.PfaStruct) (err error) {
 	pfa.Proxy.PullRune()
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceAction("<ansiGreen>PullRune<ansi>: %s", runeVarPath)
 	}
+	return
 }
 
 func (v PullRune) GetAction() core.ProcessorAction {
@@ -183,18 +185,16 @@ type _setVarBy struct {
 	at       appendType
 }
 
-func (v _setVarBy) Execute(pfa *core.PfaStruct) {
-	val := v.valToSet.GetVal(pfa)
-	if pfa.Err != nil {
+func (v _setVarBy) Execute(pfa *core.PfaStruct) (err error) {
+	var val interface{}
+	val, err = v.valToSet.GetVal(pfa)
+	if err != nil {
 		return
 	}
 	for _, b := range v.by {
-		val = b.TransformValue(pfa, val)
-		if pfa.Err != nil {
+		val, err = b.TransformValue(pfa, val)
+		if err != nil {
 			return
-		}
-		if pfa.Err != nil {
-			break
 		}
 	}
 	op := ""
@@ -205,54 +205,56 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 			op = ">"
 		} else {
 			op = ">>"
-			if orig := pfa.VarValue(v.varPath); pfa.Err == nil {
-				if v.at == appendScalar {
-					// pfa.Panic(bwfmt.StructFrom("%#v", val))
-					if orig.Val == nil {
+			var orig core.VarValue
+			if orig, err = pfa.VarValue(v.varPath); err != nil {
+				return
+			}
+			if v.at == appendScalar {
+				// pfa.Panic(bwfmt.StructFrom("%#v", val))
+				if orig.Val == nil {
+					switch aval := val.(type) {
+					case string:
+						val = aval
+					case rune:
+						val = string(aval)
+					default:
+						val = []interface{}{val}
+					}
+				} else {
+					switch oval := orig.Val.(type) {
+					case string:
 						switch aval := val.(type) {
 						case string:
-							val = aval
+							val = oval + aval
 						case rune:
-							val = string(aval)
+							val = oval + string(aval)
 						default:
-							val = []interface{}{val}
+							expectedToBeAppendable = formatted.StringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
 						}
-					} else {
-						switch oval := orig.Val.(type) {
+					case rune:
+						switch aval := val.(type) {
 						case string:
-							switch aval := val.(type) {
-							case string:
-								val = oval + aval
-							case rune:
-								val = oval + string(aval)
-							default:
-								expectedToBeAppendable = formatted.StringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
-							}
+							val = string(oval) + aval
 						case rune:
-							switch aval := val.(type) {
-							case string:
-								val = string(oval) + aval
-							case rune:
-								val = string(oval) + string(aval)
-							default:
-								expectedToBeAppendable = formatted.StringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
-							}
-						case []interface{}:
-							val = append(oval, val)
+							val = string(oval) + string(aval)
 						default:
-							isNotAppendee = true
+							expectedToBeAppendable = formatted.StringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
 						}
-					}
-				} else if aval, ok := val.([]interface{}); !ok {
-					expectedToBeAppendable = formatted.StringFrom("<ansiPrimary>Array<ansi>")
-				} else {
-					if orig.Val == nil {
-						val = aval
-					} else if oval, ok := orig.Val.([]interface{}); !ok {
+					case []interface{}:
+						val = append(oval, val)
+					default:
 						isNotAppendee = true
-					} else {
-						val = append(oval, aval...)
 					}
+				}
+			} else if aval, ok := val.([]interface{}); !ok {
+				expectedToBeAppendable = formatted.StringFrom("<ansiPrimary>Array<ansi>")
+			} else {
+				if orig.Val == nil {
+					val = aval
+				} else if oval, ok := orig.Val.([]interface{}); !ok {
+					isNotAppendee = true
+				} else {
+					val = append(oval, aval...)
 				}
 			}
 		}
@@ -291,4 +293,5 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 		// 	pfa.Panic()
 		// }
 	}
+	return
 }

@@ -21,14 +21,14 @@ func (v SubRules) GetAction() core.ProcessorAction {
 	return v
 }
 
-func (v SubRules) Execute(pfa *core.PfaStruct) {
+func (v SubRules) Execute(pfa *core.PfaStruct) (err error) {
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceIncLevel()
 	}
-	v.R.Process(pfa)
-	if pfa.TraceLevel > core.TraceNone {
+	if err = v.R.Process(pfa); err == nil && pfa.TraceLevel > core.TraceNone {
 		pfa.TraceDecLevel()
 	}
+	return
 }
 
 // ============================================================================
