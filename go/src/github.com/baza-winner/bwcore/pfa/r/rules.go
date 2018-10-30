@@ -6,9 +6,8 @@ import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwint"
 	"github.com/baza-winner/bwcore/pfa/c"
-	"github.com/baza-winner/bwcore/pfa/common"
 	"github.com/baza-winner/bwcore/pfa/core"
-	"github.com/baza-winner/bwcore/pfa/val"
+	"github.com/baza-winner/bwcore/pfa/d"
 )
 
 // ========================= ruleCondition =====================================
@@ -93,14 +92,15 @@ func ruleFrom(args []interface{}) rule {
 		ruleConditions{},
 		[]core.ProcessorAction{},
 	}
-	varIsMap := map[string]*common.VarIs{}
+	varIsMap := map[string]*d.VarIs{}
 	for _, arg := range args {
 		switch typedArg := arg.(type) {
 		case rune:
-			getVarIs(varIsMap, "rune").AddRune(typedArg)
-		case val.EOF:
+			// getVarIs(varIsMap, "rune").AddRune(typedArg)
+			getVarIs(varIsMap, "rune").AddInt(int(typedArg))
+		case d.EOF:
 			getVarIs(varIsMap, "rune").SetIsNil()
-		case val.UnicodeCategory:
+		case d.UnicodeCategory:
 			getVarIs(varIsMap, "rune").AddValChecker(typedArg)
 		case core.ProccessorActionProvider:
 			result.processorActions = append(result.processorActions,
@@ -115,27 +115,9 @@ func ruleFrom(args []interface{}) rule {
 			if (key == "rune" || key == "runePos") && (len(varPath) > 2) {
 				bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
 			}
-			// case "rune", "runePos":
-			// 	if len(varPath) > 2 {
-			// 		bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
-			// 	}
-			// 	// else if len(varPath) > 1 {
-			// 	// 	vt, _, _, err := varPath[1].TypeIdxKey(nil)
-			// 	// 	if err != nil {
-			// 	// 		bwerror.PanicErr(err)
-			// 	// 	} else if vt != core.VarPathItemIdx {
-			// 	// 		bwerror.Panic("varPath[1] expects to be idx, varPath: %#v, %s", varPath[1], reflect.TypeOf(varPath[1]).Kind())
-			// 	// 	} else if varPath[1].Val == 0 {
-			// 	// 		typedArg.VarPathStr = "rune"
-			// 	// 	}
-			// }
-			// case "stackLen":
-			// 	if len(varPath) > 1 {
-			// 		bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
-			// 	}
-			// }
 			var needPanic bool
 			varIs := getVarIs(varIsMap, typedArg.VarPathStr)
+
 			if typedArg.VarValue == nil {
 				if key == "rune" || key == "runePos" {
 					needPanic = true
@@ -148,9 +130,10 @@ func ruleFrom(args []interface{}) rule {
 					if key == "runePos" {
 						needPanic = true
 					} else {
-						varIs.AddRune(t)
+						// varIs.AddRune(t)
+						varIs.AddInt(int(t))
 					}
-				case val.EOF:
+				case d.EOF:
 					if key == "rune" {
 						varIs.SetIsNil()
 					} else {
@@ -166,7 +149,8 @@ func ruleFrom(args []interface{}) rule {
 					if key == "rune" || key == "runePos" {
 						needPanic = true
 					} else {
-						varIs.AddValChecker(common.JustVal{typedArg.VarValue})
+						// varIs.AddValChecker(common.JustVal{typedArg.VarValue})
+						varIs.AddValChecker(d.ValFrom(typedArg.VarValue))
 					}
 				case int:
 					if key == "rune" {
@@ -182,7 +166,8 @@ func ruleFrom(args []interface{}) rule {
 						if int64(bwint.MinInt) <= _int64 && _int64 <= int64(bwint.MaxInt) {
 							varIs.AddInt(int(_int64))
 						} else {
-							varIs.AddValChecker(common.JustVal{typedArg.VarValue})
+							// varIs.AddValChecker(common.JustVal{typedArg.VarValue})
+							varIs.AddValChecker(d.ValFrom(typedArg.VarValue))
 						}
 					}
 				case uint, uint8, uint16, uint32, uint64:
@@ -220,24 +205,25 @@ func ruleFrom(args []interface{}) rule {
 	return result
 }
 
-func helperRuleFromUint(key, val interface{}, varIs *common.VarIs) (needPanic bool) {
+func helperRuleFromUint(key, v interface{}, varIs *d.VarIs) (needPanic bool) {
 	if key == "rune" {
 		needPanic = true
 	} else {
-		_uint64 := reflect.ValueOf(val).Uint()
+		_uint64 := reflect.ValueOf(v).Uint()
 		if _uint64 <= uint64(bwint.MaxInt) {
 			varIs.AddInt(int(_uint64))
 		} else {
-			varIs.AddValChecker(common.JustVal{val})
+			varIs.AddValChecker(d.ValFrom(v))
+			// varIs.AddValChecker(common.JustVal{val})
 		}
 	}
 	return
 }
 
-func getVarIs(varIsMap map[string]*common.VarIs, varPathStr string) (result *common.VarIs) {
+func getVarIs(varIsMap map[string]*d.VarIs, varPathStr string) (result *d.VarIs) {
 	result = varIsMap[varPathStr]
 	if result == nil {
-		result = common.VarIsFrom(varPathStr)
+		result = d.VarIsFrom(varPathStr)
 		varIsMap[varPathStr] = result
 	}
 	return

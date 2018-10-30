@@ -10,8 +10,8 @@ import (
 	"github.com/baza-winner/bwcore/pfa/b"
 	"github.com/baza-winner/bwcore/pfa/c"
 	"github.com/baza-winner/bwcore/pfa/core"
+	"github.com/baza-winner/bwcore/pfa/d"
 	"github.com/baza-winner/bwcore/pfa/r"
-	"github.com/baza-winner/bwcore/pfa/val"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
@@ -43,25 +43,56 @@ func TestVarPathFrom(t *testing.T) {
 			In:  []interface{}{""},
 			Out: []interface{}{[]interface{}{}, nil},
 		},
-		"0": {
-			In:  []interface{}{"0"},
-			Out: []interface{}{core.VarPath{core.VarPathItem{0}}, nil},
-		},
 		"0.key": {
-			In:  []interface{}{"0.key"},
-			Out: []interface{}{core.VarPath{core.VarPathItem{0}, core.VarPathItem{"key"}}, nil},
-		},
-		"0.key.{1.some}": {
-			In: []interface{}{"0.key.{1.some}"},
-			Out: []interface{}{
-				core.VarPath{
-					core.VarPathItem{0},
-					core.VarPathItem{"key"},
-					core.VarPathItem{core.VarPath{core.VarPathItem{1}, core.VarPathItem{"some"}}},
-				},
-				nil,
+			In: []interface{}{"0.key"},
+			Out: []interface{}{(core.VarPath)(nil),
+				bwerror.Error(
+					"unexpected char <ansiPrimary>%q<ansi> (charCode: %d, state = %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansi>%s\n",
+					'0', '0', "vppsBegin", 0, "", "0", ".key",
+				),
 			},
 		},
+		"rune": {
+			In:  []interface{}{"rune"},
+			Out: []interface{}{core.VarPath{core.VarPathItem{Type: core.VarPathItemKey, Key: "rune"}}, nil},
+		},
+		"rune.2": {
+			In: []interface{}{"rune.2"},
+			Out: []interface{}{core.VarPath{
+				core.VarPathItem{Type: core.VarPathItemKey, Key: "rune"},
+				core.VarPathItem{Type: core.VarPathItemIdx, Idx: 2},
+			}, nil},
+		},
+		"stack.#": {
+			In: []interface{}{"stack.#"},
+			Out: []interface{}{core.VarPath{
+				core.VarPathItem{Type: core.VarPathItemKey, Key: "stack"},
+				core.VarPathItem{Type: core.VarPathItemHash},
+			}, nil},
+		},
+		"stack.-1.string": {
+			In: []interface{}{"stack.-1.string"},
+			Out: []interface{}{core.VarPath{
+				core.VarPathItem{Type: core.VarPathItemKey, Key: "stack"},
+				core.VarPathItem{Type: core.VarPathItemIdx, Idx: -1},
+				core.VarPathItem{Type: core.VarPathItemKey, Key: "string"},
+			}, nil},
+		},
+		// "0.key": {
+		// 	In:  []interface{}{"0.key"},
+		// 	Out: []interface{}{core.VarPath{core.VarPathItem{0}, core.VarPathItem{"key"}}, nil},
+		// },
+		// "0.key.{1.some}": {
+		// 	In: []interface{}{"0.key.{1.some}"},
+		// 	Out: []interface{}{
+		// 		core.VarPath{
+		// 			core.VarPathItem{0},
+		// 			core.VarPathItem{"key"},
+		// 			core.VarPathItem{core.VarPath{core.VarPathItem{1}, core.VarPathItem{"some"}}},
+		// 		},
+		// 		nil,
+		// 	},
+		// },
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "qw ")
@@ -70,9 +101,13 @@ func TestVarPathFrom(t *testing.T) {
 
 func TestPfa_getVarValue(t *testing.T) {
 	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
-	pfa.Stack = core.ParseStack{
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
+		"stack": []interface{}{
+			map[string]interface{}{
 				"type": "map",
 				"value": map[string]interface{}{
 					"boolKey":   true,
@@ -81,18 +116,10 @@ func TestPfa_getVarValue(t *testing.T) {
 					"runeKey":   '\n',
 				},
 			},
-		},
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+			map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 			},
-		},
-	}
-	pfa.Vars = map[string]interface{}{
-		"primary": "begin",
-		"result": map[string]interface{}{
-			"some": "thing",
 		},
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
@@ -104,20 +131,20 @@ func TestPfa_getVarValue(t *testing.T) {
 			In:  []interface{}{"result.some"},
 			Out: []interface{}{"thing", nil},
 		},
-		"stackLen": {
-			In:  []interface{}{"stackLen"},
+		"stack.#": {
+			In:  []interface{}{"stack.#"},
 			Out: []interface{}{2, nil},
 		},
-		"0.type": {
-			In:  []interface{}{"0.type"},
+		"stack.-1.type": {
+			In:  []interface{}{"stack.-1.type"},
 			Out: []interface{}{"key", nil},
 		},
-		"1.value.numberKey": {
-			In:  []interface{}{"1.value.numberKey"},
+		"stack.-2.value.numberKey": {
+			In:  []interface{}{"stack.-2.value.numberKey"},
 			Out: []interface{}{273, nil},
 		},
-		"1.value.{0.string}": {
-			In:  []interface{}{"1.value.{0.string}"},
+		"stack.-2.value.{0.string}": {
+			In:  []interface{}{"stack.-2.value.{stack.-1.string}"},
 			Out: []interface{}{true, nil},
 		},
 	}
@@ -138,9 +165,13 @@ func (v TestHelper) VarValue(varPathStr string) (val interface{}, err error) {
 
 func TestPfa_setVarVal(t *testing.T) {
 	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
-	pfa.Stack = core.ParseStack{
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
+		"stack": []interface{}{
+			map[string]interface{}{
 				"type": "map",
 				"value": map[string]interface{}{
 					"boolKey":   true,
@@ -150,19 +181,11 @@ func TestPfa_setVarVal(t *testing.T) {
 					"arrayKey":  []interface{}{"a", "b"},
 				},
 			},
-		},
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+			map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 				"array":  []interface{}{"c", "d"},
 			},
-		},
-	}
-	pfa.Vars = map[string]interface{}{
-		"primary": "begin",
-		"result": map[string]interface{}{
-			"some": "thing",
 		},
 	}
 	tests := map[string]bwtesting.TestCaseStruct{
@@ -174,24 +197,27 @@ func TestPfa_setVarVal(t *testing.T) {
 			In:  []interface{}{"result.some", "another"},
 			Out: []interface{}{"another", nil},
 		},
-		"stackLen": {
-			In:  []interface{}{"stackLen", 4},
-			Out: []interface{}{nil, bwerror.Error("<ansiOutline>stackLen<ansi> is read only")},
+		"stack.#": {
+			In: []interface{}{"stack.#", 4},
+			Out: []interface{}{nil,
+				bwerror.Error(
+					"failed to set <ansiReset><ansiCmd>stack.#<ansi>: <ansiReset><ansiOutline>path.#<ansi> is <ansiCmd>readonly<ansiReset>",
+				)},
 		},
-		"0.type": {
-			In:  []interface{}{"0.type", "map"},
+		"stack.-1.type": {
+			In:  []interface{}{"stack.-1.type", "map"},
 			Out: []interface{}{"map", nil},
 		},
-		"0.item": {
-			In:  []interface{}{"0.item", "word"},
+		"stack.-1.item": {
+			In:  []interface{}{"stack.-1.item", "word"},
 			Out: []interface{}{"word", nil},
 		},
-		"1.value.numberKey": {
-			In:  []interface{}{"1.value.numberKey", "2.71"},
+		"stack.-2.value.numberKey": {
+			In:  []interface{}{"stack.-2.value.numberKey", "2.71"},
 			Out: []interface{}{"2.71", nil},
 		},
-		"1.value.{0.string}": {
-			In:  []interface{}{"1.value.{0.string}", false},
+		"stack.-2.value.{stack.-1.string}": {
+			In:  []interface{}{"stack.-2.value.{stack.-1.string}", false},
 			Out: []interface{}{false, nil},
 		},
 	}
@@ -213,9 +239,14 @@ func (v TestHelper) SetVarValue(varPathStr string, VarVal interface{}) (interfac
 
 func TestPfaActions(t *testing.T) {
 	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
-	pfa.Stack = core.ParseStack{
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
+		"array":   []interface{}{"i", "j"},
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
+		"stack": []interface{}{
+			map[string]interface{}{
 				"type":  "map",
 				"array": []interface{}{"g", "h"},
 				"value": map[string]interface{}{
@@ -226,9 +257,7 @@ func TestPfaActions(t *testing.T) {
 					"arrayKey":  []interface{}{"a", "b"},
 				},
 			},
-		},
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+			map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 				"array":  []interface{}{"c", "d"},
@@ -238,32 +267,25 @@ func TestPfaActions(t *testing.T) {
 			},
 		},
 	}
-	pfa.Vars = map[string]interface{}{
-		"array":   []interface{}{"i", "j"},
-		"primary": "begin",
-		"result": map[string]interface{}{
-			"some": "thing",
-		},
-	}
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary": {
 			In:  []interface{}{"primary", a.SetVar{"primary", "end"}},
 			Out: []interface{}{"end", nil},
 		},
-		"0.type": {
-			In:  []interface{}{"0.type", a.SetVarBy{"0.type", val.Var{"1.type"}, b.By{b.Append{}}}},
+		"stack.-1.type": {
+			In:  []interface{}{"stack.-1.type", a.SetVarBy{"stack.-1.type", d.Var{"stack.-2.type"}, b.By{b.Append{}}}},
 			Out: []interface{}{"keymap", nil},
 		},
-		"0.array": {
-			In:  []interface{}{"0.array", a.SetVarBy{"0.array", val.Var{"1.value.{0.string}"}, b.By{b.Append{}}}},
+		"stack.-1.array": {
+			In:  []interface{}{"stack.-1.array", a.SetVarBy{"stack.-1.array", d.Var{"stack.-2.value.{stack.-1.string}"}, b.By{b.Append{}}}},
 			Out: []interface{}{[]interface{}{"c", "d", true}, nil},
 		},
 		"array": {
-			In:  []interface{}{"array", a.SetVarBy{"array", val.Var{"1.array"}, b.By{b.Append{}}}},
+			In:  []interface{}{"array", a.SetVarBy{"array", d.Var{"stack.-2.array"}, b.By{b.Append{}}}},
 			Out: []interface{}{[]interface{}{"i", "j", []interface{}{"g", "h"}}, nil},
 		},
-		"1.value.arrayKey": {
-			In:  []interface{}{"1.value.arrayKey", a.SetVarBy{"1.value.arrayKey", val.Var{"0.value.arrayKey"}, b.By{b.AppendSlice{}}}},
+		"stack.-2.value.arrayKey": {
+			In:  []interface{}{"stack.-2.value.arrayKey", a.SetVarBy{"stack.-2.value.arrayKey", d.Var{"stack.-1.value.arrayKey"}, b.By{b.AppendSlice{}}}},
 			Out: []interface{}{[]interface{}{"a", "b", "e", "f"}, nil},
 		},
 	}
@@ -287,9 +309,14 @@ func TestPfaConditions(t *testing.T) {
 	pfa.Proxy.PullRune()
 	pfa.Proxy.PullRune()
 	pfa.Proxy.PullRune()
-	pfa.Stack = core.ParseStack{
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+	pfa.Vars = map[string]interface{}{
+		"array":   []interface{}{"i", "j"},
+		"primary": "begin",
+		"result": map[string]interface{}{
+			"some": "thing",
+		},
+		"stack": []interface{}{
+			map[string]interface{}{
 				"type":  "map",
 				"array": []interface{}{"g", "h"},
 				"value": map[string]interface{}{
@@ -300,9 +327,7 @@ func TestPfaConditions(t *testing.T) {
 					"arrayKey":  []interface{}{"a", "b"},
 				},
 			},
-		},
-		core.ParseStackItem{
-			Vars: map[string]interface{}{
+			map[string]interface{}{
 				"type":   "key",
 				"string": "boolKey",
 				"array":  []interface{}{"c", "d"},
@@ -312,19 +337,6 @@ func TestPfaConditions(t *testing.T) {
 			},
 		},
 	}
-	// p,
-	// nil,
-	pfa.Vars = map[string]interface{}{
-		"array":   []interface{}{"i", "j"},
-		"primary": "begin",
-		"result": map[string]interface{}{
-			"some": "thing",
-		},
-	}
-	// 	core.TraceNone,
-	// 	nil,
-	// 	0,
-	// }
 	tests := map[string]bwtesting.TestCaseStruct{
 		"primary is begin => true": {
 			In:  []interface{}{c.VarIs{"primary", "begin"}},
@@ -351,11 +363,11 @@ func TestPfaConditions(t *testing.T) {
 			Out: []interface{}{false, nil},
 		},
 		"is Letter => true": {
-			In:  []interface{}{val.Letter},
+			In:  []interface{}{d.Letter},
 			Out: []interface{}{true, nil},
 		},
 		"is Digit => false": {
-			In:  []interface{}{val.Digit},
+			In:  []interface{}{d.Digit},
 			Out: []interface{}{false, nil},
 		},
 		"rune.-1 is 'm' => true": {
@@ -387,15 +399,15 @@ func TestPfaConditions(t *testing.T) {
 			Out: []interface{}{true, nil},
 		},
 		"rune.5 is Letter => true": {
-			In:  []interface{}{c.VarIs{"rune.5", val.Letter}},
+			In:  []interface{}{c.VarIs{"rune.5", d.Letter}},
 			Out: []interface{}{true, nil},
 		},
 		"rune.5 is Digit => false": {
-			In:  []interface{}{c.VarIs{"rune.5", val.Digit}},
+			In:  []interface{}{c.VarIs{"rune.5", d.Digit}},
 			Out: []interface{}{false, nil},
 		},
 		"rune.6 is EOF => true": {
-			In:  []interface{}{c.VarIs{"rune.6", val.EOF{}}},
+			In:  []interface{}{c.VarIs{"rune.6", d.EOF{}}},
 			Out: []interface{}{true, nil},
 		},
 	}

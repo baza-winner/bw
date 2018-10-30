@@ -50,17 +50,17 @@ func (pfa *PfaStruct) VarValue(varPath VarPath) (result VarValue) {
 	return
 }
 
-func (v VarValue) Rune() (result rune, err error) {
-	if v.pfa != nil && v.pfa.Err != nil {
-		err = v.pfa.Err
-	} else {
-		var ok bool
-		if result, ok = v.Val.(rune); !ok {
-			err = bwerror.Error("%#v is not rune", v.Val)
-		}
-	}
-	return
-}
+// func (v VarValue) Rune() (result rune, err error) {
+// 	if v.pfa != nil && v.pfa.Err != nil {
+// 		err = v.pfa.Err
+// 	} else {
+// 		var ok bool
+// 		if result, ok = v.Val.(rune); !ok {
+// 			err = bwerror.Error("%#v is not rune", v.Val)
+// 		}
+// 	}
+// 	return
+// }
 
 func (v VarValue) Int() (result int, err error) {
 	if v.pfa != nil && v.pfa.Err != nil {
@@ -241,7 +241,7 @@ func (v VarValue) SetVal(varPath VarPath, VarVal interface{}) {
 			},
 			func(vt valType, vals []interface{}, m map[string]interface{}) {
 				// v.pfa.Err = PfaError{formatted.StringFrom("<ansiOutline>hash path<ansi> is readonly")}
-				v.pfa.SetError("<ansiOutline>hash path<ansi> is readonly")
+				v.pfa.SetError("<ansiOutline>path.#<ansi> is <ansiCmd>readonly")
 			},
 		)
 		if target.pfa.Err == nil && len(varPath) > 1 {
@@ -297,7 +297,7 @@ func (pfa *PfaStruct) SetVarVal(varPath VarPath, VarVal interface{}) {
 	} else {
 		pfa.getSetHelper(varPath, VarVal,
 			func(name string, idx int) {
-				pfa.SetError("<ansiOutline>%s<ansi> is read only", name)
+				pfa.SetError("<ansiOutline>%s<ansi> is <ansiCmd>readonly", name)
 				// pfa.Err = bwerror.Error("<ansiOutline>%s<ansi> is read only", name)
 			},
 			func(pfaVars VarValue, VarVal interface{}) {
@@ -310,7 +310,8 @@ func (pfa *PfaStruct) SetVarVal(varPath VarPath, VarVal interface{}) {
 		case PfaError:
 			// pfa.Err = nil
 			if t.State() == PecsNeedPrepare {
-				t.PrepareErr("failed to set %s, %#v", varPath.FormattedString(), varPath)
+				t.PrepareErr("failed to set %s", varPath.FormattedString())
+				// t.PrepareErr("failed to set %s, %#v", varPath.FormattedString(), varPath)
 			}
 			// pfa.Err = pfa.Error(bwerror.Error("failed to set %s: "+string(t.s), varPath.FormattedString(nil)))
 		}

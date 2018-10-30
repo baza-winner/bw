@@ -7,8 +7,8 @@ import (
 	// "github.com/baza-winner/bwcore/pfa"
 	"github.com/baza-winner/bwcore/pfa/b"
 	"github.com/baza-winner/bwcore/pfa/core"
+	"github.com/baza-winner/bwcore/pfa/d"
 	"github.com/baza-winner/bwcore/pfa/formatted"
-	"github.com/baza-winner/bwcore/pfa/val"
 )
 
 // ============================================================================
@@ -121,13 +121,14 @@ func (v PullRune) GetAction() core.ProcessorAction {
 
 type SetVar struct {
 	VarPathStr string
-	VarValue   interface{}
+	Val        interface{}
 }
 
 func (v SetVar) GetAction() core.ProcessorAction {
 	return _setVarBy{
 		core.MustVarPathFrom(v.VarPathStr),
-		val.MustValProviderFrom(v.VarValue),
+		d.ValFrom(v.Val),
+		// val.MustValProviderFrom(v.VarValue),
 		b.By{},
 		noAppend,
 	}
@@ -137,7 +138,7 @@ func (v SetVar) GetAction() core.ProcessorAction {
 
 type SetVarBy struct {
 	VarPathStr   string
-	VarValue     interface{}
+	Val          interface{}
 	Transformers b.By
 }
 
@@ -158,7 +159,8 @@ func (v SetVarBy) GetAction() core.ProcessorAction {
 	}
 	return _setVarBy{
 		core.MustVarPathFrom(v.VarPathStr),
-		val.MustValProviderFrom(v.VarValue),
+		d.ValFrom(v.Val),
+		// val.MustValProviderFrom(v.VarValue),
 		by,
 		at,
 	}
@@ -175,14 +177,14 @@ const (
 )
 
 type _setVarBy struct {
-	varPath     core.VarPath
-	valProvider core.ValProvider
-	by          b.By
-	at          appendType
+	varPath  core.VarPath
+	valToSet d.Val
+	by       b.By
+	at       appendType
 }
 
 func (v _setVarBy) Execute(pfa *core.PfaStruct) {
-	val := v.valProvider.GetVal(pfa)
+	val := v.valToSet.GetVal(pfa)
 	if pfa.Err != nil {
 		return
 	}
@@ -205,6 +207,7 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 			op = ">>"
 			if orig := pfa.VarValue(v.varPath); pfa.Err == nil {
 				if v.at == appendScalar {
+					// pfa.Panic(bwfmt.StructFrom("%#v", val))
 					if orig.Val == nil {
 						switch aval := val.(type) {
 						case string:
@@ -263,7 +266,8 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 	var source formatted.String
 	var target formatted.String
 	if pfa.TraceLevel > core.TraceNone || len(expectedToBeAppendable) > 0 || pfa.Err != nil {
-		source = v.valProvider.GetSource(pfa)
+		// source = v.valProvider.GetSource(pfa)
+		source = v.valToSet.GetSource(pfa)
 		target = pfa.TraceVal(v.varPath)
 		for _, b := range v.by {
 			if pfa.TraceLevel > core.TraceNone {
@@ -283,5 +287,8 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) {
 	pfa.SetVarVal(v.varPath, val)
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceAction("%s %s %s: %s", source, formatted.String(ansi.Ansi("Green", op)), target, v.varPath)
+		// if op == ">>" {
+		// 	pfa.Panic()
+		// }
 	}
 }

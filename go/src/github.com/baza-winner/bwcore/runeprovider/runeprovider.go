@@ -280,7 +280,7 @@ func (p *Proxy) Unexpected(ps PosStruct, optFmtStruct ...bwfmt.Struct) (err erro
 		fmtString = "unexpected end of string"
 		if optFmtStruct != nil {
 			fmtString += "(" + optFmtStruct[0].FmtString + ")"
-			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs)
+			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs...)
 		}
 		fmtString += suffix
 	} else if ps.Pos == p.Curr.Pos {
@@ -289,21 +289,22 @@ func (p *Proxy) Unexpected(ps PosStruct, optFmtStruct ...bwfmt.Struct) (err erro
 		fmtString = "unexpected char <ansiPrimary>%q<ansiReset> (charCode: %v"
 		fmtArgs = []interface{}{r, r}
 		if optFmtStruct != nil {
-			fmtString += "(" + optFmtStruct[0].FmtString + ")"
-			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs)
+			fmtString += ", " + optFmtStruct[0].FmtString
+			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs...)
 		}
 		fmtString += ")" + suffix
 	} else if ps.Pos < p.Curr.Pos {
 		if optFmtStruct != nil {
 			fmtString += optFmtStruct[0].FmtString
-			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs)
+			fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs...)
 		}
 		fmtString += p.GetSuffix(ps)
 	} else {
 		bwerror.Panic("ps.Pos: %#v, p.Curr.Pos: %#v", ps.Pos, p.Curr.Pos)
 	}
+	// bwerror.Panic("%#v, fmtArgs: %#v", fmtString, fmtArgs)
 	err = bwerror.Errord(1, fmtString, fmtArgs...)
-	bwerror.Panic("%#v", err)
+	// bwerror.Panic("%#v", err)
 	return
 }
 

@@ -93,10 +93,10 @@ func VarPathFrom(s string) (result VarPath, err error) {
 					} else {
 						isUnexpectedRune = true
 					}
-				} else if unicode.IsDigit(currRune) && len(stack) > 0 {
+				} else if unicode.IsDigit(currRune) && len(stack[len(stack)-1]) > 0 {
 					item = string(currRune)
 					state = vppsIdx
-				} else if (currRune == '-' || currRune == '+') && len(stack) > 0 {
+				} else if (currRune == '-' || currRune == '+') && len(stack[len(stack)-1]) > 0 {
 					item = string(currRune)
 					state = vppsDigit
 				} else if unicode.IsLetter(currRune) || currRune == '_' {

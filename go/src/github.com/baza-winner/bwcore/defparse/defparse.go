@@ -228,6 +228,7 @@ package defparse
 import (
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/pfa"
+	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
@@ -236,7 +237,7 @@ func Parse(source string) (interface{}, error) {
 	return pfa.Run(
 		runeprovider.FromString(source),
 		rules,
-		// pfa.TraceBrief,
+		core.TraceBrief,
 		// pfa.TraceAll,
 	)
 }

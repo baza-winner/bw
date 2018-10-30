@@ -11,7 +11,6 @@ import (
 	"github.com/baza-winner/bwcore/bwfmt"
 	"github.com/baza-winner/bwcore/bwint"
 	"github.com/baza-winner/bwcore/bwjson"
-	"github.com/baza-winner/bwcore/pfa/formatted"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
@@ -35,10 +34,10 @@ type ProccessorActionProvider interface {
 
 // ============================================================================
 
-type ValProvider interface {
-	GetVal(pfa *PfaStruct) interface{}
-	GetSource(pfa *PfaStruct) formatted.String
-}
+// type ValProvider interface {
+// 	GetVal(pfa *PfaStruct) interface{}
+// 	GetSource(pfa *PfaStruct) formatted.String
+// }
 
 // ============================================================================
 
@@ -67,7 +66,7 @@ const (
 // ============================================================================
 
 type PfaStruct struct {
-	Stack ParseStack
+	// Stack ParseStack
 	Proxy *runeprovider.Proxy
 	// Err          ErrorProvider
 	Err             error
@@ -79,7 +78,7 @@ type PfaStruct struct {
 
 func PfaFrom(p runeprovider.RuneProvider, TraceLevel TraceLevel) *PfaStruct {
 	return &PfaStruct{
-		Stack:      ParseStack{},
+		// Stack:      ParseStack{},
 		Proxy:      runeprovider.ProxyFrom(p),
 		Vars:       map[string]interface{}{},
 		TraceLevel: TraceLevel,
@@ -97,17 +96,6 @@ func (pfa *PfaStruct) indent(indentLevel int) string {
 		indent += indentAtom
 	}
 	return indent
-}
-
-func (pfa *PfaStruct) fmtArgs(fmtArgs ...interface{}) []interface{} {
-	result := []interface{}{}
-	for _, arg := range fmtArgs {
-		if f, ok := arg.(func(pfa *PfaStruct) interface{}); ok {
-			arg = f(pfa)
-		}
-		result = append(result, pfa.TraceVal(arg))
-	}
-	return result
 }
 
 // type formatted.String string
@@ -142,40 +130,40 @@ func (pfa *PfaStruct) PanicErr(err error) {
 // 	// bwerror.PanicErr(ansi.Ansi("", fmtString), fmtArgs), 1)
 // }
 
-func (pfa *PfaStruct) ifStackLen(minLen int) bool {
-	return len(pfa.Stack) >= minLen
-}
+// func (pfa *PfaStruct) ifStackLen(minLen int) bool {
+// 	return len(pfa.Stack) >= minLen
+// }
 
-func (pfa *PfaStruct) mustStackLen(minLen int) {
-	if !pfa.ifStackLen(minLen) {
-		pfa.Panic(bwfmt.StructFrom("<ansiOutline>minLen <ansiSecondary>%d", minLen))
-	}
-}
+// func (pfa *PfaStruct) mustStackLen(minLen int) {
+// 	if !pfa.ifStackLen(minLen) {
+// 		pfa.Panic(bwfmt.StructFrom("<ansiOutline>minLen <ansiSecondary>%d", minLen))
+// 	}
+// }
 
-func (pfa *PfaStruct) GetTopStackItem(optDeep ...uint) *ParseStackItem {
-	ofs := -1
-	if optDeep != nil {
-		ofs = ofs - int(optDeep[0])
-	}
-	pfa.mustStackLen(-ofs)
-	return &pfa.Stack[len(pfa.Stack)+ofs]
-}
+// func (pfa *PfaStruct) GetTopStackItem(optDeep ...uint) *ParseStackItem {
+// 	ofs := -1
+// 	if optDeep != nil {
+// 		ofs = ofs - int(optDeep[0])
+// 	}
+// 	pfa.mustStackLen(-ofs)
+// 	return &pfa.Stack[len(pfa.Stack)+ofs]
+// }
 
-func (pfa *PfaStruct) PopStackItem() {
-	pfa.mustStackLen(1)
-	pfa.Stack = pfa.Stack[:len(pfa.Stack)-1]
-}
+// func (pfa *PfaStruct) PopStackItem() {
+// 	pfa.mustStackLen(1)
+// 	pfa.Stack = pfa.Stack[:len(pfa.Stack)-1]
+// }
 
-func (pfa *PfaStruct) PushStackItem() {
-	pfa.Stack = append(pfa.Stack, ParseStackItem{
-		Start: pfa.Proxy.Curr,
-		Vars:  map[string]interface{}{},
-	})
-}
+// func (pfa *PfaStruct) PushStackItem() {
+// 	pfa.Stack = append(pfa.Stack, ParseStackItem{
+// 		Start: pfa.Proxy.Curr,
+// 		Vars:  map[string]interface{}{},
+// 	})
+// }
 
 func (pfa PfaStruct) DataForJSON() interface{} {
 	result := map[string]interface{}{}
-	result["Stack"] = pfa.Stack.DataForJSON()
+	// result["Stack"] = pfa.Stack.DataForJSON()
 	result["Proxy"] = pfa.Proxy.DataForJSON()
 	if len(pfa.Vars) > 0 {
 		result["Vars"] = pfa.Vars

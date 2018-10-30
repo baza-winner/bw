@@ -49,7 +49,7 @@ func (pfa *PfaStruct) SetError(fmtString string, fmtArgs ...interface{}) {
 	pfa.Err = PfaError{
 		pfa: pfa,
 		content: &PfaErrorContent{
-			reason: string(formatted.StringFrom(fmtString, fmtArgs)),
+			reason: string(formatted.StringFrom(fmtString, fmtArgs...)),
 		},
 		Where: whereami.WhereAmI(3),
 	}

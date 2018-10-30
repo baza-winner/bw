@@ -43,6 +43,16 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 				bwerror.Unreachable()
 			}
 		} else {
+			{
+				p := MustVarPathFrom("stack")
+				fmt.Printf("%s: %#v\n", p.FormattedString(), pfa.VarValue(p).Val)
+			}
+			{
+				p := MustVarPathFrom("stack.-1")
+				fmt.Printf("%s: %#v\n", p.FormattedString(), pfa.VarValue(p).Val)
+			}
+			fmt.Printf("%s: %#v\n", t.FormattedString(), pfa.VarValue(t).Val)
+			// fmt.Printf("||| %#v\n, t: %#v", pfa.VarValue(t).Val, t)
 			valStr = pfa.TraceVal(pfa.VarValue(t).Val)
 		}
 		result = formatted.String(fmt.Sprintf("%s(%s)", t.FormattedString(pfa), valStr))
@@ -112,4 +122,15 @@ func traceValHelper(i interface{}) (s string) {
 		s = fmt.Sprintf("%d", t)
 	}
 	return
+}
+
+func (pfa *PfaStruct) fmtArgs(fmtArgs ...interface{}) []interface{} {
+	result := []interface{}{}
+	for _, arg := range fmtArgs {
+		if f, ok := arg.(func(pfa *PfaStruct) interface{}); ok {
+			arg = f(pfa)
+		}
+		result = append(result, pfa.TraceVal(arg))
+	}
+	return result
 }

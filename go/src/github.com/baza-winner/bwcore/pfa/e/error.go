@@ -1,8 +1,6 @@
 package e
 
 import (
-	"fmt"
-
 	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwfmt"
 	"github.com/baza-winner/bwcore/pfa/core"
@@ -23,27 +21,21 @@ func (v UnexpectedAction) Execute(pfa *core.PfaStruct) {
 	var err error
 	if len(v.varPath) == 0 {
 		err = bwerror.Error("unexpected")
-		// return pfa.Error()
 	} else {
 		varValue := pfa.VarValue(v.varPath)
-		fmt.Println("A")
 		if pfa.Err != nil {
-			fmt.Println("B")
 			pfa.PanicErr(pfa.Err)
 		} else if ps, ok := varValue.Val.(runeprovider.PosStruct); !ok {
-			fmt.Println("C")
-			pfa.Panic(bwfmt.StructFrom("%#v", varValue.Val))
+			pfa.Panic(bwfmt.StructFrom("%#v, varPath: %#v", varValue.Val, v.varPath))
 		} else if ps.Pos < pfa.Proxy.Curr.Pos {
-			fmt.Println("D")
 			item := pfa.Proxy.Curr.Prefix[ps.Pos-pfa.Proxy.Curr.PrefixStart:]
+			// bwerror.Panic(item)
 			err = pfa.Proxy.Unexpected(ps, bwfmt.StructFrom("unexpected \"<ansiPrimary>%s<ansi>\"", item))
 		} else {
-			fmt.Println("E")
 			err = pfa.Proxy.Unexpected(ps)
 		}
-		fmt.Println("F")
 	}
-	bwerror.Panic("%#v, varPath: %#v", err, v.varPath)
+	// bwerror.Panic("%#v, varPath: %#v", err, v.varPath)
 	pfa.SetUnexpectedError(err)
 	if pfa.TraceLevel > core.TraceNone {
 		pfa.TraceAction("<ansiGreen>Unexpected %s", v.varPath)
