@@ -1,6 +1,7 @@
 package e
 
 import (
+	"github.com/baza-winner/bwcore/bwerror"
 	"github.com/baza-winner/bwcore/bwfmt"
 	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/runeprovider"
@@ -26,6 +27,12 @@ func (v UnexpectedAction) Execute(pfa *core.PfaStruct) (err error) {
 				err = pfa.Error("Unexpected varPath must point to runeprovider.PosStruct but it points to %#v", varValue.Val)
 			} else {
 				if ps.Pos < pfa.Proxy.Curr.Pos {
+					bwerror.Debug(
+						"ps.Pos", ps.Pos,
+						"pfa.Proxy.Curr.PrefixStart", pfa.Proxy.Curr.PrefixStart,
+						"ps.Pos-pfa.Proxy.Curr.PrefixStart", ps.Pos-pfa.Proxy.Curr.PrefixStart,
+						"len(pfa.Proxy.Curr.Prefix)", len(pfa.Proxy.Curr.Prefix),
+					)
 					item := pfa.Proxy.Curr.Prefix[ps.Pos-pfa.Proxy.Curr.PrefixStart:]
 					err = pfa.Proxy.Unexpected(ps, bwfmt.StructFrom("unexpected \"<ansiPrimary>%s<ansi>\"", item))
 				} else {

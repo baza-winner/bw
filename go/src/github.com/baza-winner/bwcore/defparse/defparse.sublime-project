@@ -9,6 +9,9 @@
 		},
 		{
 			"path": "/Users/yurybikuzin/bw/go/src/github.com/baza-winner/bwcore/runeprovider"
+		},
+		{
+			"path": "/Users/yurybikuzin/bw/go/src/github.com/baza-winner/bwcore/bwval"
 		}
 	]
 }

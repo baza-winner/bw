@@ -1,10 +1,23 @@
 package bwfmt
 
-type Struct struct {
-	FmtString string
-	FmtArgs   []interface{}
+type I interface {
+	FmtString() string
+	FmtArgs() []interface{}
 }
 
-func StructFrom(fmtString string, fmtArgs ...interface{}) Struct {
-	return Struct{fmtString, fmtArgs}
+type A struct {
+	Fmt  string
+	Args []interface{}
 }
+
+func (v A) FmtString() string {
+	return v.Fmt
+}
+
+func (v A) FmtArgs() []interface{} {
+	return v.Args
+}
+
+// func Arg(fmtString string, fmtArgs ...interface{}) A {
+// 	return A{fmtString, fmtArgs}
+// }
