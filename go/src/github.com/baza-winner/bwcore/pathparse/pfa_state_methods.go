@@ -3,7 +3,7 @@ package pathparse
 import (
 	"unicode"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 )
 
 type pfaPrimaryStateMethod func(*pfaStruct) (bool, error)
@@ -21,7 +21,7 @@ func pfaPrimaryStateMethodsCheck() {
 	expect := parsePrimaryStateBelow + 1
 	for expect < parsePrimaryStateAbove {
 		if _, ok := pfaPrimaryStateMethods[expect]; !ok {
-			bwerror.Panic("not defined <ansiOutline>pfaPrimaryStateMethods<ansi>[<ansiPrimary>%s<ansi>]", expect)
+			bwerr.Panic("not defined <ansiVar>pfaPrimaryStateMethods<ansi>[<ansiVal>%s<ansi>]", expect)
 		}
 		expect += 1
 	}

@@ -45,11 +45,11 @@ func helper(arg string, begin, end int, isStdout bool, isColorOuput bool) {
 	line := arg[begin:end]
 	line = findBrTagRegexp.ReplaceAllLiteralString(line, "\n")
 	if isColorOuput {
-		defaultAnsi := `OK`
+		defaultAnsi := `ansiOK`
 		if !isStdout {
-			defaultAnsi = `Err`
+			defaultAnsi = `ansiErr`
 		}
-		line = ansi.Ansi(defaultAnsi, line)
+		line = ansi.StringA(ansi.A{Default: ansi.MustTag(defaultAnsi), S: line})
 	}
 	stream := os.Stdout
 	if !isStdout {

@@ -5,108 +5,103 @@ import (
 	"testing"
 
 	"github.com/baza-winner/bwcore/ansi"
+	_ "github.com/baza-winner/bwcore/ansi/tags"
 )
 
 func TestString(t *testing.T) {
-	ansi.MustAddTag("ansiOutline",
-		ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
-	)
-	ansi.MustAddTag("ansiErr",
-		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true}),
-	)
-	ansi.MustAddTag("ansiCmd",
-		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorWhite, Bright: true}),
-		ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
-	)
-	ansi.MustAddTag("ansiOK",
-		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: true}),
-	)
 	tests := []struct {
-		In  ansi.A
-		Out string
+		in  ansi.A
+		out string
 	}{
 		{
-			In:  ansi.A{ansi.MustTag("ansiErr"), "ERR: <ansiCmd>some<ansi> expects arg"},
-			Out: "\x1b[91mERR: \x1b[97;1msome\x1b[91m expects arg\x1b[0m",
+			in:  ansi.A{ansi.MustTag("ansiErr"), "ERR: <ansiPath>some<ansi> expects arg"},
+			out: "\x1b[91;1mERR: \x1b[38;5;252;1msome\x1b[91;1m expects arg\x1b[0m",
 		},
 		{
-			In:  ansi.A{S: "some <ansiOutline>thing<ansi> good"},
-			Out: "some \x1b[38;5;201mthing\x1b[0m good\x1b[0m",
+			in:  ansi.A{ansi.MustTag("ansiErr"), ""},
+			out: "",
+		},
+		{
+			in:  ansi.A{S: ""},
+			out: "",
+		},
+		{
+			in:  ansi.A{S: "some"},
+			out: "some",
+		},
+		{
+			in:  ansi.A{S: "some <ansiVar>thing<ansi> good"},
+			out: "some \x1b[38;5;201;1mthing\x1b[0m good\x1b[0m",
 		},
 	}
 	for _, test := range tests {
-		got := ansi.String(test.In)
-		if got != test.Out {
-			t.Errorf(
-				// "From(%#v)\n    => %q\n, want %q", test.In, got.S, test.Out.S,
-				ansi.String(
-					ansi.A{S: fmt.Sprintf("From(%#v)\n    => <ansiErr>%q<ansi>\n, want <ansiOK>%q", test.In, got, test.Out)},
-				),
-			)
+		got := ansi.StringA(test.in)
+		if got != test.out {
+			t.Errorf(ansi.String(
+				fmt.Sprintf("From(%#v)\n    => <ansiErr>%q<ansi>\n, want <ansiOK>%q", test.in, got, test.out),
+			))
 		}
 	}
 }
 
-func TestConcat(t *testing.T) {
-	tests := []struct {
-		In  []string
-		Out string
-	}{
-		{
-			In: []string{
-				"",
-				ansi.String(ansi.A{S: "<ansiCmd>some<ansi> expects arg"}),
-			},
-			Out: "\x1b[97;1msome\x1b[0m expects arg\x1b[0m",
-		},
-		{
-			In: []string{
-				ansi.String(ansi.A{Default: ansi.MustTag("ansiErr"), S: "ERR: "}),
-				ansi.String(ansi.A{S: "<ansiCmd>some<ansi> expects arg"}),
-			},
-			Out: "\x1b[91mERR: \x1b[97;1msome\x1b[0m expects arg\x1b[0m",
-		},
-	}
-	for _, test := range tests {
-		got := ansi.Concat(test.In...)
-		if got != test.Out {
-			t.Errorf(
-				ansi.String(
-					ansi.A{S: fmt.Sprintf("Concat(%#v)\n    => <ansiErr>%q<ansi>\n, want <ansiOK>%q", test.In, got, test.Out)},
-				),
-			)
-		}
-	}
-}
+// func TestConcat(t *testing.T) {
+// 	tests := []struct {
+// 		in  []string
+// 		out string
+// 	}{
+// 		{
+// 			in: []string{
+// 				"",
+// 				ansi.String("<ansiPath>some<ansi> expects arg"),
+// 			},
+// 			out: "\x1b[38;5;252;1msome\x1b[0m expects arg\x1b[0m",
+// 		},
+// 		{
+// 			in: []string{
+// 				ansi.StringA(ansi.A{Default: ansi.MustTag("ansiErr"), S: "ERR: "}),
+// 				ansi.String("<ansiPath>some<ansi> expects arg"),
+// 			},
+// 			out: "\x1b[91;1mERR: \x1b[38;5;252;1msome\x1b[0m expects arg\x1b[0m",
+// 		},
+// 	}
+// 	for _, test := range tests {
+// 		got := ansi.Concat(test.in...)
+// 		if got != test.out {
+// 			t.Errorf(ansi.String(
+// 				fmt.Sprintf("Concat(%#v)\n    => <ansiErr>%q<ansi>\n, want <ansiOK>%q", test.in, got, test.out),
+// 			))
+// 		}
+// 	}
+// }
 
 func ExampleAnsi() {
 	fmt.Printf("%q",
-		ansi.String(ansi.A{S: "some <ansiOutline>thing<ansi> good"}),
+		ansi.String("some <ansiVar>thing<ansi> good"),
 	)
 	// Output:
-	// "some \x1b[38;5;201mthing\x1b[0m good\x1b[0m"
+	// "some \x1b[38;5;201;1mthing\x1b[0m good\x1b[0m"
 }
 
 func ExampleAnsi2() {
 	fmt.Printf("%q",
-		ansi.String(ansi.A{S: fmt.Sprintf("some <ansiOutline>%s<ansi> good", "thing")}),
+		ansi.String(fmt.Sprintf("some <ansiVar>%s<ansi> good", "thing")),
 	)
 	// Output:
-	// "some \x1b[38;5;201mthing\x1b[0m good\x1b[0m"
+	// "some \x1b[38;5;201;1mthing\x1b[0m good\x1b[0m"
 }
 
 func ExampleAnsi3() {
 	fmt.Printf("%q",
-		ansi.String(ansi.A{S: fmt.Sprintf("some <ansiOutline>%s<ansi> good", "thing")}),
+		ansi.String(fmt.Sprintf("some <ansiVar>%s<ansi> good", "thing")),
 	)
 	// Output:
-	// "some \x1b[38;5;201mthing\x1b[0m good\x1b[0m"
+	// "some \x1b[38;5;201;1mthing\x1b[0m good\x1b[0m"
 }
 
 func ExampleAnsi4() {
 	fmt.Printf("%q",
-		ansi.String(ansi.A{ansi.MustTag("ansiErr"), fmt.Sprintf("ERR: <ansiCmd>%s<ansi> expects arg\n\n", "some")}),
+		ansi.StringA(ansi.A{ansi.MustTag("ansiErr"), fmt.Sprintf("ERR: <ansiPath>%s<ansi> expects arg\n\n", "some")}),
 	)
 	// Output:
-	// "\x1b[91mERR: \x1b[97;1msome\x1b[91m expects arg\n\n\x1b[0m"
+	// "\x1b[91;1mERR: \x1b[38;5;252;1msome\x1b[91;1m expects arg\n\n\x1b[0m"
 }

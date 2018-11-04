@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 )
 
@@ -60,7 +60,7 @@ func (stackItem *parseStackItem) DataForJSON() interface{} {
 }
 
 func (stackItem *parseStackItem) String() (result string) {
-	return bwjson.PrettyJsonOf(stackItem)
+	return bwjson.Pretty(stackItem)
 }
 
 // ============================================================================
@@ -76,7 +76,7 @@ func (stack *parseStack) DataForJSON() interface{} {
 }
 
 func (stack *parseStack) String() (result string) {
-	return bwjson.PrettyJsonOf(stack)
+	return bwjson.Pretty(stack)
 }
 
 // ============================================================================
@@ -221,7 +221,7 @@ func (pfa pfaStruct) DataForJSON() interface{} {
 }
 
 func (pfa pfaStruct) String() string {
-	return bwjson.PrettyJsonOf(pfa)
+	return bwjson.Pretty(pfa)
 }
 
 type pfaRuneProvider interface {
@@ -315,7 +315,7 @@ func (pfa *pfaStruct) currRune() (result rune) {
 }
 
 func (pfa *pfaStruct) panic(args ...interface{}) {
-	fmtString := "<ansiOutline>pfa<ansi> <ansiSecondary>%s<ansi>"
+	fmtString := "<ansiVar>pfa<ansi> <ansiVal>%s<ansi>"
 	if args != nil {
 		fmtString += " " + args[0].(string)
 	}
@@ -323,7 +323,7 @@ func (pfa *pfaStruct) panic(args ...interface{}) {
 	if len(args) > 1 {
 		fmtArgs = append(fmtArgs, args[1:])
 	}
-	bwerror.Panicd(1, fmtString, fmtArgs...)
+	bwerr.PanicA(bwerr.A{1, fmtString, fmtArgs})
 }
 
 func (pfa *pfaStruct) ifStackLen(minLen int) bool {
@@ -332,7 +332,7 @@ func (pfa *pfaStruct) ifStackLen(minLen int) bool {
 
 func (pfa *pfaStruct) mustStackLen(minLen int) {
 	if !pfa.ifStackLen(minLen) {
-		pfa.panic("<ansiOutline>minLen <ansiSecondary>%d", minLen)
+		pfa.panic("<ansiVar>minLen <ansiVal>%d", minLen)
 	}
 }
 
@@ -343,7 +343,7 @@ func (pfa *pfaStruct) mustStackLen(minLen int) {
 func (pfa *pfaStruct) getTopStackItemOfType(itemType parseStackItemType) (stackItem *parseStackItem) {
 	stackItem = pfa.getTopStackItem()
 	if stackItem.itemType != itemType {
-		pfa.panic("<ansiOutline>itemType<ansiSecondary>%s", itemType)
+		pfa.panic("<ansiVar>itemType<ansiVal>%s", itemType)
 	}
 	return
 }

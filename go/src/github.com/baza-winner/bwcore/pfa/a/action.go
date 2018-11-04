@@ -2,7 +2,7 @@ package a
 
 import (
 	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwfmt"
+	"github.com/baza-winner/bwcore/bw"
 
 	// "github.com/baza-winner/bwcore/pfa"
 	"github.com/baza-winner/bwcore/pfa/b"
@@ -18,7 +18,7 @@ type PushRune struct{}
 func (v PushRune) Execute(pfa *core.PfaStruct) (err error) {
 	pfa.Proxy.PushRune()
 	if pfa.TraceLevel > core.TraceNone {
-		pfa.TraceAction("<ansiGreen>PushRune<ansi>: %s", runeVarPath)
+		pfa.TraceAction("<ansiFunc>PushRune<ansi>: %s", runeVarPath)
 	}
 	return
 }
@@ -37,7 +37,7 @@ var stackLenVarPath core.VarPath = core.MustVarPathFrom("stackLen")
 func (v PullRune) Execute(pfa *core.PfaStruct) (err error) {
 	pfa.Proxy.PullRune()
 	if pfa.TraceLevel > core.TraceNone {
-		pfa.TraceAction("<ansiGreen>PullRune<ansi>: %s", runeVarPath)
+		pfa.TraceAction("<ansiFunc>PullRune<ansi>: %s", runeVarPath)
 	}
 	return
 }
@@ -53,7 +53,7 @@ func (v PullRune) GetAction() core.ProcessorAction {
 // func (v PushItem) Execute(pfa *core.PfaStruct) {
 // 	pfa.PushStackItem()
 // 	if pfa.TraceLevel > core.TraceNone {
-// 		pfa.TraceAction("<ansiGreen>PushItem<ansi>: %s", stackLenVarPath)
+// 		pfa.TraceAction("<ansiFunc>PushItem<ansi>: %s", stackLenVarPath)
 // 	}
 // }
 
@@ -68,9 +68,9 @@ func (v PullRune) GetAction() core.ProcessorAction {
 // func (v PopItem) Execute(pfa *core.PfaStruct) {
 // 	pfa.PopStackItem()
 // 	if pfa.TraceLevel > core.TraceNone {
-// 		pfa.TraceAction("<ansiGreen>PopItem<ansi>: %s", stackLenVarPath)
+// 		pfa.TraceAction("<ansiFunc>PopItem<ansi>: %s", stackLenVarPath)
 // 	}
-// 	// pfa.traceAction("<ansiGreen>PopItem<ansi>: <ansiCmd>stackLen<ansi>(<ansiPrimary>%d<ansi>)", len(pfa.Stack))
+// 	// pfa.traceAction("<ansiFunc>PopItem<ansi>: <ansiPath>stackLen<ansi>(<ansiVal>%d<ansi>)", len(pfa.Stack))
 // }
 
 // func (v PopItem) GetAction() core.ProcessorAction {
@@ -93,7 +93,7 @@ func (v PullRune) GetAction() core.ProcessorAction {
 // 		case val.Var:
 // 			fmtArgs = append(fmtArgs, common.VarVal{core.MustVarPathFrom(t.VarPathStr)})
 // 		default:
-// 			bwerror.Panic("%#v", i)
+// 			bwerr.Panic("%#v", i)
 // 		}
 // 	}
 // 	return panicAction{v.FmtString, fmtArgs}
@@ -110,13 +110,13 @@ func (v PullRune) GetAction() core.ProcessorAction {
 // 		s += ", " + string(i.GetSource(pfa))
 // 	}
 // 	if pfa.TraceLevel > core.TraceNone {
-// 		pfa.TraceAction("<ansiGreen>Panic{%s%s}", v.fmtString, s)
+// 		pfa.TraceAction("<ansiFunc>Panic{%s%s}", v.fmtString, s)
 // 	}
 // 	fmtArgs := []interface{}{}
 // 	for _, i := range v.fmtArgs {
 // 		fmtArgs = append(fmtArgs, i.GetVal(pfa))
 // 	}
-// 	pfa.Panic(bwfmt.StructFrom(v.fmtString, fmtArgs))
+// 	pfa.Panic(bw.StructFrom(v.fmtString, fmtArgs))
 // }
 
 // ============================================================================
@@ -210,7 +210,7 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) (err error) {
 				return
 			}
 			if v.at == appendScalar {
-				// pfa.Panic(bwfmt.StructFrom("%#v", val))
+				// pfa.Panic(bw.StructFrom("%#v", val))
 				if orig.Val == nil {
 					switch aval := val.(type) {
 					case string:
@@ -229,7 +229,7 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) (err error) {
 						case rune:
 							val = oval + string(aval)
 						default:
-							expectedToBeAppendable = formatted.StringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
+							expectedToBeAppendable = formatted.StringFrom("<ansiVal>String<ansi> or <ansiVal>Rune")
 						}
 					case rune:
 						switch aval := val.(type) {
@@ -238,7 +238,7 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) (err error) {
 						case rune:
 							val = string(oval) + string(aval)
 						default:
-							expectedToBeAppendable = formatted.StringFrom("<ansiSecondary>String<ansi> or <ansiSecondary>Rune")
+							expectedToBeAppendable = formatted.StringFrom("<ansiVal>String<ansi> or <ansiVal>Rune")
 						}
 					case []interface{}:
 						val = append(oval, val)
@@ -247,7 +247,7 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) (err error) {
 					}
 				}
 			} else if aval, ok := val.([]interface{}); !ok {
-				expectedToBeAppendable = formatted.StringFrom("<ansiPrimary>Array<ansi>")
+				expectedToBeAppendable = formatted.StringFrom("<ansiVal>Array<ansi>")
 			} else {
 				if orig.Val == nil {
 					val = aval
@@ -263,7 +263,7 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) (err error) {
 		}
 	}
 	if isNotAppendee {
-		pfa.Panic(bwfmt.StructFrom("can not append to %s", string(pfa.TraceVal(v.varPath))))
+		pfa.PanicA(bw.Fmt("can not append to %s", string(pfa.TraceVal(v.varPath))))
 	}
 	var source formatted.String
 	var target formatted.String
@@ -273,22 +273,26 @@ func (v _setVarBy) Execute(pfa *core.PfaStruct) (err error) {
 		target = pfa.TraceVal(v.varPath)
 		for _, b := range v.by {
 			if pfa.TraceLevel > core.TraceNone {
-				source = source.Concat(formatted.StringFrom(" <ansiGreen>| %s<ansi> ", b.String()))
+				source = source.Concat(formatted.StringFrom(" <ansiFunc>| %s<ansi> ", b.String()))
 			}
 		}
 		if pfa.Err != nil {
 			if t, ok := pfa.Err.(core.PfaError); !ok {
-				pfa.Panic(bwfmt.StructFrom("%#v", pfa.Err))
+				pfa.PanicA(bw.Fmt("%#v", pfa.Err))
 			} else if t.State() != core.PecsPrepared {
 				t.PrepareErr(string(source))
 			}
 		} else if len(expectedToBeAppendable) > 0 {
-			pfa.Panic(bwfmt.StructFrom("%s expected to be %s", string(source), string(expectedToBeAppendable)))
+			pfa.PanicA(bw.Fmt("%s expected to be %s", string(source), string(expectedToBeAppendable)))
 		}
 	}
 	pfa.SetVarVal(v.varPath, val)
 	if pfa.TraceLevel > core.TraceNone {
-		pfa.TraceAction("%s %s %s: %s", source, formatted.String(ansi.Ansi("Green", op)), target, v.varPath)
+		pfa.TraceAction("%s %s %s: %s", source,
+			formatted.String(ansi.StringA(ansi.A{
+				Default: []ansi.SGRCode{ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen})},
+				S:       op,
+			})), target, v.varPath)
 		// if op == ">>" {
 		// 	pfa.Panic()
 		// }

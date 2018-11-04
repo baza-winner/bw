@@ -1,4 +1,4 @@
-// Предоставляет функцию String для обработки строк с <ansi*>-разметкой.
+// Package ansi предоставляет функцию String для обработки строк с <ansi*>-разметкой.
 // <ansi*>-разметка реализует поддержку Управляющих последовательностей ANSI (
 // rus: https://ru.wikipedia.org/wiki/%D0%A3%D0%BF%D1%80%D0%B0%D0%B2%D0%BB%D1%8F%D1%8E%D1%89%D0%B8%D0%B5_%D0%BF%D0%BE%D1%81%D0%BB%D0%B5%D0%B4%D0%BE%D0%B2%D0%B0%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D0%B8_ANSI
 // eng: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -14,33 +14,24 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 )
 
-/*
-Регулирует обработку <ansi*>разметки функцией String
-Если NoColor = true, то просто убирает <ansi*>-разметку из результата
-*/
+// NoColor регулирует обработку <ansi*>разметки функцией String
+// Если NoColor = true, то просто убирает <ansi*>-разметку из результата
 var NoColor = false
-
-// type String struct{ S string }
-
-// func (v String) Ansi() (result string) {
-// 	result = v.S
-// 	return result
-// }
 
 // ============================================================================
 
-type csi struct {
+type CSI struct {
 	parameterBytes    []byte // in the range 0x30–0x3F (ASCII 0–9:;<=>?)
 	intermeidateBytes []byte // in the range 0x20–0x2F (ASCII space and !"#$%&'()*+,-./)
 	finalByte         byte   // in the range 0x40–0x7E
 }
 
-func csiFrom(parameterBytes []byte, intermeidateBytes []byte, finalByte byte) (result csi, err error) {
+func CSIFrom(parameterBytes []byte, intermeidateBytes []byte, finalByte byte) (result CSI, err error) {
 	min := byte(0x30)
 	max := byte(0x3F)
 	for i, b := range parameterBytes {
 		if !(min <= b && b <= max) {
-			err = fmt.Errorf("csiFrom: parameterBytes[%d] (%x) is out of range [%x, %x", i, b, min, max)
+			err = fmt.Errorf("CSIFrom: parameterBytes[%d] (%x) is out of range [%x, %x", i, b, min, max)
 			return
 		}
 	}
@@ -48,29 +39,33 @@ func csiFrom(parameterBytes []byte, intermeidateBytes []byte, finalByte byte) (r
 	max = byte(0x2F)
 	for i, b := range intermeidateBytes {
 		if !(min <= b && b <= max) {
-			err = fmt.Errorf("csiFrom: intermeidateBytes[%d] (%x) is out of range [%x, %x", i, b, min, max)
+			err = fmt.Errorf("CSIFrom: intermeidateBytes[%d] (%x) is out of range [%x, %x", i, b, min, max)
 			return
 		}
 	}
 	min = byte(0x40)
 	max = byte(0x7E)
 	if !(min <= finalByte && finalByte <= max) {
-		err = fmt.Errorf("csiFrom: finalByte (%x) is out of range [%x, %x", finalByte, min, max)
+		err = fmt.Errorf("CSIFrom: finalByte (%x) is out of range [%x, %x", finalByte, min, max)
 		return
 	}
-	result = csi{parameterBytes, intermeidateBytes, finalByte}
+	result = CSI{parameterBytes, intermeidateBytes, finalByte}
 	return
 }
 
-func mustCsiFrom(parameterBytes []byte, intermeidateBytes []byte, finalByte byte) csi {
-	if result, err := csiFrom(parameterBytes, intermeidateBytes, finalByte); err != nil {
+func mustCSIFrom(parameterBytes []byte, intermeidateBytes []byte, finalByte byte) CSI {
+	if result, err := CSIFrom(parameterBytes, intermeidateBytes, finalByte); err != nil {
 		panic(err.Error())
 	} else {
 		return result
 	}
 }
 
-func csiFromSGR(v []SGRCode) csi {
+func CSIFromSGRCodes(v ...SGRCode) CSI {
+	return CSIFromSGR(v)
+}
+
+func CSIFromSGR(v []SGRCode) CSI {
 	uint8s := []uint8{}
 	for _, i := range v {
 		uint8s = append(uint8s, i.codes...)
@@ -79,15 +74,15 @@ func csiFromSGR(v []SGRCode) csi {
 	for _, i := range uint8s {
 		ss = append(ss, strconv.FormatUint(uint64(i), 10))
 	}
-	return mustCsiFrom(
+	return mustCSIFrom(
 		[]byte(strings.Join(ss, ";")),
 		nil,
 		'm',
 	)
-	// return csi{parameterBytes: []byte(strings.Join(ss, ";")), intermeidateBytes: nil, finalByte: 'm'}
+	// return CSI{parameterBytes: []byte(strings.Join(ss, ";")), intermeidateBytes: nil, finalByte: 'm'}
 }
 
-func (v csi) String() string {
+func (v CSI) String() string {
 	return "\x1b[" + string(v.parameterBytes) + string(v.intermeidateBytes) + string(v.finalByte)
 }
 
@@ -317,7 +312,7 @@ func AddTag(name string, codes ...SGRCode) error {
 	if _, ok := Tag(name); ok {
 		return fmt.Errorf("<%s> already exists", name)
 	}
-	ansiTags[name] = ansiTag{codes, csiFromSGR(codes).String()}
+	ansiTags[name] = ansiTag{codes, CSIFromSGR(codes).String()}
 	return nil
 }
 
@@ -337,19 +332,23 @@ func MustTag(name string) []SGRCode {
 
 type ansiTag struct {
 	codes     []SGRCode
-	csiString string
+	CSIString string
 }
 
 var ansiTags map[string]ansiTag
-var resetCsiString string
-var resetCsiStringLen int
+var resetCSIString string
+var resetCSIStringLen int
+
+func Reset() string {
+	return resetCSIString
+}
 
 func init() {
 	ansiTags = map[string]ansiTag{}
 	// resetCode := MustSGRCodeOfCmd(SGRCmdReset)
 	MustAddTag("ansiReset", MustSGRCodeOfCmd(SGRCmdReset))
-	resetCsiString = ansiTags["ansiReset"].csiString
-	resetCsiStringLen = len(resetCsiString)
+	resetCSIString = ansiTags["ansiReset"].CSIString
+	resetCSIStringLen = len(resetCSIString)
 }
 
 /*
@@ -432,51 +431,62 @@ type A struct {
 	S       string
 }
 
-func String(a A) (result string) {
-	ansiCsiString := resetCsiString
+func String(s string, ansiDefault ...SGRCode) string {
+	return StringA(A{S: s, Default: ansiDefault})
+}
+
+func StringA(a A) (result string) {
+	ansiCSIString := resetCSIString
 	if len(a.Default) > 0 {
-		ansiCsiString = csiFromSGR(a.Default).String()
+		ansiCSIString = CSIFromSGR(a.Default).String()
 	}
+	if len(a.S) == 0 {
+		return
+	}
+	var didAnsi bool
 	result = findAnsiRegexp.ReplaceAllStringFunc(a.S, func(s string) (result string) {
 		if NoColor {
 			return
 		}
+		didAnsi = true
 		if name := s[1 : len(s)-1]; name == ansiPrefix {
-			result = ansiCsiString
+			result = ansiCSIString
 		} else if tag, ok := ansiTags[name]; ok {
-			result = tag.csiString
+			result = tag.CSIString
 		} else {
-			panic(fmt.Sprintf("ansi.From: <%s> is unknown", name))
+			panic(fmt.Sprintf("ansi.From: <%s> is unknown at %q", name, a.S))
 		}
 		return
 	})
-	if !NoColor && ansiCsiString != resetCsiString {
-		result = ansiCsiString + result
+	if !NoColor && ansiCSIString != resetCSIString {
+		didAnsi = true
+		result = ansiCSIString + result
 	}
-	if !NoColor {
-		result = result + resetCsiString
+	if !NoColor && didAnsi && !EndsWithReset(result) {
+		result = result + resetCSIString
 	}
 	return result
 }
 
-var findAnsiRegexp, _ = regexp.Compile(`<ansi[^>]*>`)
+var findAnsiRegexp = regexp.MustCompile("<ansi[^>]*>")
 
-func Concat(ss ...string) (result string) {
-	for _, s := range ss {
-		result = ChopReset(result) + s
-	}
-	return
-}
+// func Concat(ss ...string) (result string) {
+// 	for _, s := range ss {
+// 		result += s
+// 		// result = ChopReset(result) + s
+// 	}
+// 	return
+// }
 
 func EndsWithReset(s string) bool {
 	sLen := len(s)
-	return sLen >= resetCsiStringLen && s[sLen-resetCsiStringLen:] == resetCsiString
+	return sLen >= resetCSIStringLen && s[sLen-resetCSIStringLen:] == resetCSIString
 }
 
 func ChopReset(s string) (result string) {
 	result = s
 	if EndsWithReset(result) {
-		result = result[:len(result)-resetCsiStringLen]
+		result = result[:len(result)-resetCSIStringLen]
 	}
 	return
 }

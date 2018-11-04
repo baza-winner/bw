@@ -4,9 +4,9 @@ package helper
 
 import "strconv"
 
-const _ReturnType_name = "rtBelowrtNonertBoolrtIntrtInterfacertStringrtSetrtSlicertSliceOfStringsrtAbove"
+const _ReturnType_name = "ReturnBelowReturnNoneReturnBoolReturnIntReturnInterfaceReturnJSONReturnStringReturnSetReturnSliceReturnSliceOfStringsReturnAbove"
 
-var _ReturnType_index = [...]uint8{0, 9, 15, 21, 26, 37, 45, 50, 57, 73, 82}
+var _ReturnType_index = [...]uint8{0, 11, 21, 31, 40, 55, 65, 77, 86, 97, 117, 128}
 
 func (i ReturnType) String() string {
 	if i >= ReturnType(len(_ReturnType_index)-1) {

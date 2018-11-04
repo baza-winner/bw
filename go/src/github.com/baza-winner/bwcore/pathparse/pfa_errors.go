@@ -3,7 +3,7 @@ package pathparse
 import (
 	"fmt"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/jimlawless/whereami"
 )
 
@@ -29,7 +29,7 @@ type pfaError struct {
 
 func pfaErrorMake(pfa *pfaStruct, errorType pfaErrorType, args ...interface{}) (result pfaError) {
 	if !(pfaErrorBelow < errorType && errorType < pfaErrorAbove) {
-		bwerror.Panic(" errorType == %s", errorType)
+		bwerr.Panic(" errorType == %s", errorType)
 	}
 	fmtString, fmtArgs := pfaErrorValidators[errorType](pfa, args...)
 	result = pfaError{pfa, errorType, fmtString, fmtArgs, whereami.WhereAmI(2)}
@@ -37,7 +37,7 @@ func pfaErrorMake(pfa *pfaStruct, errorType pfaErrorType, args ...interface{}) (
 }
 
 func (err pfaError) Error() string {
-	return bwerror.Error(err.fmtString, err.fmtArgs...).Error()
+	return bwerr.From(err.fmtString, err.fmtArgs...).Error()
 }
 
 func (v pfaError) DataForJSON() interface{} {
@@ -60,7 +60,7 @@ func pfaErrorValidatorsCheck() {
 	pfaErrorType := pfaErrorBelow + 1
 	for pfaErrorType < pfaErrorAbove {
 		if _, ok := pfaErrorValidators[pfaErrorType]; !ok {
-			bwerror.Panic("not defined <ansiOutline>pfaErrorValidators<ansi>[<ansiPrimary>%s<ansi>]", pfaErrorType)
+			bwerr.Panic("not defined <ansiVar>pfaErrorValidators<ansi>[<ansiVal>%s<ansi>]", pfaErrorType)
 		}
 		pfaErrorType += 1
 	}
@@ -68,7 +68,7 @@ func pfaErrorValidatorsCheck() {
 
 func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
+		bwerr.Panic("does not expect args instead of <ansiVal>%#v", args)
 	}
 	if pfa.curr.runePtr == nil {
 		suffix := getSuffix(pfa, pfa.curr, "")
@@ -77,7 +77,7 @@ func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string
 	} else {
 		rune := *pfa.curr.runePtr
 		suffix := getSuffix(pfa, pfa.curr, string(rune))
-		fmtString = "unexpected char <ansiPrimary>%q<ansiReset> (charCode: %v, pfa.state: %s)" + suffix
+		fmtString = "unexpected char <ansiVal>%q<ansiReset> (charCode: %v, pfa.state: %s)" + suffix
 		fmtArgs = []interface{}{rune, rune, pfa.state}
 	}
 	return
@@ -85,20 +85,20 @@ func _unexpectedRuneError(pfa *pfaStruct, args ...interface{}) (fmtString string
 
 func _failedToGetNumberError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 	if args != nil {
-		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
+		bwerr.Panic("does not expect args instead of <ansiVal>%#v", args)
 	}
 	stackItem := pfa.getTopStackItemOfType(parseStackItemNumber)
 	suffix := getSuffix(pfa, stackItem.start, stackItem.itemString)
-	return "failed to get number from string <ansiPrimary>%s" + suffix, []interface{}{stackItem.itemString}
+	return "failed to get number from string <ansiVal>%s" + suffix, []interface{}{stackItem.itemString}
 }
 
 // func _unknownWordError(pfa *pfaStruct, args ...interface{}) (fmtString string, fmtArgs []interface{}) {
 // 	if args != nil {
-// 		bwerror.Panic("does not expect args instead of <ansiSecondary>%#v", args)
+// 		bwerr.Panic("does not expect args instead of <ansiVal>%#v", args)
 // 	}
 // 	stackItem := pfa.getTopStackItemOfType(parseStackItemWord)
 // 	suffix := getSuffix(pfa, stackItem.start, stackItem.itemString)
-// 	return "unknown word <ansiPrimary>%s" + suffix, []interface{}{stackItem.itemString}
+// 	return "unknown word <ansiVal>%s" + suffix, []interface{}{stackItem.itemString}
 // }
 
 // =============
@@ -113,10 +113,10 @@ func getSuffix(pfa *pfaStruct, start runePtrStruct, redString string) (suffix st
 
 	separator := "\n"
 	if pfa.curr.line <= 1 {
-		suffix += fmt.Sprintf(" at pos <ansiCmd>%d<ansi>", start.pos)
+		suffix += fmt.Sprintf(" at pos <ansiPath>%d<ansi>", start.pos)
 		separator = " "
 	} else {
-		suffix += fmt.Sprintf(" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>)", start.line, start.col, start.pos)
+		suffix += fmt.Sprintf(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)", start.line, start.col, start.pos)
 	}
 	suffix += ":" + separator + "<ansiDarkGreen>"
 

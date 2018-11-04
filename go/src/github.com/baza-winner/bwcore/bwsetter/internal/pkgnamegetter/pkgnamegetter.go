@@ -3,7 +3,7 @@ package pkgnamegetter
 import (
 	"unicode"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
@@ -44,7 +44,7 @@ func GetPackageName(fileSpec string) (packageName string, err error) {
 	var p runeprovider.RuneProvider
 	p, err = runeprovider.FromFile(fileSpec)
 	if err != nil {
-		err = bwerror.ErrorErr(err)
+		err = bwerr.FromA(bwerr.E{Error: err})
 	} else {
 		defer p.Close()
 		var word string
@@ -82,8 +82,8 @@ func GetPackageName(fileSpec string) (packageName string, err error) {
 					} else if word == "package" {
 						state = parseState{ppsSeekPackageName, pssSeekNonSpace}
 					} else {
-						err = bwerror.Error(
-							"unexpected word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+						err = bwerr.From(
+							"unexpected word <ansiVal>%s<ansi> at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 							word, wordLine, wordCol, wordPos, fileSpec,
 						)
 					}
@@ -138,17 +138,17 @@ func GetPackageName(fileSpec string) (packageName string, err error) {
 						}
 					}
 					// default:
-					// 	bwerror.Panic("no handler for %s.%s", state.primary, state.secondary)
+					// 	bwerr.Panic("no handler for %s.%s", state.primary, state.secondary)
 				}
 				if isUnexpectedRune {
 					if isEOF {
-						err = bwerror.Error(
-							"unexpected end of file at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+						err = bwerr.From(
+							"unexpected end of file at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 							p.Line(), p.Col(), p.Pos(), fileSpec,
 						)
 					} else {
-						err = bwerror.Error(
-							"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+						err = bwerr.From(
+							"unexpected rune <ansiVal>%q<ansi> at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 							currRune, p.Line(), p.Col(), p.Pos(), fileSpec,
 						)
 					}

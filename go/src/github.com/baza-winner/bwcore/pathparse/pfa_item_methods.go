@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwint"
+	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwerr"
 )
 
 type pfaItemFinishMethod func(*pfaStruct) (bool, error)
@@ -27,7 +27,7 @@ func pfaItemFinishMethodsCheck() {
 	itemType := parseStackItemBelow + 1
 	for itemType < parseStackItemAbove {
 		if _, ok := pfaItemFinishMethods[itemType]; !ok {
-			bwerror.Panic("not defined <ansiOutline>pfaItemFinishMethods<ansi>[<ansiPrimary>%s<ansi>]", itemType)
+			bwerr.Panic("not defined <ansiVar>pfaItemFinishMethods<ansi>[<ansiVal>%s<ansi>]", itemType)
 		}
 		itemType += 1
 	}
@@ -104,11 +104,11 @@ func _parseStackItemNumber(pfa *pfaStruct) (skipPostProcess bool, err error) {
 	} else {
 		var int64Val int64
 		if int64Val, err = strconv.ParseInt(source, 10, 64); err == nil {
-			if int64(bwint.MinInt8) <= int64Val && int64Val <= int64(bwint.MaxInt8) {
+			if int64(bw.MinInt8) <= int64Val && int64Val <= int64(bw.MaxInt8) {
 				stackItem.value = int8(int64Val)
-			} else if int64(bwint.MinInt16) <= int64Val && int64Val <= int64(bwint.MaxInt16) {
+			} else if int64(bw.MinInt16) <= int64Val && int64Val <= int64(bw.MaxInt16) {
 				stackItem.value = int16(int64Val)
-			} else if int64(bwint.MinInt32) <= int64Val && int64Val <= int64(bwint.MaxInt32) {
+			} else if int64(bw.MinInt32) <= int64Val && int64Val <= int64(bw.MaxInt32) {
 				stackItem.value = int32(int64Val)
 			} else {
 				stackItem.value = int64Val

@@ -1,7 +1,7 @@
 package b
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/pfa/core"
 )
 
@@ -34,15 +34,15 @@ type By []ValTransformer
 
 // func (v TransformError) PfaError(pfa *core.PfaStruct) error {
 // 	// return pfa.Proxy.ItemError(pfa.GetTopStackItem().Start, v.content.s)
-// 	return pfa.Proxy.Unexpected(pfa.GetTopStackItem().Start, bwfmt.StructFrom(v.content.s))
+// 	return pfa.Proxy.Unexpected(pfa.GetTopStackItem().Start, bw.StructFrom(v.content.s))
 // }
 
 // func (v PfaError) Error() (result string) {
 // 	switch v.content.state {
 // 	case PecsNeedPrepare:
-// 		bwerror.Panic("%#v", v.content.state)
+// 		bwerr.Panic("%#v", v.content.state)
 // 	case PecsPrepared:
-// 		result = bwerror.Error(v.content.fmtString, v.content.fmtArgs)
+// 		result = bwerr.Error(v.content.fmtString, v.content.fmtArgs)
 // 	}
 // 	return
 // }
@@ -187,7 +187,7 @@ func (v ButLast) String() string {
 type Append struct{}
 
 func (v Append) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
-	bwerror.Unreachable()
+	bwerr.Unreachable()
 	return
 }
 
@@ -200,8 +200,8 @@ func (v Append) String() string {
 type AppendSlice struct{}
 
 func (v AppendSlice) TransformValue(pfa *core.PfaStruct, val interface{}) (result interface{}, err error) {
-	bwerror.Unreachable()
-	// bwerror.Unreachable()
+	bwerr.Unreachable()
+	// bwerr.Unreachable()
 	return
 }
 

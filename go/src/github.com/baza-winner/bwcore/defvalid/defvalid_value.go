@@ -3,8 +3,8 @@ package defvalid
 import (
 	"fmt"
 
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwint"
+	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
 
@@ -27,8 +27,8 @@ func (v value) DataForJSON() interface{} {
 }
 
 func (v value) String() string {
-	// return fmt.Sprintf(v.what+`<ansi> (<ansiSecondary>%s<ansi>)`, bwjson.PrettyJson(v.value))
-	return bwerror.Spew.Sprintf(v.what+`<ansi> (<ansiSecondary>%#v<ansi>)`, v.value)
+	// return fmt.Sprintf(v.what+`<ansi> (<ansiVal>%s<ansi>)`, bwjson.PrettyJson(v.value))
+	return bw.Spew.Sprintf(v.what+`<ansi> (<ansiVal>%#v<ansi>)`, v.value)
 }
 
 func (v value) forEachMapString(f func(k string, v interface{}) (err error)) (err error) {
@@ -141,7 +141,7 @@ func getDefaultValueAndOfTypeFromOpts(opts []interface{}) (defaultValue *interfa
 			defaultValue = &defaultValueIntf
 		}
 		if len(opts) > 2 {
-			bwerror.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiSecondary>%v", opts)
+			bwerr.Panic("expects max 2 opts (ofTypes, defaultValue), but found <ansiVal>%v", opts)
 		}
 	}
 	return
@@ -191,7 +191,7 @@ func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
 				case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
 					ok = true
 				case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
-					ok = reflect.ValueOf(v).Uint() <= uint64(bwint.MaxInt64)
+					ok = reflect.ValueOf(v).Uint() <= uint64(bw.MaxInt64)
 				default:
 					ok = false
 				}
@@ -215,7 +215,7 @@ func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
 			case "interface{}":
 				ok = true
 			default:
-				bwerror.Panic("unsupported type <ansiPrimary>%s", ofType)
+				bwerr.Panic("unsupported type <ansiVal>%s", ofType)
 			}
 			if ok {
 				break
@@ -227,7 +227,7 @@ func _isOfType(v interface{}, ofTypes ...string) (ok bool) {
 
 func _mustBeOfType(v interface{}, ofTypes ...string) (result interface{}) {
 	if !_isOfType(v, ofTypes...) {
-		bwerror.Panic("<ansiSecondary>%+v<ansi> is not of types <ansiSecondary>%v", v, ofTypes)
+		bwerr.Panic("<ansiVal>%+v<ansi> is not of types <ansiVal>%v", v, ofTypes)
 	}
 	return v
 }
@@ -248,14 +248,14 @@ func _mustBeInt64(v interface{}) (result int64) {
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
 		result = vValue.Int()
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
-		if reflect.ValueOf(v).Uint() <= uint64(bwint.MaxInt64) {
+		if reflect.ValueOf(v).Uint() <= uint64(bw.MaxInt64) {
 			result = int64(vValue.Uint())
 		} else {
-			bwerror.Panic("<ansiSecondary>%+v<ansi> is not of type <ansiSecondary>int64", v)
+			bwerr.Panic("<ansiVal>%+v<ansi> is not of type <ansiVal>int64", v)
 		}
 	default:
 		// log.Printf("vValue.Kind(): %s", vValue.Kind())
-		bwerror.Panic("<ansiSecondary>%+v<ansi> is not of type <ansiSecondary>int64", v)
+		bwerr.Panic("<ansiVal>%+v<ansi> is not of type <ansiVal>int64", v)
 	}
 	return
 }
@@ -270,7 +270,7 @@ func _mustBeFloat64(v interface{}) (result float64) {
 	case reflect.Float32, reflect.Float64:
 		result = vValue.Float()
 	default:
-		bwerror.Panic("<ansiSecondary>%+v<ansi> is not of type <ansiSecondary>float64", v)
+		bwerr.Panic("<ansiVal>%+v<ansi> is not of type <ansiVal>float64", v)
 	}
 	return
 }

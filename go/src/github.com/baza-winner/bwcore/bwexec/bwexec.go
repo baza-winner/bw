@@ -6,13 +6,14 @@ package bwexec
 import (
 	"bufio"
 	"fmt"
-	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwstring"
 	"log"
 	"os"
 	"os/exec"
 	"syscall"
+
+	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwos"
+	"github.com/baza-winner/bwcore/bwstr"
 )
 
 const defaultFailedCode = 1
@@ -40,23 +41,23 @@ func ExecCmd(opt map[string]interface{}, cmdName string, cmdArgs ...string) (res
 
 	result = map[string]interface{}{}
 
-	cmdTitle := bwstring.SmartQuote(append([]string{cmdName}, cmdArgs...)...)
+	cmdTitle := bwstr.SmartQuote(append([]string{cmdName}, cmdArgs...)...)
 	sOpt := getStringKeyOrDefault(opt, `s`, `all`)
 	vOpt := getStringKeyOrDefault(opt, `v`, `none`)
 	if vOpt == `all` || vOpt == `allBrief` {
-		fmt.Println(ansi.Ansi(``, `<ansiCmd>`+cmdTitle+`<ansi> . . .`))
+		fmt.Println(ansi.String(`<ansiPath>` + cmdTitle + `<ansi> . . .`))
 	}
 	cmd := exec.Command(cmdName, cmdArgs...)
 
 	cmdStdout, err := cmd.StdoutPipe()
 	if err != nil {
-		bwerror.ExitWithError(1, "Error creating StdoutPipe for Cmd: %v", err)
+		bwos.Exit(1, "Error creating StdoutPipe for Cmd: %v", err)
 	}
 	stdoutScanner := bufio.NewScanner(cmdStdout)
 
 	cmdStderr, err := cmd.StderrPipe()
 	if err != nil {
-		bwerror.ExitWithError(1, "Error creating StderrPipe for Cmd: %v", err)
+		bwos.Exit(1, "Error creating StderrPipe for Cmd: %v", err)
 	}
 	stderrScanner := bufio.NewScanner(cmdStderr)
 
@@ -87,7 +88,7 @@ func ExecCmd(opt map[string]interface{}, cmdName string, cmdArgs ...string) (res
 	}()
 
 	if err := cmd.Start(); err != nil {
-		bwerror.ExitWithError(1, "Error starting Cmd: %v", err)
+		bwos.Exit(1, "Error starting Cmd: %v", err)
 	}
 
 	// https://stackoverflow.com/questions/10385551/get-exit-code-go
@@ -97,23 +98,23 @@ func ExecCmd(opt map[string]interface{}, cmdName string, cmdArgs ...string) (res
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				exitCode = status.ExitStatus()
 			} else {
-				log.Printf(ansi.Ansi(`Warn`, "Could not get exit code for failed program: <ansiCmd>%s"), cmdTitle)
+				log.Printf(ansi.String("<ansiWarn>Could not get exit code for failed program: <ansiPath>%s"), cmdTitle)
 				exitCode = defaultFailedCode
 			}
 		} else {
-			bwerror.ExitWithError(1, "cmd.Wait: %v", err)
+			bwos.Exit(1, "cmd.Wait: %v", err)
 		}
 	}
 
 	var ansiName, prefix string
 	if exitCode == 0 && (vOpt == `all` || vOpt == `allBrief` || vOpt == `ok`) {
-		ansiName, prefix = `OK`, `OK`
+		ansiName, prefix = `ansiOK`, `OK`
 	}
 	if exitCode != 0 && (vOpt == `all` || vOpt == `allBrief` || vOpt == `err`) {
-		ansiName, prefix = `Err`, `ERR`
+		ansiName, prefix = `ansiErr`, `ERR`
 	}
 	if len(prefix) > 0 {
-		fmt.Println(ansi.Ansi(ansiName, prefix+`: <ansiCmd>`+cmdTitle))
+		fmt.Println(ansi.StringA(ansi.A{Default: ansi.MustTag(ansiName), S: prefix + `: <ansiPath>` + cmdTitle}))
 	}
 	if getBoolKeyOrDefault(opt, `exitOnError`, false) && exitCode != 0 {
 		os.Exit(exitCode)

@@ -3,6 +3,7 @@
 package bwset
 
 import (
+	"encoding/json"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"sort"
 	"strconv"
@@ -59,16 +60,16 @@ func _Int16ToSliceTestHelper(kk []int16) []int16 {
 
 // String - поддержка интерфейса Stringer
 func (v Int16) String() string {
-	return bwjson.PrettyJsonOf(v)
+	return bwjson.Pretty(v)
 }
 
-// DataForJSON - поддержка интерфейса bwjson.Jsonable
-func (v Int16) DataForJSON() interface{} {
+// MarshalJSON - поддержка интерфейса MarshalJSON
+func (v Int16) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
 	for k, _ := range v {
 		result = append(result, k)
 	}
-	return result
+	return json.Marshal(result)
 }
 
 // ToSliceOfStrings - возвращает []string строковых представлений элементов множества

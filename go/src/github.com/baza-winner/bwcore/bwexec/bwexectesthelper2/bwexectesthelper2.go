@@ -1,16 +1,24 @@
-/*
-Вспомогательная утилита для тестирования bwexec.ExecCmd.
-*/
+// Вспомогательная утилита для тестирования bwexec.ExecCmd.
 package main
 
 import (
 	"flag"
 	"fmt"
-	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwexec"
 	"strings"
+
+	"github.com/baza-winner/bwcore/ansi"
+	_ "github.com/baza-winner/bwcore/ansi/tags"
+	"github.com/baza-winner/bwcore/bwexec"
+	"github.com/baza-winner/bwcore/bwos"
 )
+
+func init() {
+	ansi.MustAddTag("ansiHeader",
+		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorWhite}),
+		ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
+		ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
+	)
+}
 
 func main() {
 	exitOnErrorFlag := flag.Bool("e", false, "exitOnError")
@@ -20,7 +28,7 @@ func main() {
 	noColorFlag := flag.Bool("n", false, "no color")
 	flag.Parse()
 	if flag.NArg() < 1 {
-		bwerror.ExitWithError(1, `<ansiCmd>bwexectesthelper2<ansi> expects at least one arg`)
+		bwos.Exit(1, `<ansiPath>bwexectesthelper2<ansi> expects at least one arg`)
 	}
 	argsWithoutProg := flag.Args()
 
@@ -37,14 +45,14 @@ func main() {
 		if exitCode != 0 {
 			ansiExitCode = `<ansiErr>`
 		}
-		fmt.Printf(ansi.Ansi(`Header`, `===== exitCode: `+ansiExitCode+"%d\n"), exitCode)
-		fmt.Println(ansi.Ansi(`Header`, `===== stdout:`))
+		fmt.Printf(ansi.String(`<ansiHeader>===== exitCode: `+ansiExitCode+"%d\n"), exitCode)
+		fmt.Println(ansi.String(`<ansiHeader>===== stdout:`))
 		fmt.Println(strings.Join(ret[`stdout`].([]string), "\n"))
-		fmt.Println(ansi.Ansi(`Header`, `===== stderr:`))
+		fmt.Println(ansi.String(`<ansiHeader>===== stderr:`))
 		fmt.Println(strings.Join(ret[`stderr`].([]string), "\n"))
 
 		if output, ok := ret[`output`]; ok {
-			fmt.Println(ansi.Ansi(`Header`, `===== output:`))
+			fmt.Println(ansi.String(`<ansiHeader>===== output:`))
 			fmt.Println(strings.Join(output.([]string), "\n"))
 		}
 	}

@@ -2,7 +2,7 @@
 package defvalid
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 
 	// "github.com/baza-winner/bwcore/bwmap"
@@ -15,13 +15,13 @@ import (
 // ==================================================================================
 
 func CompileDef(def interface{}) (result *Def, err error) {
-	result, err = compileDef(value{"<ansiOutline>def<ansiCmd>", def})
+	result, err = compileDef(value{"<ansiVar>def<ansiPath>", def})
 	// log.Printf("result: %#v", result)
 	// var compileDefResult *Def
-	// compileDefResult, err = compileDef(value{"<ansiOutline>def<ansiCmd>", def})
+	// compileDefResult, err = compileDef(value{"<ansiVar>def<ansiPath>", def})
 	// if err == nil {
 	// 	if compileDefResult == nil {
-	// 		bwerror.Panic("Unexpected behavior; def: %s", bwjson.PrettyJson(def))
+	// 		bwerr.Panic("Unexpected behavior; def: %s", bwjson.PrettyJson(def))
 	// 	} else {
 	// 		result = *compileDefResult
 	// 	}
@@ -33,9 +33,9 @@ func MustCompileDef(def interface{}) (result Def) {
 	var err error
 	var compileDefResult *Def
 	if compileDefResult, err = CompileDef(def); err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	} else if compileDefResult == nil {
-		bwerror.Panic("Unexpected behavior; def: %s", bwjson.PrettyJson(def))
+		bwerr.Panic("Unexpected behavior; def: %s", bwjson.Pretty(def))
 	} else {
 		result = *compileDefResult
 	}
@@ -48,7 +48,7 @@ func ValidateVal(what string, val interface{}, def Def) (result interface{}, err
 	return getValidVal(
 		value{
 			value: val,
-			what:  "<ansiOutline>" + what + "<ansiCmd>",
+			what:  "<ansiVar>" + what + "<ansiPath>",
 		},
 		def,
 	)
@@ -57,7 +57,7 @@ func ValidateVal(what string, val interface{}, def Def) (result interface{}, err
 func MustValidVal(what string, val interface{}, def Def) (result interface{}) {
 	var err error
 	if result, err = ValidateVal(what, val, def); err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	return
 }
@@ -79,7 +79,7 @@ func GetValOfPath(val interface{}, path string) (result interface{}, valueError 
 func MustValOfPath(val interface{}, path string) (result interface{}) {
 	var err error
 	if result, err = GetValOfPath(val, path); err != nil {
-		bwerror.Panic("path <ansiCmd>%s<ansi> not found in <ansiSecondary>%s", path, bwjson.PrettyJson(val))
+		bwerr.Panic("path <ansiPath>%s<ansi> not found in <ansiVal>%s", path, bwjson.Pretty(val))
 	}
 	return
 }

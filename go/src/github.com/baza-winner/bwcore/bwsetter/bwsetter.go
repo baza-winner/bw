@@ -9,24 +9,26 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwos"
 	. "github.com/baza-winner/bwcore/bwsetter/internal/helper"
 	"github.com/baza-winner/bwcore/bwsetter/internal/pkgnamegetter"
 	"github.com/dave/jennifer/jen"
 )
 
 var (
-	typeFlag          = flag.String("type", "", "item type name; must be set")
-	setFlag           = flag.String("set", "", `Set type name; default is "${type}Set"`)
-	nosortFlag        = flag.Bool("nosort", false, `when item has no v[i] < v[j] support, as bool"`)
-	nostringFlag      = flag.Bool("nostring", false, `when item has no .String() method"`)
-	nodataforjsonFlag = flag.Bool("nodataforjson", false, `when item has no .DataForJSON() method"`)
-	omitprefixFlag    = flag.Bool("omitprefix", false, `omit prefix for From/FromSlice`)
-	testFlag          = flag.Bool("test", false, `generate tests as well`)
+	typeFlag     = flag.String("type", "", "item type name; must be set")
+	setFlag      = flag.String("set", "", `Set type name; default is "${type}Set"`)
+	nosortFlag   = flag.Bool("nosort", false, `when item has no v[i] < v[j] support, as bool"`)
+	nostringFlag = flag.Bool("nostring", false, `when item has no .String() method"`)
+	// nodataforjsonFlag = flag.Bool("nodataforjson", false, `when item has no .DataForJSON() method"`)
+	omitprefixFlag = flag.Bool("omitprefix", false, `omit prefix for From/FromSlice`)
+	testFlag       = flag.Bool("test", false, `generate tests as well`)
 )
 
 const (
 	bwjsonPackageName = "github.com/baza-winner/bwcore/bwjson"
+	jsonPackageName   = "encoding/json"
 	setterPackageName = "github.com/baza-winner/bwcore/bwsetter"
 )
 
@@ -143,45 +145,58 @@ func main() {
 		)
 	}
 
-	if !*nodataforjsonFlag {
-		prettyJsonArg := jen.Index().Id(code.IdItem).Values(jen.Id(code.TestItemString(A)))
-		if code.IdItem == "uint8" {
-			prettyJsonArg = jen.Index().Id("uint16").Values(jen.Id("uint16").Call(jen.Id(code.TestItemString(A))))
-		}
-		code.SetMethod(
-			"поддержка интерфейса Stringer",
-			"String", ParamNone, ReturnString,
-			[]*jen.Statement{
-				jen.Return(jen.Qual(bwjsonPackageName, "PrettyJsonOf").Call(jen.Id("v"))),
-			},
-			TestCase{
-				In: []interface{}{[]TestItem{A}},
-				Out: []interface{}{
-					jen.Qual(bwjsonPackageName, "PrettyJson").Call(
-						prettyJsonArg,
-					),
-				},
-			},
-		)
-
-		code.SetMethod(
-			"поддержка интерфейса bwjson.Jsonable",
-			"DataForJSON", ParamNone, ReturnInterface,
-			[]*jen.Statement{
-				jen.Id("result").Op(":=").Index().Interface().Values(),
-				code.RangeSet("v").Block(
-					jen.Id("result").Op("=").Append(jen.Id("result"), code.ToDataForJSON("k")),
-				),
-				jen.Return(jen.Id("result")),
-			},
-			TestCase{
-				In: []interface{}{[]TestItem{A}},
-				Out: []interface{}{
-					jen.Index().Interface().Values(code.ToDataForJSON(code.TestItemString(A))),
-				},
-			},
-		)
+	// if !*nodataforjsonFlag {
+	prettyJsonArg := jen.Index().Id(code.IdItem).Values(jen.Id(code.TestItemString(A)))
+	if code.IdItem == "uint8" {
+		prettyJsonArg = jen.Index().Id("uint16").Values(jen.Id("uint16").Call(jen.Id(code.TestItemString(A))))
 	}
+	code.SetMethod(
+		"поддержка интерфейса Stringer",
+		"String", ParamNone, ReturnString,
+		[]*jen.Statement{
+			jen.Return(jen.Qual(bwjsonPackageName, "Pretty").Call(jen.Id("v"))),
+		},
+		TestCase{
+			In: []interface{}{[]TestItem{A}},
+			Out: []interface{}{
+				jen.Qual(bwjsonPackageName, "Pretty").Call(
+					prettyJsonArg,
+				),
+			},
+		},
+	)
+
+	code.SetMethod(
+		"поддержка интерфейса MarshalJSON",
+		"MarshalJSON", ParamNone, ReturnJSON,
+		[]*jen.Statement{
+			jen.Id("result").Op(":=").Index().Interface().Values(),
+			code.RangeSet("v").Block(
+				// jen.Id("result").Op("=").Append(jen.Id("result"), code.ToDataForJSON("k")),
+				jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("k")),
+			),
+			jen.Return(jen.Qual(jsonPackageName, "Marshal").Call(jen.Id("result"))),
+		},
+		TestCase{
+			In: []interface{}{[]TestItem{A}},
+			Out: []interface{}{
+				jen.Parens(
+					jen.Func().Params().Index().Byte().Block(
+						jen.List(
+							jen.Id("result"),
+							jen.Id("_"),
+						).Op(":=").Qual(jsonPackageName, "Marshal").Call(
+							jen.Index().Interface().Values(
+								jen.Id(code.TestItemString(A)),
+							),
+						),
+						jen.Return(jen.Id("result")),
+					),
+				).Call(),
+				jen.Nil(),
+			},
+		},
+	)
 
 	if !*nostringFlag {
 		code.SetMethod(
@@ -417,23 +432,23 @@ func (g *Generator) parsePackageDir(directory string) {
 	var err error
 	g.packageDir, err = filepath.Abs(directory)
 	if err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	var files []os.FileInfo
 	files, err = ioutil.ReadDir(g.packageDir)
 	if err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	for _, f := range files {
 		if !f.Mode().IsRegular() || !goFileRegexp.Match([]byte(f.Name())) || goTestFileRegexp.Match([]byte(f.Name())) {
 			continue
 		}
 		if packageName, err := pkgnamegetter.GetPackageName(filepath.Join(g.packageDir, f.Name())); err != nil {
-			bwerror.PanicErr(err)
+			bwerr.PanicA(bwerr.E{Error: err})
 		} else if len(g.packageName) == 0 {
 			g.packageName = packageName
 		} else if packageName != g.packageName {
-			bwerror.Panic("packageName: %s or %s?", packageName, g.packageName)
+			bwerr.Panic("packageName: %s or %s?", packageName, g.packageName)
 		}
 	}
 	g.packagePath = getPackagePath(g.packageDir)
@@ -444,20 +459,20 @@ func getPackagePath(packageDir string) string {
 	gopath := os.Getenv("GOPATH")
 	if len(gopath) == 0 {
 		if gopath, err = filepath.Abs(os.Getenv("HOME")); err != nil {
-			bwerror.PanicErr(err)
+			bwerr.PanicA(bwerr.E{Error: err})
 		}
 		gopath += "/.go"
 	} else {
 		if gopath, err = filepath.Abs(gopath); err != nil {
-			bwerror.PanicErr(err)
+			bwerr.PanicA(bwerr.E{Error: err})
 		}
 	}
 	srcSuffix := "/src/"
 	gopathsrc := gopath + srcSuffix
 
 	if len(packageDir) < len(gopathsrc) || packageDir[0:len(gopathsrc)] != gopathsrc {
-		bwerror.ExitWithError(1,
-			"<ansiOutline>pwd<ansi> (<ansiCmd>%s<ansi>) not in <ansiCmd>$GOPATH%s<ansi> (<ansiOutline>$GOPATH<ansi>: <ansiCmd>%s<ansi>)",
+		bwos.Exit(1,
+			"<ansiVar>pwd<ansi> (<ansiPath>%s<ansi>) not in <ansiPath>$GOPATH%s<ansi> (<ansiVar>$GOPATH<ansi>: <ansiPath>%s<ansi>)",
 			packageDir, srcSuffix, gopath,
 		)
 	}

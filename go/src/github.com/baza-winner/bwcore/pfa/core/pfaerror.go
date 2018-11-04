@@ -1,7 +1,9 @@
 package core
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
+	"encoding/json"
+
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/pfa/formatted"
 	"github.com/jimlawless/whereami"
@@ -29,7 +31,7 @@ type PfaErrorContent struct {
 	errStr    string
 }
 
-func (v PfaError) DataForJSON() interface{} {
+func (v PfaError) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
 	switch v.content.state {
 	case PecsNeedPrepare:
@@ -38,11 +40,11 @@ func (v PfaError) DataForJSON() interface{} {
 			result["fmtString"] = v.content.fmtString
 		}
 	case PecsPrepared:
-		result["pfa"] = v.pfa.DataForJSON()
+		result["pfa"] = v.pfa
 		result["err"] = v.content.errStr
 		result["Where"] = v.Where
 	}
-	return result
+	return json.Marshal(result)
 }
 
 func (pfa *PfaStruct) Error(fmtString string, fmtArgs ...interface{}) error {
@@ -73,17 +75,17 @@ func (pfa *PfaStruct) UnexpectedError(err error) error {
 
 func (v *PfaError) PrepareErr(fmtString string, fmtArgs ...interface{}) {
 	if v.content.state == PecsPrepared {
-		bwerror.Panic("Already prepared %s ", bwjson.PrettyJsonOf(v))
+		bwerr.Panic("Already prepared %s ", bwjson.Pretty(v))
 	} else {
 		v.content.fmtString = fmtString + ": " + v.content.reason
-		v.content.errStr = bwerror.Error(v.content.fmtString, fmtArgs...).Error()
+		v.content.errStr = bwerr.From(v.content.fmtString, fmtArgs...).Error()
 		v.content.state = PecsPrepared
 	}
 }
 
 func (v *PfaError) SetErr(errStr string) {
 	if v.content.state == PecsPrepared {
-		bwerror.Panic("Already prepared %s ", bwjson.PrettyJsonOf(v))
+		bwerr.Panic("Already prepared %s ", bwjson.Pretty(v))
 	} else {
 		v.content.errStr = errStr
 		v.content.state = PecsPrepared
@@ -93,7 +95,7 @@ func (v *PfaError) SetErr(errStr string) {
 func (v PfaError) Error() (result string) {
 	switch v.content.state {
 	case PecsNeedPrepare:
-		bwerror.Panic("NeedPrepare %s ", bwjson.PrettyJsonOf(v))
+		bwerr.Panic("NeedPrepare %s ", bwjson.Pretty(v))
 	case PecsPrepared:
 		result = v.content.errStr
 	}

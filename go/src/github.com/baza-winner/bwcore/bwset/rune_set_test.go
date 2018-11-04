@@ -3,6 +3,7 @@
 package bwset
 
 import (
+	"encoding/json"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"testing"
@@ -53,11 +54,14 @@ func TestRune(t *testing.T) {
 	}})
 	bwtesting.BwRunTests(t, Rune.String, map[string]bwtesting.TestCaseStruct{"Rune.String": {
 		In:  []interface{}{Rune{_RuneTestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.PrettyJson([]rune{_RuneTestItemA})},
+		Out: []interface{}{bwjson.Pretty([]rune{_RuneTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Rune.DataForJSON, map[string]bwtesting.TestCaseStruct{"Rune.DataForJSON": {
-		In:  []interface{}{Rune{_RuneTestItemA: struct{}{}}},
-		Out: []interface{}{[]interface{}{_RuneTestItemA}},
+	bwtesting.BwRunTests(t, Rune.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Rune.MarshalJSON": {
+		In: []interface{}{Rune{_RuneTestItemA: struct{}{}}},
+		Out: []interface{}{(func() []byte {
+			result, _ := json.Marshal([]interface{}{_RuneTestItemA})
+			return result
+		})(), nil},
 	}})
 	bwtesting.BwRunTests(t, Rune.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Rune.ToSliceOfStrings": {
 		In:  []interface{}{Rune{_RuneTestItemA: struct{}{}}},

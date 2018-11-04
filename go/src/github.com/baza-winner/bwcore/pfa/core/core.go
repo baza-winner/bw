@@ -1,15 +1,14 @@
 package core
 
 import (
-	"fmt"
+	"encoding/json"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwfmt"
-	"github.com/baza-winner/bwcore/bwint"
+	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
@@ -100,34 +99,49 @@ func (pfa *PfaStruct) indent(indentLevel int) string {
 
 // type formatted.String string
 
-const fmtPanic = "<ansiOutline>pfa<ansi> <ansiSecondary>%s<ansi>"
+// const fmtPanic = "<ansiVar>pfa<ansi> <ansiVal>%s<ansi>"
 
-func (pfa *PfaStruct) Panic(optFmtStruct ...bwfmt.Struct) {
-	fmtString := fmtPanic
-	fmtArgs := []interface{}{pfa}
-	if optFmtStruct == nil {
-		bwerror.Panicd(1, fmtString, fmtArgs...)
-	} else {
-		fmtString += " " + optFmtStruct[0].FmtString
-		fmtArgs = append(fmtArgs, optFmtStruct[0].FmtArgs...)
-	}
-	bwerror.Panicd(1, fmtString, fmtArgs...)
-	// bwerror.PanicErr(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtString), fmtArgs), 1)
-	// pfa.panicHelper(fmtString, fmtArgs)
+var ansiPanic string
+
+func init() {
+	ansiPanic = ansi.String("<ansiVar>pfa<ansi> <ansiVal>%s<ansi> {Error}")
 }
 
-func (pfa *PfaStruct) PanicErr(err error) {
-	// fmtString := fmtPanic
-	// fmtString := "<ansiOutline>pfa<ansi> <ansiSecondary>%s<ansi>"
-	// fmtArgs := []interface{}{pfa}
-	bwerror.PanicErr(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtPanic), pfa), 1)
-	// bwerror.PanicErr(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtString), fmtArgs), 1)
-	// pfa.panicHelper(err.Error()+"\n"+ansi.Ansi("", fmtString),, fmtArgs)
+// func (pfa *PfaStruct) Panic(optA ...bw.I) {
+// 	fmtString := fmtPanic
+// 	fmtArgs := []interface{}{pfa}
+// 	if optFmtStruct == nil {
+// 		bwerr.Panicd(1, fmtString, fmtArgs...)
+// 	} else {
+// 		fmtString += " " + optFmtStruct[0].Fmt
+// 		fmtArgs = append(fmtArgs, optFmtStruct[0].Args...)
+// 	}
+// 	bwerr.Panicd(1, fmtString, fmtArgs...)
+// 	// bwerr.PanicErr(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtString), fmtArgs), 1)
+// 	// pfa.panicHelper(fmtString, fmtArgs)
+// }
+
+func (pfa *PfaStruct) Panic() {
+	pfa.PanicA(bwerr.A{Depth: 1})
 }
+
+func (pfa *PfaStruct) PanicA(a bw.I) {
+	bwerr.PanicA(bwerr.E{Error: bwerr.FromA(bwerr.IncDepth(a)).Refine(ansiPanic)})
+	// bwerr.ModifyBy(bwerr.IncDepth(a), bw.A{fmtPanic, bw.Args(pfa)}, true)
+}
+
+// func (pfa *PfaStruct) PanicErr(err error) {
+// 	// fmtString := fmtPanic
+// 	// fmtString := "<ansiVar>pfa<ansi> <ansiVal>%s<ansi>"
+// 	// fmtArgs := []interface{}{pfa}
+// 	bwerr.PanicA(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtPanic), pfa), 1)
+// 	// bwerr.PanicErr(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtString), fmtArgs), 1)
+// 	// pfa.panicHelper(err.Error()+"\n"+ansi.Ansi("", fmtString),, fmtArgs)
+// }
 
 // func (pfa *PfaStruct) panicHelper(fmtString string, fmtArgs ...interface{}) {
-// 	bwerror.PanicErr(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtString), fmtArgs), 1)
-// 	// bwerror.PanicErr(ansi.Ansi("", fmtString), fmtArgs), 1)
+// 	bwerr.PanicErr(fmt.Errorf(err.Error()+"\n"+ansi.Ansi("", fmtString), fmtArgs), 1)
+// 	// bwerr.PanicErr(ansi.Ansi("", fmtString), fmtArgs), 1)
 // }
 
 // func (pfa *PfaStruct) ifStackLen(minLen int) bool {
@@ -136,7 +150,7 @@ func (pfa *PfaStruct) PanicErr(err error) {
 
 // func (pfa *PfaStruct) mustStackLen(minLen int) {
 // 	if !pfa.ifStackLen(minLen) {
-// 		pfa.Panic(bwfmt.StructFrom("<ansiOutline>minLen <ansiSecondary>%d", minLen))
+// 		pfa.Panic(bw.StructFrom("<ansiVar>minLen <ansiVal>%d", minLen))
 // 	}
 // }
 
@@ -161,18 +175,18 @@ func (pfa *PfaStruct) PanicErr(err error) {
 // 	})
 // }
 
-func (pfa PfaStruct) DataForJSON() interface{} {
-	result := map[string]interface{}{}
-	// result["Stack"] = pfa.Stack.DataForJSON()
-	result["Proxy"] = pfa.Proxy.DataForJSON()
-	if len(pfa.Vars) > 0 {
-		result["Vars"] = pfa.Vars
-	}
-	return result
-}
+// func (pfa PfaStruct) DataForJSON() interface{} {
+// 	result := map[string]interface{}{}
+// 	// result["Stack"] = pfa.Stack.DataForJSON()
+// 	result["Proxy"] = pfa.Proxy.DataForJSON()
+// 	if len(pfa.Vars) > 0 {
+// 		result["Vars"] = pfa.Vars
+// 	}
+// 	return result
+// }
 
 func (pfa PfaStruct) String() string {
-	return bwjson.PrettyJsonOf(pfa)
+	return bwjson.Pretty(pfa)
 }
 
 // ============================================================================
@@ -189,11 +203,11 @@ func ParseNumber(source string) (value interface{}, err error) {
 	} else {
 		var _int64 int64
 		if _int64, err = strconv.ParseInt(source, 10, 64); err == nil {
-			if int64(bwint.MinInt8) <= _int64 && _int64 <= int64(bwint.MaxInt8) {
+			if int64(bw.MinInt8) <= _int64 && _int64 <= int64(bw.MaxInt8) {
 				value = int8(_int64)
-			} else if int64(bwint.MinInt16) <= _int64 && _int64 <= int64(bwint.MaxInt16) {
+			} else if int64(bw.MinInt16) <= _int64 && _int64 <= int64(bw.MaxInt16) {
 				value = int16(_int64)
-			} else if int64(bwint.MinInt32) <= _int64 && _int64 <= int64(bwint.MaxInt32) {
+			} else if int64(bw.MinInt32) <= _int64 && _int64 <= int64(bw.MaxInt32) {
 				value = int32(_int64)
 			} else {
 				value = _int64
@@ -207,10 +221,10 @@ func ParseInt(source string) (value int, err error) {
 	source = underscoreRegexp.ReplaceAllLiteralString(source, ``)
 	var _int64 int64
 	if _int64, err = strconv.ParseInt(source, 10, 64); err == nil {
-		if int64(bwint.MinInt) <= _int64 && _int64 <= int64(bwint.MaxInt) {
+		if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
 			value = int(_int64)
 		} else {
-			err = bwerror.Error("<ansiPrimary>%d<ansi> is out of range <ansiSecondary>[%d, %d]", _int64, bwint.MinInt, bwint.MaxInt)
+			err = bwerr.From("<ansiVal>%d<ansi> is out of range <ansiVal>[%d, %d]", _int64, bw.MinInt, bw.MaxInt)
 		}
 	}
 	return
@@ -220,16 +234,16 @@ func ParseInt(source string) (value int, err error) {
 
 type ParseStack []ParseStackItem
 
-func (Stack *ParseStack) DataForJSON() interface{} {
+func (Stack *ParseStack) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
 	for _, item := range *Stack {
-		result = append(result, item.DataForJSON())
+		result = append(result, item)
 	}
-	return result
+	return json.Marshal(result)
 }
 
 func (Stack *ParseStack) String() (result string) {
-	return bwjson.PrettyJsonOf(Stack)
+	return bwjson.Pretty(Stack)
 }
 
 // ============================================================================
@@ -239,13 +253,14 @@ type ParseStackItem struct {
 	Vars  map[string]interface{}
 }
 
-func (stackItem *ParseStackItem) DataForJSON() interface{} {
+func (stackItem *ParseStackItem) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
 	result["Start"] = stackItem.Start.DataForJSON()
 	result["Vars"] = stackItem.Vars
-	return result
+	return json.Marshal(result)
+	// return result
 }
 
 func (stackItem *ParseStackItem) String() (result string) {
-	return bwjson.PrettyJsonOf(stackItem)
+	return bwjson.Pretty(stackItem)
 }

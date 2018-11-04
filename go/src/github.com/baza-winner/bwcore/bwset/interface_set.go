@@ -3,6 +3,7 @@
 package bwset
 
 import (
+	"encoding/json"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"sort"
 )
@@ -53,23 +54,23 @@ func (v Interface) ToSlice() []interface{} {
 
 // String - поддержка интерфейса Stringer
 func (v Interface) String() string {
-	return bwjson.PrettyJsonOf(v)
+	return bwjson.Pretty(v)
 }
 
-// DataForJSON - поддержка интерфейса bwjson.Jsonable
-func (v Interface) DataForJSON() interface{} {
+// MarshalJSON - поддержка интерфейса MarshalJSON
+func (v Interface) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
 	for k, _ := range v {
 		result = append(result, k)
 	}
-	return result
+	return json.Marshal(result)
 }
 
 // ToSliceOfStrings - возвращает []string строковых представлений элементов множества
 func (v Interface) ToSliceOfStrings() []string {
 	result := []string{}
 	for k, _ := range v {
-		result = append(result, bwjson.PrettyJson(k))
+		result = append(result, bwjson.Pretty(k))
 	}
 	sort.Strings(result)
 	return result

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwfmt"
+	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/pfa/formatted"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
@@ -19,7 +19,6 @@ type VarPathItem struct {
 	Idx  int
 	Key  string
 	Path VarPath
-	// Val interface{}
 }
 
 type varPathHash struct{}
@@ -43,7 +42,7 @@ func (v VarPathItem) TypeIdxKey(pfa *PfaStruct) (itemType VarPathItemType, idx i
 		key = v.Key
 	case VarPathItemPath:
 		if pfa == nil {
-			err = bwerror.Error("VarPath requires pfa")
+			err = bwerr.From("VarPath requires pfa")
 		} else if varValue, err := pfa.VarValue(v.Path); err == nil {
 			var ok bool
 			if idx, ok = varValue.Int(); ok {
@@ -160,11 +159,11 @@ func VarPathFrom(s string) (result VarPath, err error) {
 					state = vppsEnd
 				}
 			default:
-				bwerror.Panic("no handler for %s", state)
+				bwerr.Panic("no handler for %s", state)
 			}
 			if isUnexpectedRune {
 				// err = p.UnexpectedRuneError(fmt.Sprintf("state = %s", state))
-				err = p.Unexpected(p.Curr, bwfmt.StructFrom("state = %s", state))
+				err = p.Unexpected(p.Curr, bw.Fmt("state = %s", state))
 				// err = p.UnexpectedRuneError(p.Curr, "state = %s", state)
 			}
 		}
@@ -181,7 +180,7 @@ func VarPathFrom(s string) (result VarPath, err error) {
 func MustVarPathFrom(s string) (result VarPath) {
 	var err error
 	if result, err = VarPathFrom(s); err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	return
 }
@@ -208,7 +207,7 @@ func (v VarPath) FormattedString(optPfa ...*PfaStruct) formatted.String {
 			ss = append(ss, "#")
 		}
 	}
-	return formatted.StringFrom("<ansiCmd>%s", strings.Join(ss, "."))
+	return formatted.StringFrom("<ansiPath>%s", strings.Join(ss, "."))
 }
 
 // ============================================================================

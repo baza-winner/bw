@@ -3,6 +3,7 @@
 package bwset
 
 import (
+	"encoding/json"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"strconv"
@@ -54,11 +55,14 @@ func TestInt64(t *testing.T) {
 	}})
 	bwtesting.BwRunTests(t, Int64.String, map[string]bwtesting.TestCaseStruct{"Int64.String": {
 		In:  []interface{}{Int64{_Int64TestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.PrettyJson([]int64{_Int64TestItemA})},
+		Out: []interface{}{bwjson.Pretty([]int64{_Int64TestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Int64.DataForJSON, map[string]bwtesting.TestCaseStruct{"Int64.DataForJSON": {
-		In:  []interface{}{Int64{_Int64TestItemA: struct{}{}}},
-		Out: []interface{}{[]interface{}{_Int64TestItemA}},
+	bwtesting.BwRunTests(t, Int64.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Int64.MarshalJSON": {
+		In: []interface{}{Int64{_Int64TestItemA: struct{}{}}},
+		Out: []interface{}{(func() []byte {
+			result, _ := json.Marshal([]interface{}{_Int64TestItemA})
+			return result
+		})(), nil},
 	}})
 	bwtesting.BwRunTests(t, Int64.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Int64.ToSliceOfStrings": {
 		In:  []interface{}{Int64{_Int64TestItemA: struct{}{}}},

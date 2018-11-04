@@ -7,7 +7,6 @@ import (
 
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
-	"github.com/baza-winner/bwcore/defparse"
 )
 
 func TestMain(m *testing.M) { // https://stackoverflow.com/questions/23729790/how-can-i-do-test-setup-using-the-testing-package-in-go/34102842#34102842
@@ -17,7 +16,12 @@ func TestMain(m *testing.M) { // https://stackoverflow.com/questions/23729790/ho
 	os.Exit(retCode)
 }
 
-var installOpt = defparse.MustParseMap("{v: 'err', exitOnError: true, s: 'none'}")
+// var installOpt = defparse.MustParseMap("{v: 'err', exitOnError: true, s: 'none'}")
+var installOpt = map[string]interface{}{
+	"v":           "err",
+	"exitOnError": true,
+	"s":           "none",
+}
 
 func mySetupFunction() {
 	ExecCmd(installOpt, `go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper`)

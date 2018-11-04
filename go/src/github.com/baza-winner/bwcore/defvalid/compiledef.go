@@ -149,7 +149,7 @@ func compileDef(def value) (result *Def, err error) {
 				"default":    result.dflt,
 			})
 		}
-		if unexpectedKeys := bwmap.GetUnexpectedKeys(def.value, validDefKeys); unexpectedKeys != nil {
+		if unexpectedKeys := bwmap.MustUnexpectedKeys(def.value, validDefKeys); unexpectedKeys != nil {
 			return nil, valueErrorMake(def, valueErrorHasUnexpectedKeys, unexpectedKeys)
 		}
 	}

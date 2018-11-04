@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"unicode"
 
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwfmt"
+	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/pfa/formatted"
@@ -18,7 +18,7 @@ import (
 // 		func(vk common.ValKind, varPath core.VarPath, valueOf reflect.Value) {
 // 			switch vk {
 // 			case common.VkInvalid:
-// 				bwerror.Panic("%#v", val)
+// 				bwerr.Panic("%#v", val)
 // 			default:
 // 				result = common.Val{val}
 // 			}
@@ -30,7 +30,7 @@ import (
 // func MustValProviderFrom(i interface{}) (result core.ValProvider) {
 // 	var err error
 // 	if result, err = valProviderFrom(i); err != nil {
-// 		bwerror.PanicErr(err)
+// 		bwerr.PanicErr(err)
 // 	}
 // 	return
 // }
@@ -72,7 +72,7 @@ func (v UnicodeCategory) Conforms(pfa *core.PfaStruct, val interface{}, varPath 
 		case Symbol:
 			result = unicode.IsSymbol(r)
 		default:
-			bwerror.Panic("UnicodeCategory: %s", v)
+			bwerr.Panic("UnicodeCategory: %s", v)
 		}
 	}
 	if pfa.TraceLevel > core.TraceNone {
@@ -82,7 +82,7 @@ func (v UnicodeCategory) Conforms(pfa *core.PfaStruct, val interface{}, varPath 
 }
 
 func (t UnicodeCategory) FormattedString() formatted.String {
-	return formatted.StringFrom("<ansiOutline>%s", t)
+	return formatted.StringFrom("<ansiVar>%s", t)
 }
 
 // ============================================================================
@@ -94,7 +94,7 @@ func (v EOF) String() string {
 }
 
 func (t EOF) FormattedString() formatted.String {
-	return formatted.StringFrom("<ansiOutline>%s", t)
+	return formatted.StringFrom("<ansiVar>%s", t)
 }
 
 // ============================================================================
@@ -116,7 +116,7 @@ func ValFrom(val interface{}) (result Val) {
 		func(vk ValKind, varPath core.VarPath, valueOf reflect.Value) {
 			switch vk {
 			case VkInvalid:
-				bwerror.Panic("%#v", val)
+				bwerr.Panic("%#v", val)
 			case VkVarPath:
 				result = Val{varPath}
 			default:
@@ -155,7 +155,7 @@ func (v Val) GetVal(pfa *core.PfaStruct) (result interface{}, err error) {
 					}
 				}
 				result = m
-				// pfa.Panic(bwfmt.StructFrom("%#v", result))
+				// pfa.Panic(bw.StructFrom("%#v", result))
 			case VkSlice:
 				len := valueOf.Len()
 				vals := make([]interface{}, 0, len)
@@ -168,7 +168,7 @@ func (v Val) GetVal(pfa *core.PfaStruct) (result interface{}, err error) {
 				}
 				result = vals
 			case VkInvalid:
-				pfa.Panic(bwfmt.StructFrom("%#v", v.Val))
+				pfa.PanicA(bw.Fmt("%#v", v.Val))
 			default:
 				result = v.Val
 			}
@@ -298,19 +298,19 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool, err error) {
 		var ofs int
 		if len(v.varPath) > 2 {
 			err = pfa.Error("len(varPath) > 2, varPath: %s", v.varPath.FormattedString())
-			// bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
+			// bwerr.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
 		} else if len(v.varPath) > 1 {
 			vt, idx, key, err := v.varPath[1].TypeIdxKey(pfa)
 			if err != nil {
 				pfa.Err = err
 			} else if vt != core.VarPathItemIdx {
-				err = pfa.Error("<ansiPrimary>%s<ansi> path expects <ansiOutline>idx<ansi> as second item", key)
+				err = pfa.Error("<ansiVal>%s<ansi> path expects <ansiVar>idx<ansi> as second item", key)
 			} else {
 				ofs = idx
 			}
 		}
 		// if len(varPath) > 2 {
-		// bwerror.Panic
+		// bwerr.Panic
 		// }
 		// if len(v.varPath) > 1 {
 		// 	ofs, _ = core.VarValueFrom(v.varPath[1].Val).Int()
@@ -321,7 +321,7 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool, err error) {
 			if v.isNil {
 				result = isEOF
 				if pfa.TraceLevel > core.TraceNone {
-					pfa.TraceCondition(v.varPath, formatted.StringFrom("<ansiOutline>EOF"), result)
+					pfa.TraceCondition(v.varPath, formatted.StringFrom("<ansiVar>EOF"), result)
 				}
 			}
 			if !result && !isEOF {

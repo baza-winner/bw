@@ -1,6 +1,6 @@
 package pathparse
 
-import "github.com/baza-winner/bwcore/bwerror"
+import "github.com/baza-winner/bwcore/bwerr"
 
 type stringRuneProvider struct {
 	pos int
@@ -31,7 +31,7 @@ func Parse(source string) ([]interface{}, error) {
 func MustParse(source string) (result []interface{}) {
 	var err error
 	if result, err = Parse(source); err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	return result
 }

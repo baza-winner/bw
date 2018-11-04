@@ -1,7 +1,7 @@
 package deftype
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 )
 
 type Item uint16
@@ -36,7 +36,7 @@ func (v Item) DataForJSON() interface{} {
 func ItemFromString(s string) (result Item, err error) {
 	var ok bool
 	if result, ok = mapItemFromString[s]; !ok {
-		err = bwerror.Error("<ansiCmd>ItemFromString<ansi>: uknown <ansiPrimary>%s", result)
+		err = bwerr.From("<ansiPath>ItemFromString<ansi>: uknown <ansiVal>%s", result)
 	}
 	return
 }

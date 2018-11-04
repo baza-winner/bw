@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	. "github.com/dave/jennifer/jen"
 )
 
@@ -44,8 +44,8 @@ func (v *Helper) GenTestsFor(
 	testeeName := testName
 	if rt == ReturnNone {
 		if fgt == SimpleFunc {
-			bwerror.Panic(
-				"return type of <ansiCmd>%s<ansi> is %s",
+			bwerr.Panic(
+				"return type of <ansiPath>%s<ansi> is %s",
 				testName, rt,
 			)
 		}
@@ -58,8 +58,8 @@ func (v *Helper) GenTestsFor(
 		case ParamSet:
 			id = "s"
 		default:
-			bwerror.Panic(
-				"param type of <ansiCmd>%s<ansi> is %s",
+			bwerr.Panic(
+				"param type of <ansiPath>%s<ansi> is %s",
 				testName, pt,
 			)
 		}
@@ -75,8 +75,8 @@ func (v *Helper) GenTestsFor(
 	if testCase, ok = testData.(TestCase); ok {
 		testDict[Lit(testName)] = v.TestCaseValues(fgt != SimpleFunc, funcName, pt, rt, testCase)
 	} else if testCases, ok = testData.(TestCases); !ok {
-		bwerror.Panic(
-			"<ansiCmd>%s<ansi> <ansiOutline>TestData<ansi> expected to be <ansiPrimary>%s<ansi> or <ansiPrimary>%s",
+		bwerr.Panic(
+			"<ansiPath>%s<ansi> <ansiVar>TestData<ansi> expected to be <ansiVal>%s<ansi> or <ansiVal>%s",
 			testName, "TestCase", "TestCases",
 		)
 	} else {
@@ -121,8 +121,8 @@ func (v *Helper) TestCaseValues(
 		Params = append(Params, pt)
 	}
 	if len(testCase.In) != len(Params) {
-		bwerror.Panic(
-			"<ansiCmd>%s<ansi> <ansiOutline>testCase.In<ansi> expects to have <ansiPrimary>%d<ansi> item(s), but found <ansiSecondary>%d",
+		bwerr.Panic(
+			"<ansiPath>%s<ansi> <ansiVar>testCase.In<ansi> expects to have <ansiVal>%d<ansi> item(s), but found <ansiVal>%d",
 			testeeName, len(Params), len(testCase.In),
 		)
 	}
@@ -136,7 +136,7 @@ func (v *Helper) TestCaseValues(
 	for i, testCaseData := range testCase.In {
 		pt := Params[i]
 		if getValues, ok := pt2getValues[pt]; !ok {
-			bwerror.Panic("pt: %s", pt)
+			bwerr.Panic("pt: %s", pt)
 		} else if values, err := getValues(testCaseData); err != nil {
 			v.panicOnErrOfGetValues(err, testeeName, In, i)
 		} else {
@@ -149,10 +149,18 @@ func (v *Helper) TestCaseValues(
 	if rt != ReturnNone {
 		Returns = append(Returns, rt)
 	}
-	if len(testCase.Out) != len(Returns) {
-		bwerror.Panic(
-			"<ansiCmd>%s<ansi> <ansiOutline>testCase.Out<ansi> expects to have <ansiPrimary>%d<ansi> item(s), but found <ansiSecondary>%d",
-			testeeName, len(Returns), len(testCase.Out),
+	var expectsOutNum int
+	switch rt {
+	case ReturnNone:
+	case ReturnJSON:
+		expectsOutNum = 2
+	default:
+		expectsOutNum = 1
+	}
+	if len(testCase.Out) != expectsOutNum {
+		bwerr.Panic(
+			"<ansiPath>%s<ansi> <ansiVar>testCase.Out<ansi> expects to have <ansiVal>%d<ansi> item(s), but found <ansiVal>%d",
+			testeeName, expectsOutNum, len(testCase.Out),
 		)
 	}
 	rt2getValues := map[ReturnType]GetValues{
@@ -163,15 +171,17 @@ func (v *Helper) TestCaseValues(
 	}
 	outValues := []Code{}
 	for i, testCaseData := range testCase.Out {
-		rt := Returns[i]
 		if values, ok := testCaseData.(Code); ok {
 			outValues = append(outValues, values)
-		} else if getValues, ok := rt2getValues[rt]; !ok {
-			bwerror.Panic("rt: %s", rt)
-		} else if values, err := getValues(testCaseData); err == nil {
-			outValues = append(outValues, values)
 		} else {
-			v.panicOnErrOfGetValues(err, testeeName, Out, i)
+			rt := Returns[i]
+			if getValues, ok := rt2getValues[rt]; !ok {
+				bwerr.Panic("rt: %s", rt)
+			} else if values, err := getValues(testCaseData); err == nil {
+				outValues = append(outValues, values)
+			} else {
+				v.panicOnErrOfGetValues(err, testeeName, Out, i)
+			}
 		}
 	}
 	d[Id("Out")] = Index().Interface().Values(outValues...)
@@ -239,7 +249,7 @@ func (v *Helper) getValuesOfString(testCaseData interface{}) (result Code, err e
 
 func (v *Helper) errOfGetValues(typeName string, testCaseData interface{}) error {
 	return fmt.Errorf(
-		"to be <ansiPrimary>%s<ansi>, instead of <ansiSecondary>%#v",
+		"to be <ansiVal>%s<ansi>, instead of <ansiVal>%#v",
 		typeName, testCaseData,
 	)
 }
@@ -254,8 +264,8 @@ const (
 //go:generate stringer -type=TestDataKind
 
 func (v *Helper) panicOnErrOfGetValues(err error, testeeName string, testDataKind TestDataKind, idx int) {
-	bwerror.Panic(
-		"<ansiCmd>%s<ansi> expects testCase.%s[%d] "+err.Error(),
+	bwerr.Panic(
+		"<ansiPath>%s<ansi> expects testCase.%s[%d] "+err.Error(),
 		testeeName, testDataKind.String(), idx,
 	)
 }

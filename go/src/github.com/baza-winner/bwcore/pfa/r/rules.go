@@ -3,8 +3,8 @@ package r
 import (
 	"reflect"
 
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwint"
+	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/pfa/c"
 	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/pfa/d"
@@ -62,7 +62,7 @@ rules:
 		}
 
 		if ok, err = rule.conditions.conformsTo(pfa); err != nil {
-			bwerror.Panic("r.conditions: %#v, pfa.Err: %#v", rule.conditions, pfa.Err)
+			bwerr.Panic("r.conditions: %#v, pfa.Err: %#v", rule.conditions, pfa.Err)
 		} else if ok {
 			if pfa.TraceLevel > core.TraceNone {
 				pfa.TraceBeginActions()
@@ -80,7 +80,7 @@ rules:
 
 		// else {
 		// 	if pfa.Err != nil {
-		// 		bwerror.Panic("r.conditions: %#v, pfa.Err: %#v", rule.conditions, pfa.Err)
+		// 		bwerr.Panic("r.conditions: %#v, pfa.Err: %#v", rule.conditions, pfa.Err)
 		// 	}
 		// }
 		// if !ok {
@@ -122,12 +122,12 @@ func ruleFrom(args []interface{}) rule {
 			)
 		case c.VarIs:
 			if len(typedArg.VarPathStr) == 0 {
-				bwerror.Panic("len(typedArg.VarPathStr) == 0, typedArg: %#v", typedArg)
+				bwerr.Panic("len(typedArg.VarPathStr) == 0, typedArg: %#v", typedArg)
 			}
 			varPath := core.MustVarPathFrom(typedArg.VarPathStr)
 			key := varPath[0].Key
 			if (key == "rune" || key == "runePos") && (len(varPath) > 2) {
-				bwerror.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
+				bwerr.Panic("len(varPath) > 2, varPath: %s", typedArg.VarPathStr)
 			}
 			var needPanic bool
 			varIs := getVarIs(varIsMap, typedArg.VarPathStr)
@@ -177,7 +177,7 @@ func ruleFrom(args []interface{}) rule {
 						needPanic = true
 					} else {
 						_int64 := reflect.ValueOf(typedArg.VarValue).Int()
-						if int64(bwint.MinInt) <= _int64 && _int64 <= int64(bwint.MaxInt) {
+						if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
 							varIs.AddInt(int(_int64))
 						} else {
 							// varIs.AddValChecker(common.JustVal{typedArg.VarValue})
@@ -206,11 +206,11 @@ func ruleFrom(args []interface{}) rule {
 				}
 			}
 			if needPanic {
-				// bwerror.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
-				bwerror.Panic("typedArg.VarValue: %#v, %s", typedArg.VarValue, reflect.TypeOf(typedArg.VarValue).Kind())
+				// bwerr.Panic("typedArg.VarValue: %#v", typedArg.VarValue)
+				bwerr.Panic("typedArg.VarValue: %#v, %s", typedArg.VarValue, reflect.TypeOf(typedArg.VarValue).Kind())
 			}
 		default:
-			bwerror.Panic("unexpected %#v", arg)
+			bwerr.Panic("unexpected %#v", arg)
 		}
 	}
 	for _, v := range varIsMap {
@@ -224,7 +224,7 @@ func helperRuleFromUint(key, v interface{}, varIs *d.VarIs) (needPanic bool) {
 		needPanic = true
 	} else {
 		_uint64 := reflect.ValueOf(v).Uint()
-		if _uint64 <= uint64(bwint.MaxInt) {
+		if _uint64 <= uint64(bw.MaxInt) {
 			varIs.AddInt(int(_uint64))
 		} else {
 			varIs.AddValChecker(d.ValFrom(v))

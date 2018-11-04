@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
@@ -134,8 +134,8 @@ me'`},
 			In: []interface{}{`{ someBigNumber: 1_000_000_000_000_000_000_000 }`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"failed to transform <ansi><ansiCmd>%s<ansi>(<ansi><ansiPrimary>\"%s\"<ansi>) to number (%s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+				bwerr.From(
+					"failed to transform <ansi><ansiPath>%s<ansi>(<ansi><ansiVal>\"%s\"<ansi>) to number (%s) at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"0.string",
 					"1_000_000_000_000_000_000_000",
 					"strconv.ParseInt: parsing \"1000000000000000000000\": value out of range",
@@ -150,8 +150,8 @@ me'`},
 			In: []interface{}{`[ Bool Something String ]`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected \"<ansiPrimary>%s<ansi>\" at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+				bwerr.From(
+					"unexpected \"<ansiVal>%s<ansi>\" at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"Something",
 					7,
 					"[ Bool ", "Something", " String ]",
@@ -173,8 +173,8 @@ me'`},
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected \"<ansiPrimary>%s<ansi>\" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+				bwerr.From(
+					"unexpected \"<ansiVal>%s<ansi>\" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"def", 4, 3, 25, "[\n  qw/one two three/\n  ", "def", "\n  qw/\n    four",
 				),
 			},
@@ -190,8 +190,8 @@ me'`},
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected char <ansiPrimary>'*'<ansiReset> (charCode: 42) at line <ansiCmd>5<ansi>, col <ansiCmd>3<ansi> (pos <ansiCmd>20<ansi>):\n<ansiDarkGreen>  1000,\n  true\n  <ansiLightRed>*<ansiReset>\n  'value',\n]\n",
+				bwerr.From(
+					"unexpected char <ansiVal>'*'<ansiReset> (charCode: 42) at line <ansiPath>5<ansi>, col <ansiPath>3<ansi> (pos <ansiPath>20<ansi>):\n<ansiDarkGreen>  1000,\n  true\n  <ansiLightRed>*<ansiReset>\n  'value',\n]\n",
 				),
 			},
 		},
@@ -199,8 +199,8 @@ me'`},
 			In: []interface{}{` [1000, true 'value', `},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>22<ansi>: <ansiDarkGreen> [1000, true 'value', \n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>22<ansi>: <ansiDarkGreen> [1000, true 'value', \n",
 				),
 			},
 		},
@@ -227,8 +227,8 @@ me'`},
 			},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected \"<ansiPrimary>%s<ansi>\" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+				bwerr.From(
+					"unexpected \"<ansiVal>%s<ansi>\" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
 				),
 			},
@@ -281,8 +281,8 @@ me'`},
 			In: []interface{}{`Map Bool`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected char <ansiPrimary>'B'<ansiReset> (charCode: 66) at pos <ansiCmd>4<ansi>: <ansiDarkGreen>Map <ansiLightRed>B<ansiReset>ool\n",
+				bwerr.From(
+					"unexpected char <ansiVal>'B'<ansiReset> (charCode: 66) at pos <ansiPath>4<ansi>: <ansiDarkGreen>Map <ansiLightRed>B<ansiReset>ool\n",
 				),
 			},
 		},
@@ -290,8 +290,8 @@ me'`},
 			In: []interface{}{`{ key =Bool`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected char <ansiPrimary>'B'<ansiReset> (charCode: 66) at pos <ansiCmd>7<ansi>: <ansiDarkGreen>{ key =<ansiLightRed>B<ansiReset>ool\n",
+				bwerr.From(
+					"unexpected char <ansiVal>'B'<ansiReset> (charCode: 66) at pos <ansiPath>7<ansi>: <ansiDarkGreen>{ key =<ansiLightRed>B<ansiReset>ool\n",
 				),
 			},
 		},
@@ -299,8 +299,8 @@ me'`},
 			In: []interface{}{`{ `},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>2<ansi>: <ansiDarkGreen>{ \n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>2<ansi>: <ansiDarkGreen>{ \n",
 				),
 			},
 		},
@@ -308,8 +308,8 @@ me'`},
 			In: []interface{}{`{ ,`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected char <ansiPrimary>','<ansiReset> (charCode: 44) at pos <ansiCmd>2<ansi>: <ansiDarkGreen>{ <ansiLightRed>,<ansiReset>\n",
+				bwerr.From(
+					"unexpected char <ansiVal>','<ansiReset> (charCode: 44) at pos <ansiPath>2<ansi>: <ansiDarkGreen>{ <ansiLightRed>,<ansiReset>\n",
 				),
 			},
 		},
@@ -317,8 +317,8 @@ me'`},
 			In: []interface{}{`{ key`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s\n",
 					5, "{ key",
 				),
 			},
@@ -327,8 +327,8 @@ me'`},
 			In: []interface{}{`<some`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>5<ansi>: <ansiDarkGreen><some\n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>5<ansi>: <ansiDarkGreen><some\n",
 				),
 			},
 		},
@@ -336,8 +336,8 @@ me'`},
 			In: []interface{}{`-`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s\n",
 					1, "-",
 				),
 			},
@@ -346,8 +346,8 @@ me'`},
 			In: []interface{}{`"`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s\n",
 					1, "\"",
 				),
 			},
@@ -356,8 +356,8 @@ me'`},
 			In: []interface{}{`"\`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s\n",
 					2, "\"\\",
 				),
 			},
@@ -366,8 +366,8 @@ me'`},
 			In: []interface{}{`"\j`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected char <ansiPrimary>%q<ansiReset> (charCode: %[1]d) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+				bwerr.From(
+					"unexpected char <ansiVal>%q<ansiReset> (charCode: %[1]d) at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
 					'j', 2, "\"\\", "j",
 				),
 			},
@@ -376,8 +376,8 @@ me'`},
 			In: []interface{}{`<some `},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s\n",
 					6, "<some ",
 				),
 			},
@@ -393,8 +393,8 @@ me'`},
 			In: []interface{}{`qw`},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected end of string at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s\n",
+				bwerr.From(
+					"unexpected end of string at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s\n",
 					2, "qw",
 				),
 			},
@@ -403,8 +403,8 @@ me'`},
 			In: []interface{}{`qw `},
 			Out: []interface{}{
 				nil,
-				bwerror.Error(
-					"unexpected char <ansiPrimary>%q<ansiReset> (charCode: %[1]d) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+				bwerr.From(
+					"unexpected char <ansiVal>%q<ansiReset> (charCode: %[1]d) at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
 					' ', 2, "qw", " ",
 				),
 			},
@@ -413,8 +413,8 @@ me'`},
 		// 	In: []interface{}{` { _key: some } `},
 		// 	Out: []interface{}{
 		// 		nil,
-		// 		bwerror.Error(
-		// 			"unexpected char <ansiPrimary>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
+		// 		bwerr.From(
+		// 			"unexpected char <ansiVal>%q<ansiReset> (charCode: %[1]d, pfa.state: %s) at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>\n",
 		// 			' ', expectSpaceOrQwItemOrDelimiter, 2, "qw", " ",
 		// 		),
 		// 	},
@@ -424,7 +424,7 @@ me'`},
 	// testsToRun := tests
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "zero number", "int number with underscore")
-	bwmap.CropMap(tests, "UnexpectedItem")
+	// bwmap.CropMap(tests, "UnexpectedItem")
 	// bwmap.CropMap(tests, "qw/Bool String Int Number Map Array ArrayOf/")
 	bwtesting.BwRunTests(t, Parse, tests)
 }
@@ -448,7 +448,7 @@ func ExampleParse_1() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -499,7 +499,7 @@ func ExampleParse_2() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -550,7 +550,7 @@ func ExampleParse_3() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -601,7 +601,7 @@ func ExampleParse_4() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -652,7 +652,7 @@ func ExampleParse_5() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -703,7 +703,7 @@ func ExampleParse_6() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -760,7 +760,7 @@ func ExampleParse_7() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -831,7 +831,7 @@ func ExampleParse_8() {
      }
    }
   ]`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: [
@@ -890,7 +890,7 @@ func ExampleParse_9() {
       }
     }
   }`)
-	fmt.Printf("err: %v\nresult: %s", err, bwjson.PrettyJson(result))
+	fmt.Printf("err: %v\nresult: %s", err, bwjson.Pretty(result))
 	// Output:
 	// err: <nil>
 	// result: {
@@ -951,8 +951,8 @@ func TestParseMap(t *testing.T) {
       `},
 			Out: []interface{}{
 				map[string]interface{}(nil),
-				bwerror.Error(
-					"unexpected \"<ansiPrimary>%s<ansi>\" at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
+				bwerr.From(
+					"unexpected \"<ansiVal>%s<ansi>\" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>):\n<ansiDarkGreen>%s<ansiLightRed>%s<ansiReset>%s\n",
 					"type", 2, 9, 9, "\n        ", "type", ": 'map',\n        keys: {\n          v: {",
 				),
 			},

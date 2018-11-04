@@ -3,8 +3,9 @@
 package deftype
 
 import (
-	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"sort"
+
+	bwjson "github.com/baza-winner/bwcore/bwjson"
 )
 
 // Set - множество значений типа Item с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
@@ -58,7 +59,7 @@ func _SetToSliceTestHelper(kk []Item) []Item {
 
 // String - поддержка интерфейса Stringer
 func (v Set) String() string {
-	return bwjson.PrettyJsonOf(v)
+	return bwjson.Pretty(v)
 }
 
 // DataForJSON - поддержка интерфейса bwjson.Jsonable

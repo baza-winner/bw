@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 
 	. "github.com/dave/jennifer/jen"
 )
@@ -25,7 +25,7 @@ const (
 	ParamAbove
 )
 
-//go:generate stringer -type=ParamsType
+//go:generate stringer -type=ParamType
 
 type ReturnType uint8
 
@@ -35,6 +35,7 @@ const (
 	ReturnBool
 	ReturnInt
 	ReturnInterface
+	ReturnJSON
 	ReturnString
 	ReturnSet
 	ReturnSlice
@@ -195,7 +196,7 @@ func (v FuncGen) Func() (result func(string, string, ParamType, ReturnType, []*S
 	case SimpleFunc:
 		result = v.h.Func
 	default:
-		bwerror.Panic("fgt: %s", v.fgt)
+		bwerr.Panic("fgt: %s", v.fgt)
 	}
 	return
 }
@@ -277,7 +278,7 @@ func (v *Helper) params(pt ParamType) []Code {
 	case ParamIJ:
 		result = append(result, Id("i").Int(), Id("j").Int())
 	default:
-		bwerror.Panic("pt: %d", pt)
+		bwerr.Panic("pt: %d", pt)
 	}
 	return result
 }
@@ -299,8 +300,11 @@ func (v *Helper) returns(rt ReturnType) (result *Statement) {
 		result = Index().Id(v.IdItem)
 	case ReturnSliceOfStrings:
 		result = Index().String()
+	case ReturnJSON:
+		result = Params(Index().Byte(), Error())
 	default:
-		bwerror.Panic("rt: %d", rt)
+		// bwerr.PanicA(bw.A{"rt: %d", bw.Args(rt)})
+		bwerr.Panic("rt: %s (%d)", rt, rt)
 	}
 	return result
 }
@@ -320,39 +324,39 @@ func (v *Helper) ToString(id string) (codeString *Statement) {
 	case "rune":
 		codeString = Id("string").Call(Id(id))
 	case "interface{}":
-		codeString = Qual(v.bwjsonPackageName, "PrettyJson").Call(Id(id))
+		codeString = Qual(v.bwjsonPackageName, "Pretty").Call(Id(id))
 	default:
 		codeString = Id(id).Dot("String").Call()
 	}
 	return
 }
 
-func (v *Helper) ToDataForJSON(id string) (codeString *Statement) {
-	switch v.IdItem {
-	case "string":
-		codeString = Id(id)
-	case "int8", "int16", "int32", "int64", "int":
-		codeString = Id(id)
-		// codeString = Qual("strconv", "FormatInt").Call(Id("int64").Call(Id(id)), Lit(10))
-	case "uint8", "uint16", "uint32", "uint64", "uint":
-		codeString = Id(id)
-		// codeString = Qual("strconv", "FormatUint").Call(Id("uint64").Call(Id(id)), Lit(10))
-	case "float32", "float64":
-		codeString = Id(id)
-		// codeString = Qual("strconv", "FormatFloat").Call(Id("float64").Call(Id(id)), LitByte('f'), Lit(-1), Lit(64))
-	case "bool":
-		codeString = Id(id)
-		// codeString = Qual("strconv", "FormatBool").Call(Id(id))
-	case "rune":
-		codeString = Id(id)
-		// codeString = Id("string").Call(Id(id))
-	case "interface{}":
-		codeString = Id(id)
-	default:
-		codeString = Id(id).Dot("DataForJSON").Call()
-	}
-	return
-}
+// func (v *Helper) ToDataForJSON(id string) (codeString *Statement) {
+// 	switch v.IdItem {
+// 	case "string":
+// 		codeString = Id(id)
+// 	case "int8", "int16", "int32", "int64", "int":
+// 		codeString = Id(id)
+// 		// codeString = Qual("strconv", "FormatInt").Call(Id("int64").Call(Id(id)), Lit(10))
+// 	case "uint8", "uint16", "uint32", "uint64", "uint":
+// 		codeString = Id(id)
+// 		// codeString = Qual("strconv", "FormatUint").Call(Id("uint64").Call(Id(id)), Lit(10))
+// 	case "float32", "float64":
+// 		codeString = Id(id)
+// 		// codeString = Qual("strconv", "FormatFloat").Call(Id("float64").Call(Id(id)), LitByte('f'), Lit(-1), Lit(64))
+// 	case "bool":
+// 		codeString = Id(id)
+// 		// codeString = Qual("strconv", "FormatBool").Call(Id(id))
+// 	case "rune":
+// 		codeString = Id(id)
+// 		// codeString = Id("string").Call(Id(id))
+// 	case "interface{}":
+// 		codeString = Id(id)
+// 	default:
+// 		codeString = Id(id).Dot("DataForJSON").Call()
+// 	}
+// 	return
+// }
 
 func (v *Helper) Save() {
 	v.saveHelper(v.f, "")
@@ -369,7 +373,7 @@ func (v *Helper) saveHelper(f *File, suffix string) {
 	fileName := name + "_set" + suffix + ".go"
 	fileSpec := filepath.Join(v.packageDir, strings.ToLower(fileName))
 	if err := f.Save(fileSpec); err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 }
 

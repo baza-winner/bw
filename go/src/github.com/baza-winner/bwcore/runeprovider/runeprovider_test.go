@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
 )
@@ -19,7 +19,7 @@ func prepareTestFile(basename string, content []byte) {
 	fileSpec := getTestFileSpec(basename)
 	err := ioutil.WriteFile(fileSpec, content, 0644)
 	if err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	testFiles = append(testFiles, fileSpec)
 }
@@ -49,7 +49,7 @@ func getFirstLine(fileSpec string) (result string, err error) {
 	var p RuneProvider
 	p, err = FromFile(fileSpec)
 	if err != nil {
-		err = bwerror.ErrorErr(err)
+		err = bwerr.FromA(bwerr.E{Error: err})
 	} else {
 		defer p.Close()
 		for {
@@ -85,7 +85,7 @@ func TestGetFirstLine(t *testing.T) {
 			In: []interface{}{getTestFileSpec("invalid utf8")},
 			Out: []interface{}{
 				"Рад",
-				bwerror.Error(
+				bwerr.From(
 					"utf-8 encoding is invalid at pos %d (byte #%d)",
 					2, 5,
 				),
@@ -95,7 +95,7 @@ func TestGetFirstLine(t *testing.T) {
 			In: []interface{}{getTestFileSpec("non existent")},
 			Out: []interface{}{
 				"",
-				bwerror.Error(
+				bwerr.From(
 					"open %s: no such file or directory",
 					getTestFileSpec("non existent"),
 				),

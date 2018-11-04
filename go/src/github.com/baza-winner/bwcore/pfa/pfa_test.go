@@ -3,7 +3,7 @@ package pfa
 import (
 	"testing"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/pfa/a"
@@ -22,7 +22,7 @@ import (
 // func TestParseLogic(t *testing.T) {
 // 	p, err := runeprovider.FromFile(getTestFileSpec("logic.pfa"))
 // 	if err != nil {
-// 		bwerror.PanicErr(err)
+// 		bwerr.PanicErr(err)
 // 	}
 // 	tests := map[string]bwtesting.TestCaseStruct{
 // 		"": {
@@ -46,8 +46,8 @@ func TestVarPathFrom(t *testing.T) {
 		"0.key": {
 			In: []interface{}{"0.key"},
 			Out: []interface{}{(core.VarPath)(nil),
-				bwerror.Error(
-					"unexpected char <ansiPrimary>%q<ansi> (charCode: %d, state = %s) at pos <ansiCmd>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansi>%s\n",
+				bwerr.From(
+					"unexpected char <ansiVal>%q<ansi> (charCode: %d, state = %s) at pos <ansiPath>%d<ansi>: <ansiDarkGreen>%s<ansiLightRed>%s<ansi>%s\n",
 					'0', '0', "vppsBegin", 0, "", "0", ".key",
 				),
 			},
@@ -214,9 +214,9 @@ type TestHelper struct {
 }
 
 func (v TestHelper) VarValue(varPathStr string) (val interface{}, err error) {
-	v.pfa.Err = nil
-	varValue := v.pfa.VarValue(core.MustVarPathFrom(varPathStr))
-	return varValue.Val, v.pfa.Err
+	// v.pfa.Err = nil
+	return v.pfa.VarValue(core.MustVarPathFrom(varPathStr))
+	// return varValue.Val, v.pfa.Err
 }
 
 func TestPfa_setVarVal(t *testing.T) {
@@ -256,8 +256,8 @@ func TestPfa_setVarVal(t *testing.T) {
 		"stack.#": {
 			In: []interface{}{"stack.#", 4},
 			Out: []interface{}{nil,
-				bwerror.Error(
-					"failed to set <ansiReset><ansiCmd>stack.#<ansi>: <ansiReset><ansiOutline>path.#<ansi> is <ansiCmd>readonly<ansiReset>",
+				bwerr.From(
+					"failed to set <ansiReset><ansiPath>stack.#<ansi>: <ansiReset><ansiVar>path.#<ansi> is <ansiPath>readonly<ansiReset>",
 				)},
 		},
 		"stack.-1.type": {
@@ -284,13 +284,14 @@ func TestPfa_setVarVal(t *testing.T) {
 
 func (v TestHelper) SetVarValue(varPathStr string, VarVal interface{}) (interface{}, error) {
 	varPath := core.MustVarPathFrom(varPathStr)
-	v.pfa.Err = nil
+	// v.pfa.Err = nil
 	v.pfa.SetVarVal(varPath, VarVal)
-	if v.pfa.Err == nil {
-		return v.pfa.VarValue(varPath).Val, v.pfa.Err
-	} else {
-		return nil, v.pfa.Err
-	}
+	return v.pfa.VarValue(varPath)
+	// if v.pfa.Err == nil {
+	// 	return v.pfa.VarValue(varPath).Val, v.pfa.Err
+	// } else {
+	// 	return nil, v.pfa.Err
+	// }
 }
 
 func TestPfaActions(t *testing.T) {
@@ -351,12 +352,13 @@ func TestPfaActions(t *testing.T) {
 }
 
 func (v TestHelper) Action(varPathStr string, action interface{}) (val interface{}, err error) {
-	r.RulesFrom([]interface{}{action}).Process(v.pfa)
-	if v.pfa.Err != nil {
-		return nil, v.pfa.Err
-	} else {
-		return v.pfa.VarValue(core.MustVarPathFrom(varPathStr)).Val, v.pfa.Err
-	}
+	// r.RulesFrom([]interface{}{action}).Process(v.pfa)
+	return v.pfa.VarValue(core.MustVarPathFrom(varPathStr))
+	// if v.pfa.Err != nil {
+	// 	return nil, v.pfa.Err
+	// } else {
+	// 	return v.pfa.VarValue(core.MustVarPathFrom(varPathStr)).Val, v.pfa.Err
+	// }
 }
 
 func TestPfaConditions(t *testing.T) {
@@ -469,7 +471,7 @@ func TestPfaConditions(t *testing.T) {
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "rune.-2 is 'o' => true")
-	// bwerror.Spew.Printf("%#q\n", pfa.VarValue(core.MustVarPathFrom("rune.-2")).val)
+	// bwerr.Spew.Printf("%#q\n", pfa.VarValue(core.MustVarPathFrom("rune.-2")).val)
 	bwtesting.BwRunTests(t, TestHelper{pfa}.Check, tests)
 }
 

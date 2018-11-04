@@ -6,20 +6,33 @@ package bwmap
 import (
 	"reflect"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwerr"
 )
 
-func GetUnexpectedKeys(m interface{}, expected ...interface{}) []string {
+var (
+	ansiMustBeMap       string
+	ansiMustBeMapString string
+)
+
+func init() {
+	ansiMustBeMap = ansi.String("<ansiVar>m<ansi> (<ansiVal>%#v<ansi>) must be <ansiType>map")
+	ansiMustBeMapString = ansi.String("<ansiVar>m<ansi> (<ansiVal>%#v<ansi>) must be <ansiType>map[string]")
+}
+
+func UnexpectedKeys(m interface{}, expected ...interface{}) (result []string, err error) {
 	if expected == nil {
-		return nil
+		return
 	}
 	v := reflect.ValueOf(m)
 	if v.Kind() != reflect.Map {
-		bwerror.Panic("<ansiOutline>m<ansi> (<ansiSecondary>%+v<ansi>) is not <ansiPrimary>map", m)
+		err = bwerr.From(ansiMustBeMap, m)
+		// bwerr.Panic(bw.Fmt(ansiMustBeMap, m))
 	}
 	for _, vk := range v.MapKeys() {
 		if vk.Kind() != reflect.String {
-			bwerror.Panic("<ansiOutline>m<ansi> (<ansiSecondary>%+v<ansi>) is not <ansiPrimaryLiteralmap[string]", m)
+			err = bwerr.From(ansiMustBeMapString, m)
+			// bwerr.Panic(bw.Fmt(ansiMustBeMapString, m))
 		}
 		break
 	}
@@ -41,25 +54,34 @@ func GetUnexpectedKeys(m interface{}, expected ...interface{}) []string {
 				expectedKeys[k] = struct{}{}
 			}
 		} else {
-			bwerror.Panic("<ansiOutline>expected<ansi> (<ansiPrimary>%+v<ansi>) neither <ansiSecondary>string<ansi>, nor <ansiSecondary>[]string<ansi>, nor <ansiSecondary>map[string]interface", expected)
+			bwerr.Panic("<ansiVar>expected<ansi> (<ansiVal>%+v<ansi>) neither <ansiVal>string<ansi>, nor <ansiVal>[]string<ansi>, nor <ansiVal>map[string]interface", expected)
 		}
 	}
-	var unexpectedKeys = []string{}
+	result = []string{}
 	for _, vk := range v.MapKeys() {
 		k := vk.String()
 		if _, ok := expectedKeys[k]; !ok {
-			unexpectedKeys = append(unexpectedKeys, k)
+			result = append(result, k)
 		}
 	}
-	if len(unexpectedKeys) == 0 {
-		return nil
-	} else {
-		return unexpectedKeys
+	if len(result) == 0 {
+		result = nil
 	}
+	return
+}
+
+func MustUnexpectedKeys(m interface{}, expected ...interface{}) (result []string) {
+	var err error
+	if result, err = UnexpectedKeys(m, expected...); err != nil {
+		bwerr.PanicA(bwerr.E{Depth: 1, Error: err})
+	}
+	return
 }
 
 func CropMap(m interface{}, crop ...interface{}) {
-	if unexpectedKeys := GetUnexpectedKeys(m, crop...); unexpectedKeys != nil {
+	if unexpectedKeys, err := UnexpectedKeys(m, crop...); err != nil {
+		bwerr.PanicA(bwerr.E{Error: err})
+	} else if unexpectedKeys != nil {
 		for _, k := range unexpectedKeys {
 			v := reflect.ValueOf(m)
 			v.SetMapIndex(reflect.ValueOf(k), reflect.Value{})

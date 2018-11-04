@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/pfa/formatted"
 )
@@ -16,7 +16,7 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 	case formatted.String:
 		result = t
 	case rune, string:
-		result = formatted.StringFrom("<ansiPrimary>%q", val)
+		result = formatted.StringFrom("<ansiVal>%q", val)
 	case formatted.FormattedString:
 		result = t.FormattedString()
 	case VarPath:
@@ -32,7 +32,7 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 			switch t[0].Key {
 			case "rune":
 				if r, isEOF := pfa.Proxy.Rune(ofs); isEOF {
-					valStr = formatted.StringFrom("<ansiOutline>EOF")
+					valStr = formatted.StringFrom("<ansiVar>EOF")
 				} else {
 					valStr = pfa.TraceVal(r)
 				}
@@ -40,7 +40,7 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 				ps := pfa.Proxy.PosStruct(ofs)
 				valStr = pfa.TraceVal(ps.Pos)
 			default:
-				bwerror.Unreachable()
+				bwerr.Unreachable()
 			}
 		} else {
 			// {
@@ -53,7 +53,7 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 			// }
 			varValue, err := pfa.VarValue(t)
 			if err != nil {
-				bwerror.PanicErr(err)
+				bwerr.PanicA(bwerr.E{Error: err})
 			}
 			// val :=
 			fmt.Printf("%s: %#v\n", t.FormattedString(), varValue.Val)
@@ -65,22 +65,22 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 		value := reflect.ValueOf(t)
 		keys := value.MapKeys()
 		if len(keys) == 1 {
-			result = formatted.StringFrom("<ansiPrimary>%s", traceValHelper(keys[0].Interface()))
+			result = formatted.StringFrom("<ansiVal>%s", traceValHelper(keys[0].Interface()))
 		} else if len(keys) > 1 {
 			ss := []string{}
 			for _, k := range keys {
 				ss = append(ss, traceValHelper(k.Interface()))
 			}
-			result = formatted.StringFrom("<<ansiSecondary>%s>", strings.Join(ss, " "))
+			result = formatted.StringFrom("<<ansiVal>%s<ansi>>", strings.Join(ss, " "))
 		}
 	default:
-		result = formatted.StringFrom("<ansiPrimary>%#v", val)
+		result = formatted.StringFrom("<ansiVal>%#v", val)
 	}
 	return
 }
 
 func (pfa *PfaStruct) TraceAction(fmtString string, fmtArgs ...interface{}) {
-	fmt.Printf(pfa.indent(pfa.ruleLevel+1)+ansi.Ansi("", fmtString+"\n"), pfa.fmtArgs(fmtArgs...)...)
+	fmt.Printf(pfa.indent(pfa.ruleLevel+1)+ansi.String(fmtString+"\n"), pfa.fmtArgs(fmtArgs...)...)
 }
 
 func (pfa *PfaStruct) TraceCondition(varPath VarPath, arg interface{}, result bool) {
@@ -103,7 +103,17 @@ func (pfa *PfaStruct) TraceBeginActions() {
 }
 
 func (pfa *PfaStruct) traceConditionsHelper(suffix string) {
-	fmt.Printf(pfa.indent(pfa.ruleLevel) + strings.Join(pfa.traceConditions, " ") + ansi.Ansi("", "<ansiYellow><ansiBold>:"+suffix+"\n"))
+	fmt.Printf(
+		pfa.indent(pfa.ruleLevel) +
+			strings.Join(pfa.traceConditions, " ") +
+			ansi.StringA(ansi.A{
+				Default: []ansi.SGRCode{
+					ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorYellow}),
+					ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
+				},
+				S: ":" + suffix + "\n",
+			}),
+	)
 	pfa.traceConditions = nil
 }
 

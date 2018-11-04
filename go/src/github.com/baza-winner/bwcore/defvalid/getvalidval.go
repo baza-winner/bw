@@ -3,7 +3,7 @@ package defvalid
 import (
 	"reflect"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
 )
@@ -81,7 +81,7 @@ func getValidValHelpersCheck() {
 	deftypeItem := deftype.ItemBelow + 1
 	for deftypeItem < deftype.ItemAbove {
 		if _, ok := getValidValHelpers[deftypeItem]; !ok {
-			bwerror.Panic("not defined <ansiOutline>deftype.ItemValidators<ansi>[<ansiPrimary>%s<ansi>]", deftypeItem)
+			bwerr.Panic("not defined <ansiVar>deftype.ItemValidators<ansi>[<ansiVal>%s<ansi>]", deftypeItem)
 		}
 		deftypeItem += 1
 	}
@@ -146,7 +146,7 @@ func _Number(val value, def Def) (result interface{}, err error) {
 
 func _Map(val value, def Def) (result interface{}, err error) {
 	if def.keys != nil {
-		unexpectedKeys := bwmap.GetUnexpectedKeys(val.value, def.keys)
+		unexpectedKeys := bwmap.MustUnexpectedKeys(val.value, def.keys)
 		for key, keyDef := range def.keys {
 			if err = _MapHelper(val, key, keyDef); err != nil {
 				return

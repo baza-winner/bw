@@ -3,6 +3,7 @@
 package bwset
 
 import (
+	"encoding/json"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"strconv"
@@ -54,11 +55,14 @@ func TestFloat32(t *testing.T) {
 	}})
 	bwtesting.BwRunTests(t, Float32.String, map[string]bwtesting.TestCaseStruct{"Float32.String": {
 		In:  []interface{}{Float32{_Float32TestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.PrettyJson([]float32{_Float32TestItemA})},
+		Out: []interface{}{bwjson.Pretty([]float32{_Float32TestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Float32.DataForJSON, map[string]bwtesting.TestCaseStruct{"Float32.DataForJSON": {
-		In:  []interface{}{Float32{_Float32TestItemA: struct{}{}}},
-		Out: []interface{}{[]interface{}{_Float32TestItemA}},
+	bwtesting.BwRunTests(t, Float32.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Float32.MarshalJSON": {
+		In: []interface{}{Float32{_Float32TestItemA: struct{}{}}},
+		Out: []interface{}{(func() []byte {
+			result, _ := json.Marshal([]interface{}{_Float32TestItemA})
+			return result
+		})(), nil},
 	}})
 	bwtesting.BwRunTests(t, Float32.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Float32.ToSliceOfStrings": {
 		In:  []interface{}{Float32{_Float32TestItemA: struct{}{}}},

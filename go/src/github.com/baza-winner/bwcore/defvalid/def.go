@@ -1,7 +1,7 @@
 package defvalid
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/defvalid/deftype"
 
 	// "github.com/baza-winner/bwcore/bwjson"
@@ -9,6 +9,7 @@ import (
 	"github.com/baza-winner/bwcore/bwset"
 	// "github.com/baza-winner/bwcore/defparse"
 	// "reflect"
+	"encoding/json"
 )
 
 type Def struct {
@@ -62,48 +63,47 @@ func MustDef(v interface{}) (result *Def) {
 	}
 	var ok bool
 	if result, ok = v.(*Def); !ok {
-		bwerror.Panic("%#v is not *Def", v)
+		bwerr.Panic("%#v is not *Def", v)
 	}
 	return
 }
 
-func (v *Def) DataForJSON() interface{} {
-	if v == nil {
-		return nil
-	}
+func (v *Def) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
-	result["tp"] = v.tp.DataForJSON()
-	result["isOptional"] = v.isOptional
-	if v.enum != nil {
-		result["enum"] = v.enum.DataForJSON()
-	}
-	if v.minInt != nil {
-		result["minInt"] = v.minInt
-	}
-	if v.maxInt != nil {
-		result["maxInt"] = v.maxInt
-	}
-	if v.minNumber != nil {
-		result["minNumber"] = v.minNumber
-	}
-	if v.maxNumber != nil {
-		result["maxNumber"] = v.maxNumber
-	}
-	if v.keys != nil {
-		keysJsonData := map[string]interface{}{}
-		for k, v := range v.keys {
-			keysJsonData[k] = v.DataForJSON()
+	if v != nil {
+		result["tp"] = v.tp
+		result["isOptional"] = v.isOptional
+		if v.enum != nil {
+			result["enum"] = v.enum
 		}
-		result["keys"] = keysJsonData
+		if v.minInt != nil {
+			result["minInt"] = v.minInt
+		}
+		if v.maxInt != nil {
+			result["maxInt"] = v.maxInt
+		}
+		if v.minNumber != nil {
+			result["minNumber"] = v.minNumber
+		}
+		if v.maxNumber != nil {
+			result["maxNumber"] = v.maxNumber
+		}
+		if v.keys != nil {
+			keysJsonData := map[string]interface{}{}
+			for k, v := range v.keys {
+				keysJsonData[k] = v
+			}
+			result["keys"] = keysJsonData
+		}
+		if v.elem != nil {
+			result["elem"] = *(v.elem)
+		}
+		if v.arrayElem != nil {
+			result["arrayElem"] = *(v.arrayElem)
+		}
+		if v.dflt != nil {
+			result["dflt"] = v.dflt
+		}
 	}
-	if v.elem != nil {
-		result["elem"] = (*(v.elem)).DataForJSON()
-	}
-	if v.arrayElem != nil {
-		result["arrayElem"] = (*(v.arrayElem)).DataForJSON()
-	}
-	if v.dflt != nil {
-		result["dflt"] = v.dflt
-	}
-	return result
+	return json.Marshal(result)
 }

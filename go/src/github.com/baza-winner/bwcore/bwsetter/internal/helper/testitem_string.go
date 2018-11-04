@@ -4,7 +4,7 @@ package helper
 
 import "strconv"
 
-const _TestItem_name = "ab"
+const _TestItem_name = "AB"
 
 var _TestItem_index = [...]uint8{0, 1, 2}
 

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
 )
@@ -19,7 +19,7 @@ func prepareTestFile(basename string, content []byte) {
 	fileSpec := getTestFileSpec(basename)
 	err := ioutil.WriteFile(fileSpec, content, 0644)
 	if err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	testFiles = append(testFiles, fileSpec)
 }
@@ -70,8 +70,8 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			In: []interface{}{getTestFileSpec("pack age main")},
 			Out: []interface{}{
 				"",
-				bwerror.Error(
-					"unexpected word <ansiPrimary>%s<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+				bwerr.From(
+					"unexpected word <ansiVal>%s<ansi> at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 					"pac", 1, 3, 2, getTestFileSpec("pack age main"),
 				),
 			},
@@ -80,8 +80,8 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			In: []interface{}{getTestFileSpec("some")},
 			Out: []interface{}{
 				"",
-				bwerror.Error(
-					"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+				bwerr.From(
+					"unexpected rune <ansiVal>%q<ansi> at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 					's', 2, 2, 4, getTestFileSpec("some"),
 				),
 			},
@@ -90,8 +90,8 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			In: []interface{}{getTestFileSpec("package 3")},
 			Out: []interface{}{
 				"",
-				bwerror.Error(
-					"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+				bwerr.From(
+					"unexpected rune <ansiVal>%q<ansi> at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 					'3', 2, 10, 12, getTestFileSpec("package 3"),
 				),
 			},
@@ -100,8 +100,8 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			In: []interface{}{getTestFileSpec("invalid comment start")},
 			Out: []interface{}{
 				"",
-				bwerror.Error(
-					"unexpected rune <ansiPrimary>%q<ansi> at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+				bwerr.From(
+					"unexpected rune <ansiVal>%q<ansi> at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 					'=', 2, 3, 5, getTestFileSpec("invalid comment start"),
 				),
 			},
@@ -110,8 +110,8 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			In: []interface{}{getTestFileSpec("invalid infix comment")},
 			Out: []interface{}{
 				"",
-				bwerror.Error(
-					"unexpected end of file at line <ansiCmd>%d<ansi>, col <ansiCmd>%d<ansi> (pos <ansiCmd>%d<ansi>) in file <ansiCmd>%s",
+				bwerr.From(
+					"unexpected end of file at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>) in file <ansiPath>%s",
 					3, 9, 10, getTestFileSpec("invalid infix comment"),
 				),
 			},
@@ -120,7 +120,7 @@ func TestGetPackageNameFromFile(t *testing.T) {
 			In: []interface{}{getTestFileSpec("non existent")},
 			Out: []interface{}{
 				"",
-				bwerror.Error(
+				bwerr.From(
 					"open %s: no such file or directory",
 					getTestFileSpec("non existent"),
 				),

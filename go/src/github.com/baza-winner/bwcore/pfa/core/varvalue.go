@@ -3,9 +3,9 @@ package core
 import (
 	"reflect"
 
-	"github.com/baza-winner/bwcore/bwerror"
-	"github.com/baza-winner/bwcore/bwfmt"
-	"github.com/baza-winner/bwcore/bwint"
+	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
+	"github.com/baza-winner/bwcore/bwerr"
 )
 
 // ============================================================================
@@ -25,7 +25,7 @@ func VarValueFrom(val interface{}) VarValue {
 // 	} else {
 // 		var ok bool
 // 		if result, ok = v.Val.(rune); !ok {
-// 			err = bwerror.Error("%#v is not rune", v.Val)
+// 			err = bwerr.Error("%#v is not rune", v.Val)
 // 		}
 // 	}
 // 	return
@@ -39,22 +39,22 @@ func (v VarValue) Int() (result int, ok bool) {
 	switch vValue.Kind() {
 	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int:
 		_int64 := vValue.Int()
-		if int64(bwint.MinInt) <= _int64 && _int64 <= int64(bwint.MaxInt) {
+		if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
 			result = int(_int64)
 			ok = true
 			// } else {
-			// 	err = bwerror.Error("%d is out of range [%d, %d]", _int64, bwint.MinInt, bwint.MaxInt)
+			// 	err = bwerr.Error("%d is out of range [%d, %d]", _int64, bw.MinInt, bw.MaxInt)
 		}
 	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
 		_uint64 := vValue.Uint()
-		if _uint64 <= uint64(bwint.MaxInt) {
+		if _uint64 <= uint64(bw.MaxInt) {
 			result = int(_uint64)
 			ok = true
 			// } else {
-			// 	err = bwerror.Error("%d is more than %d", _uint64, bwint.MaxInt)
+			// 	err = bwerr.Error("%d is more than %d", _uint64, bw.MaxInt)
 		}
 		// default:
-		// 	err = bwerror.Error("<ansiPrimary>%#v<ansi> is not of type <ansiSecondary>int", v)
+		// 	err = bwerr.Error("<ansiVal>%#v<ansi> is not of type <ansiVal>int", v)
 	}
 	// }
 	return
@@ -67,7 +67,7 @@ func (v VarValue) String() (result string, ok bool) {
 	// } else {
 	// var ok bool
 	// if ; !ok {
-	// 	err = bwerror.Error("<ansiPrimary>%#v<ansi> is not of type <ansiSecondary>string", v)
+	// 	err = bwerr.Error("<ansiVal>%#v<ansi> is not of type <ansiVal>string", v)
 	// }
 	// }
 	return
@@ -101,7 +101,7 @@ func (v VarValue) helper(
 			case map[string]interface{}:
 				err = onLen(valTypeSlice, nil, t)
 			default:
-				err = v.pfa.Error("%s nor <ansiOutline>Array, neither <ansiOutline>Map", varPath.FormattedString())
+				err = v.pfa.Error("%s nor <ansiVar>Array, neither <ansiVar>Map", varPath.FormattedString())
 			}
 		}
 	} else if v.Val == nil {
@@ -111,13 +111,13 @@ func (v VarValue) helper(
 		if err == nil {
 			if vt == VarPathItemIdx {
 				if vals, ok := v.Val.([]interface{}); !ok {
-					// v.pfa.Err = PfaError{formatted.StringFrom("%s is not <ansiOutline>Array", varPath.FormattedString())}
-					err = v.pfa.Error("%s is not <ansiOutline>Array", varPath.FormattedString())
+					// v.pfa.Err = PfaError{formatted.StringFrom("%s is not <ansiVar>Array", varPath.FormattedString())}
+					err = v.pfa.Error("%s is not <ansiVar>Array", varPath.FormattedString())
 				} else {
 					onVal(valTypeSlice, vals, nil, idx, "", VarVal)
 				}
 			} else if m, ok := v.Val.(map[string]interface{}); !ok {
-				err = v.pfa.Error("%s is not <ansiOutline>Map", varPath.FormattedString())
+				err = v.pfa.Error("%s is not <ansiVar>Map", varPath.FormattedString())
 			} else {
 				onVal(valTypeMap, nil, m, 0, key, VarVal)
 			}
@@ -131,7 +131,7 @@ func (v VarValue) GetVal(varPath VarPath) (result VarValue, err error) {
 
 	if len(varPath) == 3 &&
 		varPath[0].Key == "stack" && varPath[1].Idx == -1 && varPath[2].Key == "itemPos" {
-		bwerror.Debug("!here", "varPath", varPath, "v.pfa.Err", v.pfa.Err)
+		bwdebug.Print("!here", "varPath", varPath, "v.pfa.Err", v.pfa.Err)
 	}
 	if len(varPath) == 0 {
 		result = v
@@ -163,7 +163,7 @@ func (v VarValue) GetVal(varPath VarPath) (result VarValue, err error) {
 				case valTypeNil:
 					result.Val = 0
 				default:
-					bwerror.Unreachable()
+					bwerr.Unreachable()
 				}
 				return
 			},
@@ -178,7 +178,7 @@ func (v VarValue) GetVal(varPath VarPath) (result VarValue, err error) {
 
 func (v VarValue) SetVal(varPath VarPath, VarVal interface{}) (err error) {
 	if len(varPath) == 0 {
-		v.pfa.Panic(bwfmt.StructFrom("varPath: %#v", varPath))
+		v.pfa.PanicA(bw.Fmt("varPath: %#v", varPath))
 	} else {
 		target := VarValue{nil, v.pfa}
 		err = v.helper(varPath, VarVal,
@@ -186,15 +186,15 @@ func (v VarValue) SetVal(varPath VarPath, VarVal interface{}) (err error) {
 				switch vt {
 				case valTypeSlice:
 					if len(vals) == 0 {
-						// v.pfa.Err = PfaError{formatted.StringFrom("path does not exist (no elem with idx <ansiPrimary>%d<ansi> at empty Array)", idx)}
-						// bwerror.Panic("%#v", varPath)
-						err = v.pfa.Error("path does not exist (no elem with idx <ansiPrimary>%d<ansi> at empty Array)", idx)
+						// v.pfa.Err = PfaError{formatted.StringFrom("path does not exist (no elem with idx <ansiVal>%d<ansi> at empty Array)", idx)}
+						// bwerr.Panic("%#v", varPath)
+						err = v.pfa.Error("path does not exist (no elem with idx <ansiVal>%d<ansi> at empty Array)", idx)
 					} else {
 						minIdx := -len(vals)
 						maxIdx := len(vals) - 1
 						if !(minIdx <= idx && idx <= maxIdx) {
-							// v.pfa.Err = PfaError{formatted.StringFrom("path does not exist (<ansiPrimary>%d<ansi> is out of range <ansiSecondary>[%d, %d]<ansi>)", idx, minIdx, maxIdx)}
-							err = v.pfa.Error("path does not exist (<ansiPrimary>%d<ansi> is out of range <ansiSecondary>[%d, %d]<ansi>)", idx, minIdx, maxIdx)
+							// v.pfa.Err = PfaError{formatted.StringFrom("path does not exist (<ansiVal>%d<ansi> is out of range <ansiVal>[%d, %d]<ansi>)", idx, minIdx, maxIdx)}
+							err = v.pfa.Error("path does not exist (<ansiVal>%d<ansi> is out of range <ansiVal>[%d, %d]<ansi>)", idx, minIdx, maxIdx)
 						} else {
 							if idx < 0 {
 								idx = len(vals) + idx
@@ -210,8 +210,8 @@ func (v VarValue) SetVal(varPath VarPath, VarVal interface{}) (err error) {
 					if len(varPath) == 1 {
 						m[key] = VarVal
 					} else if kv, ok := m[key]; !ok {
-						// v.pfa.Err = PfaError{formatted.StringFrom("path does not exist (no key <ansiPrimary>%s)", key)}
-						err = v.pfa.Error("path does not exist (no key <ansiPrimary>%s)", key)
+						// v.pfa.Err = PfaError{formatted.StringFrom("path does not exist (no key <ansiVal>%s)", key)}
+						err = v.pfa.Error("path does not exist (no key <ansiVal>%s)", key)
 					} else {
 						target.Val = kv
 					}
@@ -222,7 +222,7 @@ func (v VarValue) SetVal(varPath VarPath, VarVal interface{}) (err error) {
 				return
 			},
 			func(vt valType, vals []interface{}, m map[string]interface{}) (err error) {
-				return v.pfa.Error("<ansiOutline>path.#<ansi> is <ansiCmd>readonly")
+				return v.pfa.Error("<ansiVar>path.#<ansi> is <ansiPath>readonly")
 			},
 		)
 		if err == nil && len(varPath) > 1 {
@@ -251,15 +251,15 @@ func (pfa *PfaStruct) getSetHelper(
 		} else if key == "rune" || key == "runePos" {
 			var ofs int
 			if len(varPath) > 2 {
-				// pfa.Err = PfaError{formatted.StringFrom("<ansiPrimary>%s<ansi> path may have at most 2 items", key)}
-				err = pfa.Error("<ansiPrimary>%s<ansi> path may have at most 2 items", key)
+				// pfa.Err = PfaError{formatted.StringFrom("<ansiVal>%s<ansi> path may have at most 2 items", key)}
+				err = pfa.Error("<ansiVal>%s<ansi> path may have at most 2 items", key)
 			} else if len(varPath) > 1 {
 				vt, idx, key, err := varPath[1].TypeIdxKey(pfa)
 				if err != nil {
 					pfa.Err = err
 				} else if vt != VarPathItemIdx {
-					// pfa.Err = PfaError{formatted.StringFrom("<ansiPrimary>%s<ansi> path expects <ansiOutline>idx<ansi> as second item", key)}
-					err = pfa.Error("<ansiPrimary>%s<ansi> path expects <ansiOutline>idx<ansi> as second item", key)
+					// pfa.Err = PfaError{formatted.StringFrom("<ansiVal>%s<ansi> path expects <ansiVar>idx<ansi> as second item", key)}
+					err = pfa.Error("<ansiVal>%s<ansi> path expects <ansiVar>idx<ansi> as second item", key)
 				} else {
 					ofs = idx
 				}
@@ -293,7 +293,7 @@ func (pfa *PfaStruct) VarValue(varPath VarPath) (result VarValue, err error) {
 				result, err = pfaVars.GetVal(varPath)
 				if len(varPath) == 3 &&
 					varPath[0].Key == "stack" && varPath[1].Idx == -1 && varPath[2].Key == "itemPos" {
-					bwerror.Debug("!HERE", "varPath", varPath, "result", result)
+					bwdebug.Print("!HERE", "varPath", varPath, "result", result)
 				}
 				return
 			},
@@ -302,15 +302,15 @@ func (pfa *PfaStruct) VarValue(varPath VarPath) (result VarValue, err error) {
 			if t, ok := pfa.Err.(PfaError); ok && t.State() == PecsNeedPrepare {
 				t.PrepareErr("failed to get %s", varPath.FormattedString())
 			} else {
-				bwerror.Panic("%#v", err)
+				bwerr.Panic("%#v", err)
 			}
 		}
 	}
-	// bwerror.Log("<ansiOutline>VarValue<ansi>: %s: %#v\n", varPath.FormattedString(), result.Val)
+	// bwerr.Log("<ansiVar>VarValue<ansi>: %s: %#v\n", varPath.FormattedString(), result.Val)
 	// if len(varPath) == 3 &&
 	// 	varPath[0].Key == "stack" && varPath[1].Idx == -1 && varPath[2].Key == "itemPos" {
 	// 	// && reflect.TypeOf(result.Val).Kind() == reflect.Map {
-	// 	bwerror.Debug(varPath.FormattedString(), result.Val)
+	// 	bwerr.Debug(varPath.FormattedString(), result.Val)
 	// 	// pfa.Panic()
 	// }
 	return
@@ -322,8 +322,8 @@ func (pfa *PfaStruct) SetVarVal(varPath VarPath, VarVal interface{}) (err error)
 	} else {
 		err = pfa.getSetHelper(varPath, VarVal,
 			func(name string, idx int) (err error) {
-				err = pfa.Error("<ansiOutline>%s<ansi> is <ansiCmd>readonly", name)
-				// pfa.Err = bwerror.Error("<ansiOutline>%s<ansi> is read only", name)
+				err = pfa.Error("<ansiVar>%s<ansi> is <ansiPath>readonly", name)
+				// pfa.Err = bwerr.Error("<ansiVar>%s<ansi> is read only", name)
 				return
 			},
 			func(pfaVars VarValue, VarVal interface{}) (err error) {
@@ -336,7 +336,7 @@ func (pfa *PfaStruct) SetVarVal(varPath VarPath, VarVal interface{}) (err error)
 		if t, ok := pfa.Err.(PfaError); ok && t.State() == PecsNeedPrepare {
 			t.PrepareErr("failed to get %s", varPath.FormattedString())
 		} else {
-			bwerror.Panic("%#v", err)
+			bwerr.Panic("%#v", err)
 		}
 	}
 	return

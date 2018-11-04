@@ -3,6 +3,7 @@
 package bwset
 
 import (
+	"encoding/json"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"strconv"
@@ -54,11 +55,14 @@ func TestInt8(t *testing.T) {
 	}})
 	bwtesting.BwRunTests(t, Int8.String, map[string]bwtesting.TestCaseStruct{"Int8.String": {
 		In:  []interface{}{Int8{_Int8TestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.PrettyJson([]int8{_Int8TestItemA})},
+		Out: []interface{}{bwjson.Pretty([]int8{_Int8TestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Int8.DataForJSON, map[string]bwtesting.TestCaseStruct{"Int8.DataForJSON": {
-		In:  []interface{}{Int8{_Int8TestItemA: struct{}{}}},
-		Out: []interface{}{[]interface{}{_Int8TestItemA}},
+	bwtesting.BwRunTests(t, Int8.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Int8.MarshalJSON": {
+		In: []interface{}{Int8{_Int8TestItemA: struct{}{}}},
+		Out: []interface{}{(func() []byte {
+			result, _ := json.Marshal([]interface{}{_Int8TestItemA})
+			return result
+		})(), nil},
 	}})
 	bwtesting.BwRunTests(t, Int8.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Int8.ToSliceOfStrings": {
 		In:  []interface{}{Int8{_Int8TestItemA: struct{}{}}},

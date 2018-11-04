@@ -226,7 +226,7 @@
 package defparse
 
 import (
-	"github.com/baza-winner/bwcore/bwerror"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/pfa"
 	"github.com/baza-winner/bwcore/pfa/core"
 	"github.com/baza-winner/bwcore/runeprovider"
@@ -247,7 +247,7 @@ func Parse(source string) (interface{}, error) {
 func MustParse(source string) (result interface{}) {
 	var err error
 	if result, err = Parse(source); err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	return result
 }
@@ -258,7 +258,7 @@ func ParseMap(source string) (result map[string]interface{}, err error) {
 	if _result, err = Parse(source); err == nil {
 		var ok bool
 		if result, ok = _result.(map[string]interface{}); !ok {
-			err = bwerror.Error("is not Map definition: <ansiSecondary>%s", source)
+			err = bwerr.From("is not Map definition: <ansiVal>%s", source)
 		}
 	}
 	return result, err
@@ -269,7 +269,7 @@ func ParseMap(source string) (result map[string]interface{}, err error) {
 func MustParseMap(source string) (result map[string]interface{}) {
 	var err error
 	if result, err = ParseMap(source); err != nil {
-		bwerror.PanicErr(err)
+		bwerr.PanicA(bwerr.E{Error: err})
 	}
 	return result
 }

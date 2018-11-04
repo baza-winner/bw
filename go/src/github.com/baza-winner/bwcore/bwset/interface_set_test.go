@@ -3,6 +3,7 @@
 package bwset
 
 import (
+	"encoding/json"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"testing"
@@ -49,15 +50,18 @@ func TestInterface(t *testing.T) {
 	}})
 	bwtesting.BwRunTests(t, Interface.String, map[string]bwtesting.TestCaseStruct{"Interface.String": {
 		In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.PrettyJson([]interface{}{_InterfaceTestItemA})},
+		Out: []interface{}{bwjson.Pretty([]interface{}{_InterfaceTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Interface.DataForJSON, map[string]bwtesting.TestCaseStruct{"Interface.DataForJSON": {
-		In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
-		Out: []interface{}{[]interface{}{_InterfaceTestItemA}},
+	bwtesting.BwRunTests(t, Interface.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Interface.MarshalJSON": {
+		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
+		Out: []interface{}{(func() []byte {
+			result, _ := json.Marshal([]interface{}{_InterfaceTestItemA})
+			return result
+		})(), nil},
 	}})
 	bwtesting.BwRunTests(t, Interface.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Interface.ToSliceOfStrings": {
 		In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
-		Out: []interface{}{[]string{bwjson.PrettyJson(_InterfaceTestItemA)}},
+		Out: []interface{}{[]string{bwjson.Pretty(_InterfaceTestItemA)}},
 	}})
 	bwtesting.BwRunTests(t, Interface.Has, map[string]bwtesting.TestCaseStruct{
 		"Interface.Has: false": {

@@ -50,7 +50,7 @@ func Run(p runeprovider.RuneProvider, rules r.Rules, optTraceLevel ...core.Trace
 	} else {
 		result = pfa.Vars["result"]
 		// if len(pfa.Stack) > 1 {
-		// 	pfa.Panic(bwfmt.StructFrom("len(pfa.Stack) > 1"))
+		// 	pfa.Panic(bw.StructFrom("len(pfa.Stack) > 1"))
 		// } else if len(pfa.Stack) > 0 {
 		// 	result = pfa.GetTopStackItem().Vars["result"]
 		// }
