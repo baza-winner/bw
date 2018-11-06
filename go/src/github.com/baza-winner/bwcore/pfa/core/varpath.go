@@ -180,7 +180,7 @@ func VarPathFrom(s string) (result VarPath, err error) {
 func MustVarPathFrom(s string) (result VarPath) {
 	var err error
 	if result, err = VarPathFrom(s); err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
 }

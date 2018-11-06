@@ -2,185 +2,254 @@ package bwval
 
 import (
 	"encoding/json"
-	"unicode"
 
+	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwstr"
-	"github.com/baza-winner/bwcore/runeprovider"
-	// "github.com/baza-winner/bwcore/formatted"
+	"github.com/baza-winner/bwcore/bwval/path"
 )
 
-// type VarPath interface {
-// FormattedString() (result formatted.String)
-// }
+// ============================================================================
 
-type varPathItemType uint8
+//go:generate stringer -type=ValKind
 
-const (
-	varPathItemHash varPathItemType = iota
-	varPathItemIdx
-	varPathItemKey
-	varPathItemPath
-)
+// ============================================================================
 
-func (v varPathItemType) MarshalJSON() ([]byte, error) {
-	return json.Marshal(v.String())
+func PathFrom(s string) (result bw.ValPath, err error) {
+	return path.Parse(s)
 }
 
-type varPathItem struct {
-	Type varPathItemType
-	Idx  int
-	Key  string
-	Path VarPath
-}
-
-type VarPath struct {
-	items []varPathItem
-}
-
-type varPathParseState uint8
-
-const (
-	vppsBegin varPathParseState = iota
-	vppsEnd
-	vppsDone
-	vppsIdx
-	vppsDigit
-	vppsKey
-	vppsForceEnd
-)
-
-//go:generate stringer -type=varPathParseState,varPathItemType
-
-func (v varPathParseState) MarshalJSON() ([]byte, error) {
-	return json.Marshal(v.String())
-}
-
-func VarPathFrom(s string) (result VarPath, err error) {
-	p := runeprovider.ProxyFrom(runeprovider.FromString(s))
-	stack := []VarPath{VarPath{}}
-	state := vppsBegin
-	var item string
-	for {
-		p.PullRune()
-		currRune, isEOF := p.Rune()
-		if err == nil {
-			isUnexpectedRune := false
-			switch {
-			case state == vppsBegin:
-				if isEOF {
-					if len(stack) == 1 && len(stack[0].items) == 0 {
-						state = vppsDone
-					} else {
-						isUnexpectedRune = true
-					}
-				} else if unicode.IsDigit(currRune) && len(stack[len(stack)-1].items) > 0 {
-					item = string(currRune)
-					state = vppsIdx
-				} else if (currRune == '-' || currRune == '+') && len(stack[len(stack)-1].items) > 0 {
-					item = string(currRune)
-					state = vppsDigit
-				} else if unicode.IsLetter(currRune) || currRune == '_' {
-					item = string(currRune)
-					state = vppsKey
-				} else if currRune == '{' {
-					stack = append(stack, VarPath{})
-					state = vppsBegin
-				} else if currRune == '#' {
-					stack[len(stack)-1].items = append(stack[len(stack)-1].items, varPathItem{Type: varPathItemHash})
-					// stack = append(stack, VarPath{})
-					state = vppsForceEnd
-				} else {
-					isUnexpectedRune = true
-				}
-			case state == vppsDigit:
-				if unicode.IsDigit(currRune) {
-					item += string(currRune)
-					state = vppsIdx
-				} else {
-					isUnexpectedRune = true
-				}
-			case state == vppsForceEnd:
-				if isEOF && len(stack) == 1 {
-					state = vppsDone
-				} else {
-					isUnexpectedRune = true
-				}
-			case state == vppsEnd:
-				if isEOF {
-					if len(stack) == 1 {
-						state = vppsDone
-					} else {
-						isUnexpectedRune = true
-					}
-				} else if currRune == '.' {
-					state = vppsBegin
-				} else if currRune == '}' && len(stack) > 0 {
-					stack[len(stack)-2].items = append(stack[len(stack)-2].items, varPathItem{Type: varPathItemPath, Path: stack[len(stack)-1]})
-					stack = stack[0 : len(stack)-1]
-				} else {
-					isUnexpectedRune = true
-				}
-			case state == vppsIdx:
-				if unicode.IsDigit(currRune) {
-					item += string(currRune)
-				} else {
-					if i, err := bwstr.ParseInt(item); err == nil {
-						stack[len(stack)-1].items = append(stack[len(stack)-1].items, varPathItem{Type: varPathItemIdx, Idx: i})
-					}
-					p.PushRune()
-					state = vppsEnd
-				}
-			case state == vppsKey:
-				if unicode.IsLetter(currRune) || currRune == '_' || unicode.IsDigit(currRune) {
-					item += string(currRune)
-				} else {
-					stack[len(stack)-1].items = append(stack[len(stack)-1].items, varPathItem{Type: varPathItemKey, Key: item})
-					p.PushRune()
-					state = vppsEnd
-				}
-			default:
-				bwerr.Panic("no handler for %s", state)
-			}
-			if isUnexpectedRune {
-				// err = p.UnexpectedRuneError(fmt.Sprintf("state = %s", state))
-				err = p.Unexpected(p.Curr, bw.Fmt("state = %s", state))
-				// err = p.UnexpectedRuneError(p.Curr, "state = %s", state)
-			}
-		}
-		if isEOF || err != nil || (state == vppsDone) {
-			break
-		}
+func MustPath(result bw.ValPath, err error) bw.ValPath {
+	if err != nil {
+		bwerr.PanicA(bwerr.Err(err))
 	}
-	if err == nil {
-		result = stack[0]
+	return result
+}
+
+// ============================================================================
+
+func MustPathVal(v bw.Val, path bw.ValPath, vars map[string]interface{}) (result interface{}) {
+	var err error
+	if result, err = v.PathVal(path, vars); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return result
+}
+
+var (
+	ansiIsNotOfType string
+)
+
+func init() {
+	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
+}
+
+func Bool(val interface{}) (result bool, err error) {
+	var ok bool
+	if result, ok = val.(bool); !ok {
+		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Bool")})
 	}
 	return
 }
 
-// func MustVarPath(varPath VarPath, err error) (result VarPath) {
-// 	bwerr.TODO()
-// 	return
-// }
+func MustBool(val interface{}) (result bool) {
+	var err error
+	if result, err = Bool(val); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return result
+}
 
-// type QualVarPath interface {
-// 	// TypeIdxKey(i int) (itemType varPathItemType, idx int, key string, err error)
-// 	// FormattedString(optVal ...Val) (result formatted.String)
-// }
+var (
+	ansiIsOutOfRange string
+)
 
-// type Opts struct {
-// 	Vars   map[string]Val
-// 	Consts map[string]Val
-// }
+func init() {
+	ansiIsOutOfRange = ansi.String("<ansiVal>%#v<ansi> is out of range <ansiVal>%d..%d")
+}
 
-// func QualVarPathFrom(varPath VarPath, opts ...Opts) (result QualVarPath, err error) {
-// 	bwerr.TODO()
-// 	return
-// }
+func Int(val interface{}) (result int, err error) {
+	switch t := val.(type) {
+	case int8:
+		result = int(t)
+	case int16:
+		result = int(t)
+	case int32:
+		result = int(t)
+	case int64:
+		if int64(bw.MinInt) <= t && t <= int64(bw.MaxInt) {
+			result = int(t)
+		} else {
+			err = bwerr.FromA(bwerr.A{1, ansiIsOutOfRange, bw.Args(val, bw.MinInt, bw.MaxInt)})
+		}
+	case uint8:
+		result = int(t)
+	case uint16:
+		result = int(t)
+	case uint32:
+		result = int(t)
+	case uint64:
+		if t <= uint64(bw.MaxInt) {
+			result = int(t)
+		} else {
+			err = bwerr.FromA(bwerr.A{1, ansiIsOutOfRange, bw.Args(val, bw.MinInt, bw.MaxInt)})
+		}
+	default:
+		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Int")})
+	}
+	return
+}
 
-// type Val interface {
-// 	PathVal(path QualVarPath) (result Val, err error)
-// 	SetPathVal(path QualVarPath, val []interface{}) (err error)
-// 	// Val
-// }
+func MustInt(val interface{}) (result int) {
+	var err error
+	if result, err = Int(val); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return result
+}
+
+func String(val interface{}) (result string, err error) {
+	var ok bool
+	if result, ok = val.(string); !ok {
+		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "String")})
+	}
+	return
+}
+
+func MustString(val interface{}) (result string) {
+	var err error
+	if result, err = String(val); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return result
+}
+
+func Map(val interface{}) (result map[string]interface{}, err error) {
+	var ok bool
+	if result, ok = val.(map[string]interface{}); !ok {
+		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Map")})
+	}
+	return
+}
+
+func MustMap(val interface{}) (result map[string]interface{}) {
+	var err error
+	if result, err = Map(val); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return result
+}
+
+func Array(val interface{}) (result []interface{}, err error) {
+	var ok bool
+	if result, ok = val.([]interface{}); !ok {
+		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Array")})
+	}
+	return
+}
+
+func MustArray(val interface{}) (result []interface{}) {
+	var err error
+	if result, err = Array(val); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return result
+}
+
+type ValKind uint8
+
+const (
+	ValUnknown ValKind = iota
+	ValBool
+	ValInt
+	ValString
+	ValMap
+	ValArray
+)
+
+func (v ValKind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.String())
+}
+
+func Kind(val interface{}) (result ValKind) {
+	switch t := val.(type) {
+	case bool:
+		result = ValBool
+	case int8, int16, int32, uint8, uint16, uint32:
+		result = ValInt
+	case int64:
+		if int64(bw.MinInt) <= t && t <= int64(bw.MaxInt) {
+			result = ValInt
+		}
+	case uint64:
+		if t <= uint64(bw.MaxInt) {
+			result = ValInt
+		}
+	case string:
+		result = ValString
+	case map[string]interface{}:
+		result = ValMap
+	case []interface{}:
+		result = ValArray
+	}
+	return
+}
+
+// ============================================================================
+
+type valHolder struct {
+	val interface{}
+}
+
+func From(val interface{}) bw.Val {
+	return valHolder{val}
+}
+
+// ============================================================================
+
+func (v valHolder) PathVal(path bw.ValPath, vars map[string]interface{}) (result interface{}, err error) {
+	result = v.val
+	if len(path) == 0 {
+		return
+	}
+	byKey := func(a interface{}) (result interface{}, err error) {
+
+	}
+	for i, vpi := range path {
+		switch vpi.Type {
+		case bw.ValPathItemKey:
+			if m, ok := result.(map[string]interface{}); !ok {
+				err = bwerr.From("<ansiVal>%#v<ansiPath>%s<ansi> is not <ansiType>%s", v.val, path[:i], "Map")
+			} else {
+				result = m[vpi.Key]
+			}
+		case bw.ValPathItemIdx:
+			if vals, ok := result.([]interface{}); !ok {
+				err = bwerr.From("<ansiVal>%#v<ansiPath>%s<ansi> is not <ansiType>%s", v.val, path[:i], "Array")
+			} else {
+				l := len(vals)
+				minIdx := -l
+				maxIdx := l - 1
+				idx := vpi.Idx
+				if minIdx <= idx && idx <= maxIdx {
+					if idx < 0 {
+						idx = l + idx
+					}
+					result = vals[idx]
+				} else {
+					result = nil
+				}
+			}
+		}
+		if result == nil {
+			break
+		}
+	}
+	return
+}
+
+func (v valHolder) SetValToPath(val []interface{}, path bw.ValPath, vars map[string]interface{}) (err error) {
+	return
+}
+
+// ============================================================================

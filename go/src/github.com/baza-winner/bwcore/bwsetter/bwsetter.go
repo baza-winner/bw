@@ -432,19 +432,19 @@ func (g *Generator) parsePackageDir(directory string) {
 	var err error
 	g.packageDir, err = filepath.Abs(directory)
 	if err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	var files []os.FileInfo
 	files, err = ioutil.ReadDir(g.packageDir)
 	if err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	for _, f := range files {
 		if !f.Mode().IsRegular() || !goFileRegexp.Match([]byte(f.Name())) || goTestFileRegexp.Match([]byte(f.Name())) {
 			continue
 		}
 		if packageName, err := pkgnamegetter.GetPackageName(filepath.Join(g.packageDir, f.Name())); err != nil {
-			bwerr.PanicA(bwerr.E{Error: err})
+			bwerr.PanicA(bwerr.Err(err))
 		} else if len(g.packageName) == 0 {
 			g.packageName = packageName
 		} else if packageName != g.packageName {
@@ -459,12 +459,12 @@ func getPackagePath(packageDir string) string {
 	gopath := os.Getenv("GOPATH")
 	if len(gopath) == 0 {
 		if gopath, err = filepath.Abs(os.Getenv("HOME")); err != nil {
-			bwerr.PanicA(bwerr.E{Error: err})
+			bwerr.PanicA(bwerr.Err(err))
 		}
 		gopath += "/.go"
 	} else {
 		if gopath, err = filepath.Abs(gopath); err != nil {
-			bwerr.PanicA(bwerr.E{Error: err})
+			bwerr.PanicA(bwerr.Err(err))
 		}
 	}
 	srcSuffix := "/src/"

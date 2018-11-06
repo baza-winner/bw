@@ -80,7 +80,7 @@ func MustUnexpectedKeys(m interface{}, expected ...interface{}) (result []string
 
 func CropMap(m interface{}, crop ...interface{}) {
 	if unexpectedKeys, err := UnexpectedKeys(m, crop...); err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	} else if unexpectedKeys != nil {
 		for _, k := range unexpectedKeys {
 			v := reflect.ValueOf(m)

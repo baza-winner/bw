@@ -1,30 +1,143 @@
-package bwval
+package bwval_test
 
-import (
-	"testing"
+// func TestPathFrom(t *testing.T) {
+// 	tests := map[string]bwtesting.TestCaseStruct{
+// 		"some.thing": {
+// 			In: []interface{}{
+// 				func(testName string) string { return testName },
+// 			},
+// 			Out: []interface{}{
+// 				Path{[]pathItem{
+// 					{Type: pathItemKey, Key: "some"},
+// 					{Type: pathItemKey, Key: "thing"},
+// 				}},
+// 				nil,
+// 			},
+// 		},
+// 		"some.1": {
+// 			In: []interface{}{
+// 				func(testName string) string { return testName },
+// 			},
+// 			Out: []interface{}{
+// 				Path{[]pathItem{
+// 					{Type: pathItemKey, Key: "some"},
+// 					{Type: pathItemIdx, Idx: 1},
+// 				}},
+// 				nil,
+// 			},
+// 		},
+// 		"some.#": {
+// 			In: []interface{}{
+// 				func(testName string) string { return testName },
+// 			},
+// 			Out: []interface{}{
+// 				Path{[]pathItem{
+// 					{Type: pathItemKey, Key: "some"},
+// 					{Type: pathItemHash},
+// 				}},
+// 				nil,
+// 			},
+// 		},
+// 		"{some.thing}.good": {
+// 			In: []interface{}{
+// 				func(testName string) string { return testName },
+// 			},
+// 			Out: []interface{}{
+// 				Path{[]pathItem{
+// 					{Type: pathItemPath,
+// 						Path: Path{[]pathItem{
+// 							{Type: pathItemKey, Key: "some"},
+// 							{Type: pathItemKey, Key: "thing"},
+// 						}},
+// 					},
+// 					{Type: pathItemKey, Key: "good"},
+// 				}},
+// 				nil,
+// 			},
+// 		},
+// 		"{$some.thing}.good": {
+// 			In: []interface{}{
+// 				func(testName string) string { return testName },
+// 			},
+// 			Out: []interface{}{
+// 				Path{[]pathItem{
+// 					{Type: pathItemPath,
+// 						Path: Path{[]pathItem{
+// 							{Type: pathItemVar, Key: "some"},
+// 							{Type: pathItemKey, Key: "thing"},
+// 						}},
+// 					},
+// 					{Type: pathItemKey, Key: "good"},
+// 				}},
+// 				nil,
+// 			},
+// 		},
+// 	}
 
-	"github.com/baza-winner/bwcore/bwmap"
-	"github.com/baza-winner/bwcore/bwtesting"
-)
+// 	bwmap.CropMap(tests)
+// 	// bwmap.CropMap(tests, "UnexpectedItem")
+// 	bwtesting.BwRunTests(t, PathFrom, tests)
+// }
 
-func TestVarPathFrom(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
-		"some.thing": {
-			In: []interface{}{"some.thing"},
-			Out: []interface{}{
-				VarPath{[]varPathItem{
-					{Type: varPathItemKey, Key: "some"},
-					{Type: varPathItemKey, Key: "thing"},
-				}},
-				nil,
-			},
-		},
-	}
-
-	// testsToRun := tests
-	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "zero number", "int number with underscore")
-	// bwmap.CropMap(tests, "UnexpectedItem")
-	// bwmap.CropMap(tests, "qw/Bool String Int Number Map Array ArrayOf/")
-	bwtesting.BwRunTests(t, VarPathFrom, tests)
-}
+// func TestPathString(t *testing.T) {
+// 	for _, test := range []struct {
+// 		eta string
+// 		v   Path
+// 	}{
+// 		{
+// 			"some.thing",
+// 			Path{[]pathItem{
+// 				{Type: pathItemKey, Key: "some"},
+// 				{Type: pathItemKey, Key: "thing"},
+// 			}},
+// 		},
+// 		{
+// 			"some.1",
+// 			Path{[]pathItem{
+// 				{Type: pathItemKey, Key: "some"},
+// 				{Type: pathItemIdx, Idx: 1},
+// 			}},
+// 		},
+// 		{
+// 			"some.#",
+// 			Path{[]pathItem{
+// 				{Type: pathItemKey, Key: "some"},
+// 				{Type: pathItemHash},
+// 			}},
+// 		},
+// 		{
+// 			"{some.thing}.good",
+// 			Path{[]pathItem{
+// 				{Type: pathItemPath,
+// 					Path: Path{[]pathItem{
+// 						{Type: pathItemKey, Key: "some"},
+// 						{Type: pathItemKey, Key: "thing"},
+// 					}},
+// 				},
+// 				{Type: pathItemKey, Key: "good"},
+// 			}},
+// 		},
+// 		{
+// 			"{$some.thing}.good",
+// 			Path{[]pathItem{
+// 				{Type: pathItemPath,
+// 					Path: Path{[]pathItem{
+// 						{Type: pathItemVar, Key: "some"},
+// 						{Type: pathItemKey, Key: "thing"},
+// 					}},
+// 				},
+// 				{Type: pathItemKey, Key: "good"},
+// 			}},
+// 		},
+// 	} {
+// 		bwtesting.BwRunTests(t,
+// 			test.v.String,
+// 			map[string]bwtesting.TestCaseStruct{
+// 				test.eta: {
+// 					In:  []interface{}{},
+// 					Out: []interface{}{test.eta},
+// 				},
+// 			},
+// 		)
+// 	}
+// }

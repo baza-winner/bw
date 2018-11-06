@@ -19,7 +19,7 @@ func prepareTestFile(basename string, content []byte) {
 	fileSpec := getTestFileSpec(basename)
 	err := ioutil.WriteFile(fileSpec, content, 0644)
 	if err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	testFiles = append(testFiles, fileSpec)
 }

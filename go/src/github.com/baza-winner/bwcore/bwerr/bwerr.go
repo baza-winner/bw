@@ -192,6 +192,14 @@ type E struct {
 	Error error
 }
 
+func Err(err error, optDepth ...uint) E {
+	var depth uint
+	if optDepth != nil {
+		depth = optDepth[0]
+	}
+	return E{depth, err}
+}
+
 func FmtStringOf(err error) (result string) {
 	if err != nil {
 		if t, ok := err.(Error); ok {

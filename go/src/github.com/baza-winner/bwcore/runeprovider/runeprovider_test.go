@@ -19,7 +19,7 @@ func prepareTestFile(basename string, content []byte) {
 	fileSpec := getTestFileSpec(basename)
 	err := ioutil.WriteFile(fileSpec, content, 0644)
 	if err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	testFiles = append(testFiles, fileSpec)
 }
@@ -86,8 +86,8 @@ func TestGetFirstLine(t *testing.T) {
 			Out: []interface{}{
 				"Рад",
 				bwerr.From(
-					"utf-8 encoding is invalid at pos %d (byte #%d)",
-					2, 5,
+					"utf-8 encoding <ansiVal>%#v<ansi> is invalid at pos <ansiPath>%d",
+					5, 2,
 				),
 			},
 		},

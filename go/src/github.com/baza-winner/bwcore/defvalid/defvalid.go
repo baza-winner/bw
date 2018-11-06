@@ -33,7 +33,7 @@ func MustCompileDef(def interface{}) (result Def) {
 	var err error
 	var compileDefResult *Def
 	if compileDefResult, err = CompileDef(def); err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	} else if compileDefResult == nil {
 		bwerr.Panic("Unexpected behavior; def: %s", bwjson.Pretty(def))
 	} else {
@@ -57,7 +57,7 @@ func ValidateVal(what string, val interface{}, def Def) (result interface{}, err
 func MustValidVal(what string, val interface{}, def Def) (result interface{}) {
 	var err error
 	if result, err = ValidateVal(what, val, def); err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
 }

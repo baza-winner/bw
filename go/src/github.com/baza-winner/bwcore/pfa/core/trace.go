@@ -53,7 +53,7 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 			// }
 			varValue, err := pfa.VarValue(t)
 			if err != nil {
-				bwerr.PanicA(bwerr.E{Error: err})
+				bwerr.PanicA(bwerr.Err(err))
 			}
 			// val :=
 			fmt.Printf("%s: %#v\n", t.FormattedString(), varValue.Val)

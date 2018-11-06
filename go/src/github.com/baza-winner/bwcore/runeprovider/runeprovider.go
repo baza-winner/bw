@@ -2,6 +2,7 @@ package runeprovider
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 )
 
@@ -36,7 +36,7 @@ type PosStruct struct {
 // 	return &PosStruct{v.IsEOF, v.RunePtr, v.Pos, v.Line, v.Col, v.Prefix, v.PrefixStart}
 // }
 
-func (v PosStruct) DataForJSON() interface{} {
+func (v PosStruct) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
 	if v.RunePtr == nil {
 		result["rune"] = "EOF"
@@ -48,7 +48,7 @@ func (v PosStruct) DataForJSON() interface{} {
 	result["pos"] = v.Pos
 	// result["prefix"] = v.Prefix
 	// result["prefixStart"] = v.PrefixStart
-	return result
+	return json.Marshal(result)
 }
 
 type Proxy struct {
@@ -75,24 +75,24 @@ func ProxyFrom(p RuneProvider) *Proxy {
 
 type RunePtrStructs []PosStruct
 
-func (v RunePtrStructs) DataForJSON() interface{} {
+func (v RunePtrStructs) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
 	for _, i := range v {
-		result = append(result, i.DataForJSON())
+		result = append(result, i)
 	}
-	return result
+	return json.Marshal(result)
 }
 
-func (p *Proxy) DataForJSON() interface{} {
+func (p *Proxy) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
-	result["curr"] = p.Curr.DataForJSON()
+	result["curr"] = p.Curr
 	// if len(p.Prev) > 0 {
 	// 	result["prev"] = p.Prev.DataForJSON()
 	// }
 	// if len(p.Next) > 0 {
 	// 	result["next"] = p.Next.DataForJSON()
 	// }
-	return result
+	return json.Marshal(result)
 }
 
 func (p *Proxy) PullRune() {
@@ -110,10 +110,12 @@ func (p *Proxy) PullRune() {
 	}
 }
 
-func (p *Proxy) pullRune(ps *PosStruct) {
-	runePtr, err := p.Prov.PullRune()
+func (p *Proxy) pullRune(ps *PosStruct) (err error) {
+	var runePtr *rune
+	runePtr, err = p.Prov.PullRune()
 	if err != nil {
-		bwerr.PanicA(bwerr.E{Error: err})
+		return
+		// bwerr.PanicA(bwerr.Err(err))
 	}
 	ps.Pos++
 	if runePtr != nil && ps.RunePtr != nil {
@@ -134,20 +136,27 @@ func (p *Proxy) pullRune(ps *PosStruct) {
 	if !ps.IsEOF {
 		ps.Prefix += string(*runePtr)
 	}
+	return
 }
 
-func (p *Proxy) PushRune() {
+func (p *Proxy) PushRune() (err error) {
 	if len(p.Prev) == 0 {
-		bwerr.Panic("len(p.Prev) == 0")
+		err = bwerr.From("len(p.Prev) == 0")
+		// bwerr.Panic("len(p.Prev) == 0")
 	} else {
 		p.Next = append(p.Next, p.Curr)
 		p.Curr = p.Prev[len(p.Prev)-1]
 		p.Prev = p.Prev[:len(p.Prev)-1]
 	}
+	return
 }
 
-func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool) {
-	ps := p.PosStruct(optOfs...)
+func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
+	var ps PosStruct
+	ps, err = p.PosStruct(optOfs...)
+	if err != nil {
+		return
+	}
 	if ps.RunePtr == nil {
 		result = '\000'
 		isEOF = true
@@ -158,7 +167,7 @@ func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool) {
 	return
 }
 
-func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct) {
+func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 	var ofs int
 	if optOfs != nil {
 		ofs = optOfs[0]
@@ -167,7 +176,9 @@ func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct) {
 		if len(p.Prev) >= -ofs {
 			ps = p.Prev[len(p.Prev)+ofs]
 		} else {
-			bwerr.Panic("len(p.Prev) < %d", -ofs)
+			err = bwerr.From("len(p.Prev) < %d", -ofs)
+			return
+			// bwerr.Panic("len(p.Prev) < %d", -ofs)
 		}
 	} else if ofs > 0 {
 		if len(p.Next) >= ofs {
@@ -198,23 +209,37 @@ func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct) {
 	return
 }
 
+// func init() {
+// 	ansi.MustAddTag("ansiDarkGreen",
+// 		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
+// 		ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
+// 		// ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
+// 		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: true}),
+// 	)
+// 	ansi.MustAddTag("ansiLightRed",
+// 		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true}),
+// 		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
+// 		// ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
+// 		// ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
+// 		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: true}),
+// 	)
+// 	// ansi.MustAddTag("ansiDarkGreen",
+// 	// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
+// 	// ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
+// }
+
+var (
+	ansiOK      string
+	ansiErr     string
+	ansiPos     string
+	ansiLineCol string
+)
+
 func init() {
-	ansi.MustAddTag("ansiDarkGreen",
-		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
-		ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
-		// ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
-		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: true}),
-	)
-	ansi.MustAddTag("ansiLightRed",
-		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true}),
-		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
-		// ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
-		// ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
-		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: true}),
-	)
-	// ansi.MustAddTag("ansiDarkGreen",
-	// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
-	// ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
+	ansiOK = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: false})).String()
+	ansiErr = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true})).String()
+	ansiPos = ansi.String(" at pos <ansiPath>%d<ansi>")
+	ansiLineCol = ansi.String(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)")
 }
 
 func (p *Proxy) GetSuffix(ps PosStruct) (suffix string) {
@@ -226,22 +251,18 @@ func (p *Proxy) GetSuffix(ps PosStruct) (suffix string) {
 
 	separator := "\n"
 	if p.Curr.Line <= 1 {
-		suffix += fmt.Sprintf(" at pos <ansiPath>%d<ansi>", ps.Pos)
+		suffix += fmt.Sprintf(ansiPos, ps.Pos)
 		separator = " "
 	} else {
-		suffix += fmt.Sprintf(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)", ps.Line, ps.Col, ps.Pos)
+		suffix += fmt.Sprintf(ansiLineCol, ps.Line, ps.Col, ps.Pos)
 	}
-	suffix += ":" + separator + "<ansiDarkGreen>"
+	suffix += ":" + separator + ansiOK
 
-	// if p.Curr.Pos == ps.Pos {
-	// suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
-	// }
 	suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
 	if p.Curr.RunePtr != nil {
-		suffix += "<ansiLightRed>"
+		suffix += ansiErr
 		suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
-		// suffix += redString
-		suffix += "<ansiReset>"
+		suffix += ansi.Reset()
 		for p.Curr.RunePtr != nil && postLineCount > 0 {
 			p.PullRune()
 			if p.Curr.RunePtr != nil {
@@ -258,85 +279,27 @@ func (p *Proxy) GetSuffix(ps PosStruct) (suffix string) {
 	return suffix
 }
 
-// func (p *Proxy) UnexpectedRuneError(infix ...string) error {
-// 	var fmtString string
-// 	fmtArgs := []interface{}{}
-// 	if p.Curr.RunePtr == nil {
-// 		suffix := p.GetSuffix(p.Curr)
-// 		fmtString = "unexpected end of string"
-// 		if infix != nil {
-// 			fmtString += "(" + strings.Join(infix, " ") + ")"
-// 		}
-// 		fmtString += suffix
-// 	} else {
-// 		rune := *p.Curr.RunePtr
-// 		suffix := p.GetSuffix(p.Curr)
-// 		fmtString = "unexpected char <ansiVal>%q<ansiReset> (charCode: %v"
-// 		if infix != nil {
-// 			fmtString += ", " + strings.Join(infix, " ")
-// 		}
-// 		fmtString += ")" + suffix
-// 		fmtArgs = []interface{}{rune, rune}
-// 	}
-// 	return bwerr.Errord(1, fmtString, fmtArgs...)
-// }
+var (
+	ansiUnexpectedEOF  string
+	ansiUnexpectedChar string
+)
 
-// type FmtStruct struct {
-// 	FmtString string
-// 	FmtArgs   []interface{}
-// }
-
-// func FmtStructFrom(fmtString string, fmtArgs ...interface{}) FmtStruct {
-// 	return FmtStruct{fmtString, fmtArgs}
-// }
-
-// func (p *Proxy) Unexpected(ps PosStruct, fmtString string, fmtArgs ...interface{}) error {
-func (p *Proxy) Unexpected(ps PosStruct, optFmtStruct ...bw.A) (err error) {
-	var fmtString string
-	fmtArgs := []interface{}{}
-	if p.Curr.RunePtr == nil {
-		suffix := p.GetSuffix(p.Curr)
-		// if fmtString
-		fmtString = "unexpected end of string"
-		if optFmtStruct != nil {
-			fmtString += "(" + optFmtStruct[0].Fmt + ")"
-			fmtArgs = append(fmtArgs, optFmtStruct[0].Args...)
-		}
-		fmtString += suffix
-	} else if ps.Pos == p.Curr.Pos {
-		r := *p.Curr.RunePtr
-		suffix := p.GetSuffix(p.Curr)
-		fmtString = "unexpected char <ansiVal>%q<ansiReset> (charCode: %v"
-		fmtArgs = []interface{}{r, r}
-		if optFmtStruct != nil {
-			fmtString += ", " + optFmtStruct[0].Fmt
-			fmtArgs = append(fmtArgs, optFmtStruct[0].Args...)
-		}
-		fmtString += ")" + suffix
-	} else if ps.Pos < p.Curr.Pos {
-		if optFmtStruct != nil {
-			fmtString += optFmtStruct[0].Fmt
-			fmtArgs = append(fmtArgs, optFmtStruct[0].Args...)
-		}
-		fmtString += p.GetSuffix(ps)
-	} else {
-		bwerr.Panic("ps.Pos: %#v, p.Curr.Pos: %#v", ps.Pos, p.Curr.Pos)
-	}
-	// bwerr.Panic("%#v, fmtArgs: %#v", fmtString, fmtArgs)
-	err = bwerr.FromA(bwerr.A{1, fmtString, fmtArgs})
-	// bwerr.Panic("%#v", err)
-	return
+func init() {
+	ansiUnexpectedEOF = ansi.String("unexpected end of string")
+	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 }
 
-// func (p *Proxy) ItemError(start PosStruct, fmtString string, fmtArgs ...interface{}) error {
-// 	fmtString += p.GetSuffix(start)
-// 	return bwerr.Errord(1, fmtString, fmtArgs...)
-// }
-
-// func (p *Proxy) unknownWordError(start int, word string) {
-// 	// suffix := pfa.p.GetSuffix(start, word)
-// 	return p.wordError("unknown word <ansiVal>%s<ansi>", word, start)
-// }
+func (p *Proxy) Unexpected(ps PosStruct) (result error) {
+	var msg string
+	if ps.RunePtr == nil {
+		msg = ansiUnexpectedEOF
+	} else {
+		r := *ps.RunePtr
+		msg = fmt.Sprintf(ansiUnexpectedChar, r, r)
+	}
+	result = bwerr.From(msg + p.GetSuffix(ps))
+	return
+}
 
 func FromString(source string) RuneProvider {
 	result := stringRuneProvider{pos: -1, src: []rune(source)}
@@ -409,8 +372,15 @@ type fileRuneProvider struct {
 	isEOF    bool
 }
 
+var (
+	ansiInvalidByte string
+)
+
+func init() {
+	ansiInvalidByte = ansi.String("utf-8 encoding <ansiVal>%#v<ansi> is invalid at pos <ansiPath>%d<ansi>")
+}
+
 func (v *fileRuneProvider) PullRune() (result *rune, err error) {
-	// var size int
 	if len(v.buf) < utf8.UTFMax && !v.isEOF {
 		chunk := make([]byte, chunksize)
 		var count int
@@ -426,7 +396,7 @@ func (v *fileRuneProvider) PullRune() (result *rune, err error) {
 		if len(v.buf) != 0 {
 			currRune, size := utf8.DecodeRune(v.buf)
 			if currRune == utf8.RuneError {
-				err = bwerr.From("utf-8 encoding is invalid at pos %d (byte #%d)", v.pos, v.bytePos)
+				err = bwerr.From(ansiInvalidByte, v.bytePos, v.pos)
 			} else {
 				result = &currRune
 				v.buf = v.buf[size:]

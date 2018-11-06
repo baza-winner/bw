@@ -1,8 +1,14 @@
 package bw
 
 import (
+	"encoding/json"
+	"strconv"
+	"strings"
+
 	"github.com/davecgh/go-spew/spew"
 )
+
+//go:generate stringer -type=ValPathItemType
 
 // ============================================================================
 
@@ -99,3 +105,68 @@ const (
 	MaxInt  = int(MaxUint >> 1)
 	MinInt  = -MaxInt - 1
 )
+
+// ============================================================================
+
+type ValPathItemType uint8
+
+const (
+	ValPathItemHash ValPathItemType = iota
+	ValPathItemIdx
+	ValPathItemKey
+	ValPathItemPath
+	ValPathItemVar
+)
+
+func (v ValPathItemType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.String())
+}
+
+type ValPathItem struct {
+	Type ValPathItemType
+	Idx  int
+	Key  string
+	Path ValPath
+}
+
+type Path []ValPathItem
+
+func (v Path) MarshalJSON() ([]byte, error) {
+	result := []interface{}{}
+	for _, i := range v {
+		result = append(result, i)
+	}
+	return json.Marshal(result)
+}
+
+type ValPath []ValPathItem
+
+func (v ValPath) String() string {
+	ss := []string{}
+	for _, vpi := range v {
+		switch vpi.Type {
+		case ValPathItemPath:
+			ss = append(ss, "{"+vpi.Path.String()+"}")
+		case ValPathItemKey:
+			ss = append(ss, vpi.Key)
+		case ValPathItemVar:
+			ss = append(ss, "$"+vpi.Key)
+		case ValPathItemIdx:
+			ss = append(ss, strconv.FormatInt(int64(vpi.Idx), 10))
+		case ValPathItemHash:
+			ss = append(ss, "#")
+		default:
+			panic(Spew.Sprintf("%#v", vpi.Type))
+		}
+	}
+	return strings.Join(ss, ".")
+}
+
+// ============================================================================
+
+type Val interface {
+	PathVal(path ValPath, vars map[string]interface{}) (result interface{}, err error)
+	SetValToPath(val []interface{}, path ValPath, vars map[string]interface{}) (err error)
+}
+
+// ============================================================================
