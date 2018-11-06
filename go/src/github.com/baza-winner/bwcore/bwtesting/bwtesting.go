@@ -36,7 +36,9 @@ var (
 	ansiTestTitleCloseBrace      string
 	ansiErr                      string
 	ansiVal                      string
-	ansiWhere                    string
+	ansiDiffBegin                string
+	ansiDiffEnd                  string
+	// ansiSeparator                string
 )
 
 func init() {
@@ -62,18 +64,25 @@ func init() {
 	ansiErr = ansi.String(
 		"<ansiErr>tst err<ansi>: '%s'" +
 			"\n<ansiOK>eta err<ansi>: '%s'" +
+			"\n------------------------\n" +
 			"\n<ansiErr>tst(q)<ansi>: %q" +
 			"\n<ansiOK>eta(q)<ansi>: %q" +
+			"\n------------------------" +
 			"\n<ansiErr>tst(json)<ansi>: %s" +
-			"\n<ansiOK>eta(json)<ansi>: %s",
+			"\n<ansiOK>eta(json)<ansi>: %s" +
+			"\n------------------------",
 	)
 	ansiVal = ansi.String(
 		"<ansiErr>tst(v)<ansi>: %#v" +
 			"\n<ansiOK>eta(v)<ansi>: %#v" +
+			"\n------------------------" +
 			"\n<ansiErr>tst(json)<ansi>: %s" +
-			"\n<ansiOK>eta(json)<ansi>: %s",
+			"\n<ansiOK>eta(json)<ansi>: %s" +
+			"\n------------------------",
 	)
-	ansiWhere = ansi.String("\n<ansiVar>Where<ansi>: <ansiPath>%s")
+	ansiDiffBegin = "\n------ BEGIN DIFF ------\n"
+	ansiDiffEnd = "\n------- END DIFF -------\n"
+	// ansiSeparator = "\n------------------------\n"
 }
 
 func BwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct) {
@@ -159,6 +168,9 @@ func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct,
 								vType.Out(0),
 							),
 						})
+					} else if vType.NumIn() == 0 {
+						inItem = reflect.ValueOf(v).Call([]reflect.Value{})[0]
+						// outEta = append(outEta, vOut[0].Interface())
 					} else if vType.NumIn() == 1 {
 						if vType.In(0).Kind() == reflect.String {
 							inItem = reflect.ValueOf(v).Call([]reflect.Value{
@@ -219,22 +231,25 @@ func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct,
 								vType.Out(0),
 							),
 						})
+					} else if vType.NumIn() == 0 {
+						outItem := reflect.ValueOf(v).Call([]reflect.Value{})[0]
+						outEta = append(outEta, outItem.Interface())
 					} else if vType.NumIn() == 1 {
 						if vType.Out(0).Kind() == reflect.String {
-							vOut := reflect.ValueOf(v).Call([]reflect.Value{
+							outItem := reflect.ValueOf(v).Call([]reflect.Value{
 								reflect.ValueOf(testName),
-							})
-							outEta = append(outEta, vOut[0].Interface())
+							})[0]
+							outEta = append(outEta, outItem.Interface())
 						} else {
 							bwerr.TODO()
 						}
 					} else {
 						bwerr.TODO()
-						vOut := reflect.ValueOf(v).Call([]reflect.Value{
+						outItem := reflect.ValueOf(v).Call([]reflect.Value{
 							reflect.ValueOf(testName),
 							reflect.ValueOf(test),
-						})
-						outEta = append(outEta, vOut[0].Interface())
+						})[0]
+						outEta = append(outEta, outItem.Interface())
 					}
 					continue
 				}
@@ -272,23 +287,13 @@ func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct,
 						bwjson.Pretty(tstErr),
 						bwjson.Pretty(etaErr),
 					)
-
-					if tstErr != nil {
-						tstErrType := reflect.TypeOf(tstErr)
-						if tstErrType.Kind() == reflect.Struct {
-							if sf, ok := tstErrType.FieldByName("Where"); ok && sf.Type.Kind() == reflect.String {
-								fmtString += ansiWhere
-								fmtArgs = append(fmtArgs, reflect.ValueOf(tstErr).FieldByName("Where").Interface())
-							}
-						}
-					}
 				}
 			} else {
 				tstResult := out[i].Interface()
 				etaResult := outEta[i]
 				if cmp := pretty.Compare(tstResult, etaResult); len(cmp) > 0 {
 					hasDiff = true
-					fmtString += colorizedCmp(cmp) + ansiVal
+					fmtString += ansiDiffBegin + colorizedCmp(cmp) + ansiDiffEnd + ansiVal
 					fmtArgs = append(fmtArgs,
 						tstResult,
 						etaResult,
@@ -322,5 +327,5 @@ func colorizedCmp(s string) string {
 		}
 		result = append(result, s)
 	}
-	return strings.Join(result, "\n") + "\n"
+	return strings.Join(result, "\n") //+ "\n"
 }

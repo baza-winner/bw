@@ -43,23 +43,19 @@ func Parse(s string) (result bw.ValPath, err error) {
 		if err != nil {
 			return
 		}
-		isUnexpectedRune := false
 		switch {
 		case state == vppsBegin:
 			if isEOF {
 				if len(stack) == 1 && len(stack[0]) == 0 {
 					state = vppsDone
 				} else {
-					isUnexpectedRune = true
+					err = p.Unexpected(p.Curr)
+					return
 				}
-			} else if unicode.IsDigit(currRune) &&
-				len(stack) > 0 &&
-				len(stack[len(stack)-1]) > 0 {
+			} else if unicode.IsDigit(currRune) {
 				item = string(currRune)
 				state = vppsIdx
-			} else if (currRune == '-' || currRune == '+') &&
-				len(stack) > 0 &&
-				len(stack[len(stack)-1]) > 0 {
+			} else if currRune == '-' || currRune == '+' {
 				item = string(currRune)
 				state = vppsDigit
 			} else if unicode.IsLetter(currRune) || currRune == '_' {
@@ -68,7 +64,10 @@ func Parse(s string) (result bw.ValPath, err error) {
 			} else if currRune == '{' {
 				stack = append(stack, bw.ValPath{})
 				state = vppsBegin
-			} else if currRune == '$' {
+			} else if currRune == '$' &&
+				len(stack) > 0 &&
+				len(stack[len(stack)-1]) == 0 {
+				item = ""
 				state = vppsVar
 			} else if currRune == '#' {
 				stack[len(stack)-1] = append(
@@ -77,27 +76,31 @@ func Parse(s string) (result bw.ValPath, err error) {
 				)
 				state = vppsForceEnd
 			} else {
-				isUnexpectedRune = true
+				err = p.Unexpected(p.Curr)
+				return
 			}
 		case state == vppsDigit:
 			if unicode.IsDigit(currRune) {
 				item += string(currRune)
 				state = vppsIdx
 			} else {
-				isUnexpectedRune = true
+				err = p.Unexpected(p.Curr)
+				return
 			}
 		case state == vppsForceEnd:
 			if isEOF && len(stack) == 1 {
 				state = vppsDone
 			} else {
-				isUnexpectedRune = true
+				err = p.Unexpected(p.Curr)
+				return
 			}
 		case state == vppsEnd:
 			if isEOF {
 				if len(stack) == 1 {
 					state = vppsDone
 				} else {
-					isUnexpectedRune = true
+					err = p.Unexpected(p.Curr)
+					return
 				}
 			} else if currRune == '.' {
 				state = vppsBegin
@@ -108,7 +111,8 @@ func Parse(s string) (result bw.ValPath, err error) {
 				)
 				stack = stack[0 : len(stack)-1]
 			} else {
-				isUnexpectedRune = true
+				err = p.Unexpected(p.Curr)
+				return
 			}
 		case state == vppsIdx:
 			if unicode.IsDigit(currRune) {
@@ -141,11 +145,8 @@ func Parse(s string) (result bw.ValPath, err error) {
 		default:
 			bwerr.Panic("no handler for %s", state)
 		}
-		if isUnexpectedRune {
-			err = p.Unexpected(p.Curr)
-			return
-		}
-		if isEOF || state == vppsDone {
+		// bwdebug.Print("state", state, "currRune", currRune, "stack", stack, "item", item)
+		if state == vppsDone {
 			break
 		}
 	}

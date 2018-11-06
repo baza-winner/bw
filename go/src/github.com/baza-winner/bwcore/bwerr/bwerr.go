@@ -135,25 +135,17 @@ func TODO() {
 // ============================================================================
 
 type Error struct {
-	Ansi  string
-	Where where.W
+	S  string
+	WW where.WW
 }
-
-// func (v Error) EqualToTest(err error) (result bool) {
-// 	result = v.Ansi == FmtStringOf(err)
-// 	return
-// }
 
 // Error for error implemention
 func (v Error) Error() string {
-	return ansiErrPrefix + v.Ansi + " at " + v.Where.String()
-	// ,
-	// return ansi.Concat(
-	// 	ansiErrPrefix,
-	// 	v.Ansi,
-	// 	" at ",
-	// 	v.Where.String(),
-	// )
+	var suffix string
+	if len(v.WW) > 0 {
+		suffix = v.WW[0].String()
+	}
+	return ansiErrPrefix + v.S + " at " + suffix
 }
 
 var findRefineRegexp = regexp.MustCompile("{Error}")
@@ -164,8 +156,8 @@ func (v Error) Refine(fmtString string, fmtArgs ...interface{}) Error {
 
 func (v Error) RefineA(a bw.I) (result Error) {
 	result = v
-	result.Ansi = ansi.String(bw.Spew.Sprintf(
-		findRefineRegexp.ReplaceAllString(a.FmtString(), v.Ansi),
+	result.S = ansi.String(bw.Spew.Sprintf(
+		findRefineRegexp.ReplaceAllString(a.FmtString(), v.S),
 		a.FmtArgs()...,
 	))
 	return
@@ -203,7 +195,7 @@ func Err(err error, optDepth ...uint) E {
 func FmtStringOf(err error) (result string) {
 	if err != nil {
 		if t, ok := err.(Error); ok {
-			result = t.Ansi
+			result = t.S
 		} else {
 			result = err.Error()
 		}
@@ -240,7 +232,7 @@ func FromA(a bw.I) Error {
 	fmtArgs = a.FmtArgs()
 	return Error{
 		ansi.String(bw.Spew.Sprintf(fmtString, fmtArgs...)),
-		where.MustFrom(depth + 1),
+		where.WWFrom(depth + 1),
 	}
 }
 

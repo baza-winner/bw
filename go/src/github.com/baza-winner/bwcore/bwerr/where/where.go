@@ -1,18 +1,34 @@
 package where
 
 import (
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwjson"
 )
 
 type W struct {
 	funcSpec string
 	fileSpec string
 	line     int
+}
+
+type WW []W
+
+func WWFrom(depth uint) (result WW) {
+	result = WW{}
+	for i := depth + 1; true; i++ {
+		w, ok := From(i)
+		if !ok {
+			break
+		}
+		result = append(result, w)
+	}
+	return
 }
 
 func From(depth uint) (result W, ok bool) {
@@ -75,6 +91,18 @@ func init() {
 		ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
 	)
 	ansiWhere = ansi.String("<ansiWhereFuncName>%s<ansiWhereAt>@<ansiWhereFile>%s:%d")
+}
+
+func (v WW) MarshalJSON() ([]byte, error) {
+	result := []interface{}{}
+	for _, i := range v {
+		result = append(result, bw.Spew.Sprintf("%s@%s:%d", i.FuncSpec(), i.FileName(), i.Line()))
+	}
+	return json.Marshal(result)
+}
+
+func (v WW) String() string {
+	return bwjson.Pretty(v)
 }
 
 func (v W) String() string {
