@@ -28,16 +28,17 @@ var (
 	ansiExpectsParamType         string
 	ansiExpectsOneReturnValue    string
 	ansiExpectsTypeOfReturnValue string
-	ansiPath                     string
-	ansiTestTitleFunc            string
-	ansiTestTitleOpenBrace       string
-	ansiTestTitleSep             string
-	ansiTestTitleVal             string
-	ansiTestTitleCloseBrace      string
-	ansiErr                      string
-	ansiVal                      string
-	ansiDiffBegin                string
-	ansiDiffEnd                  string
+	// ansiSeparator                string
+	ansiPath                string
+	ansiTestTitleFunc       string
+	ansiTestTitleOpenBrace  string
+	ansiTestTitleSep        string
+	ansiTestTitleVal        string
+	ansiTestTitleCloseBrace string
+	ansiErr                 string
+	ansiVal                 string
+	ansiDiffBegin           string
+	ansiDiffEnd             string
 	// ansiSeparator                string
 )
 
@@ -55,7 +56,8 @@ func init() {
 	ansiExpectsParamType = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi> (<ansiVal>%#v<ansi>)")
 	ansiExpectsOneReturnValue = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидается <ansiVal>1<ansi> возвращаемое значение вместо <ansiVal>%d")
 	ansiExpectsTypeOfReturnValue = ansi.String(testPrefixFmt + ".%s.%d<ansi>: в качесте возвращаемого значения ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi>")
-	ansiPath = ansi.String("<ansiPath>.[%d]<ansi>:\n")
+	// ansiSeparator = ":\n"
+	ansiPath = ansi.String("<ansiPath>.[%d]<ansi>")
 	ansiTestTitleFunc = ansi.String("<ansiFunc>%s")
 	ansiTestTitleOpenBrace = ansi.String("(")
 	ansiTestTitleSep = ansi.String(",")
@@ -80,7 +82,7 @@ func init() {
 			"\n<ansiOK>eta(json)<ansi>: %s" +
 			"\n------------------------",
 	)
-	ansiDiffBegin = "\n------ BEGIN DIFF ------\n"
+	ansiDiffBegin = "------ BEGIN DIFF ------\n"
 	ansiDiffEnd = "\n------- END DIFF -------\n"
 	// ansiSeparator = "\n------------------------\n"
 }
@@ -163,7 +165,7 @@ func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct,
 						return bwerr.FromA(bwerr.A{depth + 1,
 							ansiExpectsTypeOfReturnValue,
 							bw.Args(
-								testFunc, testName, "In",
+								testFunc, testName, "In", i,
 								outDef[i],
 								vType.Out(0),
 							),
@@ -226,7 +228,7 @@ func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct,
 						return bwerr.FromA(bwerr.A{depth + 1,
 							ansiExpectsTypeOfReturnValue,
 							bw.Args(
-								testFunc, testName, "Out",
+								testFunc, testName, "Out", i,
 								outDef[i],
 								vType.Out(0),
 							),
@@ -240,8 +242,13 @@ func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct,
 								reflect.ValueOf(testName),
 							})[0]
 							outEta = append(outEta, outItem.Interface())
+						} else if vType.In(0).Name() == "TestCaseStruct" {
+							outItem := reflect.ValueOf(v).Call([]reflect.Value{
+								reflect.ValueOf(test),
+							})[0]
+							outEta = append(outEta, outItem.Interface())
 						} else {
-							bwerr.TODO()
+							bwerr.Panic("vType.In(0).Name(): %s", vType.In(0).Name())
 						}
 					} else {
 						bwerr.TODO()
@@ -265,6 +272,7 @@ func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct,
 				fmtString += ansiPath
 				fmtArgs = append(fmtArgs, i)
 			}
+			fmtString += ":\n"
 			var hasDiff bool
 			if outDef[i].Implements(reflect.TypeOf((*error)(nil)).Elem()) {
 				etaErr, _ := outEta[i].(error)

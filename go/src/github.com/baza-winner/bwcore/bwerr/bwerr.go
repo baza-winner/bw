@@ -2,7 +2,6 @@
 package bwerr
 
 import (
-	"log"
 	"regexp"
 
 	"github.com/baza-winner/bwcore/ansi"
@@ -110,7 +109,8 @@ func IncDepth(a bw.I, incOpt ...uint) (result bw.I) {
 // }
 
 func PanicA(a bw.I) {
-	log.Panic(FromA(IncDepth(a)).Error())
+	panic(FromA(IncDepth(a)))
+	// log.Panic()
 }
 
 func Unreachable() {

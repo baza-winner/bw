@@ -46,122 +46,77 @@ func init() {
 	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
 }
 
-func Bool(val interface{}) (result bool, err error) {
-	var ok bool
-	if result, ok = val.(bool); !ok {
-		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Bool")})
+func Bool(val interface{}) (result bool, ok bool) {
+	if v, kind := Kind(val); kind == ValBool {
+		result, ok = v.(bool)
 	}
 	return
 }
 
 func MustBool(val interface{}) (result bool) {
-	var err error
-	if result, err = Bool(val); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+	var ok bool
+	if result, ok = Bool(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Bool")
 	}
-	return result
+	return
 }
 
-var (
-	ansiIsOutOfRange string
-)
-
-func init() {
-	ansiIsOutOfRange = ansi.String("<ansiVal>%#v<ansi> is out of range <ansiVal>%d..%d")
-}
-
-func Int(val interface{}) (result int, err error) {
-	switch t := val.(type) {
-	case int8:
-		result = int(t)
-	case int16:
-		result = int(t)
-	case int32:
-		result = int(t)
-	case int64:
-		if int64(bw.MinInt) <= t && t <= int64(bw.MaxInt) {
-			result = int(t)
-		} else {
-			err = bwerr.FromA(bwerr.A{1, ansiIsOutOfRange, bw.Args(val, bw.MinInt, bw.MaxInt)})
-		}
-	case int:
-		result = t
-	case uint8:
-		result = int(t)
-	case uint16:
-		result = int(t)
-	case uint32:
-		result = int(t)
-	case uint64:
-		if t <= uint64(bw.MaxInt) {
-			result = int(t)
-		} else {
-			err = bwerr.FromA(bwerr.A{1, ansiIsOutOfRange, bw.Args(val, bw.MinInt, bw.MaxInt)})
-		}
-	case uint:
-		if t <= uint(bw.MaxInt) {
-			result = int(t)
-		} else {
-			err = bwerr.FromA(bwerr.A{1, ansiIsOutOfRange, bw.Args(val, bw.MinInt, bw.MaxInt)})
-		}
-	default:
-		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Int")})
+func Int(val interface{}) (result int, ok bool) {
+	if v, kind := Kind(val); kind == ValInt {
+		result, ok = v.(int)
 	}
 	return
 }
 
 func MustInt(val interface{}) (result int) {
-	var err error
-	if result, err = Int(val); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+	var ok bool
+	if result, ok = Int(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Int")
 	}
-	return result
+	return
 }
 
-func String(val interface{}) (result string, err error) {
-	var ok bool
-	if result, ok = val.(string); !ok {
-		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "String")})
+func String(val interface{}) (result string, ok bool) {
+	if v, kind := Kind(val); kind == ValString {
+		result, ok = v.(string)
 	}
 	return
 }
 
 func MustString(val interface{}) (result string) {
-	var err error
-	if result, err = String(val); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+	var ok bool
+	if result, ok = String(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "String")
 	}
-	return result
+	return
 }
 
-func Map(val interface{}) (result map[string]interface{}, err error) {
-	var ok bool
-	if result, ok = val.(map[string]interface{}); !ok {
-		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Map")})
+func Map(val interface{}) (result map[string]interface{}, ok bool) {
+	if v, kind := Kind(val); kind == ValMap {
+		result, ok = v.(map[string]interface{})
 	}
 	return
 }
 
 func MustMap(val interface{}) (result map[string]interface{}) {
-	var err error
-	if result, err = Map(val); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+	var ok bool
+	if result, ok = Map(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Map")
 	}
-	return result
+	return
 }
 
-func Array(val interface{}) (result []interface{}, err error) {
-	var ok bool
-	if result, ok = val.([]interface{}); !ok {
-		err = bwerr.FromA(bwerr.A{1, ansiIsNotOfType, bw.Args(val, "Array")})
+func Array(val interface{}) (result []interface{}, ok bool) {
+	if v, kind := Kind(val); kind == ValArray {
+		result, ok = v.([]interface{})
 	}
 	return
 }
 
 func MustArray(val interface{}) (result []interface{}) {
-	var err error
-	if result, err = Array(val); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+	var ok bool
+	if result, ok = Array(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Array")
 	}
 	return result
 }
@@ -182,33 +137,59 @@ func (v ValKind) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.String())
 }
 
-func Kind(val interface{}) (result ValKind) {
+func Kind(val interface{}) (result interface{}, kind ValKind) {
 	if val == nil {
-		result = ValNil
+		kind = ValNil
 	} else {
 		switch t := val.(type) {
 		case bool:
-			result = ValBool
-		case int, int8, int16, int32, uint8, uint16, uint32:
-			result = ValInt
+			result = t
+			kind = ValBool
+		case int8:
+			result = int(t)
+			kind = ValInt
+		case int16:
+			result = int(t)
+			kind = ValInt
+		case int32:
+			result = int(t)
+			kind = ValInt
 		case int64:
 			if int64(bw.MinInt) <= t && t <= int64(bw.MaxInt) {
-				result = ValInt
+				result = int(t)
+				kind = ValInt
 			}
+		case int:
+			result = t
+			kind = ValInt
+		case uint8:
+			result = int(t)
+			kind = ValInt
+		case uint16:
+			result = int(t)
+			kind = ValInt
+		case uint32:
+			result = int(t)
+			kind = ValInt
 		case uint64:
 			if t <= uint64(bw.MaxInt) {
-				result = ValInt
+				result = int(t)
+				kind = ValInt
 			}
 		case uint:
 			if t <= uint(bw.MaxInt) {
-				result = ValInt
+				result = int(t)
+				kind = ValInt
 			}
 		case string:
-			result = ValString
+			result = t
+			kind = ValString
 		case map[string]interface{}:
-			result = ValMap
+			result = t
+			kind = ValMap
 		case []interface{}:
-			result = ValArray
+			result = t
+			kind = ValArray
 		}
 	}
 	return
@@ -220,7 +201,7 @@ type valHolder struct {
 	val interface{}
 }
 
-func From(val interface{}) (result bw.Val) {
+func FromVal(val interface{}) (result bw.Val) {
 	var ok bool
 	if result, ok = val.(bw.Val); !ok {
 		result = valHolder{val}
@@ -305,7 +286,7 @@ func (v valHolder) PathVal(path bw.ValPath, vars map[string]interface{}) (result
 			var val interface{}
 			val, err = v.PathVal(vpi.Path, vars)
 			if err == nil {
-				switch Kind(val) {
+				switch _, kind := Kind(val); kind {
 				case ValString:
 					result, err = byKey(result, i, MustString(val))
 				case ValInt:
