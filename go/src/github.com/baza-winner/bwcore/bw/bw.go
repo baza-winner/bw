@@ -141,25 +141,30 @@ func (v Path) MarshalJSON() ([]byte, error) {
 
 type ValPath []ValPathItem
 
-func (v ValPath) String() string {
+func (v ValPath) String() (result string) {
 	ss := []string{}
-	for _, vpi := range v {
-		switch vpi.Type {
-		case ValPathItemPath:
-			ss = append(ss, "{"+vpi.Path.String()+"}")
-		case ValPathItemKey:
-			ss = append(ss, vpi.Key)
-		case ValPathItemVar:
-			ss = append(ss, "$"+vpi.Key)
-		case ValPathItemIdx:
-			ss = append(ss, strconv.FormatInt(int64(vpi.Idx), 10))
-		case ValPathItemHash:
-			ss = append(ss, "#")
-		default:
-			panic(Spew.Sprintf("%#v", vpi.Type))
+	if len(v) == 0 {
+		result = "."
+	} else {
+		for _, vpi := range v {
+			switch vpi.Type {
+			case ValPathItemPath:
+				ss = append(ss, "{"+vpi.Path.String()+"}")
+			case ValPathItemKey:
+				ss = append(ss, vpi.Key)
+			case ValPathItemVar:
+				ss = append(ss, "$"+vpi.Key)
+			case ValPathItemIdx:
+				ss = append(ss, strconv.FormatInt(int64(vpi.Idx), 10))
+			case ValPathItemHash:
+				ss = append(ss, "#")
+			default:
+				panic(Spew.Sprintf("%#v", vpi.Type))
+			}
 		}
+		result = strings.Join(ss, ".")
 	}
-	return strings.Join(ss, ".")
+	return
 }
 
 // ============================================================================

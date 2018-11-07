@@ -117,7 +117,7 @@ func TestMustPathVal(t *testing.T) {
 				bwval.PathFrom("some.{$idx}"),
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(int)1\x1b[0m::\x1b[38;5;252;1msome\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is not \x1b[97;1mMap\x1b[0m",
+			Panic: "\x1b[96;1m(int)1\x1b[0m\x1b[38;5;252;1m.some\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is not \x1b[97;1mMap\x1b[0m",
 		},
 		"err: is not Array": {
 			In: []interface{}{
@@ -126,7 +126,7 @@ func TestMustPathVal(t *testing.T) {
 				map[string]interface{}{"idx": 1},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(int)1\x1b[0m::\x1b[38;5;252;1m{$idx}\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is not \x1b[97;1mArray\x1b[0m",
+			Panic: "\x1b[96;1m(int)1\x1b[0m\x1b[38;5;252;1m.{$idx}\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is not \x1b[97;1mArray\x1b[0m",
 		},
 		"err: nor Map, neither Array": {
 			In: []interface{}{
@@ -134,16 +134,16 @@ func TestMustPathVal(t *testing.T) {
 				bwval.PathFrom("#"),
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(int)1\x1b[0m::\x1b[38;5;252;1m.#\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is nor \x1b[97;1mMap\x1b[0m, neither \x1b[97;1mArray\x1b[0m",
+			Panic: "\x1b[96;1m(int)1\x1b[0m\x1b[38;5;252;1m.#\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is nor \x1b[97;1mMap\x1b[0m, neither \x1b[97;1mArray\x1b[0m",
 		},
 		"err: nor Int, neither String": {
 			In: []interface{}{
-				bwval.FromVal(1),
-				bwval.PathFrom("{$idx}"),
+				bwval.FromVal(map[string]interface{}{"some": 1}),
+				bwval.PathFrom("some.{$idx}"),
 				map[string]interface{}{"idx": nil},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(int)1\x1b[0m::\x1b[38;5;252;1m.{$idx}\x1b[0m (\x1b[96;1m(interface {})<nil>\x1b[0m) is nor \x1b[97;1mInt\x1b[0m, neither \x1b[97;1mString\x1b[0m",
+			Panic: "\x1b[96;1m(map[string]interface {})map[some:(int)1]\x1b[0m\x1b[38;5;252;1m.$idx\x1b[0m (\x1b[96;1m(interface {})<nil>\x1b[0m) is nor \x1b[97;1mInt\x1b[0m, neither \x1b[97;1mString\x1b[0m",
 		},
 	}
 
