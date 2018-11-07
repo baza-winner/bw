@@ -11,21 +11,21 @@ import (
 )
 
 func TestUint64(t *testing.T) {
-	bwtesting.BwRunTests(t, Uint64From, map[string]bwtesting.TestCaseStruct{"Uint64From": {
+	bwtesting.BwRunTests(t, Uint64From, map[string]bwtesting.Case{"Uint64From": {
+		In: []interface{}{_Uint64TestItemA, _Uint64TestItemB},
+		Out: []interface{}{Uint64{
+			_Uint64TestItemA: struct{}{},
+			_Uint64TestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, Uint64FromSlice, map[string]bwtesting.Case{"Uint64FromSlice": {
 		In: []interface{}{[]uint64{_Uint64TestItemA, _Uint64TestItemB}},
 		Out: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint64FromSlice, map[string]bwtesting.TestCaseStruct{"Uint64FromSlice": {
-		In: []interface{}{[]uint64{_Uint64TestItemA, _Uint64TestItemB}},
-		Out: []interface{}{Uint64{
-			_Uint64TestItemA: struct{}{},
-			_Uint64TestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, Uint64FromSet, map[string]bwtesting.TestCaseStruct{"Uint64FromSet": {
+	bwtesting.BwRunTests(t, Uint64FromSet, map[string]bwtesting.Case{"Uint64FromSet": {
 		In: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
@@ -35,7 +35,7 @@ func TestUint64(t *testing.T) {
 			_Uint64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint64.Copy, map[string]bwtesting.TestCaseStruct{"Uint64.Copy": {
+	bwtesting.BwRunTests(t, Uint64.Copy, map[string]bwtesting.Case{"Uint64.Copy": {
 		In: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
@@ -45,30 +45,30 @@ func TestUint64(t *testing.T) {
 			_Uint64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint64.ToSlice, map[string]bwtesting.TestCaseStruct{"Uint64.ToSlice": {
+	bwtesting.BwRunTests(t, Uint64.ToSlice, map[string]bwtesting.Case{"Uint64.ToSlice": {
 		In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 		Out: []interface{}{[]uint64{_Uint64TestItemA}},
 	}})
-	bwtesting.BwRunTests(t, _Uint64ToSliceTestHelper, map[string]bwtesting.TestCaseStruct{"_Uint64ToSliceTestHelper": {
+	bwtesting.BwRunTests(t, _Uint64ToSliceTestHelper, map[string]bwtesting.Case{"_Uint64ToSliceTestHelper": {
 		In:  []interface{}{[]uint64{_Uint64TestItemB, _Uint64TestItemA}},
 		Out: []interface{}{[]uint64{_Uint64TestItemA, _Uint64TestItemB}},
 	}})
-	bwtesting.BwRunTests(t, Uint64.String, map[string]bwtesting.TestCaseStruct{"Uint64.String": {
+	bwtesting.BwRunTests(t, Uint64.String, map[string]bwtesting.Case{"Uint64.String": {
 		In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.Pretty([]uint64{_Uint64TestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Uint64.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Uint64.MarshalJSON": {
+	bwtesting.BwRunTests(t, Uint64.MarshalJSON, map[string]bwtesting.Case{"Uint64.MarshalJSON": {
 		In: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 		Out: []interface{}{(func() []byte {
 			result, _ := json.Marshal([]interface{}{_Uint64TestItemA})
 			return result
 		})(), nil},
 	}})
-	bwtesting.BwRunTests(t, Uint64.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Uint64.ToSliceOfStrings": {
+	bwtesting.BwRunTests(t, Uint64.ToSliceOfStrings, map[string]bwtesting.Case{"Uint64.ToSliceOfStrings": {
 		In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 		Out: []interface{}{[]string{strconv.FormatUint(uint64(_Uint64TestItemA), 10)}},
 	}})
-	bwtesting.BwRunTests(t, Uint64.Has, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint64.Has, map[string]bwtesting.Case{
 		"Uint64.Has: false": {
 			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, _Uint64TestItemB},
 			Out: []interface{}{false},
@@ -78,21 +78,21 @@ func TestUint64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint64.HasAny, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint64.HasAny, map[string]bwtesting.Case{
 		"Uint64.HasAny: empty": {
-			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{}},
+			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 			Out: []interface{}{false},
 		},
 		"Uint64.HasAny: false": {
-			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{_Uint64TestItemB}},
+			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, _Uint64TestItemB},
 			Out: []interface{}{false},
 		},
 		"Uint64.HasAny: true": {
-			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{_Uint64TestItemA, _Uint64TestItemB}},
+			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, _Uint64TestItemA, _Uint64TestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint64.HasAnyOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint64.HasAnyOfSlice, map[string]bwtesting.Case{
 		"Uint64.HasAnyOfSlice: empty": {
 			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{}},
 			Out: []interface{}{false},
@@ -106,7 +106,7 @@ func TestUint64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint64.HasAnyOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint64.HasAnyOfSet, map[string]bwtesting.Case{
 		"Uint64.HasAnyOfSet: empty": {
 			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, Uint64{}},
 			Out: []interface{}{false},
@@ -123,24 +123,24 @@ func TestUint64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint64.HasEach, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint64.HasEach, map[string]bwtesting.Case{
 		"Uint64.HasEach: empty": {
-			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{}},
+			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 			Out: []interface{}{true},
 		},
 		"Uint64.HasEach: false": {
-			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{_Uint64TestItemA, _Uint64TestItemB}},
+			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, _Uint64TestItemA, _Uint64TestItemB},
 			Out: []interface{}{false},
 		},
 		"Uint64.HasEach: true": {
 			In: []interface{}{Uint64{
 				_Uint64TestItemA: struct{}{},
 				_Uint64TestItemB: struct{}{},
-			}, []uint64{_Uint64TestItemA, _Uint64TestItemB}},
+			}, _Uint64TestItemA, _Uint64TestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint64.HasEachOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint64.HasEachOfSlice, map[string]bwtesting.Case{
 		"Uint64.HasEachOfSlice: empty": {
 			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{}},
 			Out: []interface{}{true},
@@ -157,7 +157,7 @@ func TestUint64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint64.HasEachOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint64.HasEachOfSet, map[string]bwtesting.Case{
 		"Uint64.HasEachOfSet: empty": {
 			In:  []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, Uint64{}},
 			Out: []interface{}{true},
@@ -180,63 +180,63 @@ func TestUint64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint64._AddTestHelper, map[string]bwtesting.TestCaseStruct{"Uint64.Add": {
+	bwtesting.BwRunTests(t, Uint64._AddTestHelper, map[string]bwtesting.Case{"Uint64.Add": {
+		In: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, _Uint64TestItemB},
+		Out: []interface{}{Uint64{
+			_Uint64TestItemA: struct{}{},
+			_Uint64TestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, Uint64._AddSliceTestHelper, map[string]bwtesting.Case{"Uint64.AddSlice": {
 		In: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{_Uint64TestItemB}},
 		Out: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint64._AddSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Uint64.AddSlice": {
-		In: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, []uint64{_Uint64TestItemB}},
-		Out: []interface{}{Uint64{
-			_Uint64TestItemA: struct{}{},
-			_Uint64TestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, Uint64._AddSetTestHelper, map[string]bwtesting.TestCaseStruct{"Uint64.AddSet": {
+	bwtesting.BwRunTests(t, Uint64._AddSetTestHelper, map[string]bwtesting.Case{"Uint64.AddSet": {
 		In: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, Uint64{_Uint64TestItemB: struct{}{}}},
 		Out: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint64._DelTestHelper, map[string]bwtesting.TestCaseStruct{"Uint64.Del": {
+	bwtesting.BwRunTests(t, Uint64._DelTestHelper, map[string]bwtesting.Case{"Uint64.Del": {
+		In: []interface{}{Uint64{
+			_Uint64TestItemA: struct{}{},
+			_Uint64TestItemB: struct{}{},
+		}, _Uint64TestItemB},
+		Out: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
+	}})
+	bwtesting.BwRunTests(t, Uint64._DelSliceTestHelper, map[string]bwtesting.Case{"Uint64.DelSlice": {
 		In: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
 		}, []uint64{_Uint64TestItemB}},
 		Out: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Uint64._DelSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Uint64.DelSlice": {
-		In: []interface{}{Uint64{
-			_Uint64TestItemA: struct{}{},
-			_Uint64TestItemB: struct{}{},
-		}, []uint64{_Uint64TestItemB}},
-		Out: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
-	}})
-	bwtesting.BwRunTests(t, Uint64._DelSetTestHelper, map[string]bwtesting.TestCaseStruct{"Uint64.DelSet": {
+	bwtesting.BwRunTests(t, Uint64._DelSetTestHelper, map[string]bwtesting.Case{"Uint64.DelSet": {
 		In: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
 		}, Uint64{_Uint64TestItemB: struct{}{}}},
 		Out: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Uint64.Union, map[string]bwtesting.TestCaseStruct{"Uint64.Union": {
+	bwtesting.BwRunTests(t, Uint64.Union, map[string]bwtesting.Case{"Uint64.Union": {
 		In: []interface{}{Uint64{_Uint64TestItemA: struct{}{}}, Uint64{_Uint64TestItemB: struct{}{}}},
 		Out: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint64.Intersect, map[string]bwtesting.TestCaseStruct{"Uint64.Intersect": {
+	bwtesting.BwRunTests(t, Uint64.Intersect, map[string]bwtesting.Case{"Uint64.Intersect": {
 		In: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},
 		}, Uint64{_Uint64TestItemB: struct{}{}}},
 		Out: []interface{}{Uint64{_Uint64TestItemB: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Uint64.Subtract, map[string]bwtesting.TestCaseStruct{"Uint64.Subtract": {
+	bwtesting.BwRunTests(t, Uint64.Subtract, map[string]bwtesting.Case{"Uint64.Subtract": {
 		In: []interface{}{Uint64{
 			_Uint64TestItemA: struct{}{},
 			_Uint64TestItemB: struct{}{},

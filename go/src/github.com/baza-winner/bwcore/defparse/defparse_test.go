@@ -11,7 +11,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"zero number": {
 			In:  []interface{}{`0`},
 			Out: []interface{}{0, nil},
@@ -921,7 +921,7 @@ func ExampleParse_9() {
 }
 
 func TestParseMap(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"map": {
 			In: []interface{}{`{ some: "thing" }`},
 			Out: []interface{}{

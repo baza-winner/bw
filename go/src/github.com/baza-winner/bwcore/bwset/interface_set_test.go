@@ -10,21 +10,21 @@ import (
 )
 
 func TestInterface(t *testing.T) {
-	bwtesting.BwRunTests(t, InterfaceFrom, map[string]bwtesting.TestCaseStruct{"InterfaceFrom": {
+	bwtesting.BwRunTests(t, InterfaceFrom, map[string]bwtesting.Case{"InterfaceFrom": {
+		In: []interface{}{_InterfaceTestItemA, _InterfaceTestItemB},
+		Out: []interface{}{Interface{
+			_InterfaceTestItemA: struct{}{},
+			_InterfaceTestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, InterfaceFromSlice, map[string]bwtesting.Case{"InterfaceFromSlice": {
 		In: []interface{}{[]interface{}{_InterfaceTestItemA, _InterfaceTestItemB}},
 		Out: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, InterfaceFromSlice, map[string]bwtesting.TestCaseStruct{"InterfaceFromSlice": {
-		In: []interface{}{[]interface{}{_InterfaceTestItemA, _InterfaceTestItemB}},
-		Out: []interface{}{Interface{
-			_InterfaceTestItemA: struct{}{},
-			_InterfaceTestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, InterfaceFromSet, map[string]bwtesting.TestCaseStruct{"InterfaceFromSet": {
+	bwtesting.BwRunTests(t, InterfaceFromSet, map[string]bwtesting.Case{"InterfaceFromSet": {
 		In: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
@@ -34,7 +34,7 @@ func TestInterface(t *testing.T) {
 			_InterfaceTestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Interface.Copy, map[string]bwtesting.TestCaseStruct{"Interface.Copy": {
+	bwtesting.BwRunTests(t, Interface.Copy, map[string]bwtesting.Case{"Interface.Copy": {
 		In: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
@@ -44,26 +44,26 @@ func TestInterface(t *testing.T) {
 			_InterfaceTestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Interface.ToSlice, map[string]bwtesting.TestCaseStruct{"Interface.ToSlice": {
+	bwtesting.BwRunTests(t, Interface.ToSlice, map[string]bwtesting.Case{"Interface.ToSlice": {
 		In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 		Out: []interface{}{[]interface{}{_InterfaceTestItemA}},
 	}})
-	bwtesting.BwRunTests(t, Interface.String, map[string]bwtesting.TestCaseStruct{"Interface.String": {
+	bwtesting.BwRunTests(t, Interface.String, map[string]bwtesting.Case{"Interface.String": {
 		In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.Pretty([]interface{}{_InterfaceTestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Interface.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Interface.MarshalJSON": {
+	bwtesting.BwRunTests(t, Interface.MarshalJSON, map[string]bwtesting.Case{"Interface.MarshalJSON": {
 		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 		Out: []interface{}{(func() []byte {
 			result, _ := json.Marshal([]interface{}{_InterfaceTestItemA})
 			return result
 		})(), nil},
 	}})
-	bwtesting.BwRunTests(t, Interface.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Interface.ToSliceOfStrings": {
+	bwtesting.BwRunTests(t, Interface.ToSliceOfStrings, map[string]bwtesting.Case{"Interface.ToSliceOfStrings": {
 		In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 		Out: []interface{}{[]string{bwjson.Pretty(_InterfaceTestItemA)}},
 	}})
-	bwtesting.BwRunTests(t, Interface.Has, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Interface.Has, map[string]bwtesting.Case{
 		"Interface.Has: false": {
 			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, _InterfaceTestItemB},
 			Out: []interface{}{false},
@@ -73,21 +73,21 @@ func TestInterface(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Interface.HasAny, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Interface.HasAny, map[string]bwtesting.Case{
 		"Interface.HasAny: empty": {
-			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{}},
+			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 			Out: []interface{}{false},
 		},
 		"Interface.HasAny: false": {
-			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{_InterfaceTestItemB}},
+			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, _InterfaceTestItemB},
 			Out: []interface{}{false},
 		},
 		"Interface.HasAny: true": {
-			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{_InterfaceTestItemA, _InterfaceTestItemB}},
+			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, _InterfaceTestItemA, _InterfaceTestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Interface.HasAnyOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Interface.HasAnyOfSlice, map[string]bwtesting.Case{
 		"Interface.HasAnyOfSlice: empty": {
 			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{}},
 			Out: []interface{}{false},
@@ -101,7 +101,7 @@ func TestInterface(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Interface.HasAnyOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Interface.HasAnyOfSet, map[string]bwtesting.Case{
 		"Interface.HasAnyOfSet: empty": {
 			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, Interface{}},
 			Out: []interface{}{false},
@@ -118,24 +118,24 @@ func TestInterface(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Interface.HasEach, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Interface.HasEach, map[string]bwtesting.Case{
 		"Interface.HasEach: empty": {
-			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{}},
+			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 			Out: []interface{}{true},
 		},
 		"Interface.HasEach: false": {
-			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{_InterfaceTestItemA, _InterfaceTestItemB}},
+			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, _InterfaceTestItemA, _InterfaceTestItemB},
 			Out: []interface{}{false},
 		},
 		"Interface.HasEach: true": {
 			In: []interface{}{Interface{
 				_InterfaceTestItemA: struct{}{},
 				_InterfaceTestItemB: struct{}{},
-			}, []interface{}{_InterfaceTestItemA, _InterfaceTestItemB}},
+			}, _InterfaceTestItemA, _InterfaceTestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Interface.HasEachOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Interface.HasEachOfSlice, map[string]bwtesting.Case{
 		"Interface.HasEachOfSlice: empty": {
 			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{}},
 			Out: []interface{}{true},
@@ -152,7 +152,7 @@ func TestInterface(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Interface.HasEachOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Interface.HasEachOfSet, map[string]bwtesting.Case{
 		"Interface.HasEachOfSet: empty": {
 			In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, Interface{}},
 			Out: []interface{}{true},
@@ -175,63 +175,63 @@ func TestInterface(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Interface._AddTestHelper, map[string]bwtesting.TestCaseStruct{"Interface.Add": {
+	bwtesting.BwRunTests(t, Interface._AddTestHelper, map[string]bwtesting.Case{"Interface.Add": {
+		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, _InterfaceTestItemB},
+		Out: []interface{}{Interface{
+			_InterfaceTestItemA: struct{}{},
+			_InterfaceTestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, Interface._AddSliceTestHelper, map[string]bwtesting.Case{"Interface.AddSlice": {
 		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{_InterfaceTestItemB}},
 		Out: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Interface._AddSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Interface.AddSlice": {
-		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, []interface{}{_InterfaceTestItemB}},
-		Out: []interface{}{Interface{
-			_InterfaceTestItemA: struct{}{},
-			_InterfaceTestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, Interface._AddSetTestHelper, map[string]bwtesting.TestCaseStruct{"Interface.AddSet": {
+	bwtesting.BwRunTests(t, Interface._AddSetTestHelper, map[string]bwtesting.Case{"Interface.AddSet": {
 		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, Interface{_InterfaceTestItemB: struct{}{}}},
 		Out: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Interface._DelTestHelper, map[string]bwtesting.TestCaseStruct{"Interface.Del": {
+	bwtesting.BwRunTests(t, Interface._DelTestHelper, map[string]bwtesting.Case{"Interface.Del": {
+		In: []interface{}{Interface{
+			_InterfaceTestItemA: struct{}{},
+			_InterfaceTestItemB: struct{}{},
+		}, _InterfaceTestItemB},
+		Out: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
+	}})
+	bwtesting.BwRunTests(t, Interface._DelSliceTestHelper, map[string]bwtesting.Case{"Interface.DelSlice": {
 		In: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
 		}, []interface{}{_InterfaceTestItemB}},
 		Out: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Interface._DelSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Interface.DelSlice": {
-		In: []interface{}{Interface{
-			_InterfaceTestItemA: struct{}{},
-			_InterfaceTestItemB: struct{}{},
-		}, []interface{}{_InterfaceTestItemB}},
-		Out: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
-	}})
-	bwtesting.BwRunTests(t, Interface._DelSetTestHelper, map[string]bwtesting.TestCaseStruct{"Interface.DelSet": {
+	bwtesting.BwRunTests(t, Interface._DelSetTestHelper, map[string]bwtesting.Case{"Interface.DelSet": {
 		In: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
 		}, Interface{_InterfaceTestItemB: struct{}{}}},
 		Out: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Interface.Union, map[string]bwtesting.TestCaseStruct{"Interface.Union": {
+	bwtesting.BwRunTests(t, Interface.Union, map[string]bwtesting.Case{"Interface.Union": {
 		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}, Interface{_InterfaceTestItemB: struct{}{}}},
 		Out: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Interface.Intersect, map[string]bwtesting.TestCaseStruct{"Interface.Intersect": {
+	bwtesting.BwRunTests(t, Interface.Intersect, map[string]bwtesting.Case{"Interface.Intersect": {
 		In: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},
 		}, Interface{_InterfaceTestItemB: struct{}{}}},
 		Out: []interface{}{Interface{_InterfaceTestItemB: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Interface.Subtract, map[string]bwtesting.TestCaseStruct{"Interface.Subtract": {
+	bwtesting.BwRunTests(t, Interface.Subtract, map[string]bwtesting.Case{"Interface.Subtract": {
 		In: []interface{}{Interface{
 			_InterfaceTestItemA: struct{}{},
 			_InterfaceTestItemB: struct{}{},

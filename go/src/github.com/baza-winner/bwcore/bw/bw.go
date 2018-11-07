@@ -165,8 +165,8 @@ func (v ValPath) String() string {
 // ============================================================================
 
 type Val interface {
-	PathVal(path ValPath, vars map[string]interface{}) (result interface{}, err error)
-	SetValToPath(val []interface{}, path ValPath, vars map[string]interface{}) (err error)
+	PathVal(path ValPath, optVars ...map[string]interface{}) (result interface{}, err error)
+	SetValToPath(val []interface{}, path ValPath, optVars ...map[string]interface{}) (err error)
 }
 
 // ============================================================================

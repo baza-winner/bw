@@ -30,7 +30,19 @@ func (v varPathParseState) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.String())
 }
 
-func Parse(s string) (result bw.ValPath, err error) {
+func MustParse(s string, optBase ...bw.ValPath) (result bw.ValPath) {
+	var err error
+	if result, err = Parse(s, optBase...); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return result
+}
+
+func Parse(s string, optBase ...bw.ValPath) (result bw.ValPath, err error) {
+	base := bw.ValPath{}
+	if len(optBase) > 0 {
+		base = optBase[0]
+	}
 	p := runeprovider.ProxyFrom(runeprovider.FromString(s))
 	stack := []bw.ValPath{bw.ValPath{}}
 	state := vppsBegin
@@ -46,8 +58,20 @@ func Parse(s string) (result bw.ValPath, err error) {
 		switch {
 		case state == vppsBegin:
 			if isEOF {
-				if len(stack) == 1 && len(stack[0]) == 0 {
-					state = vppsDone
+				// if len(stack) == 1 && len(stack[0]) == 0 {
+				// state = vppsDone
+				// } else {
+				err = p.Unexpected(p.Curr)
+				return
+				// }
+			} else if currRune == '.' &&
+				len(stack) > 0 &&
+				len(stack[len(stack)-1]) == 0 {
+				if len(base) == 0 {
+					state = vppsForceEnd
+				} else if len(stack) == 1 && len(stack[0]) == 0 {
+					stack[0] = append(stack[0], base...)
+					// state = vppsForceEnd
 				} else {
 					err = p.Unexpected(p.Curr)
 					return

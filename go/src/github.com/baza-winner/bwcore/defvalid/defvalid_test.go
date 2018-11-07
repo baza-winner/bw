@@ -15,12 +15,12 @@ import (
 // ============================================================================
 
 func TestCompileDef(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"def: nil": {
 			In: []interface{}{nil},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) has non supported value",
 						test.In[0],
@@ -39,7 +39,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) has no key <ansiVal>type",
 						test.In[0],
@@ -154,7 +154,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Map", kyes: { keyBool: ['Bool'] }, some: 'thing'}`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) has unexpected keys <ansiVal>%s",
 						test.In[0],
@@ -187,7 +187,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Array", arrayElem: 'Int', elem: 'bool' }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) has unexpected key <ansiVal>elem",
 						test.In[0],
@@ -230,7 +230,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Int", minInt: 6, maxInt: -10 }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) has conflicting keys: <ansiVal>%s",
 						test.In[0], bwjson.Pretty(defparse.MustParse("{ minInt: 6, maxInt: -10 }")),
@@ -273,7 +273,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Number", minNumber: 3.14, maxNumber: -2.71 }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) has conflicting keys: <ansiVal>%s",
 						test.In[0], bwjson.Pretty(defparse.MustParse("{ minNumber: 3.14, maxNumber: -2.71 }")),
@@ -323,7 +323,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`{ type: "Bool", isOptional: false, default: false }`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) has conflicting keys: <ansiVal>%s",
 						test.In[0], bwjson.Pretty(defparse.MustParse("{ isOptional: false, default: false }")),
@@ -349,7 +349,7 @@ func TestCompileDef(t *testing.T) {
 			In: []interface{}{defparse.MustParse(`["ArrayOf", "Array", "String"]`)},
 			Out: []interface{}{
 				(*Def)(nil),
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>def<ansiPath><ansi> (<ansiVal>%#v<ansi>) following values can not be combined: <ansiVal>%s",
 						test.In[0], bwjson.Pretty(defparse.MustParse("[ 'Array', 'ArrayOf' ]")),
@@ -393,7 +393,7 @@ func TestCompileDef(t *testing.T) {
 // ============================================================================
 
 func TestValidateVal(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"val: nil, simple.def: bool": {
 			In: []interface{}{
 				"val",
@@ -625,7 +625,7 @@ func TestValidateVal(t *testing.T) {
 				}`)),
 			},
 			Out: []interface{}{
-				func(test bwtesting.TestCaseStruct) interface{} {
+				func(test bwtesting.Case) interface{} {
 					return test.In[1]
 				},
 				nil,
@@ -650,7 +650,7 @@ func TestValidateVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				nil,
-				func(test bwtesting.TestCaseStruct) error {
+				func(test bwtesting.Case) error {
 					return bwerr.From(
 						"<ansiVar>val<ansiPath><ansi> (<ansiVal>%#v<ansi>) has unexpected keys <ansiVal>%s",
 						test.In[1], bwjson.Pretty(defparse.MustParse(`[qw/numberKey stringKey/]`)),
@@ -719,7 +719,7 @@ func TestValidateVal(t *testing.T) {
 				}`)),
 			},
 			Out: []interface{}{
-				func(test bwtesting.TestCaseStruct) interface{} {
+				func(test bwtesting.Case) interface{} {
 					return test.In[1]
 				},
 				nil,
@@ -738,7 +738,7 @@ func TestValidateVal(t *testing.T) {
 				}`)),
 			},
 			Out: []interface{}{
-				func(test bwtesting.TestCaseStruct) interface{} {
+				func(test bwtesting.Case) interface{} {
 					return test.In[1]
 				},
 				nil,
@@ -756,7 +756,7 @@ func TestValidateVal(t *testing.T) {
 				}`)),
 			},
 			Out: []interface{}{
-				func(test bwtesting.TestCaseStruct) interface{} {
+				func(test bwtesting.Case) interface{} {
 					return test.In[1]
 				},
 				nil,
@@ -773,7 +773,7 @@ func TestValidateVal(t *testing.T) {
 				}`)),
 			},
 			Out: []interface{}{
-				func(test bwtesting.TestCaseStruct) interface{} {
+				func(test bwtesting.Case) interface{} {
 					return test.In[1]
 				},
 				nil,
@@ -790,7 +790,7 @@ func TestValidateVal(t *testing.T) {
 				}`)),
 			},
 			Out: []interface{}{
-				func(test bwtesting.TestCaseStruct) interface{} {
+				func(test bwtesting.Case) interface{} {
 					return test.In[1]
 				},
 				nil,

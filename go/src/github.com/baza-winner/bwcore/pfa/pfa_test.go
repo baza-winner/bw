@@ -24,7 +24,7 @@ import (
 // 	if err != nil {
 // 		bwerr.PanicErr(err)
 // 	}
-// 	tests := map[string]bwtesting.TestCaseStruct{
+// 	tests := map[string]bwtesting.Case{
 // 		"": {
 // 			In:  []interface{}{p},
 // 			Out: []interface{}{nil, nil},
@@ -38,7 +38,7 @@ import (
 // }
 
 func TestVarPathFrom(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"": {
 			In:  []interface{}{""},
 			Out: []interface{}{[]interface{}{}, nil},
@@ -122,7 +122,7 @@ func TestPfa_getVarValue(t *testing.T) {
 			},
 		},
 	}
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"primary": {
 			In:  []interface{}{"primary"},
 			Out: []interface{}{"begin", nil},
@@ -194,7 +194,7 @@ func TestPfa_getVarValue2(t *testing.T) {
 		},
 		"secondary": "",
 	}
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"stack.-1.itemPos": {
 			In:  []interface{}{"stack.-1.itemPos"},
 			Out: []interface{}{itemPos, nil},
@@ -244,7 +244,7 @@ func TestPfa_setVarVal(t *testing.T) {
 			},
 		},
 	}
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"primary": {
 			In:  []interface{}{"primary", "end"},
 			Out: []interface{}{"end", nil},
@@ -324,7 +324,7 @@ func TestPfaActions(t *testing.T) {
 			},
 		},
 	}
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"primary": {
 			In:  []interface{}{"primary", a.SetVar{"primary", "end"}},
 			Out: []interface{}{"end", nil},
@@ -395,7 +395,7 @@ func TestPfaConditions(t *testing.T) {
 			},
 		},
 	}
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"primary is begin => true": {
 			In:  []interface{}{c.VarIs{"primary", "begin"}},
 			Out: []interface{}{true, nil},

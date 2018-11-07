@@ -10,10 +10,12 @@ import (
 // ============================================================================
 
 func TestSmartQuote(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"first": {
 			In: []interface{}{
-				[]string{"some", `thi"ng`, `go od`},
+				// []string{
+				"some", `thi"ng`, `go od`,
+				// },
 			},
 			Out: []interface{}{
 				`some "thi\"ng" "go od"`,

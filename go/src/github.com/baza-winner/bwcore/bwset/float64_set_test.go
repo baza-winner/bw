@@ -11,21 +11,21 @@ import (
 )
 
 func TestFloat64(t *testing.T) {
-	bwtesting.BwRunTests(t, Float64From, map[string]bwtesting.TestCaseStruct{"Float64From": {
+	bwtesting.BwRunTests(t, Float64From, map[string]bwtesting.Case{"Float64From": {
+		In: []interface{}{_Float64TestItemA, _Float64TestItemB},
+		Out: []interface{}{Float64{
+			_Float64TestItemA: struct{}{},
+			_Float64TestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, Float64FromSlice, map[string]bwtesting.Case{"Float64FromSlice": {
 		In: []interface{}{[]float64{_Float64TestItemA, _Float64TestItemB}},
 		Out: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Float64FromSlice, map[string]bwtesting.TestCaseStruct{"Float64FromSlice": {
-		In: []interface{}{[]float64{_Float64TestItemA, _Float64TestItemB}},
-		Out: []interface{}{Float64{
-			_Float64TestItemA: struct{}{},
-			_Float64TestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, Float64FromSet, map[string]bwtesting.TestCaseStruct{"Float64FromSet": {
+	bwtesting.BwRunTests(t, Float64FromSet, map[string]bwtesting.Case{"Float64FromSet": {
 		In: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
@@ -35,7 +35,7 @@ func TestFloat64(t *testing.T) {
 			_Float64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Float64.Copy, map[string]bwtesting.TestCaseStruct{"Float64.Copy": {
+	bwtesting.BwRunTests(t, Float64.Copy, map[string]bwtesting.Case{"Float64.Copy": {
 		In: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
@@ -45,30 +45,30 @@ func TestFloat64(t *testing.T) {
 			_Float64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Float64.ToSlice, map[string]bwtesting.TestCaseStruct{"Float64.ToSlice": {
+	bwtesting.BwRunTests(t, Float64.ToSlice, map[string]bwtesting.Case{"Float64.ToSlice": {
 		In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 		Out: []interface{}{[]float64{_Float64TestItemA}},
 	}})
-	bwtesting.BwRunTests(t, _Float64ToSliceTestHelper, map[string]bwtesting.TestCaseStruct{"_Float64ToSliceTestHelper": {
+	bwtesting.BwRunTests(t, _Float64ToSliceTestHelper, map[string]bwtesting.Case{"_Float64ToSliceTestHelper": {
 		In:  []interface{}{[]float64{_Float64TestItemB, _Float64TestItemA}},
 		Out: []interface{}{[]float64{_Float64TestItemA, _Float64TestItemB}},
 	}})
-	bwtesting.BwRunTests(t, Float64.String, map[string]bwtesting.TestCaseStruct{"Float64.String": {
+	bwtesting.BwRunTests(t, Float64.String, map[string]bwtesting.Case{"Float64.String": {
 		In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.Pretty([]float64{_Float64TestItemA})},
 	}})
-	bwtesting.BwRunTests(t, Float64.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Float64.MarshalJSON": {
+	bwtesting.BwRunTests(t, Float64.MarshalJSON, map[string]bwtesting.Case{"Float64.MarshalJSON": {
 		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 		Out: []interface{}{(func() []byte {
 			result, _ := json.Marshal([]interface{}{_Float64TestItemA})
 			return result
 		})(), nil},
 	}})
-	bwtesting.BwRunTests(t, Float64.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Float64.ToSliceOfStrings": {
+	bwtesting.BwRunTests(t, Float64.ToSliceOfStrings, map[string]bwtesting.Case{"Float64.ToSliceOfStrings": {
 		In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 		Out: []interface{}{[]string{strconv.FormatFloat(float64(_Float64TestItemA), byte(0x66), -1, 64)}},
 	}})
-	bwtesting.BwRunTests(t, Float64.Has, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Float64.Has, map[string]bwtesting.Case{
 		"Float64.Has: false": {
 			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, _Float64TestItemB},
 			Out: []interface{}{false},
@@ -78,21 +78,21 @@ func TestFloat64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Float64.HasAny, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Float64.HasAny, map[string]bwtesting.Case{
 		"Float64.HasAny: empty": {
-			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{}},
+			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 			Out: []interface{}{false},
 		},
 		"Float64.HasAny: false": {
-			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{_Float64TestItemB}},
+			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, _Float64TestItemB},
 			Out: []interface{}{false},
 		},
 		"Float64.HasAny: true": {
-			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{_Float64TestItemA, _Float64TestItemB}},
+			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, _Float64TestItemA, _Float64TestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Float64.HasAnyOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Float64.HasAnyOfSlice, map[string]bwtesting.Case{
 		"Float64.HasAnyOfSlice: empty": {
 			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{}},
 			Out: []interface{}{false},
@@ -106,7 +106,7 @@ func TestFloat64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Float64.HasAnyOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Float64.HasAnyOfSet, map[string]bwtesting.Case{
 		"Float64.HasAnyOfSet: empty": {
 			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, Float64{}},
 			Out: []interface{}{false},
@@ -123,24 +123,24 @@ func TestFloat64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Float64.HasEach, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Float64.HasEach, map[string]bwtesting.Case{
 		"Float64.HasEach: empty": {
-			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{}},
+			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 			Out: []interface{}{true},
 		},
 		"Float64.HasEach: false": {
-			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{_Float64TestItemA, _Float64TestItemB}},
+			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, _Float64TestItemA, _Float64TestItemB},
 			Out: []interface{}{false},
 		},
 		"Float64.HasEach: true": {
 			In: []interface{}{Float64{
 				_Float64TestItemA: struct{}{},
 				_Float64TestItemB: struct{}{},
-			}, []float64{_Float64TestItemA, _Float64TestItemB}},
+			}, _Float64TestItemA, _Float64TestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Float64.HasEachOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Float64.HasEachOfSlice, map[string]bwtesting.Case{
 		"Float64.HasEachOfSlice: empty": {
 			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{}},
 			Out: []interface{}{true},
@@ -157,7 +157,7 @@ func TestFloat64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Float64.HasEachOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Float64.HasEachOfSet, map[string]bwtesting.Case{
 		"Float64.HasEachOfSet: empty": {
 			In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}, Float64{}},
 			Out: []interface{}{true},
@@ -180,63 +180,63 @@ func TestFloat64(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Float64._AddTestHelper, map[string]bwtesting.TestCaseStruct{"Float64.Add": {
+	bwtesting.BwRunTests(t, Float64._AddTestHelper, map[string]bwtesting.Case{"Float64.Add": {
+		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}, _Float64TestItemB},
+		Out: []interface{}{Float64{
+			_Float64TestItemA: struct{}{},
+			_Float64TestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, Float64._AddSliceTestHelper, map[string]bwtesting.Case{"Float64.AddSlice": {
 		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{_Float64TestItemB}},
 		Out: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Float64._AddSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Float64.AddSlice": {
-		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}, []float64{_Float64TestItemB}},
-		Out: []interface{}{Float64{
-			_Float64TestItemA: struct{}{},
-			_Float64TestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, Float64._AddSetTestHelper, map[string]bwtesting.TestCaseStruct{"Float64.AddSet": {
+	bwtesting.BwRunTests(t, Float64._AddSetTestHelper, map[string]bwtesting.Case{"Float64.AddSet": {
 		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}, Float64{_Float64TestItemB: struct{}{}}},
 		Out: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Float64._DelTestHelper, map[string]bwtesting.TestCaseStruct{"Float64.Del": {
+	bwtesting.BwRunTests(t, Float64._DelTestHelper, map[string]bwtesting.Case{"Float64.Del": {
+		In: []interface{}{Float64{
+			_Float64TestItemA: struct{}{},
+			_Float64TestItemB: struct{}{},
+		}, _Float64TestItemB},
+		Out: []interface{}{Float64{_Float64TestItemA: struct{}{}}},
+	}})
+	bwtesting.BwRunTests(t, Float64._DelSliceTestHelper, map[string]bwtesting.Case{"Float64.DelSlice": {
 		In: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
 		}, []float64{_Float64TestItemB}},
 		Out: []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Float64._DelSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Float64.DelSlice": {
-		In: []interface{}{Float64{
-			_Float64TestItemA: struct{}{},
-			_Float64TestItemB: struct{}{},
-		}, []float64{_Float64TestItemB}},
-		Out: []interface{}{Float64{_Float64TestItemA: struct{}{}}},
-	}})
-	bwtesting.BwRunTests(t, Float64._DelSetTestHelper, map[string]bwtesting.TestCaseStruct{"Float64.DelSet": {
+	bwtesting.BwRunTests(t, Float64._DelSetTestHelper, map[string]bwtesting.Case{"Float64.DelSet": {
 		In: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
 		}, Float64{_Float64TestItemB: struct{}{}}},
 		Out: []interface{}{Float64{_Float64TestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Float64.Union, map[string]bwtesting.TestCaseStruct{"Float64.Union": {
+	bwtesting.BwRunTests(t, Float64.Union, map[string]bwtesting.Case{"Float64.Union": {
 		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}, Float64{_Float64TestItemB: struct{}{}}},
 		Out: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Float64.Intersect, map[string]bwtesting.TestCaseStruct{"Float64.Intersect": {
+	bwtesting.BwRunTests(t, Float64.Intersect, map[string]bwtesting.Case{"Float64.Intersect": {
 		In: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},
 		}, Float64{_Float64TestItemB: struct{}{}}},
 		Out: []interface{}{Float64{_Float64TestItemB: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Float64.Subtract, map[string]bwtesting.TestCaseStruct{"Float64.Subtract": {
+	bwtesting.BwRunTests(t, Float64.Subtract, map[string]bwtesting.Case{"Float64.Subtract": {
 		In: []interface{}{Float64{
 			_Float64TestItemA: struct{}{},
 			_Float64TestItemB: struct{}{},

@@ -51,7 +51,7 @@ func mySetupFunction() {
 }
 
 func TestGetPackageNameFromFile(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"package main": {
 			In: []interface{}{getTestFileSpec("package main")},
 			Out: []interface{}{

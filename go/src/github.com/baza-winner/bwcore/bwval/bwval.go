@@ -5,7 +5,6 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwval/path"
 )
@@ -16,23 +15,28 @@ import (
 
 // ============================================================================
 
-func PathFrom(s string) (result bw.ValPath, err error) {
-	return path.Parse(s)
+func PathFrom(s string) bw.ValPath {
+	return path.MustParse(s)
 }
 
-func MustPathFrom(s string) bw.ValPath {
-	result, err := PathFrom(s)
-	if err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-	return result
-}
+// func PathFrom(s string) (result bw.ValPath, err error) {
+// 	return path.Parse(s)
+// }
+
+// func MustPathFrom(s string) bw.ValPath {
+// 	return path.MustParse(s)
+// 	// result, err := PathFrom(s)
+// 	// if err != nil {
+// 	// 	bwerr.PanicA(bwerr.Err(err))
+// 	// }
+// 	// return result
+// }
 
 // ============================================================================
 
-func MustPathVal(v bw.Val, path bw.ValPath, vars map[string]interface{}) (result interface{}) {
+func MustPathVal(v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) (result interface{}) {
 	var err error
-	if result, err = v.PathVal(path, vars); err != nil {
+	if result, err = v.PathVal(path, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
 	return result
@@ -221,7 +225,11 @@ func init() {
 	ansiValAtPathIsNorNeither = ansi.String("<ansiVal>%#v<ansi>::<ansiPath>.%s<ansi> (<ansiVal>%#v<ansi>) is nor <ansiType>%s<ansi>, neither <ansiType>%s")
 }
 
-func (v valHolder) PathVal(path bw.ValPath, vars map[string]interface{}) (result interface{}, err error) {
+func (v valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (result interface{}, err error) {
+	var vars map[string]interface{}
+	if len(optVars) > 0 {
+		vars = optVars[0]
+	}
 	defer func() {
 		if err != nil {
 			result = nil
@@ -299,7 +307,7 @@ func (v valHolder) PathVal(path bw.ValPath, vars map[string]interface{}) (result
 			if vars == nil {
 				result = nil
 			} else {
-				bwdebug.Print("vpi", vpi)
+				// bwdebug.Print("vpi", vpi)
 				result = vars[vpi.Key]
 			}
 		}
@@ -310,7 +318,12 @@ func (v valHolder) PathVal(path bw.ValPath, vars map[string]interface{}) (result
 	return
 }
 
-func (v valHolder) SetValToPath(val []interface{}, path bw.ValPath, vars map[string]interface{}) (err error) {
+func (v valHolder) SetValToPath(val []interface{}, path bw.ValPath, optVars ...map[string]interface{}) (err error) {
+	var vars map[string]interface{}
+	if len(optVars) > 0 {
+		vars = optVars[0]
+	}
+	_ = vars
 	return
 }
 

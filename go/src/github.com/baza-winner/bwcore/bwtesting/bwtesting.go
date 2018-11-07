@@ -2,6 +2,7 @@
 package bwtesting
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,34 +16,38 @@ import (
 	// "log"
 )
 
-type TestCaseStruct struct {
-	In  []interface{}
-	Out []interface{}
+type Case struct {
+	V     interface{}
+	In    []interface{}
+	Out   []interface{}
+	Panic interface{}
 }
 
 var (
-	ansiSecondArgToBeFunc        string
-	ansiTestPrefix               string
-	ansiTestHeading              string
-	ansiExpectsCountParams       string
-	ansiExpectsParamType         string
-	ansiExpectsOneReturnValue    string
-	ansiExpectsTypeOfReturnValue string
-	// ansiSeparator                string
-	ansiPath                string
-	ansiTestTitleFunc       string
-	ansiTestTitleOpenBrace  string
-	ansiTestTitleSep        string
-	ansiTestTitleVal        string
-	ansiTestTitleCloseBrace string
-	ansiErr                 string
-	ansiVal                 string
-	ansiDiffBegin           string
-	ansiDiffEnd             string
-	// ansiSeparator                string
+	ansiSecondArgToBeFunc              string
+	ansiTestPrefix                     string
+	ansiTestHeading                    string
+	ansiExpectsCountParams             string
+	ansiExpectsCountParamsWithVariadic string
+	ansiExpectsFuncParams              string
+	ansiExpectsParamType               string
+	ansiExpectsOneReturnValue          string
+	ansiExpectsTypeOfReturnValue       string
+	ansiPath                           string
+	ansiTestTitleFunc                  string
+	ansiTestTitleOpenBrace             string
+	ansiTestTitleSep                   string
+	ansiTestTitleVal                   string
+	ansiTestTitleCloseBrace            string
+	ansiErr                            string
+	ansiVal                            string
+	ansiDiffBegin                      string
+	ansiDiffEnd                        string
+	errorType                          reflect.Type
 )
 
 func init() {
+	errorType = reflect.TypeOf((*error)(nil)).Elem()
 	ansiSecondArgToBeFunc = ansi.String("BwRunTests: second arg (<ansiVal>%#v<ansi>) to be <ansiType>func")
 	ansiTestHeading = ansi.StringA(ansi.A{
 		Default: []ansi.SGRCode{
@@ -53,11 +58,13 @@ func init() {
 	})
 	testPrefixFmt := "<ansiFunc>%s<ansiVar>.tests<ansiPath>.%q"
 	ansiExpectsCountParams = ansi.String(testPrefixFmt + ".%s<ansi>: ожидается <ansiVal>%d<ansi> %s вместо <ansiVal>%d")
+	ansiExpectsCountParamsWithVariadic = ansi.String(testPrefixFmt + ".%s<ansi>: ожидается не менее <ansiVal>%d<ansi> %s вместо <ansiVal>%d")
+	ansiExpectsFuncParams = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидаются следующие параметры функции: (<ansiVar>testName <ansiType>string<ansi>) или (<ansiVar>test <ansiType>bwtesting.Case<ansi>) или (<ansiVar>testName <ansiType>string<ansi>, <ansiVar>test <ansiType>bwtesting.Case<ansi>) или (<ansiVar>test <ansiType>bwtesting.Case<ansi>, <ansiVar>testName <ansiType>string<ansi>)")
 	ansiExpectsParamType = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi> (<ansiVal>%#v<ansi>)")
 	ansiExpectsOneReturnValue = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидается <ansiVal>1<ansi> возвращаемое значение вместо <ansiVal>%d")
 	ansiExpectsTypeOfReturnValue = ansi.String(testPrefixFmt + ".%s.%d<ansi>: в качесте возвращаемого значения ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi>")
 	// ansiSeparator = ":\n"
-	ansiPath = ansi.String("<ansiPath>.[%d]<ansi>")
+	ansiPath = ansi.String("<ansiPath>.%d<ansi>")
 	ansiTestTitleFunc = ansi.String("<ansiFunc>%s")
 	ansiTestTitleOpenBrace = ansi.String("(")
 	ansiTestTitleSep = ansi.String(",")
@@ -84,238 +91,316 @@ func init() {
 	)
 	ansiDiffBegin = "------ BEGIN DIFF ------\n"
 	ansiDiffEnd = "\n------- END DIFF -------\n"
-	// ansiSeparator = "\n------------------------\n"
 }
 
-func BwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct) {
-	if err := tryBwRunTests(t, f, tests, 1); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-}
+func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 
-func tryBwRunTests(t *testing.T, f interface{}, tests map[string]TestCaseStruct, depth uint) error {
-	fType := reflect.TypeOf(f)
-	if fType.Kind() != reflect.Func {
-		return bwerr.From("reflect.TypeOf(f).Kind(): " + fType.Kind().String() + "\n")
-	}
-	inDef := []reflect.Type{}
-	numIn := fType.NumIn()
-
-	w := where.MustFrom(depth + 1)
+	w := where.MustFrom(1)
 	testFunc := w.FuncName()
-	testeeFunc := testFunc[4:]
 
-	ansiTestTitle := ansiTestTitleFunc + ansiTestTitleOpenBrace
-	for i := 0; i < numIn; i++ {
-		inType := fType.In(i)
-		inDef = append(inDef, inType)
-		if i > 0 {
-			ansiTestTitle += ansiTestTitleSep
+	var (
+		testeeType    reflect.Type
+		testeeValue   reflect.Value
+		testeeFunc    string
+		ansiTestTitle string
+		inDef         []reflect.Type
+		outDef        []reflect.Type
+		numIn         int
+		numOut        int
+		inVals        []interface{}
+		fmtString     string
+		fmtArgs       []interface{}
+	)
+
+	checkTesInQt := func(test Case, testName string) {
+		if !testeeType.IsVariadic() {
+			if len(test.In) != numIn {
+				bwerr.Panic(
+					ansiExpectsCountParams,
+					testFunc, testName, "In",
+					numIn, bw.PluralWord(numIn, "параметр", "", "а", "ов"), len(test.In),
+				)
+			}
+		} else {
+			if len(test.In) < numIn-1 {
+				bwerr.Panic(
+					ansiExpectsCountParamsWithVariadic,
+					testFunc, testName, "In",
+					numIn-1, bw.PluralWord(numIn, "параметр", "а", "ов"), len(test.In),
+				)
+			}
 		}
-		ansiTestTitle += ansiTestTitleVal
 	}
-	ansiTestTitle += ansiTestTitleCloseBrace
-	outDef := []reflect.Type{}
-	numOut := fType.NumOut()
-	for i := 0; i < numOut; i++ {
-		outType := fType.Out(i)
-		outDef = append(outDef, outType)
+
+	prepareInDefAndAnsiTestTitle := func(qt int) {
+		inDef = []reflect.Type{}
+		for i := 0; i < numIn; i++ {
+			inType := testeeType.In(i)
+			inDef = append(inDef, inType)
+		}
+
+		ansiTestTitle = ansiTestTitleFunc + ansiTestTitleOpenBrace
+		for i := 0; i < qt; i++ {
+			if i > 0 {
+				ansiTestTitle += ansiTestTitleSep
+			}
+			ansiTestTitle += ansiTestTitleVal
+		}
+		ansiTestTitle += ansiTestTitleCloseBrace
 	}
-	fValue := reflect.ValueOf(f)
+
+	initFmt := func(suffixProvider func() string) {
+		fmtArgs = append(bw.Args(testeeFunc), inVals...)
+		fmtString = ansiTestTitle + suffixProvider() + ":\n"
+		// bwdebug.Print("fmtArgs", fmtArgs, "fmtString", fmtString)
+	}
+
+	if _, ok := testee.(string); !ok {
+		testeeType = reflect.TypeOf(testee)
+		if testeeType.Kind() != reflect.Func {
+			bwerr.Panic("reflect.TypeOf(testee).Kind(): " + testeeType.Kind().String() + "\n")
+		}
+		testeeValue = reflect.ValueOf(testee)
+		testeeFunc = testFunc[4:]
+
+		numIn = testeeType.NumIn()
+		if !testeeType.IsVariadic() {
+			prepareInDefAndAnsiTestTitle(numIn)
+		}
+		outDef = []reflect.Type{}
+		numOut = testeeType.NumOut()
+		for i := 0; i < numOut; i++ {
+			outDef = append(outDef, testeeType.Out(i))
+		}
+	}
 
 	for testName, test := range tests {
 		t.Logf(ansiTestHeading, testName)
-		if len(test.In) != numIn {
-			return bwerr.FromA(bwerr.A{depth + 1,
-				ansiExpectsCountParams,
-				bw.Args(
-					testFunc, testName, "In",
-					numIn, bw.PluralWord(numIn, "параметр", "", "а", "ов"), len(test.In),
-				),
-			})
+
+		if s, ok := testee.(string); ok {
+			testeeValue = reflect.ValueOf(test.V).MethodByName(s)
+			testeeType = testeeValue.Type()
+			testeeFunc = fmt.Sprintf("%T.%s", test.V, s)
+			ansiTestTitle = ansiTestTitleFunc + ansiTestTitleOpenBrace
+			numIn = testeeType.NumIn()
+			checkTesInQt(test, testName)
+			prepareInDefAndAnsiTestTitle(len(test.In))
+
+			ansiTestTitle += ansiTestTitleCloseBrace
+			outDef = []reflect.Type{}
+			numOut = testeeType.NumOut()
+			for i := 0; i < numOut; i++ {
+				outDef = append(outDef, testeeType.Out(i))
+			}
+		} else if testeeType.IsVariadic() {
+			checkTesInQt(test, testName)
+			prepareInDefAndAnsiTestTitle(len(test.In))
+		} else {
+			checkTesInQt(test, testName)
 		}
+
+		inValues := []reflect.Value{}
+		inVals = []interface{}{}
+		for i := 0; i < len(test.In); i++ {
+			inValue := getInOutValue(test.In, "In", inDef, i, testFunc, testName, test, testeeType.IsVariadic())
+			inValues = append(inValues, inValue)
+			inVals = append(inVals, inValue.Interface())
+		}
+
 		if len(test.Out) != numOut {
-			return bwerr.FromA(bwerr.A{depth + 1,
+			bwerr.Panic(
 				ansiExpectsCountParams,
-				bw.Args(
-					testFunc, testName, "Out",
-					numOut, bw.PluralWord(numOut, "параметр", "", "а", "ов"), len(test.Out),
-				),
-			})
+				testFunc, testName, "Out",
+				numOut, bw.PluralWord(numOut, "параметр", "", "а", "ов"), len(test.Out),
+			)
 		}
-		in := []reflect.Value{}
-		for i := 0; i < numIn; i++ {
-			var inItem reflect.Value
-			v := test.In[i]
-			if v == nil {
-				inItem = reflect.New(inDef[i]).Elem()
-			} else {
-				inItem = reflect.ValueOf(v)
-				// vType := reflect.TypeOf(v)
-				if inItem.Kind() == reflect.Func {
-					if vType := reflect.TypeOf(v); vType.NumOut() != 1 {
-						return bwerr.FromA(bwerr.A{depth + 1,
-							ansiExpectsOneReturnValue,
-							bw.Args(
-								testFunc, testName, "In",
-								vType.NumOut(),
-							),
-						})
-					} else if vType.Out(0) != inDef[i] {
-						return bwerr.FromA(bwerr.A{depth + 1,
-							ansiExpectsTypeOfReturnValue,
-							bw.Args(
-								testFunc, testName, "In", i,
-								outDef[i],
-								vType.Out(0),
-							),
-						})
-					} else if vType.NumIn() == 0 {
-						inItem = reflect.ValueOf(v).Call([]reflect.Value{})[0]
-						// outEta = append(outEta, vOut[0].Interface())
-					} else if vType.NumIn() == 1 {
-						if vType.In(0).Kind() == reflect.String {
-							inItem = reflect.ValueOf(v).Call([]reflect.Value{
-								reflect.ValueOf(testName),
-							})[0]
-						} else {
-							bwerr.TODO()
-						}
-					} else {
-						bwerr.TODO()
-					}
-					// outEta = append(outEta, vOut[0].Interface())
-					// }
-					// continue
-				}
-
-			}
-			if inDef[i].Kind() != reflect.Interface && inItem.Kind() != inDef[i].Kind() {
-				return bwerr.FromA(bwerr.A{depth + 1,
-					ansiExpectsParamType,
-					bw.Args(
-						testFunc, testName, "In",
-						i,
-						inDef[i].Kind(),
-						inItem.Kind(),
-						test.In[i],
-					),
-				})
-			}
-			if i == numIn-1 && fType.IsVariadic() {
-				for j := 0; j < inItem.Len(); j++ {
-					in = append(in, inItem.Index(j))
-				}
-			} else {
-				in = append(in, inItem)
-			}
-		}
-		out := fValue.Call(in)
-		outEta := []interface{}{}
+		outEtaVals := []interface{}{}
 		for i := 0; i < numOut; i++ {
-			v := test.Out[i]
-			if v != nil {
-				if vType := reflect.TypeOf(v); vType.Kind() == reflect.Func {
-					if vType.NumOut() != 1 {
-						return bwerr.FromA(bwerr.A{depth + 1,
-							ansiExpectsOneReturnValue,
-							bw.Args(
-								testFunc, testName, "Out",
-								vType.NumOut(),
-							),
-						})
-					} else if vType.Out(0) != outDef[i] {
-						return bwerr.FromA(bwerr.A{depth + 1,
-							ansiExpectsTypeOfReturnValue,
-							bw.Args(
-								testFunc, testName, "Out", i,
-								outDef[i],
-								vType.Out(0),
-							),
-						})
-					} else if vType.NumIn() == 0 {
-						outItem := reflect.ValueOf(v).Call([]reflect.Value{})[0]
-						outEta = append(outEta, outItem.Interface())
-					} else if vType.NumIn() == 1 {
-						if vType.Out(0).Kind() == reflect.String {
-							outItem := reflect.ValueOf(v).Call([]reflect.Value{
-								reflect.ValueOf(testName),
-							})[0]
-							outEta = append(outEta, outItem.Interface())
-						} else if vType.In(0).Name() == "TestCaseStruct" {
-							outItem := reflect.ValueOf(v).Call([]reflect.Value{
-								reflect.ValueOf(test),
-							})[0]
-							outEta = append(outEta, outItem.Interface())
-						} else {
-							bwerr.Panic("vType.In(0).Name(): %s", vType.In(0).Name())
-						}
-					} else {
-						bwerr.TODO()
-						outItem := reflect.ValueOf(v).Call([]reflect.Value{
-							reflect.ValueOf(testName),
-							reflect.ValueOf(test),
-						})[0]
-						outEta = append(outEta, outItem.Interface())
-					}
-					continue
-				}
-
-			}
-			outEta = append(outEta, v)
+			outValue := getInOutValue(test.Out, "Out", outDef, i, testFunc, testName, test)
+			outEtaVals = append(outEtaVals, outValue.Interface())
 		}
 
-		for i := 0; i < numOut; i++ {
-			fmtString := ansiTestTitle
-			fmtArgs := append(bw.Args(testeeFunc), test.In...)
-			if numOut > 1 {
-				fmtString += ansiPath
-				fmtArgs = append(fmtArgs, i)
+		var panicVal interface{}
+		var outValues []reflect.Value
+		func() {
+			if test.Panic != nil {
+				defer func() { panicVal = recover() }()
 			}
-			fmtString += ":\n"
-			var hasDiff bool
-			if outDef[i].Implements(reflect.TypeOf((*error)(nil)).Elem()) {
-				etaErr, _ := outEta[i].(error)
-				var tstErr error
-				if out[i].IsNil() {
-					tstErr = nil
-				} else {
-					tstErr, _ = out[i].Interface().(error)
-				}
-				tstErrStr := bwerr.FmtStringOf(tstErr)
-				etaErrStr := bwerr.FmtStringOf(etaErr)
-				if tstErrStr != etaErrStr {
-					hasDiff = true
-					fmtString += ansiErr
-					fmtArgs = append(fmtArgs,
-						tstErrStr,
-						etaErrStr,
-						tstErrStr,
-						etaErrStr,
-						bwjson.Pretty(tstErr),
-						bwjson.Pretty(etaErr),
-					)
-				}
-			} else {
-				tstResult := out[i].Interface()
-				etaResult := outEta[i]
-				if cmp := pretty.Compare(tstResult, etaResult); len(cmp) > 0 {
-					hasDiff = true
-					fmtString += ansiDiffBegin + colorizedCmp(cmp) + ansiDiffEnd + ansiVal
-					fmtArgs = append(fmtArgs,
-						tstResult,
-						etaResult,
-						bwjson.Pretty(tstResult),
-						bwjson.Pretty(etaResult),
-					)
-				}
-			}
-			if hasDiff {
+			outValues = testeeValue.Call(inValues)
+		}()
+
+		if panicVal != nil {
+			initFmt(func() string { return ".Panic" })
+			if cmpErrs(panicVal, test.Panic, &fmtString, &fmtArgs) {
 				t.Error(bw.Spew.Sprintf(fmtString, fmtArgs...))
+			}
+		} else {
+			for i := 0; i < numOut; i++ {
+				initFmt(func() (result string) {
+					if numOut > 1 {
+						result = ansiPath
+						fmtArgs = append(fmtArgs, i)
+					}
+					return
+				})
+
+				cmpFunc := cmpVals
+				if outDef[i].Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+					cmpFunc = cmpErrs
+				}
+
+				if cmpFunc(outValues[i].Interface(), outEtaVals[i], &fmtString, &fmtArgs) {
+					t.Error(bw.Spew.Sprintf(fmtString, fmtArgs...))
+				}
 			}
 		}
 	}
-	return nil
+}
+
+func getInOutValue(vals []interface{}, path string, def []reflect.Type, i int, testFunc, testName string, test Case, optIsVariadic ...bool) (result reflect.Value) {
+	val := vals[i]
+	if val == nil {
+		result = reflect.New(def[i]).Elem()
+	} else {
+		result = reflect.ValueOf(val)
+		if result.Kind() == reflect.Func {
+			if valType := reflect.TypeOf(val); valType.NumOut() != 1 {
+				bwerr.Panic(
+					ansiExpectsOneReturnValue,
+					testFunc, testName, path,
+					valType.NumOut(),
+				)
+			} else if valType.Out(0) != def[i] {
+				bwerr.Panic(
+					ansiExpectsTypeOfReturnValue,
+					testFunc, testName, path, i,
+					def[i],
+					valType.Out(0),
+				)
+			} else {
+				switch valType.NumIn() {
+				case 0:
+					result = reflect.ValueOf(val).Call([]reflect.Value{})[0]
+				case 1:
+					if valType.In(0).Kind() == reflect.String {
+						result = reflect.ValueOf(val).Call([]reflect.Value{
+							reflect.ValueOf(testName),
+						})[0]
+					} else if valType.In(0).Name() == "Case" {
+						result = reflect.ValueOf(val).Call([]reflect.Value{
+							reflect.ValueOf(test),
+						})[0]
+					} else {
+						bwerr.Panic(
+							ansiExpectsFuncParams,
+							testFunc, testName, path, i,
+						)
+					}
+				case 2:
+					if valType.In(0).Kind() == reflect.String && valType.In(1).Name() == "Case" {
+						result = reflect.ValueOf(val).Call([]reflect.Value{
+							reflect.ValueOf(testName),
+							reflect.ValueOf(test),
+						})[0]
+					} else if valType.In(1).Kind() == reflect.String && valType.In(0).Name() == "Case" {
+						result = reflect.ValueOf(val).Call([]reflect.Value{
+							reflect.ValueOf(test),
+							reflect.ValueOf(testName),
+						})[0]
+					} else {
+						bwerr.Panic(
+							ansiExpectsFuncParams,
+							testFunc, testName, path, i,
+						)
+					}
+				default:
+					bwerr.Panic(
+						ansiExpectsFuncParams,
+						testFunc, testName, path, i,
+					)
+				}
+			}
+		}
+	}
+	j := i
+	if j >= len(def) {
+		j = len(def) - 1
+	}
+	if def[j].Kind() != reflect.Interface {
+		if i >= len(def)-1 && len(optIsVariadic) > 0 && optIsVariadic[0] {
+			if def[j].Elem().Kind() != reflect.Interface && result.Kind() != def[j].Elem().Kind() {
+				// bwdebug.Print("def", def, "j", j, "i", "i")
+				bwerr.Panic(
+					ansiExpectsParamType,
+					testFunc, testName, path, i,
+					def[j].Elem().Kind(),
+					result.Kind(),
+					val,
+				)
+			}
+		} else if result.Kind() != def[i].Kind() {
+			bwerr.Panic(
+				ansiExpectsParamType,
+				testFunc, testName, path, i,
+				def[j].Kind(),
+				result.Kind(),
+				val,
+			)
+		}
+	} else if def[j].Implements(errorType) {
+		if result.Type().Kind() != reflect.String && !result.Type().Implements(errorType) {
+			bwerr.Panic(
+				ansiExpectsParamType,
+				testFunc, testName, path, i,
+				"error или string",
+				result.Kind(),
+				val,
+			)
+		}
+	}
+	return
+}
+
+func cmpErrs(tstResult, etaResult interface{}, fmtString *string, fmtArgs *[]interface{}) (hasDiff bool) {
+	tstErrStr := getErrStr(tstResult)
+	etaErrStr := getErrStr(etaResult)
+	if tstErrStr != etaErrStr {
+		hasDiff = true
+		*fmtString += ansiErr
+		*fmtArgs = append(*fmtArgs,
+			tstErrStr,
+			etaErrStr,
+			tstErrStr,
+			etaErrStr,
+			bwjson.Pretty(tstResult),
+			bwjson.Pretty(etaResult),
+		)
+	}
+	return
+}
+
+func getErrStr(val interface{}) (result string) {
+	switch t := val.(type) {
+	case string:
+		result = t
+	case error:
+		result = bwerr.FmtStringOf(t)
+	}
+	return
+}
+
+func cmpVals(tstResult, etaResult interface{}, fmtString *string, fmtArgs *[]interface{}) (hasDiff bool) {
+	if cmp := pretty.Compare(tstResult, etaResult); len(cmp) > 0 {
+		hasDiff = true
+		*fmtString += ansiDiffBegin + colorizedCmp(cmp) + ansiDiffEnd + ansiVal
+		*fmtArgs = append(*fmtArgs,
+			tstResult,
+			etaResult,
+			bwjson.Pretty(tstResult),
+			bwjson.Pretty(etaResult),
+		)
+	}
+	return
 }
 
 func colorizedCmp(s string) string {
@@ -335,5 +420,5 @@ func colorizedCmp(s string) string {
 		}
 		result = append(result, s)
 	}
-	return strings.Join(result, "\n") //+ "\n"
+	return strings.Join(result, "\n")
 }

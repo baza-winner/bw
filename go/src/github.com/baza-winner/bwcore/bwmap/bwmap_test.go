@@ -14,14 +14,16 @@ func GetCroppedMap(m interface{}, crop ...interface{}) (result interface{}) {
 }
 
 func TestGetCroppedMap(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"string": {
 			In: []interface{}{
 				map[string]interface{}{
 					"some": "thing",
 					"good": "is not bad",
 				},
-				[]interface{}{`some`},
+				// []interface{}{
+				`some`,
+				// },
 			},
 			Out: []interface{}{
 				map[string]interface{}{
@@ -37,7 +39,8 @@ func TestGetCroppedMap(t *testing.T) {
 					"C": 3,
 					"D": 4,
 				},
-				[]interface{}{[]string{"B", "C"}},
+				// []interface{}{},
+				[]string{"B", "C"},
 			},
 			Out: []interface{}{
 				map[string]interface{}{
@@ -54,12 +57,12 @@ func TestGetCroppedMap(t *testing.T) {
 					"C": 3,
 					"D": 4,
 				},
-				[]interface{}{
-					map[string]interface{}{
-						"A": struct{}{},
-						"D": struct{}{},
-					},
+				// []interface{}{
+				map[string]interface{}{
+					"A": struct{}{},
+					"D": struct{}{},
 				},
+				// },
 			},
 			Out: []interface{}{
 				map[string]int{
@@ -80,14 +83,14 @@ func TestGetCroppedMap(t *testing.T) {
 					"G": 7,
 					"H": 8,
 				},
-				[]interface{}{
-					`A`,
-					[]string{"C", "D"},
-					map[string]struct{}{
-						"F": struct{}{},
-						"G": struct{}{},
-					},
+				// []interface{}{
+				`A`,
+				[]string{"C", "D"},
+				map[string]struct{}{
+					"F": struct{}{},
+					"G": struct{}{},
 				},
+				// },
 			},
 			Out: []interface{}{
 				map[string]int{

@@ -13,7 +13,7 @@ func TestPrint(t *testing.T) {
 		S string
 		N int
 	}{"string value", 273}
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"zero number": {
 			// in: []interface{}{"!HERE", "varA", varA},
 			// out: Out{
@@ -25,7 +25,7 @@ func TestPrint(t *testing.T) {
 			// },
 			In: []interface{}{
 				uint(5),
-				[]interface{}{"!HERE", "varA", varA},
+				"!HERE", "varA", varA,
 			},
 			Out: []interface{}{
 				// 0,

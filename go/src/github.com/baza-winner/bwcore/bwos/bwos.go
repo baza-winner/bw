@@ -1,6 +1,4 @@
-/*
-Предоставялет функцию ShortenFileSpec.
-*/
+// package bwos предоставляет функции: ShortenFileSpec, Exit, ExitA
 package bwos
 
 import (
@@ -42,7 +40,7 @@ var newlineAtTheEnd, _ = regexp.Compile(`\n\s*$`)
 
 func exitMsg(a bw.I) (result string) {
 	err := bwerr.FromA(a)
-	result = err.Ansi
+	result = err.S
 	if !newlineAtTheEnd.MatchString(ansi.ChopReset(result)) {
 		result += string('\n')
 	}

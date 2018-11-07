@@ -10,7 +10,7 @@ func ExampleError_1() {
 	fmt.Printf(`%q`,
 		From("error message"),
 	)
-	// Output: "\x1b[91;1mERR: \x1b[0merror message at \x1b[32;1mgithub.com/baza-winner/bwcore/bwerr.ExampleError_1\x1b[38;5;243m@\x1b[97;1mbwerr_test.go:11\x1b[0m"
+	// Output: "\x1b[91;1mERR: \x1b[0merror message\n  at \n    \x1b[32;1mgithub.com/baza-winner/bwcore/bwerr.ExampleError_1\x1b[38;5;243m@\x1b[97;1mbwerr_test.go:11\x1b[0m\n    \x1b[32;1mtesting.runExample\x1b[38;5;243m@\x1b[97;1mexample.go:121\x1b[0m\n    \x1b[32;1mtesting.runExamples\x1b[38;5;243m@\x1b[97;1mexample.go:45\x1b[0m\n    \x1b[32;1mtesting.(*M).Run\x1b[38;5;243m@\x1b[97;1mtesting.go:1035\x1b[0m\n    \x1b[32;1mmain.main\x1b[38;5;243m@\x1b[97;1m_testmain.go:42\x1b[0m\n    \x1b[32;1mruntime.main\x1b[38;5;243m@\x1b[97;1mproc.go:201\x1b[0m\n    \x1b[32;1mruntime.goexit\x1b[38;5;243m@\x1b[97;1masm_amd64.s:1333\x1b[0m"
 }
 
 // func ExampleDebug() {

@@ -48,12 +48,14 @@ func ExampleExecCmd() {
 // }
 
 func TestExecCmd(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"test1": {
 			In: []interface{}{
 				map[string]interface{}(nil),
 				`bwexectesthelper2`,
-				[]string{`-v`, `none`, `-s`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
+				// []string{
+				`-v`, `none`, `-s`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
+				// },
 			},
 			Out: []interface{}{
 				map[string]interface{}{
@@ -73,7 +75,9 @@ func TestExecCmd(t *testing.T) {
 			In: []interface{}{
 				map[string]interface{}(nil),
 				`bwexectesthelper2`,
-				[]string{`-v`, `none`, `-s`, `all`, `-d`, `-n`, `-e`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
+				// []string{
+				`-v`, `none`, `-s`, `all`, `-d`, `-n`, `-e`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
+				// },
 			},
 			Out: []interface{}{
 				map[string]interface{}{
@@ -87,7 +91,9 @@ func TestExecCmd(t *testing.T) {
 			In: []interface{}{
 				map[string]interface{}(nil),
 				`bwexectesthelper2`,
-				[]string{`-v`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`},
+				// []string{
+				`-v`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
+				// },
 			},
 			Out: []interface{}{
 				map[string]interface{}{

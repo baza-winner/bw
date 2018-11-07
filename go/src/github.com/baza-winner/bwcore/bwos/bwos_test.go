@@ -22,7 +22,7 @@ func ExampleShortenFileSpec_2() {
 }
 
 func TestExitMsg(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"with newline": {
 			In: []interface{}{
 				bw.A{Fmt: "some exit msg\n"},

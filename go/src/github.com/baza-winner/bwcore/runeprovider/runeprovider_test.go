@@ -66,7 +66,7 @@ func getFirstLine(fileSpec string) (result string, err error) {
 }
 
 func TestGetFirstLine(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"no newline": {
 			In: []interface{}{getTestFileSpec("no newline")},
 			Out: []interface{}{

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	. "github.com/dave/jennifer/jen"
 )
@@ -94,7 +95,7 @@ func (v *Helper) GenTestsFor(
 		Qual(bwtestingPackage, "BwRunTests").Call(
 			Id("t"),
 			Id(testeeName),
-			Map(String()).Qual(bwtestingPackage, "TestCaseStruct").Values(testDict),
+			Map(String()).Qual(bwtestingPackage, "Case").Values(testDict),
 		),
 	)
 }
@@ -121,6 +122,7 @@ func (v *Helper) TestCaseValues(
 		Params = append(Params, pt)
 	}
 	if len(testCase.In) != len(Params) {
+		bwdebug.Print("pt", pt.String())
 		bwerr.Panic(
 			"<ansiPath>%s<ansi> <ansiVar>testCase.In<ansi> expects to have <ansiVal>%d<ansi> item(s), but found <ansiVal>%d",
 			testeeName, len(Params), len(testCase.In),
@@ -129,12 +131,17 @@ func (v *Helper) TestCaseValues(
 	pt2getValues := map[ParamType]GetValues{
 		ParamSet:   v.getValuesOfSet,
 		ParamArg:   v.getValuesOfArg,
-		ParamArgs:  v.getValuesOfSlice,
+		ParamArgs:  v.getValuesOfArgs,
 		ParamSlice: v.getValuesOfSlice,
 	}
 	inValues := []Code{}
 	for i, testCaseData := range testCase.In {
-		pt := Params[i]
+		var pt ParamType
+		if i < len(Params) {
+			pt = Params[i]
+		} else {
+			pt = Params[len(Params)-1]
+		}
 		if getValues, ok := pt2getValues[pt]; !ok {
 			bwerr.Panic("pt: %s", pt)
 		} else if values, err := getValues(testCaseData); err != nil {
@@ -212,6 +219,20 @@ func (v *Helper) getValuesOfSlice(testCaseData interface{}) (result Code, err er
 			values = append(values, Id(v.TestItemString(item)))
 		}
 		result = Index().Id(v.IdItem).Values(values...)
+	}
+	return
+}
+
+func (v *Helper) getValuesOfArgs(testCaseData interface{}) (result Code, err error) {
+	if testItems, ok := testCaseData.([]TestItem); !ok {
+		err = v.errOfGetValues("[]TestItem", testCaseData)
+	} else {
+		values := []Code{}
+		for _, item := range testItems {
+			values = append(values, Id(v.TestItemString(item)))
+		}
+		result = List(values...)
+		// result = Index().Id(v.IdItem).Values(values...)
 	}
 	return
 }

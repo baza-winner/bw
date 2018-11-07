@@ -96,7 +96,8 @@ func main() {
 			}
 		},
 		TestCase{
-			In:  []interface{}{[]TestItem{A, B}},
+			In: []interface{}{[]TestItem{A, B}},
+			// In:  []interface{}{A, B},
 			Out: []interface{}{[]TestItem{A, B}},
 		})
 

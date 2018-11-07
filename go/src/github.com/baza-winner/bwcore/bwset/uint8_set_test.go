@@ -11,21 +11,21 @@ import (
 )
 
 func TestUint8(t *testing.T) {
-	bwtesting.BwRunTests(t, Uint8From, map[string]bwtesting.TestCaseStruct{"Uint8From": {
+	bwtesting.BwRunTests(t, Uint8From, map[string]bwtesting.Case{"Uint8From": {
+		In: []interface{}{_Uint8TestItemA, _Uint8TestItemB},
+		Out: []interface{}{Uint8{
+			_Uint8TestItemA: struct{}{},
+			_Uint8TestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, Uint8FromSlice, map[string]bwtesting.Case{"Uint8FromSlice": {
 		In: []interface{}{[]uint8{_Uint8TestItemA, _Uint8TestItemB}},
 		Out: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint8FromSlice, map[string]bwtesting.TestCaseStruct{"Uint8FromSlice": {
-		In: []interface{}{[]uint8{_Uint8TestItemA, _Uint8TestItemB}},
-		Out: []interface{}{Uint8{
-			_Uint8TestItemA: struct{}{},
-			_Uint8TestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, Uint8FromSet, map[string]bwtesting.TestCaseStruct{"Uint8FromSet": {
+	bwtesting.BwRunTests(t, Uint8FromSet, map[string]bwtesting.Case{"Uint8FromSet": {
 		In: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
@@ -35,7 +35,7 @@ func TestUint8(t *testing.T) {
 			_Uint8TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint8.Copy, map[string]bwtesting.TestCaseStruct{"Uint8.Copy": {
+	bwtesting.BwRunTests(t, Uint8.Copy, map[string]bwtesting.Case{"Uint8.Copy": {
 		In: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
@@ -45,30 +45,30 @@ func TestUint8(t *testing.T) {
 			_Uint8TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint8.ToSlice, map[string]bwtesting.TestCaseStruct{"Uint8.ToSlice": {
+	bwtesting.BwRunTests(t, Uint8.ToSlice, map[string]bwtesting.Case{"Uint8.ToSlice": {
 		In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 		Out: []interface{}{[]uint8{_Uint8TestItemA}},
 	}})
-	bwtesting.BwRunTests(t, _Uint8ToSliceTestHelper, map[string]bwtesting.TestCaseStruct{"_Uint8ToSliceTestHelper": {
+	bwtesting.BwRunTests(t, _Uint8ToSliceTestHelper, map[string]bwtesting.Case{"_Uint8ToSliceTestHelper": {
 		In:  []interface{}{[]uint8{_Uint8TestItemB, _Uint8TestItemA}},
 		Out: []interface{}{[]uint8{_Uint8TestItemA, _Uint8TestItemB}},
 	}})
-	bwtesting.BwRunTests(t, Uint8.String, map[string]bwtesting.TestCaseStruct{"Uint8.String": {
+	bwtesting.BwRunTests(t, Uint8.String, map[string]bwtesting.Case{"Uint8.String": {
 		In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 		Out: []interface{}{bwjson.Pretty([]uint16{uint16(_Uint8TestItemA)})},
 	}})
-	bwtesting.BwRunTests(t, Uint8.MarshalJSON, map[string]bwtesting.TestCaseStruct{"Uint8.MarshalJSON": {
+	bwtesting.BwRunTests(t, Uint8.MarshalJSON, map[string]bwtesting.Case{"Uint8.MarshalJSON": {
 		In: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 		Out: []interface{}{(func() []byte {
 			result, _ := json.Marshal([]interface{}{_Uint8TestItemA})
 			return result
 		})(), nil},
 	}})
-	bwtesting.BwRunTests(t, Uint8.ToSliceOfStrings, map[string]bwtesting.TestCaseStruct{"Uint8.ToSliceOfStrings": {
+	bwtesting.BwRunTests(t, Uint8.ToSliceOfStrings, map[string]bwtesting.Case{"Uint8.ToSliceOfStrings": {
 		In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 		Out: []interface{}{[]string{strconv.FormatUint(uint64(_Uint8TestItemA), 10)}},
 	}})
-	bwtesting.BwRunTests(t, Uint8.Has, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint8.Has, map[string]bwtesting.Case{
 		"Uint8.Has: false": {
 			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, _Uint8TestItemB},
 			Out: []interface{}{false},
@@ -78,21 +78,21 @@ func TestUint8(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint8.HasAny, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint8.HasAny, map[string]bwtesting.Case{
 		"Uint8.HasAny: empty": {
-			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{}},
+			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 			Out: []interface{}{false},
 		},
 		"Uint8.HasAny: false": {
-			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{_Uint8TestItemB}},
+			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, _Uint8TestItemB},
 			Out: []interface{}{false},
 		},
 		"Uint8.HasAny: true": {
-			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{_Uint8TestItemA, _Uint8TestItemB}},
+			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, _Uint8TestItemA, _Uint8TestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint8.HasAnyOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint8.HasAnyOfSlice, map[string]bwtesting.Case{
 		"Uint8.HasAnyOfSlice: empty": {
 			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{}},
 			Out: []interface{}{false},
@@ -106,7 +106,7 @@ func TestUint8(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint8.HasAnyOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint8.HasAnyOfSet, map[string]bwtesting.Case{
 		"Uint8.HasAnyOfSet: empty": {
 			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, Uint8{}},
 			Out: []interface{}{false},
@@ -123,24 +123,24 @@ func TestUint8(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint8.HasEach, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint8.HasEach, map[string]bwtesting.Case{
 		"Uint8.HasEach: empty": {
-			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{}},
+			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 			Out: []interface{}{true},
 		},
 		"Uint8.HasEach: false": {
-			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{_Uint8TestItemA, _Uint8TestItemB}},
+			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, _Uint8TestItemA, _Uint8TestItemB},
 			Out: []interface{}{false},
 		},
 		"Uint8.HasEach: true": {
 			In: []interface{}{Uint8{
 				_Uint8TestItemA: struct{}{},
 				_Uint8TestItemB: struct{}{},
-			}, []uint8{_Uint8TestItemA, _Uint8TestItemB}},
+			}, _Uint8TestItemA, _Uint8TestItemB},
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint8.HasEachOfSlice, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint8.HasEachOfSlice, map[string]bwtesting.Case{
 		"Uint8.HasEachOfSlice: empty": {
 			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{}},
 			Out: []interface{}{true},
@@ -157,7 +157,7 @@ func TestUint8(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint8.HasEachOfSet, map[string]bwtesting.TestCaseStruct{
+	bwtesting.BwRunTests(t, Uint8.HasEachOfSet, map[string]bwtesting.Case{
 		"Uint8.HasEachOfSet: empty": {
 			In:  []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, Uint8{}},
 			Out: []interface{}{true},
@@ -180,63 +180,63 @@ func TestUint8(t *testing.T) {
 			Out: []interface{}{true},
 		},
 	})
-	bwtesting.BwRunTests(t, Uint8._AddTestHelper, map[string]bwtesting.TestCaseStruct{"Uint8.Add": {
+	bwtesting.BwRunTests(t, Uint8._AddTestHelper, map[string]bwtesting.Case{"Uint8.Add": {
+		In: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, _Uint8TestItemB},
+		Out: []interface{}{Uint8{
+			_Uint8TestItemA: struct{}{},
+			_Uint8TestItemB: struct{}{},
+		}},
+	}})
+	bwtesting.BwRunTests(t, Uint8._AddSliceTestHelper, map[string]bwtesting.Case{"Uint8.AddSlice": {
 		In: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{_Uint8TestItemB}},
 		Out: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint8._AddSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Uint8.AddSlice": {
-		In: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, []uint8{_Uint8TestItemB}},
-		Out: []interface{}{Uint8{
-			_Uint8TestItemA: struct{}{},
-			_Uint8TestItemB: struct{}{},
-		}},
-	}})
-	bwtesting.BwRunTests(t, Uint8._AddSetTestHelper, map[string]bwtesting.TestCaseStruct{"Uint8.AddSet": {
+	bwtesting.BwRunTests(t, Uint8._AddSetTestHelper, map[string]bwtesting.Case{"Uint8.AddSet": {
 		In: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, Uint8{_Uint8TestItemB: struct{}{}}},
 		Out: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint8._DelTestHelper, map[string]bwtesting.TestCaseStruct{"Uint8.Del": {
+	bwtesting.BwRunTests(t, Uint8._DelTestHelper, map[string]bwtesting.Case{"Uint8.Del": {
+		In: []interface{}{Uint8{
+			_Uint8TestItemA: struct{}{},
+			_Uint8TestItemB: struct{}{},
+		}, _Uint8TestItemB},
+		Out: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
+	}})
+	bwtesting.BwRunTests(t, Uint8._DelSliceTestHelper, map[string]bwtesting.Case{"Uint8.DelSlice": {
 		In: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
 		}, []uint8{_Uint8TestItemB}},
 		Out: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Uint8._DelSliceTestHelper, map[string]bwtesting.TestCaseStruct{"Uint8.DelSlice": {
-		In: []interface{}{Uint8{
-			_Uint8TestItemA: struct{}{},
-			_Uint8TestItemB: struct{}{},
-		}, []uint8{_Uint8TestItemB}},
-		Out: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
-	}})
-	bwtesting.BwRunTests(t, Uint8._DelSetTestHelper, map[string]bwtesting.TestCaseStruct{"Uint8.DelSet": {
+	bwtesting.BwRunTests(t, Uint8._DelSetTestHelper, map[string]bwtesting.Case{"Uint8.DelSet": {
 		In: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
 		}, Uint8{_Uint8TestItemB: struct{}{}}},
 		Out: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Uint8.Union, map[string]bwtesting.TestCaseStruct{"Uint8.Union": {
+	bwtesting.BwRunTests(t, Uint8.Union, map[string]bwtesting.Case{"Uint8.Union": {
 		In: []interface{}{Uint8{_Uint8TestItemA: struct{}{}}, Uint8{_Uint8TestItemB: struct{}{}}},
 		Out: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
 		}},
 	}})
-	bwtesting.BwRunTests(t, Uint8.Intersect, map[string]bwtesting.TestCaseStruct{"Uint8.Intersect": {
+	bwtesting.BwRunTests(t, Uint8.Intersect, map[string]bwtesting.Case{"Uint8.Intersect": {
 		In: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},
 		}, Uint8{_Uint8TestItemB: struct{}{}}},
 		Out: []interface{}{Uint8{_Uint8TestItemB: struct{}{}}},
 	}})
-	bwtesting.BwRunTests(t, Uint8.Subtract, map[string]bwtesting.TestCaseStruct{"Uint8.Subtract": {
+	bwtesting.BwRunTests(t, Uint8.Subtract, map[string]bwtesting.Case{"Uint8.Subtract": {
 		In: []interface{}{Uint8{
 			_Uint8TestItemA: struct{}{},
 			_Uint8TestItemB: struct{}{},

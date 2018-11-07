@@ -142,10 +142,10 @@ type Error struct {
 // Error for error implemention
 func (v Error) Error() string {
 	var suffix string
-	if len(v.WW) > 0 {
-		suffix = v.WW[0].String()
+	for _, w := range v.WW {
+		suffix += "\n    " + w.String()
 	}
-	return ansiErrPrefix + v.S + " at " + suffix
+	return ansiErrPrefix + v.S + ansiAt + suffix
 }
 
 var findRefineRegexp = regexp.MustCompile("{Error}")
@@ -246,11 +246,13 @@ var ansiWherePrefix string
 var ansiErrPrefix string
 var ansiUnreachable string
 var ansiTODO string
+var ansiAt string
 
 func init() {
 	ansiUnreachable = ansi.String("<ansiErr>UNREACHABLE")
 	ansiTODO = ansi.String("<ansiErr>TODO")
 	ansiErrPrefix = ansi.String("<ansiErr>ERR: ")
+	ansiAt = ansi.String("\n  at ")
 }
 
 var newlineAtTheEnd, _ = regexp.Compile(`\n\s*$`)

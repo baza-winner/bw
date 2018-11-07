@@ -8,7 +8,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	tests := map[string]bwtesting.TestCaseStruct{
+	tests := map[string]bwtesting.Case{
 		"0": {
 			In: []interface{}{`0`},
 			Out: []interface{}{
