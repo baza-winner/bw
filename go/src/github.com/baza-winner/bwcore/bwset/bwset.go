@@ -1,4 +1,4 @@
-// Содержит релизацию множеств для базовых типов.
+// Package bwset содержит релизации множеств для базовых типов: StringSet, BoolSet, Int*Set, Uint*Set, Float*Set, RuneSet, InterfaceSet.
 // Являетя демонстрацией работы инструмента bwsetter (go get github.com/baza-winner/bwcore/bwsetter).
 package bwset
 

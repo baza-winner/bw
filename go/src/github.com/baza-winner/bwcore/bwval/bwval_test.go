@@ -27,6 +27,7 @@ func TestMustSetPathVal(t *testing.T) {
 						"keyB": "something",
 					},
 				}),
+				nil,
 			},
 		},
 		"2.1": {
@@ -46,6 +47,7 @@ func TestMustSetPathVal(t *testing.T) {
 					273,
 					[]interface{}{"some", "good"},
 				}),
+				nil,
 			},
 		},
 		"2.{$idx}": {
@@ -68,6 +70,9 @@ func TestMustSetPathVal(t *testing.T) {
 					273,
 					[]interface{}{"some", "good"},
 				}),
+				map[string]interface{}{
+					"idx": 1,
+				},
 			},
 		},
 		"2.{0}": {
@@ -86,6 +91,7 @@ func TestMustSetPathVal(t *testing.T) {
 					"string",
 					[]interface{}{"some", "good"},
 				}),
+				nil,
 			},
 		},
 		"2.{0.idx}": {
@@ -104,6 +110,7 @@ func TestMustSetPathVal(t *testing.T) {
 					"string",
 					[]interface{}{"some", "good"},
 				}),
+				nil,
 			},
 		},
 		".": {
@@ -114,6 +121,7 @@ func TestMustSetPathVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				bwval.FromVal("good"),
+				nil,
 			},
 		},
 		"2.#": {
@@ -128,8 +136,9 @@ func TestMustSetPathVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				bwval.FromVal(nil),
+				nil,
 			},
-			Panic: "\x1b[38;5;252;1m.2.#\x1b[0m is \x1b[91;1mreadonly\x1b[0m",
+			Panic: "Failed to set \x1b[38;5;252;1m2.#\x1b[0m of \x1b[96;1m[\n  {\n    \"idx\": 1\n  },\n  \"string\",\n  [\n    \"some\",\n    \"thing\"\n  ]\n]\x1b[0m: \x1b[38;5;252;1m2.#\x1b[0m is \x1b[91;1mreadonly path\x1b[0m\x1b[0m",
 		},
 		"1.nonMapKey.some": {
 			In: []interface{}{
@@ -143,19 +152,110 @@ func TestMustSetPathVal(t *testing.T) {
 			},
 			Out: []interface{}{
 				bwval.FromVal(nil),
+				nil,
 			},
-			Panic: "\x1b[96;1m[\n  {\n    \"idx\": 1\n  },\n  \"string\",\n  [\n    \"some\",\n    \"thing\"\n  ]\n]\x1b[0m\x1b[38;5;252;1m.1.nonMapKey\x1b[0m (\x1b[96;1m\"string\"\x1b[0m) is not \x1b[97;1mMap\x1b[0m",
+			Panic: "Failed to set \x1b[38;5;252;1m1.nonMapKey.some\x1b[0m of \x1b[96;1m[\n  {\n    \"idx\": 1\n  },\n  \"string\",\n  [\n    \"some\",\n    \"thing\"\n  ]\n]\x1b[0m: \x1b[38;5;252;1m1.nonMapKey\x1b[0m (\x1b[96;1m\"string\"\x1b[0m) is not \x1b[97;1mMap\x1b[0m\x1b[0m",
+		},
+		"(nil).some": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(nil),
+				bwval.PathFrom("some"),
+			},
+			Out: []interface{}{
+				bwval.FromVal(nil),
+				nil,
+			},
+			Panic: "Failed to set \x1b[38;5;252;1msome\x1b[0m of \x1b[96;1mnull\x1b[0m: \x1b[38;5;252;1m.\x1b[0m is \x1b[91;1mnil\x1b[0m\x1b[0m",
+		},
+		"err: nor Int, neither String": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(map[string]interface{}{"some": 1}),
+				bwval.PathFrom("some.{$idx}"),
+				map[string]interface{}{"idx": nil},
+			},
+			Out: []interface{}{
+				bwval.FromVal(nil),
+				nil,
+			},
+			Panic: "Failed to set \x1b[38;5;252;1msome.{$idx}\x1b[0m of \x1b[96;1m{\n  \"some\": 1\n}\x1b[0m with \x1b[38;5;201;1mvars\x1b[0m \x1b[96;1m{\n  \"idx\": null\n}\x1b[0m: \x1b[38;5;252;1m$idx\x1b[0m (\x1b[96;1mnull\x1b[0m) is none of \x1b[97;1mInt\x1b[0m or \x1b[97;1mString\x1b[0m\x1b[0m\x1b[0m",
+		},
+		"$arr.{some}": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(map[string]interface{}{"some": 1}),
+				bwval.PathFrom("$arr.{some}"),
+				map[string]interface{}{"arr": []interface{}{"some", "thing"}},
+			},
+			Out: []interface{}{
+				bwval.FromVal(map[string]interface{}{"some": 1}),
+				map[string]interface{}{"arr": []interface{}{"some", "good"}},
+			},
+		},
+		"$arr": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(map[string]interface{}{"some": 1}),
+				bwval.PathFrom("$arr.{some}"),
+				map[string]interface{}{"arr": []interface{}{"some", "thing"}},
+			},
+			Out: []interface{}{
+				bwval.FromVal(map[string]interface{}{"some": 1}),
+				map[string]interface{}{"arr": []interface{}{"some", "good"}},
+			},
+		},
+		"$arr (vars is nil)": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(map[string]interface{}{"some": 1}),
+				bwval.PathFrom("$arr.{some}"),
+				// map[string]interface{}{"arr": []interface{}{"some", "thing"}},
+			},
+			Out: []interface{}{
+				bwval.FromVal(nil),
+				nil,
+			},
+			Panic: "Failed to set \x1b[38;5;252;1m$arr.{some}\x1b[0m of \x1b[96;1m{\n  \"some\": 1\n}\x1b[0m with \x1b[38;5;201;1mvars\x1b[0m \x1b[96;1mnull\x1b[0m: \x1b[38;5;201;1mvars\x1b[0m is \x1b[91;1mnil\x1b[0m\x1b[0m",
+		},
+		"valAtPathIsNil": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(map[string]interface{}{"some": []interface{}{0}}),
+				bwval.PathFrom("some.1.key"),
+			},
+			Out: []interface{}{
+				bwval.FromVal(nil),
+				nil,
+			},
+			Panic: "Failed to set \x1b[38;5;252;1msome.1.key\x1b[0m of \x1b[96;1m{\n  \"some\": [\n    0\n  ]\n}\x1b[0m: \x1b[38;5;252;1msome.1\x1b[0m is \x1b[91;1mnil\x1b[0m\x1b[0m",
+		},
+		"ansiValAtPathHasNotEnoughRange": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(map[string]interface{}{"some": []interface{}{0}}),
+				bwval.PathFrom("some.1"),
+			},
+			Out: []interface{}{
+				bwval.FromVal(nil),
+				nil,
+			},
+			Panic: "Failed to set \x1b[38;5;252;1msome.1\x1b[0m of \x1b[96;1m{\n  \"some\": [\n    0\n  ]\n}\x1b[0m: \x1b[38;5;252;1msome\x1b[0m (\x1b[96;1m[\n  0\n]\x1b[0m) has not enough length (\x1b[96;1m1\x1b[0m) for idx (\x1b[96;1m1)\x1b[0m\x1b[0m",
 		},
 	}
 
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, ".")
+	// bwmap.CropMap(tests, "$arr.{some}")
 	bwtesting.BwRunTests(t, MustSetPathValWrapper, tests)
 }
 
-func MustSetPathValWrapper(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) bw.Val {
+func MustSetPathValWrapper(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) (bw.Val, map[string]interface{}) {
 	bwval.MustSetPathVal(val, v, path, optVars...)
-	return v
+	var vars map[string]interface{}
+	if len(optVars) > 0 {
+		vars = optVars[0]
+	}
+	return v, vars
 }
 
 func TestMustPathVal(t *testing.T) {
@@ -265,7 +365,7 @@ func TestMustPathVal(t *testing.T) {
 				map[string]interface{}{"key": "thing"},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m1\x1b[0m\x1b[38;5;252;1m.some\x1b[0m (\x1b[96;1m1\x1b[0m) is not \x1b[97;1mMap\x1b[0m",
+			Panic: "Failed to get \x1b[38;5;252;1msome.{$key}\x1b[0m of \x1b[96;1m1\x1b[0m with \x1b[38;5;201;1mvars\x1b[0m \x1b[96;1m{\n  \"key\": \"thing\"\n}\x1b[0m: \x1b[38;5;252;1msome\x1b[0m (\x1b[96;1m1\x1b[0m) is not \x1b[97;1mMap\x1b[0m\x1b[0m",
 		},
 		"err: is not Array": {
 			In: []interface{}{
@@ -274,7 +374,7 @@ func TestMustPathVal(t *testing.T) {
 				map[string]interface{}{"idx": 1},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m1\x1b[0m\x1b[38;5;252;1m.{$idx}\x1b[0m (\x1b[96;1m1\x1b[0m) (\x1b[38;5;201;1mvars\x1b[0m: \x1b[96;1m{\n  \"idx\": 1\n}\x1b[0m) \x1b[0mis not \x1b[97;1mArray\x1b[0m",
+			Panic: "Failed to get \x1b[38;5;252;1m{$idx}\x1b[0m of \x1b[96;1m1\x1b[0m with \x1b[38;5;201;1mvars\x1b[0m \x1b[96;1m{\n  \"idx\": 1\n}\x1b[0m: \x1b[38;5;252;1m{$idx}\x1b[0m (\x1b[96;1m1\x1b[0m) is not \x1b[97;1mArray\x1b[0m\x1b[0m",
 		},
 		"err: nor Map, neither Array": {
 			In: []interface{}{
@@ -282,7 +382,7 @@ func TestMustPathVal(t *testing.T) {
 				bwval.PathFrom("#"),
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m1\x1b[0m\x1b[38;5;252;1m.#\x1b[0m (\x1b[96;1m1\x1b[0m) is none of \x1b[97;1mMap\x1b[0m or \x1b[97;1mArray\x1b[0m\x1b[0m",
+			Panic: "Failed to get \x1b[38;5;252;1m#\x1b[0m of \x1b[96;1m1\x1b[0m: \x1b[38;5;252;1m.\x1b[0m (\x1b[96;1m1\x1b[0m) is none of \x1b[97;1mMap\x1b[0m or \x1b[97;1mArray\x1b[0m\x1b[0m\x1b[0m",
 		},
 		"err: nor Int, neither String": {
 			In: []interface{}{
@@ -291,11 +391,12 @@ func TestMustPathVal(t *testing.T) {
 				map[string]interface{}{"idx": nil},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m{\n  \"some\": 1\n}\x1b[0m\x1b[38;5;252;1m.$idx\x1b[0m (\x1b[96;1mnull\x1b[0m) (\x1b[38;5;201;1mvars\x1b[0m: \x1b[96;1m{\n  \"idx\": null\n}\x1b[0m) \x1b[0mis none of \x1b[97;1mInt\x1b[0m or \x1b[97;1mString\x1b[0m\x1b[0m",
+			Panic: "Failed to get \x1b[38;5;252;1msome.{$idx}\x1b[0m of \x1b[96;1m{\n  \"some\": 1\n}\x1b[0m with \x1b[38;5;201;1mvars\x1b[0m \x1b[96;1m{\n  \"idx\": null\n}\x1b[0m: \x1b[38;5;252;1m$idx\x1b[0m (\x1b[96;1mnull\x1b[0m) is none of \x1b[97;1mInt\x1b[0m or \x1b[97;1mString\x1b[0m\x1b[0m\x1b[0m",
 		},
 	}
 
 	bwmap.CropMap(tests)
+	// bwmap.CropMap(tests, "err: nor Map, neither Array")
 	bwtesting.BwRunTests(t, bwval.MustPathVal, tests)
 }
 

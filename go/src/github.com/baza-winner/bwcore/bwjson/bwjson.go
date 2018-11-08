@@ -1,4 +1,4 @@
-// Package bwjson Предоставляет функцию PrettyJson - wrapper для json.MarshalIndent.
+// Package bwjson содержит bw-дополнение для package encoding/json
 package bwjson
 
 import (

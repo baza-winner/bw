@@ -1,4 +1,4 @@
-// package bwos предоставляет функции: ShortenFileSpec, Exit, ExitA
+// Package bwos содержит bw-дополнение для package os.
 package bwos
 
 import (

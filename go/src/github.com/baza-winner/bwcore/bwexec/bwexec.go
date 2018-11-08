@@ -1,6 +1,4 @@
-/*
-Предоставялет функцию ExecCmd.
-*/
+// Package bwexec предоставялет функцию ExecCmd.
 package bwexec
 
 import (

@@ -1,4 +1,4 @@
-// Package bwerr предоставляет функции для генерации ошибок.
+// Package bwerr содержит реализацию bw-типа Error и утилиты для работы с ним.
 package bwerr
 
 import (
@@ -32,85 +32,8 @@ func IncDepth(a bw.I, incOpt ...uint) (result bw.I) {
 	return
 }
 
-// func depthOf(a bw.I) (result uint) {
-// 	switch t := a.(type) {
-// 	case A:
-// 		result = t.Depth
-// 	case E:
-// 		result = t.Depth
-// 	}
-// 	return result
-// }
-
-// func ModifyBy(a bw.I, b bw.I, prepend bool) (result bw.I) {
-// 	var fmtString string
-// 	var fmtArgs []interface{}
-// 	switch t := a.(type) {
-// 	case A, bw.A:
-// 		switch t2 := b.(type) {
-// 		case A, bw.A:
-// 			if prepend {
-// 				fmtString = b.FmtString() + a.FmtString()
-// 				fmtArgs = append(b.FmtArgs(), a.FmtArgs())
-// 			} else {
-// 				fmtString = a.FmtString() + b.FmtString()
-// 				fmtArgs = append(a.FmtArgs(), b.FmtArgs())
-// 			}
-// 		case E:
-// 			var errStr string
-// 			if e, ok := t2.Error.(Error); ok {
-// 				errStr = e.Ansi
-// 			} else {
-// 				errStr = t2.Error.Error()
-// 			}
-// 			fmtArgs = a.FmtArgs()
-// 			if prepend {
-// 				fmtString = errStr + a.FmtString()
-// 			} else {
-// 				fmtString = a.FmtString() + errStr
-// 			}
-// 		default:
-// 			panic(bw.Spew.Sprintf("%#v", a))
-// 		}
-// 	case E:
-// 		var errStr string
-// 		if e, ok := t.Error.(Error); ok {
-// 			errStr = e.Ansi
-// 		} else {
-// 			errStr = t.Error.Error()
-// 		}
-// 		switch t2 := b.(type) {
-// 		case A, bw.A:
-// 			if prepend {
-// 				fmtString = b.FmtString() + errStr
-// 			} else {
-// 				fmtString = errStr + b.FmtString()
-// 			}
-// 		case E:
-// 			var errStr2 string
-// 			if e2, ok := t2.Error.(Error); ok {
-// 				errStr2 = e2.Ansi
-// 			} else {
-// 				errStr2 = t2.Error.Error()
-// 			}
-// 			if prepend {
-// 				fmtString = errStr2 + errStr
-// 			} else {
-// 				fmtString = errStr + errStr2
-// 			}
-// 		default:
-// 			panic(bw.Spew.Sprintf("%#v", a))
-// 		}
-// 	default:
-// 		panic(bw.Spew.Sprintf("%#v", a))
-// 	}
-// 	result = A{depthOf(a), fmtString, fmtArgs}
-// 	return
-// }
-
 func PanicA(a bw.I) {
 	panic(FromA(IncDepth(a)))
-	// log.Panic()
 }
 
 func Unreachable() {
@@ -120,17 +43,6 @@ func Unreachable() {
 func TODO() {
 	PanicA(A{Depth: 1, Fmt: ansiTODO})
 }
-
-// func Exit(exitCode int, a bw.I) {
-// func Exit(exitCode int, a bw.I) {
-// 	err := FromA(a)
-// 	msg := err.Ansi
-// 	if !newlineAtTheEnd.MatchString(ansi.ChopReset(msg)) {
-// 		msg += string('\n')
-// 	}
-// 	fmt.Print(msg)
-// 	os.Exit(exitCode)
-// }
 
 // ============================================================================
 
@@ -150,16 +62,19 @@ func (v Error) Error() string {
 
 var findRefineRegexp = regexp.MustCompile("{Error}")
 
-func (v Error) Refine(fmtString string, fmtArgs ...interface{}) Error {
-	return v.RefineA(bw.A{fmtString, fmtArgs})
+func Refine(err error, fmtString string, fmtArgs ...interface{}) Error {
+	var t Error
+	var ok bool
+	if t, ok = err.(Error); !ok {
+		t = FromA(Err(err))
+	}
+	return t.RefineA(bw.A{fmtString, fmtArgs})
 }
 
 func (v Error) RefineA(a bw.I) (result Error) {
 	result = v
-	result.S = ansi.String(bw.Spew.Sprintf(
-		findRefineRegexp.ReplaceAllString(a.FmtString(), v.S),
-		a.FmtArgs()...,
-	))
+	fmtString := findRefineRegexp.ReplaceAllStringFunc(a.FmtString(), func(s string) (result string) { return v.S })
+	result.S = ansi.String(bw.Spew.Sprintf(fmtString, a.FmtArgs()...))
 	return
 }
 
@@ -235,10 +150,6 @@ func FromA(a bw.I) Error {
 		where.WWFrom(depth + 1),
 	}
 }
-
-// func (v Error) Refine() {
-
-// }
 
 // ============================================================================
 

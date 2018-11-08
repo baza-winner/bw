@@ -15,23 +15,14 @@ func TestPrint(t *testing.T) {
 	}{"string value", 273}
 	tests := map[string]bwtesting.Case{
 		"zero number": {
-			// in: []interface{}{"!HERE", "varA", varA},
-			// out: Out{
-			// 	result: fmt.Sprintf(
-			// 		"\x1b[93;1m!HERE\x1b[0m, \x1b[32;1mgithub.com/baza-winner/bwcore/bwdebug.TestPrint.func1\x1b[38;5;243m@\x1b[97;1mbwdebug_test.go:%d: \x1b[38;5;201;1mvarA\x1b[0m: \x1b[0m\x1b[96;1m(struct { S string; N int }){S:(string)string value N:(int)273}\x1b[0m\x1b[0m\x1b[0m",
-			// 		25,
-			// 	),
-			// 	err: bwerr.Error{},
-			// },
 			In: []interface{}{
 				uint(5),
 				"!HERE", "varA", varA,
 			},
 			Out: []interface{}{
-				// 0,
 				fmt.Sprintf(
 					"\x1b[93;1m!HERE\x1b[0m, \x1b[0m\x1b[32;1mgithub.com/baza-winner/bwcore/bwdebug.TestPrint\x1b[38;5;243m@\x1b[97;1mbwdebug_test.go:%d\x1b[0m: \x1b[38;5;201;1mvarA\x1b[0m: \x1b[0m\x1b[96;1m(struct { S string; N int }){S:(string)string value N:(int)273}\x1b[0m",
-					42,
+					33,
 				),
 				nil,
 			},
@@ -39,7 +30,7 @@ func TestPrint(t *testing.T) {
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "UnexpectedItem")
-	bwtesting.BwRunTests(t, ansiString, tests)
+	bwtesting.BwRunTests(t, stringToPrint, tests)
 
 	// type Out struct {
 	// 	result string

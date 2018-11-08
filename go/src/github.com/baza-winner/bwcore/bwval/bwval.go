@@ -1,19 +1,14 @@
+// Package bwval реализует интерфейc bw.Val и утилиты для работы с этим интерфейсом.
 package bwval
 
 import (
 	"encoding/json"
-	"fmt"
 
-	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwval/path"
 )
-
-// ============================================================================
-
-//go:generate stringer -type=ValKind
 
 // ============================================================================
 
@@ -23,29 +18,33 @@ func PathFrom(s string) bw.ValPath {
 
 // ============================================================================
 
+// MustPathVal - must-обертка bw.Val.PathVal()
 func MustPathVal(v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) (result interface{}) {
 	var err error
 	if result, err = v.PathVal(path, optVars...); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicA(bwerr.Err(bwerr.Refine(err,
+			ansiMustPathValFailed,
+			path, bwjson.Pretty(v), varsJSON(path, optVars),
+		)))
+		// bwerr.PanicA(bwerr.Err(err))
 	}
 	return result
 }
 
+// MustSetPathVal - must-обертка bw.Val.SetPathVal()
 func MustSetPathVal(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) {
 	var err error
 	if err = v.SetPathVal(val, path, optVars...); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicA(bwerr.Err(bwerr.Refine(err,
+			ansiMustSetPathValFailed,
+			path, bwjson.Pretty(v), varsJSON(path, optVars),
+		)))
 	}
 }
 
-var (
-	ansiIsNotOfType string
-)
+// ============================================================================
 
-func init() {
-	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
-}
-
+// Bool - пытается извлечь bool из interface{}
 func Bool(val interface{}) (result bool, ok bool) {
 	if v, kind := Kind(val); kind == ValBool {
 		result, ok = v.(bool)
@@ -53,6 +52,7 @@ func Bool(val interface{}) (result bool, ok bool) {
 	return
 }
 
+// MustBool - must-обертка Bool()
 func MustBool(val interface{}) (result bool) {
 	var ok bool
 	if result, ok = Bool(val); !ok {
@@ -61,6 +61,7 @@ func MustBool(val interface{}) (result bool) {
 	return
 }
 
+// Int - пытается извлечь int из interface{}
 func Int(val interface{}) (result int, ok bool) {
 	if v, kind := Kind(val); kind == ValInt {
 		result, ok = v.(int)
@@ -68,6 +69,7 @@ func Int(val interface{}) (result int, ok bool) {
 	return
 }
 
+// MustInt - must-обертка Int()
 func MustInt(val interface{}) (result int) {
 	var ok bool
 	if result, ok = Int(val); !ok {
@@ -76,6 +78,7 @@ func MustInt(val interface{}) (result int) {
 	return
 }
 
+// String - пытается извлечь string из interface{}
 func String(val interface{}) (result string, ok bool) {
 	if v, kind := Kind(val); kind == ValString {
 		result, ok = v.(string)
@@ -83,6 +86,7 @@ func String(val interface{}) (result string, ok bool) {
 	return
 }
 
+// MustString - must-обертка String()
 func MustString(val interface{}) (result string) {
 	var ok bool
 	if result, ok = String(val); !ok {
@@ -91,6 +95,7 @@ func MustString(val interface{}) (result string) {
 	return
 }
 
+// Map - пытается извлечь map[string]interface{} из interface{}
 func Map(val interface{}) (result map[string]interface{}, ok bool) {
 	if v, kind := Kind(val); kind == ValMap {
 		result, ok = v.(map[string]interface{})
@@ -98,6 +103,7 @@ func Map(val interface{}) (result map[string]interface{}, ok bool) {
 	return
 }
 
+// MustMap - must-обертка Map()
 func MustMap(val interface{}) (result map[string]interface{}) {
 	var ok bool
 	if result, ok = Map(val); !ok {
@@ -106,6 +112,7 @@ func MustMap(val interface{}) (result map[string]interface{}) {
 	return
 }
 
+// Map - пытается извлечь []interface{} из interface{}
 func Array(val interface{}) (result []interface{}, ok bool) {
 	if v, kind := Kind(val); kind == ValArray {
 		result, ok = v.([]interface{})
@@ -113,6 +120,7 @@ func Array(val interface{}) (result []interface{}, ok bool) {
 	return
 }
 
+// MustArray - must-обертка Array()
 func MustArray(val interface{}) (result []interface{}) {
 	var ok bool
 	if result, ok = Array(val); !ok {
@@ -121,8 +129,10 @@ func MustArray(val interface{}) (result []interface{}) {
 	return result
 }
 
+// ValKind - разновидность interface{}-значения
 type ValKind uint8
 
+// разновидности interface{}-значения
 const (
 	ValUnknown ValKind = iota
 	ValNil
@@ -133,10 +143,12 @@ const (
 	ValArray
 )
 
+// MarshalJSON encoding/json support
 func (v ValKind) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.String())
 }
 
+// Kind - определяет разновидность  interface{}-значения
 func Kind(val interface{}) (result interface{}, kind ValKind) {
 	if val == nil {
 		kind = ValNil
@@ -197,10 +209,7 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 
 // ============================================================================
 
-type valHolder struct {
-	val interface{}
-}
-
+// FromVal - конструктор bw.Val из interface{}-значения
 func FromVal(val interface{}) (result bw.Val) {
 	var ok bool
 	if result, ok = val.(bw.Val); !ok {
@@ -211,6 +220,7 @@ func FromVal(val interface{}) (result bw.Val) {
 
 // ============================================================================
 
+// PathVal - реализация интерфейса bw.Val
 func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (result interface{}, err error) {
 	if len(path) == 0 {
 		result = v.val
@@ -221,40 +231,6 @@ func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) 
 			result = nil
 		}
 	}()
-	byKey := func(val interface{}, i int, key string) (result interface{}, err error) {
-		result = val
-		if result == nil {
-			return
-		}
-		if m, ok := result.(map[string]interface{}); !ok {
-			err = bwerr.From(ansiValAtPathIsNotOfType, bwjson.Pretty(v.val), path[:i+1], bwjson.Pretty(result), varsJSON(path[:i+1], optVars), "Map")
-		} else {
-			result = m[key]
-		}
-		return
-	}
-	byIdx := func(val interface{}, i int, idx int) (result interface{}, err error) {
-		result = val
-		if result == nil {
-			return
-		}
-		if vals, ok := result.([]interface{}); !ok {
-			err = bwerr.From(ansiValAtPathIsNotOfType, bwjson.Pretty(v.val), path[:i+1], bwjson.Pretty(result), varsJSON(path[:i+1], optVars), "Array")
-		} else {
-			l := len(vals)
-			minIdx := -l
-			maxIdx := l - 1
-			if minIdx <= idx && idx <= maxIdx {
-				if idx < 0 {
-					idx = l + idx
-				}
-				result = vals[idx]
-			} else {
-				result = nil
-			}
-		}
-		return
-	}
 
 	var simplePath bw.ValPath
 	simplePath, err = simplifyPath(v, path, optVars)
@@ -274,9 +250,9 @@ func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) 
 	for i, vpi := range simplePath {
 		switch vpi.Type {
 		case bw.ValPathItemKey:
-			result, err = byKey(result, i, vpi.Key)
+			result, err = v.byKey(result, path, i, vpi.Key)
 		case bw.ValPathItemIdx:
-			result, err = byIdx(result, i, vpi.Idx)
+			result, err = v.byIdx(result, path, i, vpi.Idx)
 		case bw.ValPathItemHash:
 			if result == nil {
 				result = 0
@@ -287,7 +263,7 @@ func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) 
 				case []interface{}:
 					result = len(t)
 				default:
-					err = v.valAtPathIsNotOfType(path[:i+1], result, optVars, "Map", "Array")
+					err = v.pathValIsNotOfType(path[:i], result, "Map", "Array")
 				}
 			}
 		}
@@ -298,102 +274,12 @@ func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) 
 	return
 }
 
-var (
-	ansiValAtPathIsNotOfType      string
-	ansiType                      string
-	ansiValAtPathIsNotOfTypes     string
-	ansiValAtPathIsNorNeither     string
-	ansiValAtPathIsNil            string
-	ansiValAtPathIsReadOnly       string
-	ansiValAtPathHasNoEnoughRange string
-	ansiVars                      string
-	ansiNoVar                     string
-)
-
-func init() {
-	valPathPrefix := "<ansiVal>%s<ansi><ansiPath>.%s<ansi> "
-	ansiValAtPathIsNotOfType = ansi.String(valPathPrefix + "(<ansiVal>%s<ansi>) %sis not <ansiType>%s")
-	ansiValAtPathIsNotOfTypes = ansi.String(valPathPrefix + "(<ansiVal>%s<ansi>) %sis none of %s")
-	ansiValAtPathIsNil = ansi.String(valPathPrefix + "%sis <ansiErr>nil")
-	ansiValAtPathHasNoEnoughRange = ansi.String(valPathPrefix + "(<ansiVal>%s<ansi>) %shas no enough length (<ansiVal>%d<ansi>) for idx (<ansiVal>%d)")
-	ansiNoVar = ansi.String(valPathPrefix + "<ansiVar>vars<ansi> (<ansiVal>%s<ansi>) has no var <ansiVar>%s")
-
-	ansiType = ansi.String("<ansiType>%s")
-	ansiValAtPathIsReadOnly = ansi.String("<ansiPath>.%s<ansi> is <ansiErr>readonly")
-	ansiVars = ansi.String("(<ansiVar>vars<ansi>: <ansiVal>%s<ansi>) ")
+// MarshalJSON - реализация интерфейса bw.Val
+func (v *valHolder) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.val)
 }
 
-func hasVar(path bw.ValPath) bool {
-	for _, vpi := range path {
-		switch vpi.Type {
-		case bw.ValPathItemVar:
-			return true
-		case bw.ValPathItemPath:
-			if hasVar(vpi.Path) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func varsJSON(path bw.ValPath, optVars []map[string]interface{}) (result string) {
-	if hasVar(path) {
-		var vars map[string]interface{}
-		if len(optVars) > 0 {
-			vars = optVars[0]
-		}
-		result = fmt.Sprintf(ansiVars, bwjson.Pretty(vars))
-	}
-	return
-}
-
-func simplifyPath(v *valHolder, path bw.ValPath, optVars []map[string]interface{}) (result bw.ValPath, err error) {
-	result = bw.ValPath{}
-	for _, vpi := range path {
-		if vpi.Type != bw.ValPathItemPath {
-			result = append(result, vpi)
-		} else {
-			var val interface{}
-			val, err = v.PathVal(vpi.Path, optVars...)
-			if err == nil {
-				switch _, kind := Kind(val); kind {
-				case ValString:
-					result = append(result, bw.ValPathItem{Type: bw.ValPathItemKey, Key: MustString(val)})
-				case ValInt:
-					result = append(result, bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: MustInt(val)})
-				default:
-					err = v.valAtPathIsNotOfType(vpi.Path, val, optVars, "Int", "String")
-					// err = bwerr.From(ansiValAtPathIsNorNeither, bwjson.Pretty(v.val), bw.ValPath(vpi.Path), bwjson.Pretty(val), varsJSON(vpi.Path, optVars), "Int", "String")
-				}
-			}
-		}
-	}
-	return
-}
-
-var typeSeparator = map[bool]string{
-	true:  " or ",
-	false: ", ",
-}
-
-func (v *valHolder) valAtPathIsNotOfType(path bw.ValPath, val interface{}, optVars []map[string]interface{}, expectedType string, optExpectedType ...string) (result error) {
-	if len(optExpectedType) == 0 {
-		result = bwerr.From(ansiValAtPathIsNotOfType, bwjson.Pretty(v.val), path, bwjson.Pretty(val), varsJSON(path, optVars), expectedType)
-	} else {
-		expectedTypes := fmt.Sprintf(ansiType, expectedType)
-		for i, elem := range optExpectedType {
-			expectedTypes += typeSeparator[i == len(optExpectedType)-1] + fmt.Sprintf(ansiType, elem)
-		}
-		result = bwerr.From(ansiValAtPathIsNotOfTypes, bwjson.Pretty(v.val), path, bwjson.Pretty(val), varsJSON(path, optVars), expectedTypes)
-	}
-	return
-}
-
-func (v *valHolder) valAtPathIsNil(path bw.ValPath) error {
-	return bwerr.From(ansiValAtPathIsNil, bwjson.Pretty(v.val), path)
-}
-
+// SetPathVal - реализация интерфейса bw.Val
 func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[string]interface{}) (err error) {
 	// bwdebug.Print("path", path, "len(path)", len(path))
 	if len(path) == 0 {
@@ -401,7 +287,7 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 		return
 	}
 	if path[len(path)-1].Type == bw.ValPathItemHash {
-		return bwerr.From(ansiValAtPathIsReadOnly, path)
+		return bwerr.From(ansisReadOnlyPath, path)
 	}
 
 	var simplePath bw.ValPath
@@ -413,102 +299,51 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 	result := v.val
 	if result == nil {
 		return v.valAtPathIsNil(bw.ValPath{})
-		// return bwerr.From(ansiValAtPathIsNil, v.val, path, varsJSON(path, optVars))
 	}
 
 	if path[0].Type == bw.ValPathItemVar {
-		var foundVar bool
-		var target interface{}
 		var vars map[string]interface{}
 		if len(optVars) > 0 {
 			vars = optVars[0]
-			target, foundVar = vars[path[0].Key]
 		}
-		if !foundVar {
-			return bwerr.From(ansiNoVar, v.val, path, bwjson.Pretty(vars), path[0].Key)
+		if vars == nil {
+			return bwerr.From(ansiVarsIsNil)
 		}
-		return FromVal(target).SetPathVal(val, simplePath[1:])
-	}
-
-	byKey := func(val interface{}, i int, key string) (result interface{}, err error) {
-		result = val
-		if result == nil {
-			return
-		}
-		if m, ok := result.(map[string]interface{}); !ok {
-			err = v.valAtPathIsNotOfType(path[:i+1], result, optVars, "Map")
-			// err = bwerr.From(ansiValAtPathIsNotOfType, bwjson.Pretty(v.val), path[:i+1], bwjson.Pretty(result), varsJSON(path[:i+1], optVars), "Map")
-		} else {
-			result = m[key]
-		}
-		return
-	}
-	byIdx := func(val interface{}, i int, idx int) (result interface{}, err error) {
-		result = val
-		if result == nil {
-			return
-		}
-		if vals, ok := result.([]interface{}); !ok {
-			err = v.valAtPathIsNotOfType(path[:i+1], result, optVars, "Array")
-			// err = bwerr.From(ansiValAtPathIsNotOfType, bwjson.Pretty(v.val), bw.ValPath(path[:i+1]), bwjson.Pretty(result), varsJSON(path[:i+1], optVars), "Array")
-		} else {
-			l := len(vals)
-			minIdx := -l
-			maxIdx := l - 1
-			if minIdx <= idx && idx <= maxIdx {
-				if idx < 0 {
-					idx = l + idx
-				}
-				result = vals[idx]
-			} else {
-				result = nil
-			}
-		}
-		return
+		simplePath[0].Type = bw.ValPathItemKey
+		return FromVal(vars).SetPathVal(val, simplePath)
 	}
 
 	if len(simplePath) > 1 {
 		for i, vpi := range simplePath[:len(simplePath)-1] {
 			switch vpi.Type {
 			case bw.ValPathItemKey:
-				result, err = byKey(result, i, vpi.Key)
+				result, err = v.byKey(result, path, i, vpi.Key)
 			case bw.ValPathItemIdx:
-				result, err = byIdx(result, i, vpi.Idx)
-			}
-			if err == nil && result == nil {
-				err = v.valAtPathIsNil(path[:i+1])
-				// err = bwerr.From(ansiValAtPathIsNil, bwjson.Pretty(v.val), bw.ValPath(path[0:i+1]))
+				result, err = v.byIdx(result, path, i, vpi.Idx)
 			}
 			if err != nil {
 				return
+			} else if result == nil {
+				return v.valAtPathIsNil(path[:i+1])
 			}
 		}
 	}
 	resultPath := path[:len(path)-1]
 	setKeyElem := func(key string) (err error) {
-		if m, ok := Map(result); !ok {
-			err = v.valAtPathIsNotOfType(resultPath, result, optVars, "Map")
-			// err = bwerr.From(ansiValAtPathIsNotOfType, bwjson.Pretty(v.val), resultPath, bwjson.Pretty(result), varsJSON(resultPath, optVars), "Map")
-		} else {
+		var m map[string]interface{}
+		if m, err = v.getMap(result, resultPath); err == nil {
 			m[key] = val
 		}
 		return
 	}
 	setIdxElem := func(idx int) (err error) {
-		if vals, ok := Array(result); !ok {
-			err = v.valAtPathIsNotOfType(resultPath, result, optVars, "Array")
-			// err = bwerr.From(ansiValAtPathIsNotOfType, bwjson.Pretty(v.val), resultPath, bwjson.Pretty(result), varsJSON(resultPath, optVars), "Array")
-		} else {
-			l := len(vals)
-			minIdx := -l
-			maxIdx := l - 1
-			if !(minIdx <= idx && idx <= maxIdx) {
-				err = bwerr.From(ansiValAtPathHasNoEnoughRange, bwjson.Pretty(v.val), resultPath, bwjson.Pretty(result), l, idx)
+		var vals []interface{}
+		var gotIdx int
+		if vals, gotIdx, err = v.getArray(idx, result, resultPath); err == nil {
+			if gotIdx < 0 {
+				err = bwerr.From(ansiValAtPathHasNotEnoughRange, resultPath, bwjson.Pretty(result), len(vals), idx)
 			} else {
-				if idx < 0 {
-					idx = l + idx
-				}
-				vals[idx] = val
+				vals[gotIdx] = val
 			}
 		}
 		return
