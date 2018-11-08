@@ -8,10 +8,12 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwval/path"
+	"github.com/baza-winner/bwcore/bwval/val"
 )
 
 // ============================================================================
 
+// PathFrom - конструктор-парсер bw.ValPath из строки
 func PathFrom(s string) bw.ValPath {
 	return path.MustParse(s)
 }
@@ -216,6 +218,11 @@ func FromVal(val interface{}) (result bw.Val) {
 		result = &valHolder{val}
 	}
 	return
+}
+
+// From - конструктор-парсер bw.Val из строки
+func From(s string, optVars ...map[string]interface{}) bw.Val {
+	return FromVal(val.MustParse(s, optVars...))
 }
 
 // ============================================================================

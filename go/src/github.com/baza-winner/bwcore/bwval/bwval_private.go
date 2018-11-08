@@ -34,7 +34,6 @@ var (
 	ansiMustPathValFailed          string
 	ansiType                       string
 	ansiValAtPathIsNotOfTypes      string
-	ansiValAtPathIsNorNeither      string
 	ansiValAtPathIsNil             string
 	ansisReadOnlyPath              string
 	ansiValAtPathHasNotEnoughRange string
