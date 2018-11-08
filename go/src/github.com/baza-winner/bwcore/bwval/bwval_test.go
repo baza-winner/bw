@@ -11,6 +11,153 @@ import (
 	"github.com/baza-winner/bwcore/bwval"
 )
 
+func TestMustSetPathVal(t *testing.T) {
+	tests := map[string]bwtesting.Case{
+		"keyA.keyB": {
+			In: []interface{}{
+				"something",
+				bwval.FromVal(map[string]interface{}{
+					"keyA": map[string]interface{}{},
+				}),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+			},
+			Out: []interface{}{
+				bwval.FromVal(map[string]interface{}{
+					"keyA": map[string]interface{}{
+						"keyB": "something",
+					},
+				}),
+			},
+		},
+		"2.1": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal([]interface{}{
+					"string",
+					273,
+					[]interface{}{"some", "thing"},
+				}),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+				// bwval.PathFrom("2.1"),
+			},
+			Out: []interface{}{
+				bwval.FromVal([]interface{}{
+					"string",
+					273,
+					[]interface{}{"some", "good"},
+				}),
+			},
+		},
+		"2.{$idx}": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal([]interface{}{
+					"string",
+					273,
+					[]interface{}{"some", "thing"},
+				}),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+				// bwval.PathFrom("2.{$idx}"),
+				map[string]interface{}{
+					"idx": 1,
+				},
+			},
+			Out: []interface{}{
+				bwval.FromVal([]interface{}{
+					"string",
+					273,
+					[]interface{}{"some", "good"},
+				}),
+			},
+		},
+		"2.{0}": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal([]interface{}{
+					1,
+					"string",
+					[]interface{}{"some", "thing"},
+				}),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+			},
+			Out: []interface{}{
+				bwval.FromVal([]interface{}{
+					1,
+					"string",
+					[]interface{}{"some", "good"},
+				}),
+			},
+		},
+		"2.{0.idx}": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal([]interface{}{
+					map[string]interface{}{"idx": 1},
+					"string",
+					[]interface{}{"some", "thing"},
+				}),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+			},
+			Out: []interface{}{
+				bwval.FromVal([]interface{}{
+					map[string]interface{}{"idx": 1},
+					"string",
+					[]interface{}{"some", "good"},
+				}),
+			},
+		},
+		".": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal(nil),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+			},
+			Out: []interface{}{
+				bwval.FromVal("good"),
+			},
+		},
+		"2.#": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal([]interface{}{
+					map[string]interface{}{"idx": 1},
+					"string",
+					[]interface{}{"some", "thing"},
+				}),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+			},
+			Out: []interface{}{
+				bwval.FromVal(nil),
+			},
+			Panic: "\x1b[38;5;252;1m.2.#\x1b[0m is \x1b[91;1mreadonly\x1b[0m",
+		},
+		"1.nonMapKey.some": {
+			In: []interface{}{
+				"good",
+				bwval.FromVal([]interface{}{
+					map[string]interface{}{"idx": 1},
+					"string",
+					[]interface{}{"some", "thing"},
+				}),
+				func(testName string) bw.ValPath { return bwval.PathFrom(testName) },
+			},
+			Out: []interface{}{
+				bwval.FromVal(nil),
+			},
+			Panic: "\x1b[96;1m[\n  {\n    \"idx\": 1\n  },\n  \"string\",\n  [\n    \"some\",\n    \"thing\"\n  ]\n]\x1b[0m\x1b[38;5;252;1m.1.nonMapKey\x1b[0m (\x1b[96;1m\"string\"\x1b[0m) is not \x1b[97;1mMap\x1b[0m",
+		},
+	}
+
+	bwmap.CropMap(tests)
+	// bwmap.CropMap(tests, ".")
+	bwtesting.BwRunTests(t, MustSetPathValWrapper, tests)
+}
+
+func MustSetPathValWrapper(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) bw.Val {
+	bwval.MustSetPathVal(val, v, path, optVars...)
+	return v
+}
+
 func TestMustPathVal(t *testing.T) {
 	tests := map[string]bwtesting.Case{
 		"nil": {
@@ -114,10 +261,11 @@ func TestMustPathVal(t *testing.T) {
 		"err: is not Map": {
 			In: []interface{}{
 				bwval.FromVal(1),
-				bwval.PathFrom("some.{$idx}"),
+				bwval.PathFrom("some.{$key}"),
+				map[string]interface{}{"key": "thing"},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(int)1\x1b[0m\x1b[38;5;252;1m.some\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is not \x1b[97;1mMap\x1b[0m",
+			Panic: "\x1b[96;1m1\x1b[0m\x1b[38;5;252;1m.some\x1b[0m (\x1b[96;1m1\x1b[0m) is not \x1b[97;1mMap\x1b[0m",
 		},
 		"err: is not Array": {
 			In: []interface{}{
@@ -126,7 +274,7 @@ func TestMustPathVal(t *testing.T) {
 				map[string]interface{}{"idx": 1},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(int)1\x1b[0m\x1b[38;5;252;1m.{$idx}\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is not \x1b[97;1mArray\x1b[0m",
+			Panic: "\x1b[96;1m1\x1b[0m\x1b[38;5;252;1m.{$idx}\x1b[0m (\x1b[96;1m1\x1b[0m) (\x1b[38;5;201;1mvars\x1b[0m: \x1b[96;1m{\n  \"idx\": 1\n}\x1b[0m) \x1b[0mis not \x1b[97;1mArray\x1b[0m",
 		},
 		"err: nor Map, neither Array": {
 			In: []interface{}{
@@ -134,7 +282,7 @@ func TestMustPathVal(t *testing.T) {
 				bwval.PathFrom("#"),
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(int)1\x1b[0m\x1b[38;5;252;1m.#\x1b[0m (\x1b[96;1m(int)1\x1b[0m) is nor \x1b[97;1mMap\x1b[0m, neither \x1b[97;1mArray\x1b[0m",
+			Panic: "\x1b[96;1m1\x1b[0m\x1b[38;5;252;1m.#\x1b[0m (\x1b[96;1m1\x1b[0m) is none of \x1b[97;1mMap\x1b[0m or \x1b[97;1mArray\x1b[0m\x1b[0m",
 		},
 		"err: nor Int, neither String": {
 			In: []interface{}{
@@ -143,7 +291,7 @@ func TestMustPathVal(t *testing.T) {
 				map[string]interface{}{"idx": nil},
 			},
 			Out:   []interface{}{nil},
-			Panic: "\x1b[96;1m(map[string]interface {})map[some:(int)1]\x1b[0m\x1b[38;5;252;1m.$idx\x1b[0m (\x1b[96;1m(interface {})<nil>\x1b[0m) is nor \x1b[97;1mInt\x1b[0m, neither \x1b[97;1mString\x1b[0m",
+			Panic: "\x1b[96;1m{\n  \"some\": 1\n}\x1b[0m\x1b[38;5;252;1m.$idx\x1b[0m (\x1b[96;1mnull\x1b[0m) (\x1b[38;5;201;1mvars\x1b[0m: \x1b[96;1m{\n  \"idx\": null\n}\x1b[0m) \x1b[0mis none of \x1b[97;1mInt\x1b[0m or \x1b[97;1mString\x1b[0m\x1b[0m",
 		},
 	}
 
