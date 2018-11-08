@@ -95,7 +95,7 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
 	return json.Marshal(result)
 }
 
-func (p *Proxy) PullRune() {
+func (p *Proxy) PullRune() (err error) {
 	if p.Curr.Pos < 0 || p.Curr.RunePtr != nil {
 		p.Prev = append(p.Prev, p.Curr)
 		if len(p.Prev) > p.maxBehindRuneCount {
@@ -105,17 +105,16 @@ func (p *Proxy) PullRune() {
 			p.Curr = p.Next[len(p.Next)-1]
 			p.Next = p.Next[:len(p.Next)-1]
 		} else {
-			p.pullRune(&p.Curr)
+			err = p.pullRune(&p.Curr)
 		}
 	}
+	return
 }
 
 func (p *Proxy) pullRune(ps *PosStruct) (err error) {
 	var runePtr *rune
-	runePtr, err = p.Prov.PullRune()
-	if err != nil {
+	if runePtr, err = p.Prov.PullRune(); err != nil {
 		return
-		// bwerr.PanicA(bwerr.Err(err))
 	}
 	ps.Pos++
 	if runePtr != nil && ps.RunePtr != nil {
@@ -289,13 +288,15 @@ func init() {
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 }
 
-func (p *Proxy) Unexpected(ps PosStruct) (result error) {
+func (p *Proxy) Unexpected(ps PosStruct, optMsg ...string) (result error) {
 	var msg string
 	if ps.RunePtr == nil {
 		msg = ansiUnexpectedEOF
-	} else {
+	} else if len(optMsg) == 0 {
 		r := *ps.RunePtr
 		msg = fmt.Sprintf(ansiUnexpectedChar, r, r)
+	} else {
+		msg = optMsg[0]
 	}
 	result = bwerr.From(msg + p.GetSuffix(ps))
 	return

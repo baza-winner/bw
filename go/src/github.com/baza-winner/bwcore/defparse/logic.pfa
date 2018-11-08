@@ -9,15 +9,18 @@ expectContentOf
 expectWord
 expectEscapedContentOf
 expectRocket
+expectDigit
+end
 
 // secondary
 orArrayItemSeparator 0
 orMapKeySeparator
+orMapValueSeparator
 orUnderscoreOrDot
 orUnderscore
-stringToken
-keyToken
-orSpace
+// stringToken
+// keyToken
+// orSpace
 
 // type
 string 0
@@ -28,7 +31,6 @@ word
 key
 map
 array
-string
 
 finish { /* some */
   (stack.-1.type [$string $qwItem]:
@@ -71,7 +73,8 @@ finish { /* some */
 
 postProcess {
   (stack (.# 0) )
-  (stack.# 1: $end > primary $orSpace > secondary )
+  (stack.# 1: $end > primary //$orSpace > secondary
+    )
   (:
     {
       (stack.-2.type $qw :
@@ -86,14 +89,14 @@ postProcess {
         $begin > primary $orArrayItemSeparator > secondary
       )
       (stack.-2.type $map:{
-          ( stack.-1.type $key:
-            stack ( .-1.string > .-2.key )
-            $begin> primary $orMapKeySeparator > secondary
-          )
-          (:
-            stack ( .-1.result > .-2.result.{.-2.key} )
-            $expectSpaceOrMapKey > primary $orMapValueSeparator > secondary
-          )
+        ( stack.-1.type $key:
+          stack ( .-1.string > .-2.key )
+          $begin> primary $orMapKeySeparator > secondary
+        )
+        (:
+          stack ( .-1.result > .-2.result.{.-2.key} )
+          $expectSpaceOrMapKey > primary $orMapValueSeparator > secondary
+        )
       })
       (: Unexpected stack.-1 )
     }
@@ -168,22 +171,31 @@ primaryState {
       | $key > type
       | rune > delimiter
       >>> stack
-      $expectContentOf > primary $keyToken > secondary
+      $expectContentOf > primary //$keyToken > secondary
+    )
+    (',' secondary $orMapValueSeparator:
+      expectSpaceOrMapKey > primary
+      nil > secondary
     )
     ( stack ( .-1 (rune .delimiter .type $map) ) :
     // (  rune stack.-1.delimiter stack.-1.type $map :
       true > needFinish
     )
   })
-  (primary $expectEscapedContentOf: {
-    ('"' '\'' '\\':
-      rune >> stack.-1.string $expectContentOf > primary
-    )
-    (stack.-1.delimiter '"': {
-      ('a' 'b' 'f' 'n' 'r' 't' 'v': rune | Escape > stack.-1.string )
-      (: Unexpected rune)
-    })
-  })
+  (primary $expectEscapedContentOf:
+    {
+      ('"' '\'' '\\':
+        rune >> stack.-1.string
+      )
+      (stack.-1.delimiter '"': {
+        ('a' 'b' 'f' 'n' 'r' 't' 'v':
+          rune | Escape > stack.-1.string
+        )
+        (: Unexpected rune)
+      })
+    }
+    $expectContentOf > primary
+  )
   ( primary $begin: {
     (EOF stack.# 0:
       $end > primary nil > secondary
@@ -195,13 +207,16 @@ primaryState {
     (':' secondary $orMapKeySeparator:
       $begin> primary nil > secondary
     )
+    (',' secondary $orArrayItemSeparator:
+      $begin> primary nil > secondary
+    )
     (Space)
     ('{':
       Item
       | Map > result
       | $map > type
+      | '}' > delimiter
       >>> stack
-      '}' > stack.-1.delimiter
       $expectSpaceOrMapKey > primary nil > secondary
     )
     ('<':
@@ -243,7 +258,7 @@ primaryState {
       | $string > type
       | rune > delimiter
       >>> stack
-      $expectContentOf > primary $stringToken > secondary
+      $expectContentOf > primary //$stringToken > secondary
     )
     (Letter:
       Item

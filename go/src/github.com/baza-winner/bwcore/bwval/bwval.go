@@ -359,3 +359,9 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 }
 
 // ============================================================================
+
+func From(s string) bw.Val {
+	return FromVal(val.MustParse(s))
+}
+
+// ============================================================================
