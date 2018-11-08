@@ -150,16 +150,19 @@ func (v Error) Error() string {
 
 var findRefineRegexp = regexp.MustCompile("{Error}")
 
-func (v Error) Refine(fmtString string, fmtArgs ...interface{}) Error {
-	return v.RefineA(bw.A{fmtString, fmtArgs})
+func Refine(err error, fmtString string, fmtArgs ...interface{}) Error {
+	var t Error
+	var ok bool
+	if t, ok = err.(Error); !ok {
+		t = FromA(Err(err))
+	}
+	return t.RefineA(bw.A{fmtString, fmtArgs})
 }
 
 func (v Error) RefineA(a bw.I) (result Error) {
 	result = v
-	result.S = ansi.String(bw.Spew.Sprintf(
-		findRefineRegexp.ReplaceAllString(a.FmtString(), v.S),
-		a.FmtArgs()...,
-	))
+	fmtString := findRefineRegexp.ReplaceAllStringFunc(a.FmtString(), func(s string) (result string) { return v.S })
+	result.S = ansi.String(bw.Spew.Sprintf(fmtString, a.FmtArgs()...))
 	return
 }
 

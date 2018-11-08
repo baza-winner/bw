@@ -35,14 +35,14 @@ func init() {
 }
 
 func Print(args ...interface{}) {
-	if s, err := ansiString(1, args...); err != nil {
+	if s, err := stringToPrint(1, args...); err != nil {
 		panic(err)
 	} else {
 		fmt.Println(s)
 	}
 }
 
-func ansiString(depth uint, args ...interface{}) (result string, err error) {
+func stringToPrint(depth uint, args ...interface{}) (result string, err error) {
 	markPrefix := ""
 	fmtString := ""
 	fmtArgs := []interface{}{}
@@ -80,11 +80,5 @@ func ansiString(depth uint, args ...interface{}) (result string, err error) {
 		where.MustFrom(1+depth).String() +
 		": " +
 		ansi.String(bw.Spew.Sprintf(fmtString, fmtArgs...))
-	// result = ansi.Concat(
-	// 	markPrefix,
-	// 	where.MustFrom(1+depth).String(),
-	// 	": ",
-	// 	ansi.String(bw.Spew.Sprintf(fmtString, fmtArgs...)),
-	// )
 	return
 }

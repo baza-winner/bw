@@ -73,7 +73,7 @@ func init() {
 	ansiErr = ansi.String(
 		"<ansiErr>tst err<ansi>: '%s'" +
 			"\n<ansiOK>eta err<ansi>: '%s'" +
-			"\n------------------------\n" +
+			"\n------------------------" +
 			"\n<ansiErr>tst(q)<ansi>: %q" +
 			"\n<ansiOK>eta(q)<ansi>: %q" +
 			"\n------------------------" +

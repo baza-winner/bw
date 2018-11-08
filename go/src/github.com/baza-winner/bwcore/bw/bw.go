@@ -172,6 +172,7 @@ func (v ValPath) String() (result string) {
 type Val interface {
 	PathVal(path ValPath, optVars ...map[string]interface{}) (result interface{}, err error)
 	SetPathVal(val interface{}, path ValPath, optVars ...map[string]interface{}) (err error)
+	MarshalJSON() ([]byte, error)
 }
 
 // ============================================================================
