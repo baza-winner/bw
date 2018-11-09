@@ -302,7 +302,6 @@ func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) 
 					result = len(t)
 				default:
 					err = valPath{result, path[:i]}.notOfTypeError("Map", "Array")
-					// err = pathValIsNotOfType(path[:i], result, "Map", "Array")
 				}
 			}
 		}
@@ -320,15 +319,12 @@ func (v *valHolder) MarshalJSON() ([]byte, error) {
 
 // SetPathVal - реализация интерфейса bw.Val
 func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[string]interface{}) (err error) {
-	// bwdebug.Print("path", path, "len(path)", len(path))
 	if len(path) == 0 {
 		v.val = val
 		return
 	}
 	if path[len(path)-1].Type == bw.ValPathItemHash {
 		return readonlyPathError(path)
-
-		// return bwerr.From(ansisReadOnlyPath, path)
 	}
 
 	var simplePath bw.ValPath
@@ -383,7 +379,6 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 		if vals, gotIdx, err = v.getArray(idx, result, resultPath); err == nil {
 			if gotIdx < 0 {
 				err = valPath{result, resultPath}.notEnoughRangeError(len(vals), idx)
-				// err = bwerr.From(ansiValAtPathHasNotEnoughRange, resultPath, bwjson.Pretty(result), len(vals), idx)
 			} else {
 				vals[gotIdx] = val
 			}
@@ -407,19 +402,15 @@ type Def struct {
 	IsOptional bool
 	Enum       bwset.String
 	Range      Range
-	// ir         IntRange
-	// nr         NumberRange
-	Keys      map[string]Def
-	Elem      *Def
-	ArrayElem *Def
-	Default   interface{}
+	Keys       map[string]Def
+	Elem       *Def
+	ArrayElem  *Def
+	Default    interface{}
 }
 
 func (v Def) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
-	// if v != nil {
 	result["Types"] = v.Types
-	// bwdebug.Print("json", bwjson.Pretty(v.tp))
 	result["IsOptional"] = v.IsOptional
 	if v.Enum != nil {
 		result["Enum"] = v.Enum
@@ -427,24 +418,7 @@ func (v Def) MarshalJSON() ([]byte, error) {
 	if RangeKind(v.Range) != RangeNo {
 		result["Range"] = v.Range
 	}
-	// if v.minInt != nil {
-	// 	result["minInt"] = v.minInt
-	// }
-	// if v.maxInt != nil {
-	// 	result["maxInt"] = v.maxInt
-	// }
-	// result["NumberRange"] = v.nr
-	// if v.minNumber != nil {
-	// 	result["minNumber"] = v.minNumber
-	// }
-	// if v.maxNumber != nil {
-	// 	result["maxNumber"] = v.maxNumber
-	// }
 	if v.Keys != nil {
-		// keysJsonData := map[string]interface{}{}
-		// for k, v := range V.keys {
-		// 	keysJsonData[k] = v
-		// }
 		result["keys"] = v.Keys
 	}
 	if v.Elem != nil {
@@ -456,24 +430,8 @@ func (v Def) MarshalJSON() ([]byte, error) {
 	if v.Default != nil {
 		result["Default"] = v.Default
 	}
-	// }
 	return json.Marshal(result)
 }
-
-// func DefFrom(def interface{}) (result *Def, err error) {
-// 	result, err = compileDef(value{"<ansiVar>def<ansiPath>", def})
-// 	// log.Printf("result: %#v", result)
-// 	// var compileDefResult *Def
-// 	// compileDefResult, err = compileDef(value{"<ansiVar>def<ansiPath>", def})
-// 	// if err == nil {
-// 	// 	if compileDefResult == nil {
-// 	// 		bwerr.Panic("Unexpected behavior; def: %s", bwjson.PrettyJson(def))
-// 	// 	} else {
-// 	// 		result = *compileDefResult
-// 	// 	}
-// 	// }
-// 	return
-// }
 
 func DefFrom(def interface{}) (result Def) {
 	var err error

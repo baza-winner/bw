@@ -806,8 +806,10 @@ func TestDefFrom(t *testing.T) {
 		`{ type Number min 1 max 2 default 3 }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.MustPathVal(bwval.From(testName), bwval.PathFrom(".")) }},
 			Out: []interface{}{bwval.Def{
-				Types: deftype.From(deftype.Number),
-				Range: bwval.NumberRange{bwval.PtrToNumber(1), bwval.PtrToNumber(2)},
+				Types:      deftype.From(deftype.Number),
+				Range:      bwval.NumberRange{bwval.PtrToNumber(1), bwval.PtrToNumber(2)},
+				IsOptional: true,
+				Default:    3,
 			}},
 			Panic: "\x1b[38;5;252;1m$def.default\x1b[0m (\x1b[96;1m3\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m1..2\x1b[0m",
 		},
@@ -817,32 +819,16 @@ func TestDefFrom(t *testing.T) {
 				Types:      deftype.From(deftype.String),
 				Default:    "some",
 				IsOptional: true,
-				// ArrayElem: &bwval.Def{Types: deftype.From(deftype.Bool)},
 			}},
 		},
-		// "[ Bool true ]": {
-		// 	In:    []interface{}{bwval.From("[ Bool true ]")},
-		// 	Out:   []interface{}{bwval.Def{}},
-		// 	Panic: "",
-		// },
-		// "Bool": {
-		// 	In: []interface{}{
-		// 		false,
-		// 	},
-		// 	Out: []interface{}{
-		// 		false,
-		// 		// nil,
-		// 	},
-		// },
-		// "non Bool": {
-		// 	In: []interface{}{
-		// 		"some",
-		// 	},
-		// 	Out: []interface{}{
-		// 		false,
-		// 	},
-		// 	Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mBool\x1b[0m",
-		// },
+		`{ type [ArrayOf Int] default [1 2 3] }`: {
+			In: []interface{}{func(testName string) interface{} { return bwval.MustPathVal(bwval.From(testName), bwval.PathFrom(".")) }},
+			Out: []interface{}{bwval.Def{
+				Types:      deftype.From(deftype.ArrayOf, deftype.Int),
+				Default:    []interface{}{1, 2, 3},
+				IsOptional: true,
+			}},
+		},
 	}
 
 	bwmap.CropMap(tests)

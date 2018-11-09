@@ -151,7 +151,7 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 
 	initFmt := func(suffixProvider func() string) {
 		fmtArgs = append(bw.Args(testeeFunc), inVals...)
-		fmtString = ansiTestTitle + suffixProvider() + ":\n"
+		fmtString = ansiTestTitle + suffixProvider() //+ ":\n"
 		// bwdebug.Print("fmtArgs", fmtArgs, "fmtString", fmtString)
 	}
 
@@ -230,10 +230,13 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 		}()
 
 		if panicVal != nil {
-			initFmt(func() string { return ".Panic" })
+			initFmt(func() string { return ".Panic:\n" })
 			if cmpErrs(panicVal, test.Panic, &fmtString, &fmtArgs) {
 				t.Error(bw.Spew.Sprintf(fmtString, fmtArgs...))
 			}
+		} else if test.Panic != nil {
+			initFmt(func() string { return ansi.String(" should <ansiErr>Panic<ansi>") })
+			t.Error(bw.Spew.Sprintf(fmtString, fmtArgs...))
 		} else {
 			for i := 0; i < numOut; i++ {
 				initFmt(func() (result string) {
@@ -241,7 +244,7 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 						result = ansiPath
 						fmtArgs = append(fmtArgs, i)
 					}
-					return
+					return result + ":\n"
 				})
 
 				cmpFunc := cmpVals
