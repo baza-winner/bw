@@ -12,6 +12,12 @@ import (
 	. "github.com/dave/jennifer/jen"
 )
 
+// ============================================================================
+
+//go:generate stringer -type=ParamType,ReturnType,TestItem,TestDataKind
+
+// ============================================================================
+
 type ParamType uint8
 
 const (
@@ -24,8 +30,6 @@ const (
 	ParamIJ
 	ParamAbove
 )
-
-//go:generate stringer -type=ParamType
 
 type ReturnType uint8
 
@@ -42,8 +46,6 @@ const (
 	ReturnSliceOfStrings
 	ReturnAbove
 )
-
-//go:generate stringer -type=ReturnType
 
 type Helper struct {
 	bwjsonPackageName string

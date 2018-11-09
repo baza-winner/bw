@@ -10,6 +10,8 @@ import (
 	. "github.com/dave/jennifer/jen"
 )
 
+// ============================================================================
+
 const bwtestingPackage = "github.com/baza-winner/bwcore/bwtesting"
 
 type TestCases map[string]TestCase
@@ -24,8 +26,6 @@ const (
 	A TestItem = iota
 	B
 )
-
-//go:generate stringer -type=TestItem
 
 func (v *Helper) GenTestsFor(
 	fgt FuncGenType,
@@ -281,8 +281,6 @@ const (
 	In TestDataKind = iota
 	Out
 )
-
-//go:generate stringer -type=TestDataKind
 
 func (v *Helper) panicOnErrOfGetValues(err error, testeeName string, testDataKind TestDataKind, idx int) {
 	bwerr.Panic(

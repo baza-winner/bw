@@ -399,6 +399,7 @@ func cmpVals(tstResult, etaResult interface{}, fmtString *string, fmtArgs *[]int
 			bwjson.Pretty(tstResult),
 			bwjson.Pretty(etaResult),
 		)
+		// bwdebug.Print("json", bwjson.Pretty(tstResult), "tstResult", tstResult)
 	}
 	return
 }

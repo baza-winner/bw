@@ -1,13 +1,17 @@
 package deftype
 
 import (
+	"encoding/json"
+
+	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwerr"
 )
 
 type Item uint16
 
 const (
-	ItemBelow Item = iota
+	// ItemBelow Item = iota
+	Unknown Item = iota
 	Bool
 	String
 	Int
@@ -15,32 +19,49 @@ const (
 	Map
 	Array
 	ArrayOf
-	ItemAbove
+	// ItemAbove
 )
 
+const (
+	_SetTestItemA Item = iota + 1
+	_SetTestItemB
+)
+
+// func init() {
+// 	bwdebug.Print("json", bwjson.Pretty(map[string]interface{}{"set": From(Bool, String)}))
+
+// }
+
 //go:generate stringer -type=Item
+//go:generate bwsetter -type=Item -set=Set -omitprefix -test
 
 var mapItemFromString = map[string]Item{}
 
 func init() {
-	for i := ItemBelow + 1; i < ItemAbove; i++ {
+	// for i := ItemBelow + 1; i < ItemAbove; i++ {
+	for i := Unknown; i <= ArrayOf; i++ {
 		mapItemFromString[i.String()] = i
 	}
 	return
 }
 
-func (v Item) DataForJSON() interface{} {
-	return v.String()
+func (v Item) MarshalJSON() ([]byte, error) {
+	// return []byte(v.String()), nil
+	return json.Marshal(v.String())
+}
+
+var ansiUknown string
+
+func init() {
+	ansiUknown = ansi.String("<ansiPath>ItemFromString<ansi>: uknown <ansiVal>%s")
 }
 
 func ItemFromString(s string) (result Item, err error) {
 	var ok bool
 	if result, ok = mapItemFromString[s]; !ok {
-		err = bwerr.From("<ansiPath>ItemFromString<ansi>: uknown <ansiVal>%s", result)
+		err = bwerr.From(ansiUknown, result)
 	}
 	return
 }
 
 // ============================================================================
-
-//go:generate bwsetter -type=Item -set=Set -omitprefix

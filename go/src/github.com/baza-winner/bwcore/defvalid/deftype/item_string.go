@@ -4,9 +4,9 @@ package deftype
 
 import "strconv"
 
-const _Item_name = "ItemBelowBoolStringIntNumberMapArrayArrayOfItemAbove"
+const _Item_name = "UnknownBoolStringIntNumberMapArrayArrayOf"
 
-var _Item_index = [...]uint8{0, 9, 13, 19, 22, 28, 31, 36, 43, 52}
+var _Item_index = [...]uint8{0, 7, 11, 17, 20, 26, 29, 34, 41}
 
 func (i Item) String() string {
 	if i >= Item(len(_Item_index)-1) {

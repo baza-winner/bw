@@ -167,6 +167,22 @@ func (v ValPath) String() (result string) {
 	return
 }
 
+func (v ValPath) AppendIdx(idx int) ValPath {
+	return append(v, ValPathItem{Type: ValPathItemIdx, Idx: idx})
+}
+
+func (v ValPath) AppendKey(key string) ValPath {
+	return append(v, ValPathItem{Type: ValPathItemKey, Key: key})
+}
+
+func (v ValPath) AppendVar(name string) ValPath {
+	return append(v, ValPathItem{Type: ValPathItemVar, Key: name})
+}
+
+func (v ValPath) AppendHash(name string) ValPath {
+	return append(v, ValPathItem{Type: ValPathItemHash})
+}
+
 // ============================================================================
 
 type Val interface {

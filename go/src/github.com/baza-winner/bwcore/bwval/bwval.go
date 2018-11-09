@@ -7,8 +7,10 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
+	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwval/path"
 	"github.com/baza-winner/bwcore/bwval/val"
+	"github.com/baza-winner/bwcore/defvalid/deftype"
 )
 
 // ============================================================================
@@ -80,6 +82,28 @@ func MustInt(val interface{}) (result int) {
 	return
 }
 
+// Number - пытается извлечь float64 из interface{}
+func Number(val interface{}) (result float64, ok bool) {
+	switch v, kind := Kind(val); kind {
+	case ValInt:
+		var i int
+		i, ok = v.(int)
+		result = float64(i)
+	case ValNumber:
+		result, ok = v.(float64)
+	}
+	return
+}
+
+// MustNumber - must-обертка Number()
+func MustNumber(val interface{}) (result float64) {
+	var ok bool
+	if result, ok = Number(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Number")
+	}
+	return
+}
+
 // String - пытается извлечь string из interface{}
 func String(val interface{}) (result string, ok bool) {
 	if v, kind := Kind(val); kind == ValString {
@@ -140,6 +164,7 @@ const (
 	ValNil
 	ValBool
 	ValInt
+	ValNumber
 	ValString
 	ValMap
 	ValArray
@@ -195,6 +220,12 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 				result = int(t)
 				kind = ValInt
 			}
+		case float32:
+			result = float64(t)
+			kind = ValNumber
+		case float64:
+			result = t
+			kind = ValNumber
 		case string:
 			result = t
 			kind = ValString
@@ -270,7 +301,8 @@ func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) 
 				case []interface{}:
 					result = len(t)
 				default:
-					err = v.pathValIsNotOfType(path[:i], result, "Map", "Array")
+					err = valPath{result, path[:i]}.notOfTypeError("Map", "Array")
+					// err = pathValIsNotOfType(path[:i], result, "Map", "Array")
 				}
 			}
 		}
@@ -294,7 +326,9 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 		return
 	}
 	if path[len(path)-1].Type == bw.ValPathItemHash {
-		return bwerr.From(ansisReadOnlyPath, path)
+		return readonlyPathError(path)
+
+		// return bwerr.From(ansisReadOnlyPath, path)
 	}
 
 	var simplePath bw.ValPath
@@ -305,7 +339,7 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 
 	result := v.val
 	if result == nil {
-		return v.valAtPathIsNil(bw.ValPath{})
+		return valAtPathIsNil(bw.ValPath{})
 	}
 
 	if path[0].Type == bw.ValPathItemVar {
@@ -331,7 +365,7 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 			if err != nil {
 				return
 			} else if result == nil {
-				return v.valAtPathIsNil(path[:i+1])
+				return valAtPathIsNil(path[:i+1])
 			}
 		}
 	}
@@ -348,7 +382,8 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 		var gotIdx int
 		if vals, gotIdx, err = v.getArray(idx, result, resultPath); err == nil {
 			if gotIdx < 0 {
-				err = bwerr.From(ansiValAtPathHasNotEnoughRange, resultPath, bwjson.Pretty(result), len(vals), idx)
+				err = valPath{result, resultPath}.notEnoughRangeError(len(vals), idx)
+				// err = bwerr.From(ansiValAtPathHasNotEnoughRange, resultPath, bwjson.Pretty(result), len(vals), idx)
 			} else {
 				vals[gotIdx] = val
 			}
@@ -361,6 +396,99 @@ func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[
 		err = setKeyElem(vpi.Key)
 	case bw.ValPathItemIdx:
 		err = setIdxElem(vpi.Idx)
+	}
+	return
+}
+
+// ============================================================================
+
+type Def struct {
+	Types      deftype.Set
+	IsOptional bool
+	Enum       bwset.String
+	Range      Range
+	// ir         IntRange
+	// nr         NumberRange
+	Keys      map[string]Def
+	Elem      *Def
+	ArrayElem *Def
+	Default   interface{}
+}
+
+func (v Def) MarshalJSON() ([]byte, error) {
+	result := map[string]interface{}{}
+	// if v != nil {
+	result["Types"] = v.Types
+	// bwdebug.Print("json", bwjson.Pretty(v.tp))
+	result["IsOptional"] = v.IsOptional
+	if v.Enum != nil {
+		result["Enum"] = v.Enum
+	}
+	if RangeKind(v.Range) != RangeNo {
+		result["Range"] = v.Range
+	}
+	// if v.minInt != nil {
+	// 	result["minInt"] = v.minInt
+	// }
+	// if v.maxInt != nil {
+	// 	result["maxInt"] = v.maxInt
+	// }
+	// result["NumberRange"] = v.nr
+	// if v.minNumber != nil {
+	// 	result["minNumber"] = v.minNumber
+	// }
+	// if v.maxNumber != nil {
+	// 	result["maxNumber"] = v.maxNumber
+	// }
+	if v.Keys != nil {
+		// keysJsonData := map[string]interface{}{}
+		// for k, v := range V.keys {
+		// 	keysJsonData[k] = v
+		// }
+		result["keys"] = v.Keys
+	}
+	if v.Elem != nil {
+		result["Elem"] = *(v.Elem)
+	}
+	if v.ArrayElem != nil {
+		result["ArrayElem"] = *(v.ArrayElem)
+	}
+	if v.Default != nil {
+		result["Default"] = v.Default
+	}
+	// }
+	return json.Marshal(result)
+}
+
+// func DefFrom(def interface{}) (result *Def, err error) {
+// 	result, err = compileDef(value{"<ansiVar>def<ansiPath>", def})
+// 	// log.Printf("result: %#v", result)
+// 	// var compileDefResult *Def
+// 	// compileDefResult, err = compileDef(value{"<ansiVar>def<ansiPath>", def})
+// 	// if err == nil {
+// 	// 	if compileDefResult == nil {
+// 	// 		bwerr.Panic("Unexpected behavior; def: %s", bwjson.PrettyJson(def))
+// 	// 	} else {
+// 	// 		result = *compileDefResult
+// 	// 	}
+// 	// }
+// 	return
+// }
+
+func DefFrom(def interface{}) (result Def) {
+	var err error
+	var compileDefResult *Def
+	if compileDefResult, err = compileDef(valPath{
+		def,
+		bw.ValPath{bw.ValPathItem{
+			Type: bw.ValPathItemVar, Key: "def",
+		}},
+	}); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	} else if compileDefResult == nil {
+		bwerr.Panic("Unexpected behavior; def: %s", bwjson.Pretty(def))
+	} else {
+		result = *compileDefResult
 	}
 	return
 }
