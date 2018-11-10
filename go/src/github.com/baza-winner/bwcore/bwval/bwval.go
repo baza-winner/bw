@@ -246,7 +246,7 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 func FromVal(val interface{}) (result bw.Val) {
 	var ok bool
 	if result, ok = val.(bw.Val); !ok {
-		result = &valHolder{val}
+		result = &Holder{val}
 	}
 	return
 }
@@ -259,7 +259,7 @@ func From(s string, optVars ...map[string]interface{}) bw.Val {
 // ============================================================================
 
 // PathVal - реализация интерфейса bw.Val
-func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (result interface{}, err error) {
+func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (result interface{}, err error) {
 	if len(path) == 0 {
 		result = v.val
 		return
@@ -313,12 +313,12 @@ func (v *valHolder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) 
 }
 
 // MarshalJSON - реализация интерфейса bw.Val
-func (v *valHolder) MarshalJSON() ([]byte, error) {
+func (v *Holder) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.val)
 }
 
 // SetPathVal - реализация интерфейса bw.Val
-func (v *valHolder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[string]interface{}) (err error) {
+func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[string]interface{}) (err error) {
 	if len(path) == 0 {
 		v.val = val
 		return

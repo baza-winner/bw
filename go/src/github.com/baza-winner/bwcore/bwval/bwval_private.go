@@ -28,7 +28,7 @@ func varsJSON(path bw.ValPath, optVars []map[string]interface{}) (result string)
 	return
 }
 
-type valHolder struct {
+type Holder struct {
 	val interface{}
 }
 
@@ -72,7 +72,7 @@ func hasVar(path bw.ValPath) bool {
 	return false
 }
 
-func simplifyPath(v *valHolder, path bw.ValPath, optVars []map[string]interface{}) (result bw.ValPath, err error) {
+func simplifyPath(v *Holder, path bw.ValPath, optVars []map[string]interface{}) (result bw.ValPath, err error) {
 	result = bw.ValPath{}
 	for _, vpi := range path {
 		if vpi.Type != bw.ValPathItemPath {
@@ -104,7 +104,7 @@ func valAtPathIsNil(path bw.ValPath) error {
 	return bwerr.From(ansiValAtPathIsNil, path)
 }
 
-func (v *valHolder) getArray(idx int, result interface{}, resultPath bw.ValPath) ([]interface{}, int, error) {
+func (v *Holder) getArray(idx int, result interface{}, resultPath bw.ValPath) ([]interface{}, int, error) {
 	var err error
 	var ok bool
 	var vals []interface{}
@@ -123,7 +123,7 @@ func (v *valHolder) getArray(idx int, result interface{}, resultPath bw.ValPath)
 	return vals, idx, err
 }
 
-func (v *valHolder) getMap(result interface{}, resultPath bw.ValPath) (map[string]interface{}, error) {
+func (v *Holder) getMap(result interface{}, resultPath bw.ValPath) (map[string]interface{}, error) {
 	var err error
 	var ok bool
 	var m map[string]interface{}
@@ -133,7 +133,7 @@ func (v *valHolder) getMap(result interface{}, resultPath bw.ValPath) (map[strin
 	return m, err
 }
 
-func (v *valHolder) byKey(val interface{}, path bw.ValPath, i int, key string) (result interface{}, err error) {
+func (v *Holder) byKey(val interface{}, path bw.ValPath, i int, key string) (result interface{}, err error) {
 	result = val
 	if result == nil {
 		return
@@ -145,7 +145,7 @@ func (v *valHolder) byKey(val interface{}, path bw.ValPath, i int, key string) (
 	return
 }
 
-func (v *valHolder) byIdx(val interface{}, path bw.ValPath, i int, idx int) (result interface{}, err error) {
+func (v *Holder) byIdx(val interface{}, path bw.ValPath, i int, idx int) (result interface{}, err error) {
 	result = val
 	if result == nil {
 		return
