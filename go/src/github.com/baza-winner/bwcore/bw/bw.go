@@ -167,20 +167,27 @@ func (v ValPath) String() (result string) {
 	return
 }
 
+func (v ValPath) Clone() ValPath {
+	// https://github.com/go101/go101/wiki/How-to-efficiently-clone-a-slice%3F
+	return append(v[:0:0], v...)
+}
+
 func (v ValPath) AppendIdx(idx int) ValPath {
-	return append(v, ValPathItem{Type: ValPathItemIdx, Idx: idx})
+	// path := append(v[:0:0], v...) // https://github.com/go101/go101/wiki/How-to-efficiently-clone-a-slice%3F
+	return append(v.Clone(), ValPathItem{Type: ValPathItemIdx, Idx: idx})
 }
 
 func (v ValPath) AppendKey(key string) ValPath {
-	return append(v, ValPathItem{Type: ValPathItemKey, Key: key})
+	// path := append(v[:0:0], v...)
+	return append(v.Clone(), ValPathItem{Type: ValPathItemKey, Key: key})
 }
 
 func (v ValPath) AppendVar(name string) ValPath {
-	return append(v, ValPathItem{Type: ValPathItemVar, Key: name})
+	return append(v.Clone(), ValPathItem{Type: ValPathItemVar, Key: name})
 }
 
 func (v ValPath) AppendHash(name string) ValPath {
-	return append(v, ValPathItem{Type: ValPathItemHash})
+	return append(v.Clone(), ValPathItem{Type: ValPathItemHash})
 }
 
 // ============================================================================

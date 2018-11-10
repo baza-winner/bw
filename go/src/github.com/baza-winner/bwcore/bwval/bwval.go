@@ -243,20 +243,30 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 // ============================================================================
 
 // FromVal - конструктор bw.Val из interface{}-значения
-func FromVal(val interface{}) (result bw.Val) {
-	var ok bool
-	if result, ok = val.(bw.Val); !ok {
-		result = &Holder{val}
+func FromValPath(val interface{}, path bw.ValPath) *Holder {
+	return &Holder{val, path}
+}
+
+// FromVal - конструктор bw.Val из interface{}-значения
+func FromVal(val interface{}, optPathStr ...string) *Holder {
+	path := bw.ValPath{}
+	if len(optPathStr) > 0 {
+		path = PathFrom(optPathStr[0])
 	}
-	return
+	return FromValPath(val, path)
 }
 
 // From - конструктор-парсер bw.Val из строки
-func From(s string, optVars ...map[string]interface{}) bw.Val {
-	return FromVal(val.MustParse(s, optVars...))
+func From(s string, optVars ...map[string]interface{}) *Holder {
+	return FromValPath(val.MustParse(s, optVars...), bw.ValPath{})
 }
 
 // ============================================================================
+
+type Holder struct {
+	val  interface{}
+	path bw.ValPath
+}
 
 // PathVal - реализация интерфейса bw.Val
 func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (result interface{}, err error) {
@@ -271,7 +281,7 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 	}()
 
 	var simplePath bw.ValPath
-	simplePath, err = simplifyPath(v, path, optVars)
+	simplePath, err = v.simplifyPath(path, optVars)
 	if err != nil {
 		return
 	}
@@ -288,9 +298,9 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 	for i, vpi := range simplePath {
 		switch vpi.Type {
 		case bw.ValPathItemKey:
-			result, err = v.byKey(result, path, i, vpi.Key)
+			result, err = Holder{result, path[:i+1]}.KeyVal(vpi.Key)
 		case bw.ValPathItemIdx:
-			result, err = v.byIdx(result, path, i, vpi.Idx)
+			result, err = Holder{result, path[:i+1]}.IdxVal(vpi.Idx)
 		case bw.ValPathItemHash:
 			if result == nil {
 				result = 0
@@ -301,7 +311,7 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 				case []interface{}:
 					result = len(t)
 				default:
-					err = valPath{result, path[:i]}.notOfTypeError("Map", "Array")
+					err = Holder{result, path[:i]}.notOfTypeError("Map", "Array")
 				}
 			}
 		}
@@ -314,7 +324,14 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 
 // MarshalJSON - реализация интерфейса bw.Val
 func (v *Holder) MarshalJSON() ([]byte, error) {
-	return json.Marshal(v.val)
+	if len(v.path) == 0 {
+		return json.Marshal(v.val)
+	} else {
+		result := map[string]interface{}{}
+		result["val"] = v.val
+		result["path"] = v.path
+		return json.Marshal(result)
+	}
 }
 
 // SetPathVal - реализация интерфейса bw.Val
@@ -328,14 +345,15 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 	}
 
 	var simplePath bw.ValPath
-	simplePath, err = simplifyPath(v, path, optVars)
+	simplePath, err = v.simplifyPath(path, optVars)
 	if err != nil {
 		return
 	}
 
 	result := v.val
 	if result == nil {
-		return valAtPathIsNil(bw.ValPath{})
+		return v.wrongValError()
+		// return valAtPathIsNil(bw.ValPath{})
 	}
 
 	if path[0].Type == bw.ValPathItemVar {
@@ -354,21 +372,22 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 		for i, vpi := range simplePath[:len(simplePath)-1] {
 			switch vpi.Type {
 			case bw.ValPathItemKey:
-				result, err = v.byKey(result, path, i, vpi.Key)
+				result, err = Holder{result, path[:i+1]}.KeyVal(vpi.Key)
 			case bw.ValPathItemIdx:
-				result, err = v.byIdx(result, path, i, vpi.Idx)
+				result, err = Holder{result, path[:i+1]}.IdxVal(vpi.Idx)
 			}
 			if err != nil {
 				return
 			} else if result == nil {
-				return valAtPathIsNil(path[:i+1])
+				return Holder{nil, path[:i+1]}.wrongValError()
 			}
 		}
 	}
 	resultPath := path[:len(path)-1]
 	setKeyElem := func(key string) (err error) {
 		var m map[string]interface{}
-		if m, err = v.getMap(result, resultPath); err == nil {
+		vh := Holder{result, resultPath}
+		if m, err = vh.Map(); err == nil {
 			m[key] = val
 		}
 		return
@@ -376,9 +395,10 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 	setIdxElem := func(idx int) (err error) {
 		var vals []interface{}
 		var gotIdx int
-		if vals, gotIdx, err = v.getArray(idx, result, resultPath); err == nil {
+		rh := Holder{result, resultPath}
+		if vals, gotIdx, err = rh.arrayIdx(idx); err == nil {
 			if gotIdx < 0 {
-				err = valPath{result, resultPath}.notEnoughRangeError(len(vals), idx)
+				err = Holder{result, resultPath}.notEnoughRangeError(len(vals), idx)
 			} else {
 				vals[gotIdx] = val
 			}
@@ -391,6 +411,93 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 		err = setKeyElem(vpi.Key)
 	case bw.ValPathItemIdx:
 		err = setIdxElem(vpi.Idx)
+	}
+	return
+}
+
+func (v Holder) Bool() (result bool, err error) {
+	var ok bool
+	if result, ok = Bool(v.val); !ok {
+		err = v.notOfTypeError("Bool")
+	}
+	return
+}
+
+func (v Holder) String() (result string, err error) {
+	var ok bool
+	if result, ok = String(v.val); !ok {
+		err = v.notOfTypeError("String")
+	}
+	return
+}
+
+func (v Holder) Int() (result int, err error) {
+	var ok bool
+	if result, ok = Int(v.val); !ok {
+		err = v.notOfTypeError("Int")
+	}
+	return
+}
+
+func (v Holder) Number() (result float64, err error) {
+	var ok bool
+	if result, ok = Number(v.val); !ok {
+		err = v.notOfTypeError("Number")
+	}
+	return
+}
+
+func (v Holder) Array() (result []interface{}, err error) {
+	var ok bool
+	if result, ok = Array(v.val); !ok {
+		err = v.notOfTypeError("Array")
+	}
+	return
+}
+
+func (v Holder) ArrayOfString() (result []string, err error) {
+	var vals interface{}
+	if vals, err = v.Array(); err != nil {
+		return
+	}
+	result = []string{}
+	var s string
+	for i := range MustArray(vals) {
+		vp, _ := v.Idx(i)
+		if s, err = vp.String(); err != nil {
+			return
+		}
+		result = append(result, s)
+	}
+	return
+}
+
+func (v Holder) Map() (result map[string]interface{}, err error) {
+	var ok bool
+	if result, ok = Map(v.val); !ok {
+		err = v.notOfTypeError("Map")
+	}
+	return
+}
+
+func (v Holder) Key(key string) (result Holder, err error) {
+	var val interface{}
+	if val, err = v.KeyVal(key); err == nil {
+		result = Holder{val, v.path.AppendKey(key)}
+	}
+	return
+}
+
+func (v Holder) SetKey(val interface{}, key string) (err error) {
+	vpi := bw.ValPathItem{Type: bw.ValPathItemKey, Key: key}
+	err = FromVal(v.val).SetPathVal(val, bw.ValPath{vpi})
+	return
+}
+
+func (v Holder) Idx(idx int) (result Holder, err error) {
+	var val interface{}
+	if val, err = v.IdxVal(idx); err == nil {
+		result = Holder{val, v.path.AppendIdx(idx)}
 	}
 	return
 }
@@ -436,7 +543,7 @@ func (v Def) MarshalJSON() ([]byte, error) {
 func DefFrom(def interface{}) (result Def) {
 	var err error
 	var compileDefResult *Def
-	if compileDefResult, err = compileDef(valPath{
+	if compileDefResult, err = compileDef(Holder{
 		def,
 		bw.ValPath{bw.ValPathItem{
 			Type: bw.ValPathItemVar, Key: "def",

@@ -1,7 +1,6 @@
 package bwval
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/baza-winner/bwcore/ansi"
@@ -28,36 +27,6 @@ func varsJSON(path bw.ValPath, optVars []map[string]interface{}) (result string)
 	return
 }
 
-type Holder struct {
-	val interface{}
-}
-
-var (
-	ansiIsNotOfType string
-	// ansiValAtPathIsNotOfType       string
-	ansiMustPathValFailed string
-	ansiType              string
-	// ansiValAtPathIsNotOfTypes      string
-	ansiValAtPathIsNil string
-	// ansisReadOnlyPath              string
-	// ansiValAtPathHasNotEnoughRange string
-	ansiVars                 string
-	ansiVarsIsNil            string
-	ansiMustSetPathValFailed string
-)
-
-func init() {
-	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
-	ansiMustSetPathValFailed = ansi.String("Failed to set <ansiPath>%s<ansi> of <ansiVal>%s<ansi>%s: {Error}")
-	ansiMustPathValFailed = ansi.String("Failed to get <ansiPath>%s<ansi> of <ansiVal>%s<ansi>%s: {Error}")
-	valPathPrefix := "<ansiPath>%s<ansi> "
-	ansiValAtPathIsNil = ansi.String(valPathPrefix + "is <ansiErr>nil")
-
-	ansiType = ansi.String("<ansiType>%s")
-	ansiVars = ansi.String(" with <ansiVar>vars<ansi> <ansiVal>%s<ansi>")
-	ansiVarsIsNil = ansi.String("<ansiVar>vars<ansi> is <ansiErr>nil")
-}
-
 func hasVar(path bw.ValPath) bool {
 	for _, vpi := range path {
 		switch vpi.Type {
@@ -72,7 +41,7 @@ func hasVar(path bw.ValPath) bool {
 	return false
 }
 
-func simplifyPath(v *Holder, path bw.ValPath, optVars []map[string]interface{}) (result bw.ValPath, err error) {
+func (v *Holder) simplifyPath(path bw.ValPath, optVars []map[string]interface{}) (result bw.ValPath, err error) {
 	result = bw.ValPath{}
 	for _, vpi := range path {
 		if vpi.Type != bw.ValPathItemPath {
@@ -87,7 +56,7 @@ func simplifyPath(v *Holder, path bw.ValPath, optVars []map[string]interface{}) 
 				case ValInt:
 					result = append(result, bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: MustInt(val)})
 				default:
-					err = valPath{val, vpi.Path}.notOfTypeError("Int", "String")
+					err = Holder{val, vpi.Path}.notOfTypeError("Int", "String")
 				}
 			}
 		}
@@ -95,21 +64,12 @@ func simplifyPath(v *Holder, path bw.ValPath, optVars []map[string]interface{}) 
 	return
 }
 
-var typeSeparator = map[bool]string{
-	true:  " or ",
-	false: ", ",
-}
-
-func valAtPathIsNil(path bw.ValPath) error {
-	return bwerr.From(ansiValAtPathIsNil, path)
-}
-
-func (v *Holder) getArray(idx int, result interface{}, resultPath bw.ValPath) ([]interface{}, int, error) {
+func (v *Holder) arrayIdx(idx int) ([]interface{}, int, error) {
 	var err error
 	var ok bool
 	var vals []interface{}
-	if vals, ok = Array(result); !ok {
-		err = valPath{result, resultPath}.notOfTypeError("Array")
+	if vals, ok = Array(v.val); !ok {
+		err = v.notOfTypeError("Array")
 	} else {
 		l := len(vals)
 		minIdx := -l
@@ -123,35 +83,23 @@ func (v *Holder) getArray(idx int, result interface{}, resultPath bw.ValPath) ([
 	return vals, idx, err
 }
 
-func (v *Holder) getMap(result interface{}, resultPath bw.ValPath) (map[string]interface{}, error) {
-	var err error
-	var ok bool
-	var m map[string]interface{}
-	if m, ok = Map(result); !ok {
-		err = valPath{result, resultPath}.notOfTypeError("Map")
-	}
-	return m, err
-}
-
-func (v *Holder) byKey(val interface{}, path bw.ValPath, i int, key string) (result interface{}, err error) {
-	result = val
-	if result == nil {
+func (v Holder) KeyVal(key string) (result interface{}, err error) {
+	if v.val == nil {
 		return
 	}
 	var m map[string]interface{}
-	if m, err = v.getMap(result, path[:i+1]); err == nil {
+	if m, err = v.Map(); err == nil {
 		result = m[key]
 	}
 	return
 }
 
-func (v *Holder) byIdx(val interface{}, path bw.ValPath, i int, idx int) (result interface{}, err error) {
-	result = val
-	if result == nil {
+func (v Holder) IdxVal(idx int) (result interface{}, err error) {
+	if v.val == nil {
 		return
 	}
 	var vals []interface{}
-	if vals, idx, err = v.getArray(idx, result, path[:i+1]); err == nil {
+	if vals, idx, err = v.arrayIdx(idx); err == nil {
 		if idx < 0 {
 			result = nil
 		} else {
@@ -163,248 +111,11 @@ func (v *Holder) byIdx(val interface{}, path bw.ValPath, i int, idx int) (result
 
 // ============================================================================
 
-type valPath struct {
-	val  interface{}
-	path bw.ValPath
-}
-
-func (v valPath) MarshalJSON() ([]byte, error) {
-	result := map[string]interface{}{}
-	result["val"] = v.val
-	result["path"] = v.path
-	return json.Marshal(result)
-}
-
-func (v valPath) ansiString() string {
+func (v Holder) ansiString() (result string) {
 	return fmt.Sprintf(ansi.String("<ansiPath>%s<ansi> (<ansiVal>%s<ansi>)"), v.path, bwjson.Pretty(v.val))
 }
 
-func (v valPath) Bool() (result bool, err error) {
-	var ok bool
-	if result, ok = Bool(v.val); !ok {
-		err = v.notOfTypeError("Bool")
-	}
-	return
-}
-
-func (v valPath) String() (result string, err error) {
-	var ok bool
-	if result, ok = String(v.val); !ok {
-		err = v.notOfTypeError("String")
-	}
-	return
-}
-
-func (v valPath) Int() (result int, err error) {
-	var ok bool
-	if result, ok = Int(v.val); !ok {
-		err = v.notOfTypeError("Int")
-	}
-	return
-}
-
-func (v valPath) Number() (result float64, err error) {
-	var ok bool
-	if result, ok = Number(v.val); !ok {
-		err = v.notOfTypeError("Number")
-	}
-	return
-}
-
-func (v valPath) Array() (result []interface{}, err error) {
-	var ok bool
-	if result, ok = Array(v.val); !ok {
-		err = v.notOfTypeError("Array")
-	}
-	return
-}
-
-func (v valPath) ArrayOfString() (result []string, err error) {
-	var vals interface{}
-	if vals, err = v.Array(); err != nil {
-		return
-	}
-	result = []string{}
-	var s string
-	for i := range MustArray(vals) {
-		vp, _ := v.Idx(i)
-		if s, err = vp.String(); err != nil {
-			return
-		}
-		result = append(result, s)
-	}
-	return
-}
-
-func (v valPath) Map() (result map[string]interface{}, err error) {
-	var ok bool
-	if result, ok = Map(v.val); !ok {
-		err = v.notOfTypeError("Map")
-	}
-	return
-}
-
-func (v valPath) Key(key string) (result valPath, err error) {
-	var val interface{}
-	vpi := bw.ValPathItem{Type: bw.ValPathItemKey, Key: key}
-	if val, err = FromVal(v.val).PathVal(bw.ValPath{vpi}); err == nil {
-		result = valPath{val, append(v.path, vpi)}
-	}
-	return
-}
-
-func (v valPath) SetKey(val interface{}, key string) (err error) {
-	vpi := bw.ValPathItem{Type: bw.ValPathItemKey, Key: key}
-	err = FromVal(v.val).SetPathVal(val, bw.ValPath{vpi})
-	return
-}
-
-func (v valPath) Idx(idx int) (result valPath, err error) {
-	var val interface{}
-	vpi := bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: idx}
-	if val, err = FromVal(v.val).PathVal(bw.ValPath{vpi}); err == nil {
-		result = valPath{val, append(v.path, vpi)}
-	}
-	return
-}
-
-func (v valPath) notOfTypeError(expectedType string, optExpectedType ...string) (result error) {
-	if len(optExpectedType) == 0 {
-		result = bwerr.From(v.ansiString()+ansi.String(" is not <ansiType>%s"), expectedType)
-	} else {
-		expectedTypes := fmt.Sprintf(ansiType, expectedType)
-		for i, elem := range optExpectedType {
-			expectedTypes += typeSeparator[i == len(optExpectedType)-1] + fmt.Sprintf(ansiType, elem)
-		}
-		result = bwerr.From(v.ansiString()+ansi.String(" is none of %s"), expectedTypes)
-	}
-	return
-}
-
-func (v valPath) notEnoughRangeError(l int, idx int) error {
-	return bwerr.From(
-		v.ansiString()+
-			ansi.String(" has not enough length (<ansiVal>%d<ansi>) for idx (<ansiVal>%d)"),
-		l, idx,
-	)
-}
-
-func (v valPath) nonSupportedValueError() error {
-	return bwerr.From(v.ansiString() + ansi.String(" is <ansiErr>non supported<ansi> value"))
-}
-
-// func nilError(path bw.ValPath) error {
-// 	return bwerr.From(ansi.String("<ansiPath>%s<ansi> is <ansiErr>nil"), path)
-// }
-
-func readonlyPathError(path bw.ValPath) error {
-	return bwerr.From(ansi.String("<ansiPath>%s<ansi> is <ansiErr>readonly path"), path)
-}
-
-type RangeKindValue uint8
-
-const (
-	RangeNo RangeKindValue = iota
-	RangeMin
-	RangeMax
-	RangeMinMax
-)
-
-func RangeKind(v Range) (result RangeKindValue) {
-	if v != nil {
-		if v.Min() != nil {
-			if v.Max() != nil {
-				result = RangeMinMax
-			} else {
-				result = RangeMin
-			}
-		} else if v.Max() != nil {
-			result = RangeMax
-		}
-	}
-	return
-}
-
-func RangeString(v Range) (result string) {
-	if v != nil {
-		switch RangeKind(v) {
-		case RangeMinMax:
-			result = fmt.Sprintf("%s..%s", bwjson.Pretty(v.Min()), bwjson.Pretty(v.Max()))
-		case RangeMin:
-			result = fmt.Sprintf("%s..", bwjson.Pretty(v.Min()))
-		case RangeMax:
-			result = fmt.Sprintf("..%s", bwjson.Pretty(v.Max()))
-		}
-	}
-	return
-}
-
-func RangeMarshalJSON(v Range) ([]byte, error) {
-	return json.Marshal(RangeString(v))
-}
-
-// Range - интерфейс для IntRange/NumberRange
-type Range interface {
-	ValKind() ValKind
-	Min() interface{}
-	Max() interface{}
-}
-
-type IntRange struct {
-	MinPtr *int
-	MaxPtr *int
-}
-
-func (v IntRange) ValKind() ValKind {
-	return ValInt
-}
-
-func (v IntRange) Min() (result interface{}) {
-	if v.MinPtr != nil {
-		result = *v.MinPtr
-	}
-	return
-}
-
-func (v IntRange) Max() (result interface{}) {
-	if v.MaxPtr != nil {
-		result = *v.MaxPtr
-	}
-	return
-}
-
-func (v IntRange) MarshalJSON() ([]byte, error) {
-	return RangeMarshalJSON(v)
-}
-
-type NumberRange struct {
-	MinPtr *float64
-	MaxPtr *float64
-}
-
-func (v NumberRange) ValKind() ValKind {
-	return ValNumber
-}
-
-func (v NumberRange) Min() (result interface{}) {
-	if v.MinPtr != nil {
-		result = *v.MinPtr
-	}
-	return
-}
-
-func (v NumberRange) Max() (result interface{}) {
-	if v.MaxPtr != nil {
-		result = *v.MaxPtr
-	}
-	return
-}
-
-func (v NumberRange) MarshalJSON() ([]byte, error) {
-	return RangeMarshalJSON(v)
-}
-
-func (v valPath) inRange(rng Range) (result bool) {
+func (v Holder) inRange(rng Range) (result bool) {
 	rangeKind := RangeKind(rng)
 	if rangeKind == RangeNo {
 		result = true
@@ -434,52 +145,15 @@ func (v valPath) inRange(rng Range) (result bool) {
 	return
 }
 
-func (v valPath) outOfRangeError(rng Range) (err error) {
-	var s string
-	switch RangeKind(rng) {
-	case RangeMinMax:
-		s = ansi.String(" is <ansiErr>out of range<ansi> <ansiVal>%s")
-	case RangeMin:
-		s = ansi.String(" is <ansiErr>less<ansi> than<ansiVal>%s")
-	case RangeMax:
-		s = ansi.String(" is <ansiErr>more<ansi> than<ansiVal>%s")
-	}
-	if len(s) > 0 {
-		err = bwerr.From(v.ansiString()+s, RangeString(rng))
-	}
-	return
-}
-
-func (v valPath) maxLessThanMinError() error {
-	return bwerr.From(v.ansiString() + "<ansiVar>max<ansi> must not be less then <ansiVar>min")
-}
-
-func (v valPath) unexpectedKeysError(unexpectedKeys []string) (err error) {
-	var fmtString string
-	var fmtArg interface{}
-	switch len(unexpectedKeys) {
-	case 0:
-	case 1:
-		fmtString = ansi.String(`has unexpected key <ansiVal>%s`)
-		fmtArg = unexpectedKeys[0]
-	default:
-		fmtString = `has unexpected keys <ansiVal>%s`
-		fmtArg = bwjson.Pretty(unexpectedKeys)
-	}
-	if len(fmtString) > 0 {
-		err = bwerr.From(v.ansiString()+fmtString, fmtArg)
-	}
-	return
-}
-
 // ============================================================================
 
-func compileDef(def valPath) (result *Def, err error) {
+func compileDef(def Holder) (result *Def, err error) {
 	if def.val == nil {
-		err = valAtPathIsNil(def.path)
+		err = def.wrongValError()
+		// err = valAtPathIsNil(def.path)
 		return
 	}
-	var defType valPath
+	var defType Holder
 	var isSimple bool
 	validDefKeys := bwset.String{}
 	switch _, kind := Kind(def.val); kind {
@@ -509,7 +183,7 @@ func compileDef(def valPath) (result *Def, err error) {
 
 	result = &Def{Types: types}
 	if !isSimple {
-		var vp valPath
+		var vp Holder
 		if types.Has(deftype.String) {
 			var ss []string
 			validDefKeys.Add("enum")
@@ -522,7 +196,7 @@ func compileDef(def valPath) (result *Def, err error) {
 			}
 		}
 		if types.Has(deftype.Map) {
-			var keysVp valPath
+			var keysVp Holder
 			validDefKeys.Add("keys")
 			var m map[string]interface{}
 			if keysVp, err = def.Key("keys"); err != nil || keysVp.val == nil {
@@ -531,7 +205,7 @@ func compileDef(def valPath) (result *Def, err error) {
 				return
 			} else {
 				result.Keys = map[string]Def{}
-				var vp valPath
+				var vp Holder
 				var keyDef *Def
 				for k := range m {
 					vp, _ = keysVp.Key(k)
@@ -657,9 +331,9 @@ func compileDef(def valPath) (result *Def, err error) {
 		if unexpectedKeys := bwmap.MustUnexpectedKeys(def.val, validDefKeys); unexpectedKeys != nil {
 			err = bwerr.From(
 				ansi.String(
-					"<ansiPath>%s<ansi> (<ansiVal>%s<ansi>) has conflicting keys: <ansiErr>isOptional<ansi> and <ansiErr>default<ansi>",
+					"<ansiPath>%s<ansi> (<ansiVal>%s<ansi>) has unexpected keys: <ansiVal>%s",
 				),
-				def.path, bwjson.Pretty(result),
+				def.path, bwjson.Pretty(unexpectedKeys),
 			)
 			return
 		}
@@ -667,7 +341,7 @@ func compileDef(def valPath) (result *Def, err error) {
 	return
 }
 
-func getDeftype(defType valPath, isSimple bool) (result deftype.Set, err error) {
+func getDeftype(defType Holder, isSimple bool) (result deftype.Set, err error) {
 	var ss []string
 	var isString bool
 	switch val, kind := Kind(defType.val); kind {
@@ -716,7 +390,7 @@ func PtrToNumber(i float64) *float64 {
 
 // ============================================================================
 
-func (v valPath) ValidVal(def Def, optSkipArrayOf ...bool) (result interface{}, err error) {
+func (v Holder) ValidVal(def Def, optSkipArrayOf ...bool) (result interface{}, err error) {
 	skipArrayOf := optSkipArrayOf != nil && optSkipArrayOf[0]
 	if v.val == nil {
 		if !skipArrayOf {
@@ -840,7 +514,7 @@ func (v valPath) ValidVal(def Def, optSkipArrayOf ...bool) (result interface{}, 
 	return
 }
 
-func (v valPath) mapHelper(key string, elemDef Def) (err error) {
+func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 	vp, _ := v.Key(key)
 	var val interface{}
 	if val, err = vp.ValidVal(elemDef); err != nil {
@@ -853,8 +527,8 @@ func (v valPath) mapHelper(key string, elemDef Def) (err error) {
 	return
 }
 
-// func (v valPath) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (err error) {
-// 	var vp valPath
+// func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (err error) {
+// 	var vp Holder
 // 	for i := range MustArray(v.val) {
 // 		vp, _ = v.Idx(i)
 // 		if _, err = vp.ValidVal(elemDef, optSkipArrayOf...); err != nil {
@@ -864,10 +538,10 @@ func (v valPath) mapHelper(key string, elemDef Def) (err error) {
 // 	return
 // }
 
-func (v valPath) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (result interface{}, err error) {
+func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (result interface{}, err error) {
 	arr := MustArray(v.val)
 	newArr := make([]interface{}, 0, len(arr))
-	var vp valPath
+	var vp Holder
 	for i := range arr {
 		vp, _ = v.Idx(i)
 		var val interface{}

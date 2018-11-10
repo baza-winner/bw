@@ -168,7 +168,7 @@ func TestMustSetPathVal(t *testing.T) {
 				bwval.FromVal(nil),
 				nil,
 			},
-			Panic: "Failed to set \x1b[38;5;252;1msome\x1b[0m of \x1b[96;1mnull\x1b[0m: \x1b[38;5;252;1m.\x1b[0m is \x1b[91;1mnil\x1b[0m\x1b[0m",
+			Panic: "Failed to set \x1b[38;5;252;1msome\x1b[0m of \x1b[96;1mnull\x1b[0m: \x1b[38;5;252;1m.\x1b[0m is \x1b[91;1m(interface {})<nil>\x1b[0m\x1b[0m",
 		},
 		"err: nor Int, neither String": {
 			In: []interface{}{
@@ -230,7 +230,7 @@ func TestMustSetPathVal(t *testing.T) {
 				bwval.FromVal(nil),
 				nil,
 			},
-			Panic: "Failed to set \x1b[38;5;252;1msome.1.key\x1b[0m of \x1b[96;1m{\n  \"some\": [\n    0\n  ]\n}\x1b[0m: \x1b[38;5;252;1msome.1\x1b[0m is \x1b[91;1mnil\x1b[0m\x1b[0m",
+			Panic: "Failed to set \x1b[38;5;252;1msome.1.key\x1b[0m of \x1b[96;1m{\n  \"some\": [\n    0\n  ]\n}\x1b[0m: \x1b[38;5;252;1msome.1\x1b[0m is \x1b[91;1m(interface {})<nil>\x1b[0m\x1b[0m",
 		},
 		"ansiValAtPathHasNotEnoughRange": {
 			In: []interface{}{
@@ -731,7 +731,7 @@ func TestDefFrom(t *testing.T) {
 		"nil": {
 			In:    []interface{}{func(testName string) interface{} { return bwval.MustPathVal(bwval.From(testName), bwval.PathFrom(".")) }},
 			Out:   []interface{}{bwval.Def{}},
-			Panic: "\x1b[38;5;252;1m$def\x1b[0m is \x1b[91;1mnil\x1b[0m",
+			Panic: "\x1b[38;5;252;1m$def\x1b[0m is \x1b[91;1m(interface {})<nil>\x1b[0m",
 		},
 		"true": {
 			In:    []interface{}{func(testName string) interface{} { return bwval.MustPathVal(bwval.From(testName), bwval.PathFrom(".")) }},
