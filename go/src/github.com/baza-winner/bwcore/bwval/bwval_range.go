@@ -40,6 +40,38 @@ func RangeString(v Range) (result string) {
 			result = fmt.Sprintf("%s..", bwjson.Pretty(v.Min()))
 		case RangeMax:
 			result = fmt.Sprintf("..%s", bwjson.Pretty(v.Max()))
+		default:
+			result = ".."
+		}
+	}
+	return
+}
+
+func RangeContains(v Range, val interface{}) (result bool) {
+	rangeKind := RangeKind(v)
+	if rangeKind == RangeNo {
+		result = true
+	} else if _, vk := Kind(val); vk == ValNumber || v.ValKind() == ValNumber {
+		if n, ok := Number(val); ok {
+			switch rangeKind {
+			case RangeMinMax:
+				result = MustNumber(v.Min()) <= n && n <= MustNumber(v.Max())
+			case RangeMin:
+				result = MustNumber(v.Min()) <= n
+			case RangeMax:
+				result = n <= MustNumber(v.Max())
+			}
+		}
+	} else {
+		if n, ok := Int(val); ok {
+			switch rangeKind {
+			case RangeMinMax:
+				result = MustInt(v.Min()) <= n && n <= MustInt(v.Max())
+			case RangeMin:
+				result = MustInt(v.Min()) <= n
+			case RangeMax:
+				result = n <= MustInt(v.Max())
+			}
 		}
 	}
 	return
@@ -109,3 +141,15 @@ func (v NumberRange) Max() (result interface{}) {
 func (v NumberRange) MarshalJSON() ([]byte, error) {
 	return RangeMarshalJSON(v)
 }
+
+// ============================================================================
+
+func PtrToInt(i int) *int {
+	return &i
+}
+
+func PtrToNumber(i float64) *float64 {
+	return &i
+}
+
+// ============================================================================

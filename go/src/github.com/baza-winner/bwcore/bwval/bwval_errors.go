@@ -104,5 +104,5 @@ func (v Holder) unexpectedKeysError(unexpectedKeys []string) (err error) {
 }
 
 func (v Holder) wrongValError() error {
-	return bwerr.From(ansiWrongVal, v.path, v.val)
+	return bwerr.From(ansiWrongVal, v.Path, v.Val)
 }
