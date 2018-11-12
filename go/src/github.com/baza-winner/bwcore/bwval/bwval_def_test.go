@@ -151,6 +151,15 @@ func TestDefFrom(t *testing.T) {
 				IsOptional: true,
 			}},
 		},
+		`{ enum <Bool Int> }`: {
+			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
+			Out: []interface{}{bwval.Def{
+				Types:      deftype.From(deftype.ArrayOf, deftype.Int),
+				Default:    []interface{}{1, 2, 3},
+				IsOptional: true,
+			}},
+			Panic: "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1m{\n  \"enum\": [\n    \"Bool\",\n    \"Int\"\n  ]\n}\x1b[0m)\x1b[0m has no key \x1b[96;1mtype\x1b[0m",
+		},
 	}
 
 	bwmap.CropMap(tests)

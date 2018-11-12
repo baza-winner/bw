@@ -2,12 +2,9 @@ package bwval
 
 import (
 	"encoding/json"
-	"fmt"
 
-	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwjson"
 )
 
 // ============================================================================
@@ -62,7 +59,7 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 				case []interface{}:
 					result = len(t)
 				default:
-					err = Holder{result, path[:i]}.notOfTypeError("Map", "Array")
+					err = Holder{result, path[:i]}.notOfValKindError("Map", "Array")
 				}
 			}
 		}
@@ -149,7 +146,7 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 func (v Holder) Bool() (result bool, err error) {
 	var ok bool
 	if result, ok = Bool(v.Val); !ok {
-		err = v.notOfTypeError("Bool")
+		err = v.notOfValKindError("Bool")
 	}
 	return
 }
@@ -165,7 +162,7 @@ func (v Holder) MustBool() (result bool) {
 func (v Holder) String() (result string, err error) {
 	var ok bool
 	if result, ok = String(v.Val); !ok {
-		err = v.notOfTypeError("String")
+		err = v.notOfValKindError("String")
 	}
 	return
 }
@@ -181,7 +178,7 @@ func (v Holder) MustString() (result string) {
 func (v Holder) Int() (result int, err error) {
 	var ok bool
 	if result, ok = Int(v.Val); !ok {
-		err = v.notOfTypeError("Int")
+		err = v.notOfValKindError("Int")
 	}
 	return
 }
@@ -197,7 +194,7 @@ func (v Holder) MustInt() (result int) {
 func (v Holder) Number() (result float64, err error) {
 	var ok bool
 	if result, ok = Number(v.Val); !ok {
-		err = v.notOfTypeError("Number")
+		err = v.notOfValKindError("Number")
 	}
 	return
 }
@@ -213,7 +210,7 @@ func (v Holder) MustNumber() (result float64) {
 func (v Holder) Array() (result []interface{}, err error) {
 	var ok bool
 	if result, ok = Array(v.Val); !ok {
-		err = v.notOfTypeError("Array")
+		err = v.notOfValKindError("Array")
 	}
 	return
 }
@@ -254,7 +251,7 @@ func (v Holder) MustArrayOfString() (result []string) {
 func (v Holder) Map() (result map[string]interface{}, err error) {
 	var ok bool
 	if result, ok = Map(v.Val); !ok {
-		err = v.notOfTypeError("Map")
+		err = v.notOfValKindError("Map")
 	}
 	return
 }
@@ -267,10 +264,18 @@ func (v Holder) MustMap() (result map[string]interface{}) {
 	return
 }
 
-func (v Holder) Key(key string) (result Holder, err error) {
+func (v Holder) Key(key string, optDefaultVal ...interface{}) (result Holder, err error) {
 	var val interface{}
-	if val, err = v.KeyVal(key); err == nil {
+	if val, err = v.KeyVal(key, optDefaultVal...); err == nil {
 		result = Holder{val, v.Path.AppendKey(key)}
+	}
+	return
+}
+
+func (v Holder) MustKey(key string, optDefaultVal ...interface{}) (result Holder) {
+	var err error
+	if result, err = v.Key(key, optDefaultVal...); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
 }
@@ -304,13 +309,26 @@ func (v Holder) Idx(idx int) (result Holder, err error) {
 	return
 }
 
-func (v Holder) KeyVal(key string) (result interface{}, err error) {
+func (v Holder) KeyVal(key string, optDefaultVal ...interface{}) (result interface{}, err error) {
 	if v.Val == nil {
+		if len(optDefaultVal) > 0 {
+			result = optDefaultVal[0]
+		} else {
+			err = v.wrongValError()
+		}
 		return
 	}
 	var m map[string]interface{}
-	if m, err = v.Map(); err == nil {
-		result = m[key]
+	if m, err = v.Map(); err != nil {
+		return
+	}
+	var ok bool
+	if result, ok = m[key]; !ok {
+		if len(optDefaultVal) > 0 {
+			result = optDefaultVal[0]
+		} else {
+			err = v.hasNoKeyError(key)
+		}
 	}
 	return
 }
@@ -359,7 +377,7 @@ func (v *Holder) simplifyPath(path bw.ValPath, optVars []map[string]interface{})
 				case ValInt:
 					result = append(result, bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: MustInt(val)})
 				default:
-					err = Holder{val, vpi.Path}.notOfTypeError("Int", "String")
+					err = Holder{val, vpi.Path}.notOfValKindError("Int", "String")
 				}
 			}
 		}
@@ -372,7 +390,7 @@ func (v Holder) arrayIdx(idx int) ([]interface{}, int, error) {
 	var ok bool
 	var vals []interface{}
 	if vals, ok = Array(v.Val); !ok {
-		err = v.notOfTypeError("Array")
+		err = v.notOfValKindError("Array")
 	} else {
 		l := len(vals)
 		minIdx := -l
@@ -385,39 +403,5 @@ func (v Holder) arrayIdx(idx int) ([]interface{}, int, error) {
 	}
 	return vals, idx, err
 }
-
-func (v Holder) ansiString() (result string) {
-	return fmt.Sprintf(ansi.String("<ansiPath>%s<ansi> (<ansiVal>%s<ansi>)"), v.Path, bwjson.Pretty(v.Val))
-}
-
-// func (v Holder) inRange(rng Range) (result bool) {
-// 	rangeKind := RangeKind(rng)
-// 	if rangeKind == RangeNo {
-// 		result = true
-// 	} else if _, vk := Kind(v.Val); vk == ValNumber || rng.ValKind() == ValNumber {
-// 		if n, ok := Number(v.Val); ok {
-// 			switch rangeKind {
-// 			case RangeMinMax:
-// 				result = MustNumber(rng.Min()) <= n && n <= MustNumber(rng.Max())
-// 			case RangeMin:
-// 				result = MustNumber(rng.Min()) <= n
-// 			case RangeMax:
-// 				result = n <= MustNumber(rng.Max())
-// 			}
-// 		}
-// 	} else {
-// 		if n, ok := Int(v.Val); ok {
-// 			switch rangeKind {
-// 			case RangeMinMax:
-// 				result = MustInt(rng.Min()) <= n && n <= MustInt(rng.Max())
-// 			case RangeMin:
-// 				result = MustInt(rng.Min()) <= n
-// 			case RangeMax:
-// 				result = n <= MustInt(rng.Max())
-// 			}
-// 		}
-// 	}
-// 	return
-// }
 
 // ============================================================================

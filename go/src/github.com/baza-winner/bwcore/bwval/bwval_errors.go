@@ -17,6 +17,7 @@ var (
 	ansiVars                 string
 	ansiVarsIsNil            string
 	ansiMustSetPathValFailed string
+	ansiHasNoKey             string
 )
 
 func init() {
@@ -29,9 +30,18 @@ func init() {
 	ansiType = ansi.String("<ansiType>%s")
 	ansiVars = ansi.String(" with <ansiVar>vars<ansi> <ansiVal>%s<ansi>")
 	ansiVarsIsNil = ansi.String("<ansiVar>vars<ansi> is <ansiErr>nil")
+	ansiHasNoKey = ansi.String(" has no key <ansiVal>%s")
 }
 
-func (v Holder) notOfTypeError(expectedType string, optExpectedType ...string) (result error) {
+func (v Holder) ansiString() (result string) {
+	return fmt.Sprintf(ansi.String("<ansiPath>%s<ansi> (<ansiVal>%s<ansi>)"), v.Path, bwjson.Pretty(v.Val))
+}
+
+func (v Holder) hasNoKeyError(key string) error {
+	return bwerr.From(v.ansiString()+ansiHasNoKey, key)
+}
+
+func (v Holder) notOfValKindError(expectedValKind ValKind, optExpectedValKind ...ValKind) (result error) {
 	if len(optExpectedType) == 0 {
 		result = bwerr.From(v.ansiString()+ansi.String(" is not <ansiType>%s"), expectedType)
 	} else {
@@ -43,6 +53,19 @@ func (v Holder) notOfTypeError(expectedType string, optExpectedType ...string) (
 	}
 	return
 }
+
+// func (v Holder) notOfValKindError(expectedType string, optExpectedType ...string) (result error) {
+// 	if len(optExpectedType) == 0 {
+// 		result = bwerr.From(v.ansiString()+ansi.String(" is not <ansiType>%s"), expectedType)
+// 	} else {
+// 		expectedTypes := fmt.Sprintf(ansiType, expectedType)
+// 		for i, elem := range optExpectedType {
+// 			expectedTypes += typeSeparator[i == len(optExpectedType)-1] + fmt.Sprintf(ansiType, elem)
+// 		}
+// 		result = bwerr.From(v.ansiString()+ansi.String(" is none of %s"), expectedTypes)
+// 	}
+// 	return
+// }
 
 var typeSeparator = map[bool]string{
 	true:  " or ",

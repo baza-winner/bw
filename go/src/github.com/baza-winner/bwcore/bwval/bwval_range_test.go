@@ -115,28 +115,20 @@ func TestRangeContains(t *testing.T) {
 		bwval.RangeMinMax: {
 			min: bwval.PtrToInt(-1),
 			max: bwval.PtrToInt(2),
-			// i:   bwval.IntRange{MinPtr: bwval.PtrToInt(-1), MaxPtr: bwval.PtrToInt(2)},
-			// n:   bwval.NumberRange{MinPtr: bwval.PtrToNumber(-1), MaxPtr: bwval.PtrToNumber(2)},
 			in:  0,
 			out: -2,
 		},
 		bwval.RangeMin: {
 			min: bwval.PtrToInt(-1),
-			// i:   bwval.IntRange{MinPtr: bwval.PtrToInt(-1)},
-			// n:   bwval.NumberRange{MinPtr: bwval.PtrToNumber(-1)},
 			in:  0,
 			out: -2,
 		},
 		bwval.RangeMax: {
-			// i:   bwval.IntRange{MaxPtr: bwval.PtrToInt(2)},
-			// n:   bwval.NumberRange{MaxPtr: bwval.PtrToNumber(2)},
 			max: bwval.PtrToInt(2),
 			in:  0,
 			out: 3,
 		},
 		bwval.RangeNo: {
-			// i:   bwval.IntRange{},
-			// n:   bwval.NumberRange{},
 			in:  0,
 			out: 0,
 		},

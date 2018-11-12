@@ -110,71 +110,71 @@ func compileDef(def Holder) (result *Def, err error) {
 		if types.Has(deftype.String) {
 			var ss []string
 			validDefKeys.Add("enum")
-			if vp, err = def.Key("enum"); err != nil || vp.Val == nil {
-				err = nil
-			} else if ss, err = vp.ArrayOfString(); err != nil {
-				return
-			} else {
-				result.Enum = bwset.StringFromSlice(ss)
+			if vp = def.MustKey("enum", nil); vp.Val != nil {
+				if ss, err = vp.ArrayOfString(); err != nil {
+					return
+				} else {
+					result.Enum = bwset.StringFromSlice(ss)
+				}
 			}
 		}
 		if types.Has(deftype.Map) {
 			var keysVp Holder
 			validDefKeys.Add("keys")
 			var m map[string]interface{}
-			if keysVp, err = def.Key("keys"); err != nil || keysVp.Val == nil {
-				err = nil
-			} else if m, err = keysVp.Map(); err != nil {
-				return
-			} else {
-				result.Keys = map[string]Def{}
-				var vp Holder
-				var keyDef *Def
-				for k := range m {
-					vp, _ = keysVp.Key(k)
-					if keyDef, err = compileDef(vp); err != nil {
-						return
-					} else {
-						result.Keys[k] = *keyDef
+			if keysVp = def.MustKey("keys", nil); keysVp.Val != nil {
+				if m, err = keysVp.Map(); err != nil {
+					return
+				} else {
+					result.Keys = map[string]Def{}
+					var vp Holder
+					var keyDef *Def
+					for k := range m {
+						vp, _ = keysVp.Key(k)
+						if keyDef, err = compileDef(vp); err != nil {
+							return
+						} else {
+							result.Keys[k] = *keyDef
+						}
 					}
 				}
 			}
 		}
 		if types.Has(deftype.Array) {
 			validDefKeys.Add("arrayElem")
-			if vp, err = def.Key("arrayElem"); err != nil || vp.Val == nil {
-				err = nil
-			} else if result.ArrayElem, err = compileDef(vp); err != nil {
-				return
+			if vp = def.MustKey("arrayElem", nil); vp.Val != nil {
+				if result.ArrayElem, err = compileDef(vp); err != nil {
+					return
+				}
 			}
 		}
 		if types.Has(deftype.Map) || types.Has(deftype.Array) && result.ArrayElem == nil {
 			validDefKeys.Add("elem")
-			if vp, err = def.Key("elem"); err != nil || vp.Val == nil {
-				err = nil
-			} else if result.Elem, err = compileDef(vp); err != nil {
-				return
+			if vp = def.MustKey("elem", nil); vp.Val != nil {
+				if result.Elem, err = compileDef(vp); err != nil {
+					return
+				}
 			}
 		}
 		if types.Has(deftype.Int) {
 			validDefKeys.Add("min", "max")
 			rng := IntRange{}
 			var limCount, n int
-			if vp, err = def.Key("min"); err != nil || vp.Val == nil {
-				err = nil
-			} else if n, err = vp.Int(); err != nil {
-				return
-			} else {
-				rng.MinPtr = PtrToInt(n)
-				limCount++
+			if vp = def.MustKey("min", nil); vp.Val != nil {
+				if n, err = vp.Int(); err != nil {
+					return
+				} else {
+					rng.MinPtr = PtrToInt(n)
+					limCount++
+				}
 			}
-			if vp, err = def.Key("max"); err != nil || vp.Val == nil {
-				err = nil
-			} else if n, err = vp.Int(); err != nil {
-				return
-			} else {
-				rng.MaxPtr = PtrToInt(n)
-				limCount++
+			if vp = def.MustKey("max", nil); vp.Val != nil {
+				if n, err = vp.Int(); err != nil {
+					return
+				} else {
+					rng.MaxPtr = PtrToInt(n)
+					limCount++
+				}
 			}
 			if limCount == 2 && *(rng.MinPtr) > *(rng.MaxPtr) {
 				err = def.maxLessThanMinError()
