@@ -6,6 +6,7 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwparse"
 	"github.com/baza-winner/bwcore/bwstr"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
@@ -25,18 +26,37 @@ func MustParse(s string, optVars ...map[string]interface{}) (result interface{})
 
 // Parse превращает строку в interface{}-значение одной из следующих разновидностей (bwval.Kind()): Nil, Bool, Int, String, Map, Array
 func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err error) {
+	p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+	if result, err = RunPfa(nil, p, Begin, None); err != nil {
+		return
+	}
 	var (
-		primary         PrimaryState
-		secondary       SecondaryState
+		isEOF bool
+		r     rune
+	)
+	r, isEOF, _ = p.Rune()
+	for !isEOF {
+		if !unicode.IsSpace(r) {
+			err = p.Unexpected(p.Curr)
+			return
+		}
+		_ = p.PullRune()
+		r, isEOF, _ = p.Rune()
+	}
+	return
+}
+
+// ============================================================================
+
+func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, secondary SecondaryState) (result interface{}, err error) {
+	var (
 		needFinish      bool
 		skipPostProcess bool
 		isEOF           bool
 		ok              bool
 		r               rune
 		r2              rune
-		stack           []StackItem
 	)
-	p := runeprovider.ProxyFrom(runeprovider.FromString(s))
 	for primary != End {
 		_ = p.PullRune()
 		r, isEOF, _ = p.Rune()
@@ -80,15 +100,6 @@ func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err
 			case !isEOF:
 				stack[len(stack)-1].S += string(r)
 			}
-		case ExpectContentOf:
-			switch {
-			case r == stack[len(stack)-1].Delimiter:
-				needFinish = true
-			case r == '\\':
-				primary = ExpectEscapedContentOf
-			case !isEOF:
-				stack[len(stack)-1].S += string(r)
-			}
 		case ExpectDigit:
 			switch {
 			case unicode.IsDigit(r) && secondary == None:
@@ -123,31 +134,18 @@ func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err
 					Kind:      ItemKey,
 					Delimiter: r,
 				})
-				primary = ExpectContentOf
+				if stack[len(stack)-1].S, err = bwparse.ParseString(p); err != nil {
+					return
+				}
+				needFinish = true
 			case r == ',' && secondary == orMapValueSeparator:
 				primary = ExpectSpaceOrMapKey
 				secondary = None
 			case r == stack[len(stack)-1].Delimiter && stack[len(stack)-1].Kind == ItemMap:
 				needFinish = true
 			}
-		case ExpectEscapedContentOf:
-			switch {
-			case r == '"' || r == '\'' || r == '\\':
-				stack[len(stack)-1].S += string(r)
-			case stack[len(stack)-1].Delimiter == '"':
-				if r2, ok = EscapeRunes[r]; ok {
-					stack[len(stack)-1].S += string(r2)
-				} else {
-					err = p.Unexpected(p.Curr)
-					return
-				}
-			}
-			primary = ExpectContentOf
 		case Begin:
 			switch {
-			case isEOF && len(stack) == 0:
-				primary = End
-				secondary = None
 			case r == '=' && secondary == orMapKeySeparator:
 				primary = ExpectRocket
 				secondary = None
@@ -209,7 +207,10 @@ func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err
 					Kind:      ItemString,
 					Delimiter: r,
 				})
-				primary = ExpectContentOf
+				if stack[len(stack)-1].S, err = bwparse.ParseString(p); err != nil {
+					return
+				}
+				needFinish = true
 			case unicode.IsLetter(r) || r == '_':
 				stack = append(stack, StackItem{
 					PosStruct: p.Curr,
@@ -225,12 +226,8 @@ func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err
 		default:
 			bwerr.Unreachable()
 		}
-		if primary != End && p.Curr.IsEOF {
-			err = p.Unexpected(p.Curr)
-			return
-		}
 		if trace != nil {
-			trace(r, primary, secondary, stack)
+			trace(r, primary, secondary, stack, "needFinish", needFinish)
 		}
 		if needFinish {
 			skipPostProcess = false
@@ -277,14 +274,9 @@ func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err
 				}
 			}
 
-			// if trace {
-			// 	bwdebug.Print(
-			// 		"skipPostProcess", skipPostProcess,
-			// 		"primary", primary.String(),
-			// 		"secondary", secondary.String(),
-			// 		"stack", bwjson.Pretty(stack),
-			// 	)
-			// }
+			if trace != nil {
+				trace(r, primary, secondary, stack, "skipPostProcess", skipPostProcess)
+			}
 			if !skipPostProcess {
 				switch len(stack) {
 				case 0:
@@ -325,34 +317,72 @@ func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err
 					}
 					stack = stack[:len(stack)-1]
 				}
-				// if trace {
-				// 	bwdebug.Print(
-				// 		"primary", primary.String(),
-				// 		"secondary", secondary.String(),
-				// 		"stack", bwjson.Pretty(stack),
-				// 	)
-				// }
+				if trace != nil {
+					trace(r, primary, secondary, stack, "-", false)
+				}
 			}
 		}
-	}
-	for !isEOF {
-		if !unicode.IsSpace(r) {
+		if primary != End && p.Curr.IsEOF {
 			err = p.Unexpected(p.Curr)
 			return
 		}
-		_ = p.PullRune()
-		r, isEOF, _ = p.Rune()
 	}
-	if len(stack) != 1 {
-		err = p.Unexpected(p.Curr)
-	} else {
-		result = stack[0].Result
-	}
+	result = stack[0].Result
 	return
 }
 
-// ============================================================================
+//go:generate stringer -type=PrimaryState,SecondaryState,ItemKind
 
-func RunPfa() {
+var trace func(r rune, primary PrimaryState, secondary SecondaryState, stack []StackItem, boolVarName string, boolVarVal bool)
 
+type PrimaryState uint8
+
+const (
+	Begin PrimaryState = iota
+	ExpectSpaceOrQwItemOrDelimiter
+	ExpectSpaceOrMapKey
+	ExpectEndOfQwItem
+	ExpectWord
+	ExpectRocket
+	ExpectDigit
+	End
+)
+
+type SecondaryState uint8
+
+const (
+	None SecondaryState = iota
+	orArrayItemSeparator
+	orMapKeySeparator
+	orMapValueSeparator
+	orUnderscoreOrDot
+	orUnderscore
+)
+
+type ItemKind uint8
+
+const (
+	ItemString ItemKind = iota
+	ItemQw
+	ItemQwItem
+	ItemNumber
+	ItemWord
+	ItemKey
+	ItemMap
+	ItemArray
+)
+
+type StackItem struct {
+	PosStruct runeprovider.PosStruct
+	Kind      ItemKind
+	S         string
+	Result    interface{}
+	Delimiter rune
+}
+
+var Braces = map[rune]rune{
+	'(': ')',
+	'{': '}',
+	'<': '>',
+	'[': ']',
 }

@@ -61,6 +61,6 @@ func TestMustParse(t *testing.T) {
 	}
 
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "{ val: nil def: Array")
+	// bwmap.CropMap(tests, "{ key => \"\\\"value\\n\", 'bool': true keyword Bool}")
 	bwtesting.BwRunTests(t, val.MustParse, tests)
 }

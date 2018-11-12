@@ -10,21 +10,22 @@ import (
 )
 
 func init() {
-	trace = func(r rune, primary PrimaryState, secondary SecondaryState, stack []stackItem) {
+	trace = func(r rune, primary PrimaryState, secondary SecondaryState, stack []StackItem, boolVarName string, boolVarVal bool) {
 		bwdebug.Print(
 			"r", string(r),
 			"primary", primary.String(),
 			"secondary", secondary.String(),
+			boolVarName, boolVarVal,
 			"stack", bwjson.Pretty(stack),
 		)
 	}
 }
 
-func (v stackItem) MarshalJSON() ([]byte, error) {
+func (v StackItem) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
-	result["it"] = v.it.String()
-	result["s"] = v.s
-	result["delimiter"] = string(v.delimiter)
-	result["result"] = v.result
+	result["Kind"] = v.Kind.String()
+	result["S"] = v.S
+	result["Delimiter"] = string(v.Delimiter)
+	result["Result"] = v.Result
 	return json.Marshal(result)
 }
