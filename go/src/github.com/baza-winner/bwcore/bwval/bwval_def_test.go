@@ -8,7 +8,6 @@ import (
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/bwval"
-	"github.com/baza-winner/bwcore/bwval/deftype"
 )
 
 func TestDefMarshalJSON(t *testing.T) {
@@ -16,18 +15,18 @@ func TestDefMarshalJSON(t *testing.T) {
 		"": {
 			In: []interface{}{
 				bwval.Def{
-					Types:      deftype.From(deftype.Int),
+					Types:      bwval.ValKindSetFrom(bwval.ValInt),
 					IsOptional: true,
 					Enum:       bwset.StringFrom("valueA", "valueB"),
 					Range:      bwval.IntRange{MinPtr: bwval.PtrToInt(-1), MaxPtr: bwval.PtrToInt(1)},
 					Keys: map[string]bwval.Def{
-						"boolKey": {Types: deftype.From(deftype.Bool)},
+						"boolKey": {Types: bwval.ValKindSetFrom(bwval.ValBool)},
 					},
 					Elem: &bwval.Def{
-						Types: deftype.From(deftype.Bool),
+						Types: bwval.ValKindSetFrom(bwval.ValBool),
 					},
 					ArrayElem: &bwval.Def{
-						Types: deftype.From(deftype.Bool),
+						Types: bwval.ValKindSetFrom(bwval.ValBool),
 					},
 					Default: "default value",
 				},
@@ -50,7 +49,6 @@ func DefPretty(v bwval.Def) string {
 func TestDefFrom(t *testing.T) {
 	tests := map[string]bwtesting.Case{
 		"nil": {
-			// In:    []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			In:    []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out:   []interface{}{bwval.Def{}},
 			Panic: "\x1b[38;5;252;1m$def\x1b[0m is \x1b[91;1m(interface {})<nil>\x1b[0m",
@@ -58,7 +56,7 @@ func TestDefFrom(t *testing.T) {
 		"true": {
 			In:    []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out:   []interface{}{bwval.Def{}},
-			Panic: "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is none of \x1b[97;1mString\x1b[0m, \x1b[97;1mArray\x1b[0m or \x1b[97;1mMap\x1b[0m",
+			Panic: "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
 		},
 		"[ Bool true ]": {
 			In:    []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
@@ -68,21 +66,21 @@ func TestDefFrom(t *testing.T) {
 		"{type true}": {
 			In:    []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out:   []interface{}{bwval.Def{}},
-			Panic: "\x1b[38;5;252;1m$def.type\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is none of \x1b[97;1mString\x1b[0m or \x1b[97;1mArray\x1b[0m",
+			Panic: "\x1b[38;5;252;1m$def.type\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m",
 		},
 		"Bool": {
 			In:  []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
-			Out: []interface{}{bwval.Def{Types: deftype.From(deftype.Bool)}},
+			Out: []interface{}{bwval.Def{Types: bwval.ValKindSetFrom(bwval.ValBool)}},
 		},
 		`{ type [ Int "bool" ] }`: {
 			In:    []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
-			Out:   []interface{}{bwval.Def{Types: deftype.From(deftype.Bool)}},
+			Out:   []interface{}{bwval.Def{Types: bwval.ValKindSetFrom(bwval.ValBool)}},
 			Panic: "\x1b[38;5;252;1m$def.type.1\x1b[0m (\x1b[96;1m\"bool\"\x1b[0m)\x1b[0m is \x1b[91;1mnon supported\x1b[0m value\x1b[0m",
 		},
 		`{ type String enum <a b c> }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types: deftype.From(deftype.String),
+				Types: bwval.ValKindSetFrom(bwval.ValString),
 				Enum:  bwset.StringFrom("a", "b", "c"),
 			}},
 			// Panic: "\x1b[38;5;252;1m$def.type.1\x1b[0m (\x1b[96;1m\"bool\"\x1b[0m)\x1b[0m is \x1b[91;1mnon supported\x1b[0m value\x1b[0m",
@@ -90,7 +88,7 @@ func TestDefFrom(t *testing.T) {
 		`{ type String enum [ "a" true ] }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types: deftype.From(deftype.String),
+				Types: bwval.ValKindSetFrom(bwval.ValString),
 				Enum:  bwset.StringFrom("a", "b", "c"),
 			}},
 			Panic: "\x1b[38;5;252;1m$def.enum.1\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mString\x1b[0m",
@@ -98,37 +96,37 @@ func TestDefFrom(t *testing.T) {
 		`{ type Map keys { a Bool } }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types: deftype.From(deftype.Map),
-				Keys:  map[string]bwval.Def{"a": {Types: deftype.From(deftype.Bool)}},
+				Types: bwval.ValKindSetFrom(bwval.ValMap),
+				Keys:  map[string]bwval.Def{"a": {Types: bwval.ValKindSetFrom(bwval.ValBool)}},
 			}},
 		},
 		`{ type Array arrayElem Bool }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types:     deftype.From(deftype.Array),
-				ArrayElem: &bwval.Def{Types: deftype.From(deftype.Bool)},
+				Types:     bwval.ValKindSetFrom(bwval.ValArray),
+				ArrayElem: &bwval.Def{Types: bwval.ValKindSetFrom(bwval.ValBool)},
 			}},
 		},
 		`{ type Int min 1 max 2 }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types: deftype.From(deftype.Int),
+				Types: bwval.ValKindSetFrom(bwval.ValInt),
 				Range: bwval.IntRange{bwval.PtrToInt(1), bwval.PtrToInt(2)},
-				// ArrayElem: &bwval.Def{Types: deftype.From(deftype.Bool)},
+				// ArrayElem: &bwval.Def{Types: bwval.ValKindSetFrom(bwval.ValBool)},
 			}},
 		},
 		`{ type Number min 1 max 2 }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types: deftype.From(deftype.Number),
+				Types: bwval.ValKindSetFrom(bwval.ValNumber),
 				Range: bwval.NumberRange{bwval.PtrToNumber(1), bwval.PtrToNumber(2)},
-				// ArrayElem: &bwval.Def{Types: deftype.From(deftype.Bool)},
+				// ArrayElem: &bwval.Def{Types: bwval.ValKindSetFrom(bwval.ValBool)},
 			}},
 		},
 		`{ type Number min 1 max 2 default 3 }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types:      deftype.From(deftype.Number),
+				Types:      bwval.ValKindSetFrom(bwval.ValNumber),
 				Range:      bwval.NumberRange{bwval.PtrToNumber(1), bwval.PtrToNumber(2)},
 				IsOptional: true,
 				Default:    3,
@@ -138,7 +136,7 @@ func TestDefFrom(t *testing.T) {
 		`{ type String default "some" }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types:      deftype.From(deftype.String),
+				Types:      bwval.ValKindSetFrom(bwval.ValString),
 				Default:    "some",
 				IsOptional: true,
 			}},
@@ -146,7 +144,7 @@ func TestDefFrom(t *testing.T) {
 		`{ type [ArrayOf Int] default [1 2 3] }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types:      deftype.From(deftype.ArrayOf, deftype.Int),
+				Types:      bwval.ValKindSetFrom(bwval.ValArrayOf, bwval.ValInt),
 				Default:    []interface{}{1, 2, 3},
 				IsOptional: true,
 			}},
@@ -154,7 +152,7 @@ func TestDefFrom(t *testing.T) {
 		`{ enum <Bool Int> }`: {
 			In: []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
 			Out: []interface{}{bwval.Def{
-				Types:      deftype.From(deftype.ArrayOf, deftype.Int),
+				Types:      bwval.ValKindSetFrom(bwval.ValArrayOf, bwval.ValInt),
 				Default:    []interface{}{1, 2, 3},
 				IsOptional: true,
 			}},

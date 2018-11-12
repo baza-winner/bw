@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Uint32 - множество значений типа uint32 с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Uint32 - множество значений типа uint32 с поддержкой интерфейсов Stringer и MarshalJSON
 type Uint32 map[uint32]struct{}
 
 // Uint32From - конструктор Uint32

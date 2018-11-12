@@ -3,7 +3,9 @@ package bwval
 import (
 	"encoding/json"
 
+	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwerr"
 )
 
 // ============================================================================
@@ -19,9 +21,47 @@ const (
 	ValInt
 	ValNumber
 	ValString
-	ValMap
 	ValArray
+	ValArrayOf
+	ValMap
+	ValKindAbove
 )
+
+// ============================================================================
+
+//go:generate bwsetter -type=ValKind -test
+
+//go:generate stringer -type ValKind -trimprefix Val
+
+const (
+	_ValKindSetTestItemA ValKind = ValNil
+	_ValKindSetTestItemB ValKind = ValBool
+)
+
+// ============================================================================
+
+var (
+	ansiUknownValKind    string
+	mapValKindFromString = map[string]ValKind{}
+)
+
+func init() {
+	for i := ValUnknown; i < ValKindAbove; i++ {
+		mapValKindFromString[i.String()] = i
+	}
+	ansiUknownValKind = ansi.String("<ansiPath>ValKindFromString<ansi>: uknown <ansiVal>%s")
+	return
+}
+
+func ValKindFromString(s string) (result ValKind, err error) {
+	var ok bool
+	if result, ok = mapValKindFromString[s]; !ok {
+		err = bwerr.From(ansiUknownValKind, result)
+	}
+	return
+}
+
+// ============================================================================
 
 // MarshalJSON encoding/json support
 func (v ValKind) MarshalJSON() ([]byte, error) {

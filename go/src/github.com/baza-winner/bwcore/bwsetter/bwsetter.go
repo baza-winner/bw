@@ -79,8 +79,8 @@ func main() {
 	)
 
 	code.DeclareSet(
-		"%s - множество значений типа %s с поддержкой интерфейсов Stringer и %s.Jsonable",
-		code.IdSet, code.IdItem, bwjsonPackageName,
+		"%s - множество значений типа %s с поддержкой интерфейсов Stringer и MarshalJSON",
+		code.IdSet, code.IdItem,
 	)
 
 	code.BunchOf(

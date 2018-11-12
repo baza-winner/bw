@@ -11,10 +11,6 @@ import (
 
 // ============================================================================
 
-//go:generate stringer -type=ValKind,RangeKindValue
-
-// ============================================================================
-
 // PathFrom - конструктор-парсер bw.ValPath из строки
 func PathFrom(s string) bw.ValPath {
 	return path.MustParse(s)

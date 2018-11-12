@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Int - множество значений типа int с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Int - множество значений типа int с поддержкой интерфейсов Stringer и MarshalJSON
 type Int map[int]struct{}
 
 // IntFrom - конструктор Int

@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Uint64 - множество значений типа uint64 с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Uint64 - множество значений типа uint64 с поддержкой интерфейсов Stringer и MarshalJSON
 type Uint64 map[uint64]struct{}
 
 // Uint64From - конструктор Uint64

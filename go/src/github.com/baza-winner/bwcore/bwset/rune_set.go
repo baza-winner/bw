@@ -8,7 +8,7 @@ import (
 	"sort"
 )
 
-// Rune - множество значений типа rune с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Rune - множество значений типа rune с поддержкой интерфейсов Stringer и MarshalJSON
 type Rune map[rune]struct{}
 
 // RuneFrom - конструктор Rune

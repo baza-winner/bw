@@ -7,6 +7,10 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 )
 
+// ============================================================================
+
+//go:generate stringer -type=RangeKindValue
+
 type RangeKindValue uint8
 
 const (

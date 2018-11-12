@@ -46,9 +46,9 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 	for i, vpi := range simplePath {
 		switch vpi.Type {
 		case bw.ValPathItemKey:
-			result, err = Holder{result, path[:i+1]}.KeyVal(vpi.Key)
+			result, err = Holder{result, path[:i+1]}.KeyVal(vpi.Key, nil)
 		case bw.ValPathItemIdx:
-			result, err = Holder{result, path[:i+1]}.IdxVal(vpi.Idx)
+			result, err = Holder{result, path[:i+1]}.IdxVal(vpi.Idx, nil)
 		case bw.ValPathItemHash:
 			if result == nil {
 				result = 0
@@ -59,7 +59,8 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 				case []interface{}:
 					result = len(t)
 				default:
-					err = Holder{result, path[:i]}.notOfValKindError("Map", "Array")
+					// err = Holder{result, path[:i]}.notOfValKindError("Map", "Array")
+					err = Holder{result, path[:i]}.notOfValKindError(ValKindSetFrom(ValMap, ValArray))
 				}
 			}
 		}
@@ -146,7 +147,7 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 func (v Holder) Bool() (result bool, err error) {
 	var ok bool
 	if result, ok = Bool(v.Val); !ok {
-		err = v.notOfValKindError("Bool")
+		err = v.notOfValKindError(ValKindSetFrom(ValBool))
 	}
 	return
 }
@@ -162,7 +163,7 @@ func (v Holder) MustBool() (result bool) {
 func (v Holder) String() (result string, err error) {
 	var ok bool
 	if result, ok = String(v.Val); !ok {
-		err = v.notOfValKindError("String")
+		err = v.notOfValKindError(ValKindSetFrom(ValString))
 	}
 	return
 }
@@ -178,7 +179,7 @@ func (v Holder) MustString() (result string) {
 func (v Holder) Int() (result int, err error) {
 	var ok bool
 	if result, ok = Int(v.Val); !ok {
-		err = v.notOfValKindError("Int")
+		err = v.notOfValKindError(ValKindSetFrom(ValInt))
 	}
 	return
 }
@@ -194,7 +195,7 @@ func (v Holder) MustInt() (result int) {
 func (v Holder) Number() (result float64, err error) {
 	var ok bool
 	if result, ok = Number(v.Val); !ok {
-		err = v.notOfValKindError("Number")
+		err = v.notOfValKindError(ValKindSetFrom(ValNumber))
 	}
 	return
 }
@@ -210,7 +211,7 @@ func (v Holder) MustNumber() (result float64) {
 func (v Holder) Array() (result []interface{}, err error) {
 	var ok bool
 	if result, ok = Array(v.Val); !ok {
-		err = v.notOfValKindError("Array")
+		err = v.notOfValKindError(ValKindSetFrom(ValArray))
 	}
 	return
 }
@@ -251,7 +252,7 @@ func (v Holder) MustArrayOfString() (result []string) {
 func (v Holder) Map() (result map[string]interface{}, err error) {
 	var ok bool
 	if result, ok = Map(v.Val); !ok {
-		err = v.notOfValKindError("Map")
+		err = v.notOfValKindError(ValKindSetFrom(ValMap))
 	}
 	return
 }
@@ -333,16 +334,26 @@ func (v Holder) KeyVal(key string, optDefaultVal ...interface{}) (result interfa
 	return
 }
 
-func (v Holder) IdxVal(idx int) (result interface{}, err error) {
+func (v Holder) IdxVal(idx int, optDefaultVal ...interface{}) (result interface{}, err error) {
 	if v.Val == nil {
+		if len(optDefaultVal) > 0 {
+			result = optDefaultVal[0]
+		} else {
+			err = v.wrongValError()
+		}
 		return
 	}
 	var vals []interface{}
-	if vals, idx, err = v.arrayIdx(idx); err == nil {
-		if idx < 0 {
-			result = nil
+	var gotIdx int
+	if vals, gotIdx, err = v.arrayIdx(idx); err == nil {
+		if gotIdx >= 0 {
+			result = vals[gotIdx]
 		} else {
-			result = vals[idx]
+			if len(optDefaultVal) > 0 {
+				result = optDefaultVal[0]
+			} else {
+				err = v.notEnoughRangeError(len(vals), idx)
+			}
 		}
 	}
 	return
@@ -377,7 +388,7 @@ func (v *Holder) simplifyPath(path bw.ValPath, optVars []map[string]interface{})
 				case ValInt:
 					result = append(result, bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: MustInt(val)})
 				default:
-					err = Holder{val, vpi.Path}.notOfValKindError("Int", "String")
+					err = Holder{val, vpi.Path}.notOfValKindError(ValKindSetFrom(ValInt, ValString))
 				}
 			}
 		}
@@ -390,7 +401,7 @@ func (v Holder) arrayIdx(idx int) ([]interface{}, int, error) {
 	var ok bool
 	var vals []interface{}
 	if vals, ok = Array(v.Val); !ok {
-		err = v.notOfValKindError("Array")
+		err = v.notOfValKindError(ValKindSetFrom(ValArray))
 	} else {
 		l := len(vals)
 		minIdx := -l

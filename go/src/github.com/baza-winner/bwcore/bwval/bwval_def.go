@@ -9,13 +9,12 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
-	"github.com/baza-winner/bwcore/bwval/deftype"
 )
 
 // ============================================================================
 
 type Def struct {
-	Types      deftype.Set
+	Types      ValKindSet
 	IsOptional bool
 	Enum       bwset.String
 	Range      Range
@@ -91,15 +90,15 @@ func compileDef(def Holder) (result *Def, err error) {
 		switch _, kind := Kind(defType.Val); kind {
 		case ValString, ValArray:
 		default:
-			err = defType.notOfTypeError("String", "Array")
+			err = defType.notOfValKindError(ValKindSetFrom(ValString, ValArray))
 			return
 		}
 	default:
-		err = def.notOfTypeError("String", "Array", "Map")
+		err = def.notOfValKindError(ValKindSetFrom(ValString, ValArray, ValMap))
 		return
 	}
 
-	var types deftype.Set
+	var types ValKindSet
 	if types, err = getDeftype(defType, isSimple); err != nil {
 		return
 	}
@@ -107,7 +106,7 @@ func compileDef(def Holder) (result *Def, err error) {
 	result = &Def{Types: types}
 	if !isSimple {
 		var vp Holder
-		if types.Has(deftype.String) {
+		if types.Has(ValString) {
 			var ss []string
 			validDefKeys.Add("enum")
 			if vp = def.MustKey("enum", nil); vp.Val != nil {
@@ -118,7 +117,7 @@ func compileDef(def Holder) (result *Def, err error) {
 				}
 			}
 		}
-		if types.Has(deftype.Map) {
+		if types.Has(ValMap) {
 			var keysVp Holder
 			validDefKeys.Add("keys")
 			var m map[string]interface{}
@@ -140,7 +139,7 @@ func compileDef(def Holder) (result *Def, err error) {
 				}
 			}
 		}
-		if types.Has(deftype.Array) {
+		if types.Has(ValArray) {
 			validDefKeys.Add("arrayElem")
 			if vp = def.MustKey("arrayElem", nil); vp.Val != nil {
 				if result.ArrayElem, err = compileDef(vp); err != nil {
@@ -148,7 +147,7 @@ func compileDef(def Holder) (result *Def, err error) {
 				}
 			}
 		}
-		if types.Has(deftype.Map) || types.Has(deftype.Array) && result.ArrayElem == nil {
+		if types.Has(ValMap) || types.Has(ValArray) && result.ArrayElem == nil {
 			validDefKeys.Add("elem")
 			if vp = def.MustKey("elem", nil); vp.Val != nil {
 				if result.Elem, err = compileDef(vp); err != nil {
@@ -156,7 +155,7 @@ func compileDef(def Holder) (result *Def, err error) {
 				}
 			}
 		}
-		if types.Has(deftype.Int) {
+		if types.Has(ValInt) {
 			validDefKeys.Add("min", "max")
 			rng := IntRange{}
 			var limCount, n int
@@ -183,7 +182,7 @@ func compileDef(def Holder) (result *Def, err error) {
 			if limCount > 0 {
 				result.Range = rng
 			}
-		} else if types.Has(deftype.Number) {
+		} else if types.Has(ValNumber) {
 			validDefKeys.Add("min", "max")
 			rng := NumberRange{}
 			var limCount, n float64
@@ -216,9 +215,9 @@ func compileDef(def Holder) (result *Def, err error) {
 			err = nil
 		} else {
 			dfltDef := *result
-			if types.Has(deftype.ArrayOf) {
+			if types.Has(ValArrayOf) {
 				dfltDef = Def{
-					Types: deftype.From(deftype.Array),
+					Types: ValKindSetFrom(ValArray),
 					ArrayElem: &Def{
 						Types:      result.Types.Copy(),
 						IsOptional: false,
@@ -228,7 +227,7 @@ func compileDef(def Holder) (result *Def, err error) {
 						Elem:       result.Elem,
 					},
 				}
-				dfltDef.ArrayElem.Types.Del(deftype.ArrayOf)
+				dfltDef.ArrayElem.Types.Del(ValArrayOf)
 			}
 			if result.Default, err = vp.validVal(dfltDef); err != nil {
 				return nil, err
@@ -264,7 +263,7 @@ func compileDef(def Holder) (result *Def, err error) {
 	return
 }
 
-func getDeftype(defType Holder, isSimple bool) (result deftype.Set, err error) {
+func getDeftype(defType Holder, isSimple bool) (result ValKindSet, err error) {
 	var ss []string
 	var isString bool
 	switch val, kind := Kind(defType.Val); kind {
@@ -276,10 +275,10 @@ func getDeftype(defType Holder, isSimple bool) (result deftype.Set, err error) {
 			return
 		}
 	}
-	result = deftype.Set{}
+	result = ValKindSet{}
 	for i, s := range ss {
-		var tpItem deftype.Item
-		if tpItem, err = deftype.ItemFromString(s); err == nil {
+		var tpItem ValKind
+		if tpItem, err = ValKindFromString(s); err == nil {
 			result.Add(tpItem)
 		} else {
 			elem := defType
@@ -290,14 +289,14 @@ func getDeftype(defType Holder, isSimple bool) (result deftype.Set, err error) {
 			return
 		}
 	}
-	if result.Has(deftype.ArrayOf) {
+	if result.Has(ValArrayOf) {
 		if len(result) < 2 {
 			err = bwerr.From(ansi.String("%s: <ansiVal>ArrayOf<ansi> must be followed by some type"), defType)
-		} else if result.Has(deftype.Array) {
+		} else if result.Has(ValArray) {
 			err = bwerr.From(ansi.String("%s type values <ansiVal>ArrayOf<ansi> and <ansiVal>Array<ansi> can not be combined"), defType)
 		}
 	}
-	if result.Has(deftype.Int) && result.Has(deftype.Number) {
+	if result.Has(ValInt) && result.Has(ValNumber) {
 		err = bwerr.From(ansi.String("%s type values <ansiVal>Int<ansi> and <ansiVal>Number<ansi> can not be combined"), defType)
 	}
 	return
@@ -356,55 +355,55 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 				return nil, nil
 			}
 		}
-		if def.Types.Has(deftype.Map) {
+		if def.Types.Has(ValMap) {
 			v.Val = map[string]interface{}{}
 		} else {
-			ss := def.Types.ToSliceOfStrings()
-			err = v.notOfTypeError(ss[0], ss[1:]...)
+			// ss := def.Types.ToSliceOfStrings()
+			err = v.notOfValKindError(def.Types)
 			return
 		}
 	}
-	var valDeftype deftype.Item
+	var valDeftype ValKind
 	switch _, kind := Kind(v.Val); kind {
 	case ValBool:
-		if def.Types.Has(deftype.Bool) {
-			valDeftype = deftype.Bool
+		if def.Types.Has(ValBool) {
+			valDeftype = ValBool
 		}
 	case ValInt:
-		if def.Types.Has(deftype.Int) {
-			valDeftype = deftype.Int
-		} else if def.Types.Has(deftype.Number) {
-			valDeftype = deftype.Number
+		if def.Types.Has(ValInt) {
+			valDeftype = ValInt
+		} else if def.Types.Has(ValNumber) {
+			valDeftype = ValNumber
 		}
 	case ValNumber:
-		if def.Types.Has(deftype.Number) {
-			valDeftype = deftype.Number
+		if def.Types.Has(ValNumber) {
+			valDeftype = ValNumber
 		}
 	case ValMap:
-		if def.Types.Has(deftype.Map) {
-			valDeftype = deftype.Map
+		if def.Types.Has(ValMap) {
+			valDeftype = ValMap
 		}
 	case ValArray:
-		if def.Types.Has(deftype.Array) {
-			valDeftype = deftype.Array
-		} else if !skipArrayOf && def.Types.Has(deftype.ArrayOf) {
-			valDeftype = deftype.ArrayOf
+		if def.Types.Has(ValArray) {
+			valDeftype = ValArray
+		} else if !skipArrayOf && def.Types.Has(ValArrayOf) {
+			valDeftype = ValArrayOf
 		}
 	case ValString:
-		if def.Types.Has(deftype.String) {
-			valDeftype = deftype.String
+		if def.Types.Has(ValString) {
+			valDeftype = ValString
 		}
 	}
 
-	if valDeftype == deftype.Unknown {
-		ss := def.Types.ToSliceOfStrings()
-		err = v.notOfTypeError(ss[0], ss[1:]...)
+	if valDeftype == ValUnknown {
+		// ss := def.Types.ToSliceOfStrings()
+		err = v.notOfValKindError(def.Types)
 		return
 	}
 
 	switch valDeftype {
-	case deftype.Bool:
-	case deftype.String:
+	case ValBool:
+	case ValString:
 		if def.Enum != nil {
 			if !def.Enum.Has(MustString(v.Val)) {
 				bwerr.TODO() // enum instead nonSupportedValueError
@@ -412,14 +411,14 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 				return
 			}
 		}
-	case deftype.Int, deftype.Number:
+	case ValInt, ValNumber:
 		// if def.Range != nil && def.Range{}
 		if !RangeContains(def.Range, v.Val) {
 			// if !v.inRange(def.Range) {
 			err = v.outOfRangeError(def.Range)
 			return
 		}
-	case deftype.Map:
+	case ValMap:
 		if def.Keys != nil {
 			unexpectedKeys := bwmap.MustUnexpectedKeys(v.Val, def.Keys)
 			for key, keyDef := range def.Keys {
@@ -447,7 +446,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 				}
 			}
 		}
-	case deftype.Array:
+	case ValArray:
 		elemDef := def.ArrayElem
 		if elemDef == nil {
 			elemDef = def.Elem
@@ -457,13 +456,13 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 				return
 			}
 		}
-	case deftype.ArrayOf:
+	case ValArrayOf:
 		if v.Val, err = v.arrayHelper(def, true); err != nil {
 			return
 		}
 	}
 
-	if !skipArrayOf && valDeftype != deftype.ArrayOf && def.Types.Has(deftype.ArrayOf) {
+	if !skipArrayOf && valDeftype != ValArrayOf && def.Types.Has(ValArrayOf) {
 		v.Val = []interface{}{v.Val}
 	}
 

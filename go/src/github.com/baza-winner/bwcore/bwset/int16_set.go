@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Int16 - множество значений типа int16 с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Int16 - множество значений типа int16 с поддержкой интерфейсов Stringer и MarshalJSON
 type Int16 map[int16]struct{}
 
 // Int16From - конструктор Int16

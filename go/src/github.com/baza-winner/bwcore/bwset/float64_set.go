@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Float64 - множество значений типа float64 с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Float64 - множество значений типа float64 с поддержкой интерфейсов Stringer и MarshalJSON
 type Float64 map[float64]struct{}
 
 // Float64From - конструктор Float64

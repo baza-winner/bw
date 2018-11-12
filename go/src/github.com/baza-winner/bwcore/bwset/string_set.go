@@ -8,7 +8,7 @@ import (
 	"sort"
 )
 
-// String - множество значений типа string с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// String - множество значений типа string с поддержкой интерфейсов Stringer и MarshalJSON
 type String map[string]struct{}
 
 // StringFrom - конструктор String

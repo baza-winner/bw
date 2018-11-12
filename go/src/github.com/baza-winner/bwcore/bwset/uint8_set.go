@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Uint8 - множество значений типа uint8 с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Uint8 - множество значений типа uint8 с поддержкой интерфейсов Stringer и MarshalJSON
 type Uint8 map[uint8]struct{}
 
 // Uint8From - конструктор Uint8

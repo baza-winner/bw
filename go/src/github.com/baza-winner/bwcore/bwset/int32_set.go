@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Int32 - множество значений типа int32 с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Int32 - множество значений типа int32 с поддержкой интерфейсов Stringer и MarshalJSON
 type Int32 map[int32]struct{}
 
 // Int32From - конструктор Int32

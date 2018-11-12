@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Bool - множество значений типа bool с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Bool - множество значений типа bool с поддержкой интерфейсов Stringer и MarshalJSON
 type Bool map[bool]struct{}
 
 // BoolFrom - конструктор Bool

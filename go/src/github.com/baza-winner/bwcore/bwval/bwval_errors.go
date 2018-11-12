@@ -41,17 +41,25 @@ func (v Holder) hasNoKeyError(key string) error {
 	return bwerr.From(v.ansiString()+ansiHasNoKey, key)
 }
 
-func (v Holder) notOfValKindError(expectedValKind ValKind, optExpectedValKind ...ValKind) (result error) {
-	if len(optExpectedType) == 0 {
-		result = bwerr.From(v.ansiString()+ansi.String(" is not <ansiType>%s"), expectedType)
-	} else {
-		expectedTypes := fmt.Sprintf(ansiType, expectedType)
-		for i, elem := range optExpectedType {
-			expectedTypes += typeSeparator[i == len(optExpectedType)-1] + fmt.Sprintf(ansiType, elem)
-		}
-		result = bwerr.From(v.ansiString()+ansi.String(" is none of %s"), expectedTypes)
+func (v Holder) notOfValKindError(vk ValKindSet) (result error) {
+	vks := vk.ToSlice()
+	expectedTypes := ""
+	for i, elem := range vks {
+		expectedTypes += notOfValKindItemSeparator[i > 0] + fmt.Sprintf(ansiType, elem)
 	}
+	result = bwerr.From(v.ansiString()+ansi.String(" "+notOfValKindInfix[len(vks) == 1]+" %s"), expectedTypes)
 	return
+}
+
+// https://www.quickanddirtytips.com/education/grammar/when-use-nor
+var notOfValKindItemSeparator = map[bool]string{
+	true:  " nor ",
+	false: "",
+}
+
+var notOfValKindInfix = map[bool]string{
+	true:  "is not",
+	false: "neither",
 }
 
 // func (v Holder) notOfValKindError(expectedType string, optExpectedType ...string) (result error) {
@@ -60,17 +68,12 @@ func (v Holder) notOfValKindError(expectedValKind ValKind, optExpectedValKind ..
 // 	} else {
 // 		expectedTypes := fmt.Sprintf(ansiType, expectedType)
 // 		for i, elem := range optExpectedType {
-// 			expectedTypes += typeSeparator[i == len(optExpectedType)-1] + fmt.Sprintf(ansiType, elem)
+// 			expectedTypes += itemSeparator[i == len(optExpectedType)-1] + fmt.Sprintf(ansiType, elem)
 // 		}
 // 		result = bwerr.From(v.ansiString()+ansi.String(" is none of %s"), expectedTypes)
 // 	}
 // 	return
 // }
-
-var typeSeparator = map[bool]string{
-	true:  " or ",
-	false: ", ",
-}
 
 func (v Holder) notEnoughRangeError(l int, idx int) error {
 	return bwerr.From(

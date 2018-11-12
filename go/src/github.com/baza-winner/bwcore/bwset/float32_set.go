@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Float32 - множество значений типа float32 с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Float32 - множество значений типа float32 с поддержкой интерфейсов Stringer и MarshalJSON
 type Float32 map[float32]struct{}
 
 // Float32From - конструктор Float32

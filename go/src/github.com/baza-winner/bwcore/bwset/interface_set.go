@@ -8,7 +8,7 @@ import (
 	"sort"
 )
 
-// Interface - множество значений типа interface{} с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// Interface - множество значений типа interface{} с поддержкой интерфейсов Stringer и MarshalJSON
 type Interface map[interface{}]struct{}
 
 // InterfaceFrom - конструктор Interface
