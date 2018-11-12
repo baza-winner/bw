@@ -61,8 +61,8 @@ func init() {
 	ansiExpectsCountParamsWithVariadic = ansi.String(testPrefixFmt + ".%s<ansi>: ожидается не менее <ansiVal>%d<ansi> %s вместо <ansiVal>%d")
 	ansiExpectsFuncParams = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидаются следующие параметры функции: (<ansiVar>testName <ansiType>string<ansi>) или (<ansiVar>test <ansiType>bwtesting.Case<ansi>) или (<ansiVar>testName <ansiType>string<ansi>, <ansiVar>test <ansiType>bwtesting.Case<ansi>) или (<ansiVar>test <ansiType>bwtesting.Case<ansi>, <ansiVar>testName <ansiType>string<ansi>)")
 	ansiExpectsParamType = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi> (<ansiVal>%#v<ansi>)")
-	ansiExpectsOneReturnValue = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидается <ansiVal>1<ansi> возвращаемое значение вместо <ansiVal>%d")
-	ansiExpectsTypeOfReturnValue = ansi.String(testPrefixFmt + ".%s.%d<ansi>: в качесте возвращаемого значения ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi>")
+	ansiExpectsOneReturnValue = ansi.String(testPrefixFmt + ".%s<ansi>: ожидается <ansiVal>1<ansi> возвращаемое значение вместо <ansiVal>%d")
+	ansiExpectsTypeOfReturnValue = ansi.String(testPrefixFmt + ".%s<ansi>: в качестве возвращаемого значения ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi>")
 	// ansiSeparator = ":\n"
 	ansiPath = ansi.String("<ansiPath>.%d<ansi>")
 	ansiTestTitleFunc = ansi.String("<ansiFunc>%s")
@@ -94,6 +94,9 @@ func init() {
 }
 
 func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
+	if len(tests) == 0 {
+		bwerr.Panic("no tests to run")
+	}
 
 	w := where.MustFrom(1)
 	testFunc := w.FuncName()
@@ -151,8 +154,7 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 
 	initFmt := func(suffixProvider func() string) {
 		fmtArgs = append(bw.Args(testeeFunc), inVals...)
-		fmtString = ansiTestTitle + suffixProvider() //+ ":\n"
-		// bwdebug.Print("fmtArgs", fmtArgs, "fmtString", fmtString)
+		fmtString = ansiTestTitle + suffixProvider()
 	}
 
 	if _, ok := testee.(string); !ok {
@@ -178,7 +180,31 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 		t.Logf(ansiTestHeading, testName)
 
 		if s, ok := testee.(string); ok {
-			testeeValue = reflect.ValueOf(test.V).MethodByName(s)
+			v := getCalculableValue(test.V, nil, testFunc, testName, test, "V")
+			// v := getCalculableValue(test.V, reflect.TypeOf((*interface{})(nil)).Elem(), testFunc, testName, test, "V")
+			// bwdebug.Print("v", v)
+			// v := reflect.ValueOf(test.V)
+
+			// if v.Kind() == reflect.Func {
+			// 	if valType := reflect.TypeOf(test.V); valType.NumOut() != 1 {
+			// 		bwerr.Panic(
+			// 			ansiExpectsOneReturnValue,
+			// 			testFunc, testName, "V",
+			// 			valType.NumOut(),
+			// 		)
+			// 	} else if valType.Out(0).Kind != reflect.Interface {
+			// 		bwerr.Panic(
+			// 			ansiExpectsTypeOfReturnValue,
+			// 			testFunc, testName, "V",
+			// 			reflect.Interface,
+			// 			valType.Out(0),
+			// 		)
+			// 	} else {
+
+			// 	}
+			// }
+
+			testeeValue = v.MethodByName(s)
 			testeeType = testeeValue.Type()
 			testeeFunc = fmt.Sprintf("%T.%s", test.V, s)
 			ansiTestTitle = ansiTestTitleFunc + ansiTestTitleOpenBrace
@@ -207,17 +233,24 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 			inVals = append(inVals, inValue.Interface())
 		}
 
-		if len(test.Out) != numOut {
-			bwerr.Panic(
-				ansiExpectsCountParams,
-				testFunc, testName, "Out",
-				numOut, bw.PluralWord(numOut, "параметр", "", "а", "ов"), len(test.Out),
-			)
-		}
-		outEtaVals := []interface{}{}
-		for i := 0; i < numOut; i++ {
-			outValue := getInOutValue(test.Out, "Out", outDef, i, testFunc, testName, test)
-			outEtaVals = append(outEtaVals, outValue.Interface())
+		var outEtaVals []interface{}
+		if test.Panic != nil {
+			if test.Out != nil {
+				bwerr.Panic("<ansiVar>.Panic<ansi> <ansiVar>.Out<ansi> <ansiErr>взаимоисключают<ansi> друг друга, но пристуствуют оба")
+			}
+		} else {
+			if len(test.Out) != numOut {
+				bwerr.Panic(
+					ansiExpectsCountParams,
+					testFunc, testName, "Out",
+					numOut, bw.PluralWord(numOut, "параметр", "", "а", "ов"), len(test.Out),
+				)
+			}
+			outEtaVals = []interface{}{}
+			for i := 0; i < numOut; i++ {
+				outValue := getInOutValue(test.Out, "Out", outDef, i, testFunc, testName, test)
+				outEtaVals = append(outEtaVals, outValue.Interface())
+			}
 		}
 
 		var panicVal interface{}
@@ -260,75 +293,145 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 	}
 }
 
-func getInOutValue(vals []interface{}, path string, def []reflect.Type, i int, testFunc, testName string, test Case, optIsVariadic ...bool) (result reflect.Value) {
-	val := vals[i]
-	if val == nil {
-		result = reflect.New(def[i]).Elem()
-	} else {
-		result = reflect.ValueOf(val)
-		if result.Kind() == reflect.Func {
-			if valType := reflect.TypeOf(val); valType.NumOut() != 1 {
-				bwerr.Panic(
-					ansiExpectsOneReturnValue,
-					testFunc, testName, path,
-					valType.NumOut(),
-				)
-			} else if valType.Out(0) != def[i] {
-				bwerr.Panic(
-					ansiExpectsTypeOfReturnValue,
-					testFunc, testName, path, i,
-					def[i],
-					valType.Out(0),
-				)
-			} else {
-				switch valType.NumIn() {
-				case 0:
-					result = reflect.ValueOf(val).Call([]reflect.Value{})[0]
-				case 1:
-					if valType.In(0).Kind() == reflect.String {
-						result = reflect.ValueOf(val).Call([]reflect.Value{
-							reflect.ValueOf(testName),
-						})[0]
-					} else if valType.In(0).Name() == "Case" {
-						result = reflect.ValueOf(val).Call([]reflect.Value{
-							reflect.ValueOf(test),
-						})[0]
-					} else {
-						bwerr.Panic(
-							ansiExpectsFuncParams,
-							testFunc, testName, path, i,
-						)
-					}
-				case 2:
-					if valType.In(0).Kind() == reflect.String && valType.In(1).Name() == "Case" {
-						result = reflect.ValueOf(val).Call([]reflect.Value{
-							reflect.ValueOf(testName),
-							reflect.ValueOf(test),
-						})[0]
-					} else if valType.In(1).Kind() == reflect.String && valType.In(0).Name() == "Case" {
-						result = reflect.ValueOf(val).Call([]reflect.Value{
-							reflect.ValueOf(test),
-							reflect.ValueOf(testName),
-						})[0]
-					} else {
-						bwerr.Panic(
-							ansiExpectsFuncParams,
-							testFunc, testName, path, i,
-						)
-					}
-				default:
+func getCalculableValue(val interface{}, def reflect.Type, testFunc, testName string, test Case, path string) (result reflect.Value) {
+	result = reflect.ValueOf(val)
+	// bwdebug.Print("result", result)
+	if result.Kind() == reflect.Func {
+		// zeroType :=
+		if valType := reflect.TypeOf(val); valType.NumOut() != 1 {
+			bwerr.Panic(
+				ansiExpectsOneReturnValue,
+				testFunc, testName, path,
+				valType.NumOut(),
+			)
+		} else if def != nil && valType.Out(0) != def {
+			bwerr.Panic(
+				ansiExpectsTypeOfReturnValue,
+				testFunc, testName, path,
+				def,
+				valType.Out(0),
+			)
+		} else {
+			switch valType.NumIn() {
+			case 0:
+				result = reflect.ValueOf(val).Call([]reflect.Value{})[0]
+			case 1:
+				if valType.In(0).Kind() == reflect.String {
+					result = reflect.ValueOf(val).Call([]reflect.Value{
+						reflect.ValueOf(testName),
+					})[0]
+				} else if valType.In(0).Name() == "Case" {
+					result = reflect.ValueOf(val).Call([]reflect.Value{
+						reflect.ValueOf(test),
+					})[0]
+				} else {
 					bwerr.Panic(
 						ansiExpectsFuncParams,
-						testFunc, testName, path, i,
+						testFunc, testName, path,
 					)
 				}
+
+				// bwdebug.Print("result", result)
+			case 2:
+				if valType.In(0).Kind() == reflect.String && valType.In(1).Name() == "Case" {
+					result = reflect.ValueOf(val).Call([]reflect.Value{
+						reflect.ValueOf(testName),
+						reflect.ValueOf(test),
+					})[0]
+				} else if valType.In(1).Kind() == reflect.String && valType.In(0).Name() == "Case" {
+					result = reflect.ValueOf(val).Call([]reflect.Value{
+						reflect.ValueOf(test),
+						reflect.ValueOf(testName),
+					})[0]
+				} else {
+					bwerr.Panic(
+						ansiExpectsFuncParams,
+						testFunc, testName, path,
+					)
+				}
+			default:
+				bwerr.Panic(
+					ansiExpectsFuncParams,
+					testFunc, testName, path,
+				)
 			}
 		}
 	}
+	return
+}
+
+func getInOutValue(vals []interface{}, path string, def []reflect.Type, i int, testFunc, testName string, test Case, optIsVariadic ...bool) (result reflect.Value) {
 	j := i
 	if j >= len(def) {
 		j = len(def) - 1
 	}
+	val := vals[i]
+	if val == nil {
+		result = reflect.New(def[i]).Elem()
+	} else {
+		// bwdebug.Print("i", i, "len(def)", len(def), "testName", testName, "def", def, "testFunc", testFunc)
+		result = getCalculableValue(val, def[j], testFunc, testName, test, fmt.Sprintf("%s.%d", path, i))
+		// result = reflect.ValueOf(val)
+		// if result.Kind() == reflect.Func {
+		// 	if valType := reflect.TypeOf(val); valType.NumOut() != 1 {
+		// 		bwerr.Panic(
+		// 			ansiExpectsOneReturnValue,
+		// 			testFunc, testName, fmt.Sprintf("%s.%d", path, i),
+		// 			valType.NumOut(),
+		// 		)
+		// 	} else if valType.Out(0) != def[i] {
+		// 		bwerr.Panic(
+		// 			ansiExpectsTypeOfReturnValue,
+		// 			testFunc, testName, fmt.Sprintf("%s.%d", path, i),
+		// 			def[i],
+		// 			valType.Out(0),
+		// 		)
+		// 	} else {
+		// 		switch valType.NumIn() {
+		// 		case 0:
+		// 			result = reflect.ValueOf(val).Call([]reflect.Value{})[0]
+		// 		case 1:
+		// 			if valType.In(0).Kind() == reflect.String {
+		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
+		// 					reflect.ValueOf(testName),
+		// 				})[0]
+		// 			} else if valType.In(0).Name() == "Case" {
+		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
+		// 					reflect.ValueOf(test),
+		// 				})[0]
+		// 			} else {
+		// 				bwerr.Panic(
+		// 					ansiExpectsFuncParams,
+		// 					testFunc, testName, path, i,
+		// 				)
+		// 			}
+		// 		case 2:
+		// 			if valType.In(0).Kind() == reflect.String && valType.In(1).Name() == "Case" {
+		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
+		// 					reflect.ValueOf(testName),
+		// 					reflect.ValueOf(test),
+		// 				})[0]
+		// 			} else if valType.In(1).Kind() == reflect.String && valType.In(0).Name() == "Case" {
+		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
+		// 					reflect.ValueOf(test),
+		// 					reflect.ValueOf(testName),
+		// 				})[0]
+		// 			} else {
+		// 				bwerr.Panic(
+		// 					ansiExpectsFuncParams,
+		// 					testFunc, testName, path, i,
+		// 				)
+		// 			}
+		// 		default:
+		// 			bwerr.Panic(
+		// 				ansiExpectsFuncParams,
+		// 				testFunc, testName, path, i,
+		// 			)
+		// 		}
+		// 	}
+		// }
+	}
+
 	if def[j].Kind() != reflect.Interface {
 		if i >= len(def)-1 && len(optIsVariadic) > 0 && optIsVariadic[0] {
 			if def[j].Elem().Kind() != reflect.Interface && result.Kind() != def[j].Elem().Kind() {

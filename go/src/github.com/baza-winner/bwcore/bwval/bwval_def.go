@@ -3,10 +3,8 @@ package bwval
 import (
 	"encoding/json"
 
-	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
 )
@@ -176,7 +174,8 @@ func compileDef(def Holder) (result *Def, err error) {
 				}
 			}
 			if limCount == 2 && *(rng.MinPtr) > *(rng.MaxPtr) {
-				err = def.maxLessThanMinError()
+				// err = def.maxLessThanMinError(fmt.Sprintf("%d", *rng.MaxPtr), fmt.Sprintf("%d", *rng.MinPtr))
+				err = def.maxLessThanMinError(*rng.MaxPtr, *rng.MinPtr)
 				return
 			}
 			if limCount > 0 {
@@ -186,24 +185,25 @@ func compileDef(def Holder) (result *Def, err error) {
 			validDefKeys.Add("min", "max")
 			rng := NumberRange{}
 			var limCount, n float64
-			if vp, err = def.Key("min"); err != nil || vp.Val == nil {
-				err = nil
-			} else if n, err = vp.Number(); err != nil {
-				return
-			} else {
-				rng.MinPtr = PtrToNumber(n)
-				limCount++
+			if vp, err = def.Key("min", nil); vp.Val != nil {
+				if n, err = vp.Number(); err != nil {
+					return
+				} else {
+					rng.MinPtr = PtrToNumber(n)
+					limCount++
+				}
 			}
-			if vp, err = def.Key("max"); err != nil || vp.Val == nil {
-				err = nil
-			} else if n, err = vp.Number(); err != nil {
-				return
-			} else {
-				rng.MaxPtr = PtrToNumber(n)
-				limCount++
+			if vp, err = def.Key("max", nil); vp.Val != nil {
+				if n, err = vp.Number(); err != nil {
+					return
+				} else {
+					rng.MaxPtr = PtrToNumber(n)
+					limCount++
+				}
 			}
 			if limCount == 2 && *(rng.MinPtr) > *(rng.MaxPtr) {
-				err = def.maxLessThanMinError()
+				err = def.maxLessThanMinError(*rng.MaxPtr, *rng.MinPtr)
+				// err = def.maxLessThanMinError(fmt.Sprintf("%f", *rng.MaxPtr), fmt.Sprintf("%f", *rng.MinPtr))
 				return
 			}
 			if limCount > 0 {
@@ -242,21 +242,11 @@ func compileDef(def Holder) (result *Def, err error) {
 			return
 		}
 		if !result.IsOptional && result.Default != nil {
-			err = bwerr.From(
-				ansi.String(
-					"<ansiPath>%s<ansi> (<ansiVal>%s<ansi>) has conflicting keys: <ansiErr>isOptional<ansi> and <ansiErr>default",
-				),
-				def.Path, bwjson.Pretty(result),
-			)
+			err = def.defaultNonOptionalError()
 			return
 		}
 		if unexpectedKeys := bwmap.MustUnexpectedKeys(def.Val, validDefKeys); unexpectedKeys != nil {
-			err = bwerr.From(
-				ansi.String(
-					"<ansiPath>%s<ansi> (<ansiVal>%s<ansi>) has unexpected keys: <ansiVal>%s",
-				),
-				def.Path, bwjson.Pretty(unexpectedKeys),
-			)
+			err = def.unexpectedKeysError(unexpectedKeys)
 			return
 		}
 	}
@@ -291,58 +281,21 @@ func getDeftype(defType Holder, isSimple bool) (result ValKindSet, err error) {
 	}
 	if result.Has(ValArrayOf) {
 		if len(result) < 2 {
-			err = bwerr.From(ansi.String("%s: <ansiVal>ArrayOf<ansi> must be followed by some type"), defType)
+			err = defType.arrayOfMustBeFollowedBySomeTypeError()
+			// err = bwerr.From(ansi.String("%s: <ansiVal>ArrayOf<ansi> must be followed by some type"), defType)
 		} else if result.Has(ValArray) {
-			err = bwerr.From(ansi.String("%s type values <ansiVal>ArrayOf<ansi> and <ansiVal>Array<ansi> can not be combined"), defType)
+			err = defType.valuesAreMutuallyExclusiveError("ArrayOf", "Array")
+			// err = bwerr.From(ansi.String("%s values <ansiVal>ArrayOf<ansi> and <ansiVal>Array<ansi> are mutually exclusive"), defType)
 		}
 	}
 	if result.Has(ValInt) && result.Has(ValNumber) {
-		err = bwerr.From(ansi.String("%s type values <ansiVal>Int<ansi> and <ansiVal>Number<ansi> can not be combined"), defType)
+		err = defType.valuesAreMutuallyExclusiveError("Int", "Number")
+		// err = bwerr.From(ansi.String("%s type values <ansiVal>Int<ansi> and <ansiVal>Number<ansi> can not be combined"), defType)
 	}
 	return
 }
 
 // ============================================================================
-
-func (v Holder) mapHelper(key string, elemDef Def) (err error) {
-	vp, _ := v.Key(key)
-	var val interface{}
-	if val, err = vp.validVal(elemDef); err != nil {
-		return
-	} else if val != nil {
-		if err = v.SetKeyVal(val, key); err != nil {
-			return
-		}
-	}
-	return
-}
-
-// func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (err error) {
-//  var vp Holder
-//  for i := range MustArray(v.Val) {
-//    vp, _ = v.Idx(i)
-//    if _, err = vp.ValidVal(elemDef, optSkipArrayOf...); err != nil {
-//      return
-//    }
-//  }
-//  return
-// }
-
-func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (result interface{}, err error) {
-	arr := MustArray(v.Val)
-	newArr := make([]interface{}, 0, len(arr))
-	var vp Holder
-	for i := range arr {
-		vp, _ = v.Idx(i)
-		var val interface{}
-		if val, err = vp.validVal(elemDef, optSkipArrayOf...); err != nil {
-			return
-		}
-		newArr = append(newArr, val)
-	}
-	result = newArr
-	return
-}
 
 func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, err error) {
 	skipArrayOf := optSkipArrayOf != nil && optSkipArrayOf[0]
@@ -396,8 +349,12 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 	}
 
 	if valDeftype == ValUnknown {
-		// ss := def.Types.ToSliceOfStrings()
-		err = v.notOfValKindError(def.Types)
+		types := def.Types
+		if skipArrayOf {
+			types = types.Copy()
+			types.Del(ValArrayOf)
+		}
+		err = v.notOfValKindError(types)
 		return
 	}
 
@@ -406,8 +363,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 	case ValString:
 		if def.Enum != nil {
 			if !def.Enum.Has(MustString(v.Val)) {
-				bwerr.TODO() // enum instead nonSupportedValueError
-				err = v.nonSupportedValueError()
+				err = v.unexpectedEnumValueError(def.Enum)
 				return
 			}
 		}
@@ -431,7 +387,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 					err = v.unexpectedKeysError(unexpectedKeys)
 					return
 				} else {
-					for _, key := range unexpectedKeys {
+					for _, key := range unexpectedKeys.ToSlice() {
 						if err = v.mapHelper(key, *(def.Elem)); err != nil {
 							return
 						}
@@ -467,6 +423,46 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 	}
 
 	result = v.Val
+	return
+}
+
+func (v Holder) mapHelper(key string, elemDef Def) (err error) {
+	vp, _ := v.Key(key)
+	var val interface{}
+	if val, err = vp.validVal(elemDef); err != nil {
+		return
+	} else if val != nil {
+		if err = v.SetKeyVal(val, key); err != nil {
+			return
+		}
+	}
+	return
+}
+
+// func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (err error) {
+//  var vp Holder
+//  for i := range MustArray(v.Val) {
+//    vp, _ = v.Idx(i)
+//    if _, err = vp.ValidVal(elemDef, optSkipArrayOf...); err != nil {
+//      return
+//    }
+//  }
+//  return
+// }
+
+func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (result interface{}, err error) {
+	arr := MustArray(v.Val)
+	newArr := make([]interface{}, 0, len(arr))
+	var vp Holder
+	for i := range arr {
+		vp, _ = v.Idx(i)
+		var val interface{}
+		if val, err = vp.validVal(elemDef, optSkipArrayOf...); err != nil {
+			return
+		}
+		newArr = append(newArr, val)
+	}
+	result = newArr
 	return
 }
 

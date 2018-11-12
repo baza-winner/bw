@@ -105,6 +105,6 @@ func TestGetCroppedMap(t *testing.T) {
 	}
 	testsToRun := tests
 	CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
+	// bwmap.CropMap(testsToRun, "string")
 	bwtesting.BwRunTests(t, GetCroppedMap, testsToRun)
 }

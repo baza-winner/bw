@@ -3,15 +3,21 @@ package bwval
 import (
 	"encoding/json"
 
+	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	bwjson "github.com/baza-winner/bwcore/bwjson"
 )
 
 // ============================================================================
 
 type Holder struct {
-	Val  interface{}
-	Path bw.ValPath
+	Val interface{}
+	Pth bw.ValPath
+}
+
+func HolderFrom(s string, optVars ...map[string]interface{}) Holder {
+	return Holder{Val: From(s, optVars...)}
 }
 
 // PathVal - реализация интерфейса bw.Val
@@ -71,14 +77,31 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 	return
 }
 
+func (v Holder) Path(path bw.ValPath, optVars ...map[string]interface{}) (result Holder, err error) {
+	var val interface{}
+	if val, err = (&v).PathVal(path, optVars...); err != nil {
+		return
+	}
+	result = Holder{val, path}
+	return
+}
+
+func (v Holder) MustPath(path bw.ValPath, optVars ...map[string]interface{}) (result Holder) {
+	var err error
+	if result, err = v.Path(path, optVars...); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
+}
+
 // MarshalJSON - реализация интерфейса bw.Val
 func (v Holder) MarshalJSON() ([]byte, error) {
-	if len(v.Path) == 0 {
+	if len(v.Pth) == 0 {
 		return json.Marshal(v.Val)
 	} else {
 		result := map[string]interface{}{}
 		result["val"] = v.Val
-		result["path"] = v.Path.String()
+		result["path"] = v.Pth.String()
 		return json.Marshal(result)
 	}
 }
@@ -268,7 +291,7 @@ func (v Holder) MustMap() (result map[string]interface{}) {
 func (v Holder) Key(key string, optDefaultVal ...interface{}) (result Holder, err error) {
 	var val interface{}
 	if val, err = v.KeyVal(key, optDefaultVal...); err == nil {
-		result = Holder{val, v.Path.AppendKey(key)}
+		result = Holder{val, v.Pth.AppendKey(key)}
 	}
 	return
 }
@@ -305,7 +328,7 @@ func (v Holder) SetIdxVal(val interface{}, idx int) (err error) {
 func (v Holder) Idx(idx int) (result Holder, err error) {
 	var val interface{}
 	if val, err = v.IdxVal(idx); err == nil {
-		result = Holder{val, v.Path.AppendIdx(idx)}
+		result = Holder{val, v.Pth.AppendIdx(idx)}
 	}
 	return
 }
@@ -330,6 +353,14 @@ func (v Holder) KeyVal(key string, optDefaultVal ...interface{}) (result interfa
 		} else {
 			err = v.hasNoKeyError(key)
 		}
+	}
+	return
+}
+
+func (v Holder) MustKeyVal(key string, optDefaultVal ...interface{}) (result interface{}) {
+	var err error
+	if result, err = v.KeyVal(key, optDefaultVal...); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
 }
@@ -360,7 +391,11 @@ func (v Holder) IdxVal(idx int, optDefaultVal ...interface{}) (result interface{
 }
 
 func (v Holder) ValidVal(def Def) (result interface{}, err error) {
-	return v.validVal(def)
+	result, err = v.validVal(def)
+	if err != nil {
+		err = bwerr.Refine(err, ansi.String("<ansiVal>%s<ansi>::{Error}"), bwjson.Pretty(v.Val))
+	}
+	return
 }
 
 func (v Holder) MustValidVal(def Def) (result interface{}) {

@@ -172,8 +172,8 @@ func main() {
 		"MarshalJSON", ParamNone, ReturnJSON,
 		[]*jen.Statement{
 			jen.Id("result").Op(":=").Index().Interface().Values(),
-			code.RangeSet("v").Block(
-				// jen.Id("result").Op("=").Append(jen.Id("result"), code.ToDataForJSON("k")),
+			// code.RangeSet("v").Block(
+			code.RangeSlice(jen.Id("v").Dot("ToSlice").Call()).Block(
 				jen.Id("result").Op("=").Append(jen.Id("result"), jen.Id("k")),
 			),
 			jen.Return(jen.Qual(jsonPackageName, "Marshal").Call(jen.Id("result"))),

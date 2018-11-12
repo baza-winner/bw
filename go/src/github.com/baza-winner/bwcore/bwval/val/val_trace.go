@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	trace = func(r rune, primary primaryState, secondary secondaryState, stack []stackItem) {
+	trace = func(r rune, primary PrimaryState, secondary SecondaryState, stack []stackItem) {
 		bwdebug.Print(
 			"r", string(r),
 			"primary", primary.String(),

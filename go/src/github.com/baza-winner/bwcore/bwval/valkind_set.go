@@ -65,7 +65,7 @@ func (v ValKindSet) String() string {
 // MarshalJSON - поддержка интерфейса MarshalJSON
 func (v ValKindSet) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
-	for k, _ := range v {
+	for _, k := range v.ToSlice() {
 		result = append(result, k)
 	}
 	return json.Marshal(result)

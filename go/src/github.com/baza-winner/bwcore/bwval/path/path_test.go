@@ -15,9 +15,6 @@ func TestMustParse(t *testing.T) {
 			In: []interface{}{
 				func(testName string) string { return testName },
 			},
-			Out: []interface{}{
-				bw.ValPath{},
-			},
 			Panic: "unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
 		},
 		".": {
@@ -135,17 +132,11 @@ func TestMustParse(t *testing.T) {
 			In: []interface{}{
 				func(testName string) string { return testName },
 			},
-			Out: []interface{}{
-				bw.ValPath{},
-			},
 			Panic: "unexpected end of string at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m1.\n",
 		},
 		"1.@": {
 			In: []interface{}{
 				func(testName string) string { return testName },
-			},
-			Out: []interface{}{
-				bw.ValPath{},
 			},
 			Panic: "unexpected char \u001b[96;1m'@'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m64\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m2\u001b[0m: \u001b[32m1.\u001b[91m@\u001b[0m\n",
 		},
@@ -153,17 +144,11 @@ func TestMustParse(t *testing.T) {
 			In: []interface{}{
 				func(testName string) string { return testName },
 			},
-			Out: []interface{}{
-				bw.ValPath{},
-			},
 			Panic: "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m-\u001b[91ma\u001b[0m\n",
 		},
 		"1a": {
 			In: []interface{}{
 				func(testName string) string { return testName },
-			},
-			Out: []interface{}{
-				bw.ValPath{},
 			},
 			Panic: "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m1\u001b[91ma\u001b[0m\n",
 		},
@@ -171,26 +156,17 @@ func TestMustParse(t *testing.T) {
 			In: []interface{}{
 				func(testName string) string { return testName },
 			},
-			Out: []interface{}{
-				bw.ValPath{},
-			},
 			Panic: "unexpected char \u001b[96;1m'.'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m46\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m4\u001b[0m: \u001b[32m12.#\u001b[91m.\u001b[0m4\n",
 		},
 		"12.{4": {
 			In: []interface{}{
 				func(testName string) string { return testName },
 			},
-			Out: []interface{}{
-				bw.ValPath{},
-			},
 			Panic: "unexpected end of string at pos \u001b[38;5;252;1m5\u001b[0m: \u001b[32m12.{4\n",
 		},
 		"12.$a": {
 			In: []interface{}{
 				func(testName string) string { return testName },
-			},
-			Out: []interface{}{
-				bw.ValPath{},
 			},
 			Panic: "unexpected char \u001b[96;1m'$'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m36\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m3\u001b[0m: \u001b[32m12.\u001b[91m$\u001b[0ma\n",
 		},

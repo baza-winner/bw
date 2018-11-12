@@ -66,7 +66,7 @@ func (v Float32) String() string {
 // MarshalJSON - поддержка интерфейса MarshalJSON
 func (v Float32) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
-	for k, _ := range v {
+	for _, k := range v.ToSlice() {
 		result = append(result, k)
 	}
 	return json.Marshal(result)

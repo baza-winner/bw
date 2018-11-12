@@ -43,14 +43,19 @@ func ParseInt(s string) (result int, err error) {
 	return
 }
 
+var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
+
 func ParseNumber(s string) (value interface{}, err error) {
-	s = underscoreRegexp.ReplaceAllLiteralString(s, ``)
-	if strings.Contains(s, `.`) {
+	s = underscoreRegexp.ReplaceAllLiteralString(s, "")
+	if strings.Contains(s, ".") && !zeroAfterDotRegexp.MatchString(s) {
 		var _float64 float64
 		if _float64, err = strconv.ParseFloat(s, 64); err == nil {
 			value = _float64
 		}
 	} else {
+		if pos := strings.LastIndex(s, "."); pos >= 0 {
+			s = s[:pos]
+		}
 		var _int64 int64
 		if _int64, err = strconv.ParseInt(s, 10, 64); err == nil {
 			if int64(bw.MinInt8) <= _int64 && _int64 <= int64(bw.MaxInt8) {

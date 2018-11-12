@@ -126,13 +126,15 @@ func (v *Helper) codeGenerated(f *File, generatorName string) {
 }
 
 func (v *Helper) RangeSlice(
-	id string,
+	// id string,
+	source Code,
 	blockStatements ...Code,
 ) *Statement {
 	result := For().
 		List(Id("_"), Id("k")).
 		Op(":=").
-		Range().Id(id)
+		Range().Add(source)
+	// Range().Id(id)
 	if blockStatements != nil {
 		result = result.Block(blockStatements...)
 	}
@@ -163,11 +165,11 @@ func (v *Helper) BunchOf(
 	testData interface{},
 ) {
 	FuncGen{v, fgt}.Func()(description, name, ParamArgs, rt,
-		bodyGen(v, v.RangeSlice("kk")),
+		bodyGen(v, v.RangeSlice(Id("kk"))),
 		testData,
 	)
 	FuncGen{v, fgt}.Func()(description, name+suffix+"Slice", ParamSlice, rt,
-		bodyGen(v, v.RangeSlice("kk")),
+		bodyGen(v, v.RangeSlice(Id("kk"))),
 		testData,
 	)
 	FuncGen{v, fgt}.Func()(description, name+suffix+"Set", ParamSet, rt,

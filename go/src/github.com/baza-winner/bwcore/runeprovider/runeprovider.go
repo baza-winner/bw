@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 )
 
@@ -288,15 +289,15 @@ func init() {
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 }
 
-func (p *Proxy) Unexpected(ps PosStruct, optMsg ...string) (result error) {
+func (p *Proxy) Unexpected(ps PosStruct, optFmt ...bw.I) (result error) {
 	var msg string
 	if ps.RunePtr == nil {
 		msg = ansiUnexpectedEOF
-	} else if len(optMsg) == 0 {
+	} else if len(optFmt) == 0 {
 		r := *ps.RunePtr
 		msg = fmt.Sprintf(ansiUnexpectedChar, r, r)
 	} else {
-		msg = optMsg[0]
+		msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)
 	}
 	result = bwerr.From(msg + p.GetSuffix(ps))
 	return

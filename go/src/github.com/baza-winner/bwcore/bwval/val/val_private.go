@@ -2,29 +2,29 @@ package val
 
 import "github.com/baza-winner/bwcore/runeprovider"
 
-//go:generate stringer -type=primaryState,secondaryState,itemType
+//go:generate stringer -type=PrimaryState,SecondaryState,ItemKind
 
-var trace func(r rune, primary primaryState, secondary secondaryState, stack []stackItem)
+var trace func(r rune, primary PrimaryState, secondary SecondaryState, stack []StackItem)
 
-type primaryState uint8
+type PrimaryState uint8
 
 const (
-	begin primaryState = iota
-	expectSpaceOrQwItemOrDelimiter
-	expectSpaceOrMapKey
-	expectEndOfQwItem
-	expectContentOf
-	expectWord
-	expectEscapedContentOf
-	expectRocket
-	expectDigit
-	end
+	Begin PrimaryState = iota
+	ExpectSpaceOrQwItemOrDelimiter
+	ExpectSpaceOrMapKey
+	ExpectEndOfQwItem
+	ExpectContentOf
+	ExpectWord
+	ExpectEscapedContentOf
+	ExpectRocket
+	ExpectDigit
+	End
 )
 
-type secondaryState uint8
+type SecondaryState uint8
 
 const (
-	none secondaryState = iota
+	None SecondaryState = iota
 	orArrayItemSeparator
 	orMapKeySeparator
 	orMapValueSeparator
@@ -32,28 +32,28 @@ const (
 	orUnderscore
 )
 
-type itemType uint8
+type ItemKind uint8
 
 const (
-	itemString itemType = iota
-	itemQw
-	itemQwItem
-	itemNumber
-	itemWord
-	itemKey
-	itemMap
-	itemArray
+	ItemString ItemKind = iota
+	ItemQw
+	ItemQwItem
+	ItemNumber
+	ItemWord
+	ItemKey
+	ItemMap
+	ItemArray
 )
 
-type stackItem struct {
-	ps        runeprovider.PosStruct
-	it        itemType
-	s         string
-	result    interface{}
-	delimiter rune
+type StackItem struct {
+	PosStruct runeprovider.PosStruct
+	Kind      ItemKind
+	S         string
+	Result    interface{}
+	Delimiter rune
 }
 
-var escapeRunes = map[rune]rune{
+var EscapeRunes = map[rune]rune{
 	'a': '\a',
 	'b': '\b',
 	'f': '\f',
@@ -62,7 +62,7 @@ var escapeRunes = map[rune]rune{
 	't': '\t',
 	'v': '\v',
 }
-var braces = map[rune]rune{
+var Braces = map[rune]rune{
 	'(': ')',
 	'{': '}',
 	'<': '>',
