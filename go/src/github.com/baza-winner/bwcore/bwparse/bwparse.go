@@ -1,52 +1,100 @@
 package bwparse
 
 import (
+	"regexp"
+	"strconv"
+	"strings"
 	"unicode"
 
+	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwstr"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
 // ============================================================================
 
-func ParseWord(p *runeprovider.Proxy) (result string, err error) {
-
-	type State uint8
+func ParseQw(p *runeprovider.Proxy, r rune) (result []interface{}, start runeprovider.PosStruct, ok bool, err error) {
+	type State bool
 	const (
-		begin State = iota
-		expectWord
-		end
+		expectSpaceOrQwItemOrDelimiter State = true
+		expectEndOfQwItem              State = false
+	)
+	var (
+		state     State
+		b         bool
+		r2        rune
+		delimiter rune
+		s         string
 	)
 
-	r, _, _ := p.Rune()
-	state := begin
+	if r2, b = Braces[r]; b || unicode.IsPunct(r) || unicode.IsSymbol(r) {
+		start = p.Curr
+		ok = true
+		result = []interface{}{}
+		state = expectSpaceOrQwItemOrDelimiter
+		if b {
+			delimiter = r2
+		} else {
+			delimiter = r
+		}
+	} else {
+		ok = false
+		return
+	}
+
+LOOP:
 	for {
-		switch state {
-		case begin:
-			if unicode.IsLetter(r) || r == '_' {
-				result = string(r)
-				state = expectWord
-			} else {
-				err = p.Unexpected(p.Curr)
-				return
+		if r, err = p.PullNonEOFRune(); err != nil {
+			return
+		}
+		if state {
+			if r == delimiter {
+				break LOOP
+			} else if !unicode.IsSpace(r) {
+				s = string(r)
+				state = expectEndOfQwItem
 			}
-		case expectWord:
-			if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
-				result += string(r)
-			} else {
+		} else {
+			if r == delimiter || unicode.IsSpace(r) {
 				_ = p.PushRune()
-				state = end
+				result = append(result, s)
+				state = expectSpaceOrQwItemOrDelimiter
+			} else {
+				s += string(r)
 			}
 		}
-		if state == end {
-			break
-		} else if p.Curr.IsEOF {
-			err = p.Unexpected(p.Curr)
+	}
+	return
+}
+
+var Braces = map[rune]rune{
+	'(': ')',
+	'{': '}',
+	'<': '>',
+	'[': ']',
+}
+
+// ============================================================================
+
+func ParseWord(p *runeprovider.Proxy, r rune) (result string, start runeprovider.PosStruct, ok bool, err error) {
+	if unicode.IsLetter(r) || r == '_' {
+		result = string(r)
+		start = p.Curr
+		ok = true
+	} else {
+		ok = false
+		return
+	}
+LOOP:
+	for {
+		if r, _, err = p.PullRuneOrEOF(); err != nil {
 			return
+		}
+		if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
+			result += string(r)
 		} else {
-			_ = p.PullRune()
-			r, _, _ = p.Rune()
+			_ = p.PushRune()
+			break LOOP
 		}
 	}
 	return
@@ -54,64 +102,59 @@ func ParseWord(p *runeprovider.Proxy) (result string, err error) {
 
 // ============================================================================
 
-func ParseString(p *runeprovider.Proxy) (result string, err error) {
-	type State uint8
+func ParseString(p *runeprovider.Proxy, r rune) (result string, start runeprovider.PosStruct, ok bool, err error) {
+	type State bool
 	const (
-		begin State = iota
-		expectContent
-		expectEscapedContent
-		end
+		expectContent        State = true
+		expectEscapedContent State = false
 	)
 
 	var (
 		delimiter rune
 		r2        rune
-		ok        bool
+		b         bool
+		state     State
 	)
-	r, isEOF, _ := p.Rune()
-	state := begin
+
+	if r == '"' || r == '\'' {
+		delimiter = r
+		state = expectContent
+		start = p.Curr
+		ok = true
+	} else {
+		ok = false
+		return
+	}
+
+LOOP:
 	for {
-		switch state {
-		case begin:
+		if r, err = p.PullNonEOFRune(); err != nil {
+			return
+		}
+		if state {
 			switch r {
-			case '"', '\'':
-				delimiter = r
-				state = expectContent
-			default:
-				err = p.Unexpected(p.Curr)
-				return
-			}
-		case expectContent:
-			switch {
-			case r == delimiter:
-				state = end
-			case r == '\\':
+			case delimiter:
+				break LOOP
+			case '\\':
 				state = expectEscapedContent
-			case !isEOF:
+			default:
 				result += string(r)
 			}
-		case expectEscapedContent:
-			switch {
-			case r == '"' || r == '\'' || r == '\\':
+		} else {
+			switch r {
+			case '"', '\'', '\\':
 				result += string(r)
-			case delimiter == '"':
-				if r2, ok = EscapeRunes[r]; ok {
-					result += string(r2)
-				} else {
-					err = p.Unexpected(p.Curr)
-					return
+			default:
+				if delimiter == '"' {
+					if r2, b = EscapeRunes[r]; b {
+						result += string(r2)
+					} else {
+						err = p.Unexpected(p.Curr)
+						return
+					}
 				}
 			}
 			state = expectContent
-		}
-		if state == end {
-			break
-		} else if p.Curr.IsEOF {
-			err = p.Unexpected(p.Curr)
-			return
-		} else {
-			_ = p.PullRune()
-			r, isEOF, _ = p.Rune()
 		}
 	}
 	return
@@ -129,83 +172,123 @@ var EscapeRunes = map[rune]rune{
 
 // ============================================================================
 
-func ParseNumber(p *runeprovider.Proxy) (result interface{}, err error) {
-	type State uint8
+func ParseNumber(p *runeprovider.Proxy, r rune) (result interface{}, start runeprovider.PosStruct, ok bool, err error) {
+	type State bool
 	const (
-		begin State = iota
-		expectDigitOnly
-		expectDigitOrUnderscore
-		expectDigitOrUnderscoreOrDot
-		end
+		expectDigitOrUnderscore      State = true
+		expectDigitOrUnderscoreOrDot State = false
 	)
 	var (
-		ps runeprovider.PosStruct
-		s  string
+		s     string
+		state State
 	)
-	r, _, _ := p.Rune()
-	state := begin
-	for {
-		switch state {
-		case begin:
-			switch r {
-			case '-', '+':
-				ps = p.Curr
-				s = string(r)
-				state = expectDigitOnly
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-				ps = p.Curr
-				s = string(r)
-				state = expectDigitOrUnderscoreOrDot
-			default:
-				err = p.Unexpected(p.Curr)
-				return
-			}
-		case expectDigitOnly:
-			switch r {
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-				s += string(r)
-				state = expectDigitOrUnderscoreOrDot
-			default:
-				err = p.Unexpected(p.Curr)
-				return
-			}
-		case expectDigitOrUnderscoreOrDot:
-			switch r {
-			case '.':
-				s += string(r)
-				state = expectDigitOrUnderscore
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
-				s += string(r)
-			default:
-				p.PushRune()
-				state = end
-			}
-		case expectDigitOrUnderscore:
-			switch r {
-			case '.':
-				s += string(r)
-				state = expectDigitOrUnderscore
-			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
-				s += string(r)
-			default:
-				p.PushRune()
-				state = end
-			}
-		}
 
-		if state == end {
-			break
-		} else if p.Curr.IsEOF {
+	switch r {
+	case '-', '+':
+		start = p.Curr
+		s = string(r)
+		ok = true
+		start = p.Curr
+		if r, err = p.PullNonEOFRune(); err != nil {
+			return
+		}
+		switch r {
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			s += string(r)
+			state = expectDigitOrUnderscoreOrDot
+		default:
 			err = p.Unexpected(p.Curr)
 			return
-		} else {
-			_ = p.PullRune()
-			r, _, _ = p.Rune()
+		}
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		start = p.Curr
+		s = string(r)
+		state = expectDigitOrUnderscoreOrDot
+		ok = true
+		start = p.Curr
+	default:
+		ok = false
+		return
+	}
+
+LOOP:
+	for {
+		if r, _, err = p.PullRuneOrEOF(); err != nil {
+			return
+		}
+		switch r {
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
+			s += string(r)
+		default:
+			if state == expectDigitOrUnderscoreOrDot && r == '.' {
+				s += string(r)
+				state = expectDigitOrUnderscore
+			} else {
+				p.PushRune()
+				break LOOP
+			}
 		}
 	}
-	if result, err = bwstr.ParseNumber(s); err != nil {
-		err = p.Unexpected(ps, bwerr.Err(err))
+
+	s = underscoreRegexp.ReplaceAllLiteralString(s, "")
+	if strings.Contains(s, ".") && !zeroAfterDotRegexp.MatchString(s) {
+		var _float64 float64
+		if _float64, err = strconv.ParseFloat(s, 64); err == nil {
+			result = _float64
+		}
+	} else {
+		if pos := strings.LastIndex(s, "."); pos >= 0 {
+			s = s[:pos]
+		}
+		var _int64 int64
+		if _int64, err = strconv.ParseInt(s, 10, 64); err == nil {
+			if int64(bw.MinInt8) <= _int64 && _int64 <= int64(bw.MaxInt8) {
+				result = int8(_int64)
+			} else if int64(bw.MinInt16) <= _int64 && _int64 <= int64(bw.MaxInt16) {
+				result = int16(_int64)
+			} else if int64(bw.MinInt32) <= _int64 && _int64 <= int64(bw.MaxInt32) {
+				result = int32(_int64)
+			} else {
+				result = _int64
+			}
+		}
+	}
+	if err != nil {
+		err = p.Unexpected(start, bwerr.Err(err))
+	}
+
+	return
+}
+
+var underscoreRegexp = regexp.MustCompile("[_]+")
+
+var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
+
+// ============================================================================
+
+func ParseSpace(p *runeprovider.Proxy, r rune) (start runeprovider.PosStruct, ok bool, err error) {
+	var isEOF bool
+	if unicode.IsSpace(r) {
+		start = p.Curr
+		ok = true
+	} else {
+		ok = false
 		return
+	}
+LOOP:
+	for {
+		if r, isEOF, err = p.PullRuneOrEOF(); err != nil {
+			return
+		} else if isEOF {
+			break LOOP
+		} else if !unicode.IsSpace(r) {
+			err = p.Unexpected(p.Curr)
+			return
+		}
 	}
 	return
 }
+
+// ============================================================================
+
+// ============================================================================

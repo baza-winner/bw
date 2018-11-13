@@ -25,57 +25,56 @@ func MustParse(s string, optVars ...map[string]interface{}) (result interface{})
 
 // Parse превращает строку в interface{}-значение одной из следующих разновидностей (bwval.Kind()): Nil, Bool, Int, String, Map, Array
 func Parse(s string, optVars ...map[string]interface{}) (result interface{}, err error) {
-	p := runeprovider.ProxyFrom(runeprovider.FromString(s))
-	if result, err = RunPfa(nil, p, Begin, None); err != nil {
-		return
-	}
+	defer func() {
+		if err != nil {
+			result = nil
+		}
+	}()
 	var (
 		isEOF bool
 		r     rune
+		ok    bool
 	)
-	r, isEOF, _ = p.Rune()
-	for !isEOF {
-		if !unicode.IsSpace(r) {
-			err = p.Unexpected(p.Curr)
-			return
-		}
-		_ = p.PullRune()
-		r, isEOF, _ = p.Rune()
+	p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+
+	if r, err = p.PullNonEOFRune(); err != nil {
+		return
+	}
+	if result, err = ParseVal(p, r); err != nil {
+		return
+	}
+	if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
+		return
+	}
+	if _, ok, err = bwparse.ParseSpace(p, r); err != nil {
+		return
+	} else if !ok {
+		err = p.Unexpected(p.Curr)
+		return
 	}
 	return
 }
 
 // ============================================================================
 
-func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, secondary SecondaryState) (result interface{}, err error) {
+func ParseVal(p *runeprovider.Proxy, r rune) (result interface{}, err error) {
 	var (
 		needFinish      bool
 		skipPostProcess bool
 		isEOF           bool
 		ok              bool
-		r               rune
-		r2              rune
+		s               string
+		start           runeprovider.PosStruct
+		val             interface{}
+		vals            []interface{}
+		stack           []StackItem
+		primary         PrimaryState
+		secondary       SecondaryState
 	)
 	for primary != End {
-		_ = p.PullRune()
 		r, isEOF, _ = p.Rune()
 		needFinish = false
 		switch primary {
-		case ExpectRocket:
-			if r == '>' {
-				primary = Begin
-				secondary = None
-			} else {
-				err = p.Unexpected(p.Curr)
-				return
-			}
-		case ExpectWord:
-			if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
-				stack[len(stack)-1].S += string(r)
-			} else {
-				_ = p.PushRune()
-				needFinish = true
-			}
 		case ExpectSpaceOrQwItemOrDelimiter:
 			switch {
 			case unicode.IsSpace(r):
@@ -91,34 +90,29 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 				primary = ExpectEndOfQwItem
 				secondary = None
 			}
-		case ExpectEndOfQwItem:
-			switch {
-			case unicode.IsSpace(r) || r == stack[len(stack)-1].Delimiter:
-				_ = p.PushRune()
-				needFinish = true
-			case !isEOF:
-				stack[len(stack)-1].S += string(r)
-			}
 		case ExpectSpaceOrMapKey:
 			switch {
 			case unicode.IsSpace(r):
 			case unicode.IsLetter(r) || r == '_':
-				stack = append(stack, StackItem{
-					PosStruct: p.Curr,
-					Kind:      ItemKey,
-					S:         string(r),
-				})
-				primary = ExpectWord
-				secondary = None
-			case r == '"' || r == '\'':
-				stack = append(stack, StackItem{
-					PosStruct: p.Curr,
-					Kind:      ItemKey,
-					Delimiter: r,
-				})
-				if stack[len(stack)-1].S, err = bwparse.ParseString(p); err != nil {
+				if s, start, _, err = bwparse.ParseWord(p, r); err != nil {
 					return
 				}
+				stack = append(stack, StackItem{
+					PosStruct: start,
+					Kind:      ItemKey,
+					S:         s,
+				})
+				needFinish = true
+			case r == '"' || r == '\'':
+				if s, start, _, err = bwparse.ParseString(p, r); err != nil {
+					return
+				}
+				stack = append(stack, StackItem{
+					PosStruct: start,
+					Kind:      ItemKey,
+					Delimiter: r,
+					S:         s,
+				})
 				needFinish = true
 			case r == ',' && secondary == orMapValueSeparator:
 				primary = ExpectSpaceOrMapKey
@@ -129,8 +123,15 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 		case Begin:
 			switch {
 			case r == '=' && secondary == orMapKeySeparator:
-				primary = ExpectRocket
-				secondary = None
+				if r, isEOF, err = p.PullRuneOrEOF(); err != nil {
+					return
+				} else if r == '>' {
+					primary = Begin
+					secondary = None
+				} else {
+					err = p.Unexpected(p.Curr)
+					return
+				}
 			case r == ':' && secondary == orMapKeySeparator:
 				primary = Begin
 				secondary = None
@@ -148,14 +149,16 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 				primary = ExpectSpaceOrMapKey
 				secondary = None
 			case r == '<':
+				if vals, start, _, err = bwparse.ParseQw(p, r); err != nil {
+					return
+				}
 				stack = append(stack, StackItem{
-					PosStruct: p.Curr,
+					PosStruct: start,
 					Kind:      ItemQw,
-					Result:    []interface{}{},
+					Result:    vals,
 					Delimiter: '>',
 				})
-				primary = ExpectSpaceOrQwItemOrDelimiter
-				secondary = None
+				needFinish = true
 			case r == '[':
 				stack = append(stack, StackItem{
 					PosStruct: p.Curr,
@@ -168,34 +171,38 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 			case len(stack) > 0 && stack[len(stack)-1].Kind == ItemArray && r == stack[len(stack)-1].Delimiter:
 				needFinish = true
 			case r == '-' || r == '+' || unicode.IsDigit(r):
-
-				stack = append(stack, StackItem{
-					PosStruct: p.Curr,
-					Kind:      ItemNumber,
-				})
-				if stack[len(stack)-1].Result, err = bwparse.ParseNumber(p); err != nil {
+				if val, start, _, err = bwparse.ParseNumber(p, r); err != nil {
 					return
 				}
+				stack = append(stack, StackItem{
+					PosStruct: start,
+					Kind:      ItemNumber,
+					Result:    val,
+				})
 				needFinish = true
 
 			case r == '"' || r == '\'':
+				if s, start, _, err = bwparse.ParseString(p, r); err != nil {
+					return
+				}
 				stack = append(stack, StackItem{
-					PosStruct: p.Curr,
+					PosStruct: start,
 					Kind:      ItemString,
 					Delimiter: r,
+					S:         s,
 				})
-				if stack[len(stack)-1].S, err = bwparse.ParseString(p); err != nil {
+				needFinish = true
+			case unicode.IsLetter(r) || r == '_':
+				if s, start, _, err = bwparse.ParseWord(p, r); err != nil {
 					return
 				}
 				needFinish = true
-			case unicode.IsLetter(r) || r == '_':
+
 				stack = append(stack, StackItem{
-					PosStruct: p.Curr,
+					PosStruct: start,
 					Kind:      ItemWord,
-					S:         string(r),
+					S:         s,
 				})
-				primary = ExpectWord
-				secondary = None
 			default:
 				err = p.Unexpected(p.Curr)
 				return
@@ -223,23 +230,18 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 				case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
 					stack[len(stack)-1].Result = stack[len(stack)-1].S
 				case "qw":
-					_ = p.PullRune()
-					r, _, _ = p.Rune()
-					if r2, ok = Braces[r]; ok || unicode.IsPunct(r) || unicode.IsSymbol(r) {
-						primary = ExpectSpaceOrQwItemOrDelimiter
-						secondary = None
-						stack[len(stack)-1].Kind = ItemQw
-						stack[len(stack)-1].Result = []interface{}{}
-						if ok {
-							stack[len(stack)-1].Delimiter = r2
-						} else {
-							stack[len(stack)-1].Delimiter = r
-						}
-					} else {
+					if r, err = p.PullNonEOFRune(); err != nil {
+						return
+					}
+					if vals, start, ok, err = bwparse.ParseQw(p, r); err != nil {
+						return
+					}
+					if !ok {
 						err = p.Unexpected(p.Curr)
 						return
 					}
-					skipPostProcess = true
+					stack[len(stack)-1].Kind = ItemQw
+					stack[len(stack)-1].Result = vals
 				default:
 					err = p.Unexpected(stack[len(stack)-1].PosStruct, bw.Fmt(ansi.String("unexpected <ansiErr>%q<ansi>"), stack[len(stack)-1].S))
 					return
@@ -254,8 +256,6 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 				case 0:
 				case 1:
 					primary = End
-					_ = p.PullRune()
-					r, isEOF, _ = p.Rune()
 				default:
 					switch stack[len(stack)-2].Kind {
 					case ItemQw:
@@ -298,6 +298,8 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 			err = p.Unexpected(p.Curr)
 			return
 		}
+
+		_ = p.PullRune()
 	}
 	result = stack[0].Result
 	return
@@ -314,8 +316,8 @@ const (
 	ExpectSpaceOrQwItemOrDelimiter
 	ExpectSpaceOrMapKey
 	ExpectEndOfQwItem
-	ExpectWord
-	ExpectRocket
+	// ExpectWord
+	// ExpectRocket
 	End
 )
 

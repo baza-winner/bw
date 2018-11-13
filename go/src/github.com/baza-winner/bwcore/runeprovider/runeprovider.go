@@ -112,6 +112,25 @@ func (p *Proxy) PullRune() (err error) {
 	return
 }
 
+func (p *Proxy) PullNonEOFRune() (result rune, err error) {
+	var isEOF bool
+	if result, isEOF, err = p.PullRuneOrEOF(); err != nil {
+		return
+	}
+	if isEOF {
+		err = p.Unexpected(p.Curr)
+		return
+	}
+	return
+}
+
+func (p *Proxy) PullRuneOrEOF() (result rune, isEOF bool, err error) {
+	if err = p.PullRune(); err != nil {
+		return
+	}
+	return p.Rune()
+}
+
 func (p *Proxy) pullRune(ps *PosStruct) (err error) {
 	var runePtr *rune
 	if runePtr, err = p.Prov.PullRune(); err != nil {
