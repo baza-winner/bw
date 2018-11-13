@@ -7,7 +7,6 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwparse"
-	"github.com/baza-winner/bwcore/bwstr"
 	"github.com/baza-winner/bwcore/runeprovider"
 )
 
@@ -100,23 +99,6 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 			case !isEOF:
 				stack[len(stack)-1].S += string(r)
 			}
-		case ExpectDigit:
-			switch {
-			case unicode.IsDigit(r) && secondary == None:
-				stack[len(stack)-1].S += string(r)
-				secondary = orUnderscoreOrDot
-			case r == '.' && secondary == orUnderscoreOrDot:
-				stack[len(stack)-1].S += string(r)
-				secondary = orUnderscore
-			case (r == '_' || unicode.IsDigit(r)) && (secondary == orUnderscoreOrDot || secondary == orUnderscore):
-				stack[len(stack)-1].S += string(r)
-			case secondary == None:
-				err = p.Unexpected(p.Curr)
-				return
-			default:
-				p.PushRune()
-				needFinish = true
-			}
 		case ExpectSpaceOrMapKey:
 			switch {
 			case unicode.IsSpace(r):
@@ -185,22 +167,17 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 				secondary = None
 			case len(stack) > 0 && stack[len(stack)-1].Kind == ItemArray && r == stack[len(stack)-1].Delimiter:
 				needFinish = true
-			case r == '-' || r == '+':
+			case r == '-' || r == '+' || unicode.IsDigit(r):
+
 				stack = append(stack, StackItem{
 					PosStruct: p.Curr,
 					Kind:      ItemNumber,
-					S:         string(r),
 				})
-				primary = ExpectDigit
-				secondary = None
-			case unicode.IsDigit(r):
-				stack = append(stack, StackItem{
-					PosStruct: p.Curr,
-					Kind:      ItemNumber,
-					S:         string(r),
-				})
-				primary = ExpectDigit
-				secondary = orUnderscoreOrDot
+				if stack[len(stack)-1].Result, err = bwparse.ParseNumber(p); err != nil {
+					return
+				}
+				needFinish = true
+
 			case r == '"' || r == '\'':
 				stack = append(stack, StackItem{
 					PosStruct: p.Curr,
@@ -235,11 +212,6 @@ func RunPfa(stack []StackItem, p *runeprovider.Proxy, primary PrimaryState, seco
 			case ItemString, ItemQwItem:
 				stack[len(stack)-1].Result = stack[len(stack)-1].S
 			case ItemNumber:
-				stack[len(stack)-1].Result, err = bwstr.ParseNumber(stack[len(stack)-1].S)
-				if err != nil {
-					err = p.Unexpected(stack[len(stack)-1].PosStruct, bwerr.Err(err))
-					return
-				}
 			case ItemWord:
 				switch stack[len(stack)-1].S {
 				case "true":
@@ -344,7 +316,6 @@ const (
 	ExpectEndOfQwItem
 	ExpectWord
 	ExpectRocket
-	ExpectDigit
 	End
 )
 
@@ -355,8 +326,6 @@ const (
 	orArrayItemSeparator
 	orMapKeySeparator
 	orMapValueSeparator
-	orUnderscoreOrDot
-	orUnderscore
 )
 
 type ItemKind uint8
