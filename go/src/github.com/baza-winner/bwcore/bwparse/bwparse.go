@@ -404,11 +404,9 @@ func SkipOptionalSpaceTillEOF(p *runeprovider.Proxy, r rune) (err error) {
 		return
 	}
 
-	// bwdebug.Print("r", string(r))
 	if _, isEOF, _, ok, err = ParseSpace(p, r); err != nil || ok && isEOF {
 		return
 	} else {
-		// bwdebug.Print("p.Next[0]", bwjson.Pretty(p.Next[0]))
 		_ = p.PullRune()
 		err = p.Unexpected(p.Curr)
 		return
@@ -423,33 +421,13 @@ func SkipOptionalSpace(p *runeprovider.Proxy) (r rune, err error) {
 	if unicode.IsSpace(r) {
 	LOOP:
 		for {
-			// result = r
 			if r, err = p.PullNonEOFRune(); err != nil {
 				return
 			} else if !unicode.IsSpace(r) {
 				break LOOP
 			}
-			// else if isEOF || !unicode.IsSpace(r) {
-			// 	p.PushRune()
-			// 	break LOOP
-			// }
 		}
 	}
-	// var isEOF, ok bool
-	// if result, isEOF, _, ok, err = ParseSpace(p, r); err != nil || ok && isEOF {
-	// 	if err == nil {
-	// 		_ = p.PullRune()
-	// 		err = p.Unexpected(p.Curr)
-	// 	}
-	// 	return
-	// } else if !ok {
-	// 	// bwdebug.Print("r", string(r))
-	// 	result = r
-	// } else {
-	// 	p.PullRuneOrEOF()
-
-	// }
-	// bwdebug.Print("r", string(r))
 	return
 }
 
@@ -472,7 +450,10 @@ LOOP:
 		}
 
 		var val interface{}
-		if val, err = ParseVal(p, r); err != nil {
+		if val, _, ok, err = ParseVal(p, r); err != nil || !ok {
+			if err == nil {
+				err = p.Unexpected(p.Curr)
+			}
 			return
 		}
 		if ss, b := val.([]string); !b {
@@ -529,12 +510,10 @@ LOOP:
 			err = p.Unexpected(p.Curr)
 			return
 		}
-		// bwdebug.Print("key", key)
 
 		if r, err = SkipOptionalSpace(p); err != nil {
 			return
 		}
-		// bwdebug.Print("r", string(r))
 
 		if r == ':' {
 			if r, err = SkipOptionalSpace(p); err != nil {
@@ -554,10 +533,12 @@ LOOP:
 		}
 
 		var val interface{}
-		if val, err = ParseVal(p, r); err != nil {
+		if val, _, ok, err = ParseVal(p, r); err != nil || !ok {
+			if err == nil {
+				err = p.Unexpected(p.Curr)
+			}
 			return
 		}
-		// bwdebug.Print("val", val)
 
 		result[key] = val
 
@@ -569,196 +550,74 @@ LOOP:
 				return
 			}
 		}
-		// bwdebug.Print("r", string(r))
 
 	}
 
 	return
 }
 
-func ParseVal(p *runeprovider.Proxy, r rune) (result interface{}, err error) {
-
-	// type PrimaryState uint8
-
-	// const (
-	// 	Begin PrimaryState = iota
-	// 	// ExpectSpaceOrQwItemOrDelimiter
-	// 	// ExpectSpaceOrMapKey
-	// 	// End
-	// )
-
-	// type SecondaryState uint8
-
-	// const (
-	// 	None SecondaryState = iota
-	// 	// orArrayItemSeparator
-	// 	// orMapKeySeparator
-	// 	// orMapValueSeparator
-	// )
-
-	type ItemKind uint8
-
-	const (
-		ItemString ItemKind = iota
-		ItemQw
-		ItemQwItem
-		ItemNumber
-		ItemWord
-		ItemKey
-		ItemMap
-		ItemArray
-	)
-
-	type StackItem struct {
-		PosStruct runeprovider.PosStruct
-		Kind      ItemKind
-		S         string
-		Result    interface{}
-		Delimiter rune
-	}
+func ParseVal(p *runeprovider.Proxy, r rune) (result interface{}, start runeprovider.PosStruct, ok bool, err error) {
 
 	var (
-		needFinish bool
-		// skipPostProcess bool
-		ok    bool
-		s     string
-		start runeprovider.PosStruct
-		val   interface{}
-		vals  []interface{}
-		ss    []string
-		m     map[string]interface{}
-		stack []StackItem
-		// primary PrimaryState
-		// secondary SecondaryState
+		s    string
+		ps   runeprovider.PosStruct
+		val  interface{}
+		vals []interface{}
+		ss   []string
+		m    map[string]interface{}
+		b    bool
 	)
-LOOP:
-	// for primary != End {
-	for {
-		r, _, _ = p.Rune()
-		needFinish = false
-		switch {
-		// case unicode.IsSpace(r):
+	// r, _, _ = p.Rune()
+	ok = true
+	start = p.Curr
 
-		case r == '{':
-			if m, start, _, err = Map(p, r); err != nil {
-				return
-			}
-			stack = append(stack, StackItem{
-				PosStruct: p.Curr,
-				Kind:      ItemMap,
-				Result:    m,
-				Delimiter: '}',
-			})
-			needFinish = true
-		case r == '<':
-			if ss, start, _, err = ArrayOfString(p, r); err != nil {
-				return
-			}
-			stack = append(stack, StackItem{
-				PosStruct: start,
-				Kind:      ItemQw,
-				Result:    ss,
-				Delimiter: '>',
-			})
-			needFinish = true
-		case r == '[':
-			if vals, start, _, err = ParseArray(p, r); err != nil {
-				return
-			}
-			stack = append(stack, StackItem{
-				PosStruct: start,
-				Kind:      ItemArray,
-				Result:    vals,
-				Delimiter: ']',
-			})
-			needFinish = true
-		case len(stack) > 0 && stack[len(stack)-1].Kind == ItemArray && r == stack[len(stack)-1].Delimiter:
-			needFinish = true
-		case r == '-' || r == '+' || unicode.IsDigit(r):
-			if val, start, _, err = ParseNumber(p, r); err != nil {
-				return
-			}
-			stack = append(stack, StackItem{
-				PosStruct: start,
-				Kind:      ItemNumber,
-				Result:    val,
-			})
-			needFinish = true
-
-		case r == '"' || r == '\'':
-			if s, start, _, err = String(p, r); err != nil {
-				return
-			}
-			stack = append(stack, StackItem{
-				PosStruct: start,
-				Kind:      ItemString,
-				Delimiter: r,
-				Result:    s,
-			})
-			needFinish = true
-		case unicode.IsLetter(r) || r == '_':
-			if s, start, _, err = Id(p, r); err != nil {
-				return
-			}
-			needFinish = true
-
-			stack = append(stack, StackItem{
-				PosStruct: start,
-				Kind:      ItemWord,
-				S:         s,
-			})
-		default:
-			err = p.Unexpected(p.Curr)
+	if m, _, b, err = Map(p, r); err != nil || b {
+		if err != nil {
 			return
 		}
-
-		_ = needFinish
-		// if needFinish {
-		switch stack[len(stack)-1].Kind {
-		case ItemWord:
-			switch stack[len(stack)-1].S {
-			case "true":
-				stack[len(stack)-1].Result = true
-			case "false":
-				stack[len(stack)-1].Result = false
-			case "nil", "null":
-				stack[len(stack)-1].Result = nil
-			case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
-				stack[len(stack)-1].Result = stack[len(stack)-1].S
-			case "qw":
-				if r, err = p.PullNonEOFRune(); err != nil {
-					return
-				}
-				var b bool
-				if _, b = Braces[r]; !(b || unicode.IsPunct(r) || unicode.IsSymbol(r)) {
-					err = p.Unexpected(p.Curr)
-					return
-				}
-				p.PushRune()
-				p.PushRune()
-				p.PushRune()
-				r = *p.Curr.RunePtr
-				if ss, start, ok, err = ArrayOfString(p, r); err != nil {
-					return
-				}
-				if !ok {
-					err = p.Unexpected(p.Curr)
-					return
-				}
-				stack[len(stack)-1].Kind = ItemQw
-				stack[len(stack)-1].Result = ss
-			default:
-				err = p.Unexpected(stack[len(stack)-1].PosStruct, bw.Fmt(ansi.String("unexpected <ansiErr>%q<ansi>"), stack[len(stack)-1].S))
-				return
-			}
+		result = m
+	} else if vals, _, b, err = ParseArray(p, r); err != nil || b {
+		if err != nil {
+			return
 		}
-
-		break LOOP
-		// } else {
-		// 	bwdebug.Print("!HERE")
-		// }
+		result = vals
+	} else if s, _, b, err = String(p, r); err != nil || b {
+		if err != nil {
+			return
+		}
+		result = s
+	} else if val, _, b, err = ParseNumber(p, r); err != nil || b {
+		if err != nil {
+			return
+		}
+		result = val
+	} else if ss, _, b, err = ArrayOfString(p, r); err != nil || b {
+		if err != nil {
+			return
+		}
+		result = ss
+	} else if s, ps, b, err = Id(p, r); err != nil || b {
+		if err != nil {
+			return
+		}
+		switch s {
+		case "true":
+			result = true
+		case "false":
+			result = false
+		case "nil", "null":
+			result = nil
+		case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
+			result = s
+		default:
+			err = p.Unexpected(ps, bw.Fmt(ansi.String("unexpected <ansiErr>%q<ansi>"), s))
+			return
+		}
+	} else {
+		ok = false
+		return
 	}
-	result = stack[0].Result
+
 	return
 }
 

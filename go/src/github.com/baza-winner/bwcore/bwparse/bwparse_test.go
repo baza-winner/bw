@@ -246,7 +246,7 @@ func TestVal(t *testing.T) {
 		`"\z"`:                 "unexpected char \x1b[96;1m'z'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m122\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m\"\\\x1b[91mz\x1b[0m\"\n",
 		`{key:`:                "unexpected end of string at pos \x1b[38;5;252;1m5\x1b[0m: \x1b[32m{key:\n",
 		`}`:                    "unexpected char \x1b[96;1m'}'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m125\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m}\x1b[0m\n",
-		`qw `:                  "unexpected char \x1b[96;1m' '\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m32\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32mqw\x1b[91m \x1b[0m\n",
+		`qw `:                  "unexpected \x1b[91;1m\"qw\"\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mqw\x1b[0m \n",
 		`{ key: 1_000_000_000_000_000_000_000_000 }`: "strconv.ParseInt: parsing \"1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ key: \x1b[91m1_000_000_000_000_000_000_000_000\x1b[0m }\n",
 		`{ type Number keyA valA keyB valB }`:        "unexpected \x1b[91;1m\"valA\"\x1b[0m at pos \x1b[38;5;252;1m19\x1b[0m: \x1b[32m{ type Number keyA \x1b[91mvalA\x1b[0m keyB valB }\n",
 		"{ val: nil def: Array":                      "unexpected end of string at pos \x1b[38;5;252;1m21\x1b[0m: \x1b[32m{ val: nil def: Array\n",
@@ -272,29 +272,23 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		}()
 		var (
 			// isEOF bool
-			r rune
-			// ok bool
+			r  rune
+			ok bool
 		)
 		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
 
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
-		if result, err = bwparse.ParseVal(p, r); err != nil {
+		if result, _, ok, err = bwparse.ParseVal(p, r); err != nil || !ok {
+			if err == nil {
+				err = p.Unexpected(p.Curr)
+			}
 			return
 		}
 		if err = bwparse.SkipOptionalSpaceTillEOF(p, r); err != nil {
 			return
 		}
-		// if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
-		// 	return
-		// }
-		// if _, ok, err = bwparse.ParseSpace(p, r); err != nil {
-		// 	return
-		// } else if !ok {
-		// 	err = p.Unexpected(p.Curr)
-		// 	return
-		// }
 		return
 	}(s, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
