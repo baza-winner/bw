@@ -5,15 +5,43 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
-	"github.com/baza-winner/bwcore/bwval/path"
-	"github.com/baza-winner/bwcore/bwval/val"
+	"github.com/baza-winner/bwcore/bwparse"
+	"github.com/baza-winner/bwcore/runeprovider"
 )
 
 // ============================================================================
 
 // PathFrom - конструктор-парсер bw.ValPath из строки
-func PathFrom(s string) bw.ValPath {
-	return path.MustParse(s)
+func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
+	var err error
+	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
+		var (
+			isEOF bool
+			r     rune
+			ok    bool
+		)
+		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+		if r, err = p.PullNonEOFRune(); err != nil {
+			return
+		}
+		if result, err = bwparse.Path(p, r, optBases...); err != nil {
+			return
+		}
+		if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
+			return
+		}
+		if _, ok, err = bwparse.ParseSpace(p, r); err != nil {
+			return
+		} else if !ok {
+			err = p.Unexpected(p.Curr)
+			return
+		}
+
+		return
+	}(s, optBases...); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
 }
 
 // ============================================================================
@@ -44,8 +72,41 @@ func MustSetPathVal(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[s
 
 // ============================================================================
 
-func From(s string, optVars ...map[string]interface{}) interface{} {
-	return val.MustParse(s, optVars...)
+func From(s string, optVars ...map[string]interface{}) (result interface{}) {
+	var err error
+	if result, err = func(s string, optVars ...map[string]interface{}) (result interface{}, err error) {
+		defer func() {
+			if err != nil {
+				result = nil
+			}
+		}()
+		var (
+			isEOF bool
+			r     rune
+			ok    bool
+		)
+		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+
+		if r, err = p.PullNonEOFRune(); err != nil {
+			return
+		}
+		if result, err = bwparse.ParseVal(p, r); err != nil {
+			return
+		}
+		if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
+			return
+		}
+		if _, ok, err = bwparse.ParseSpace(p, r); err != nil {
+			return
+		} else if !ok {
+			err = p.Unexpected(p.Curr)
+			return
+		}
+		return
+	}(s, optVars...); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
 }
 
 // ============================================================================

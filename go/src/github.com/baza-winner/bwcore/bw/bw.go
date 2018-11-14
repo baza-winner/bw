@@ -77,6 +77,23 @@ func PluralWord(count int, word string, word1 string, word2_4 string, _word5more
 
 // ============================================================================
 
+func NormalIdx(idx int, len int) (result int, ok bool) {
+	min := -len
+	max := len - 1
+	if min <= idx && idx <= max {
+		if idx < 0 {
+			idx = len + idx
+		}
+		result = idx
+		ok = true
+	} else {
+		ok = false
+	}
+	return
+}
+
+// ============================================================================
+
 // https://stackoverflow.com/questions/6878590/the-maximum-value-for-an-int-type-in-go
 
 const (

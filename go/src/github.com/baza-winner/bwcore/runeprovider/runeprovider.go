@@ -262,6 +262,10 @@ func init() {
 }
 
 func (p *Proxy) GetSuffix(ps PosStruct) (suffix string) {
+	if ps.Pos > p.Curr.Pos {
+		bwerr.Panic("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)", ps.Pos, p.Curr.Pos)
+	}
+	// bwdebug.Print("ps", ps)
 	preLineCount := p.preLineCount
 	postLineCount := p.postLineCount
 	if p.Curr.RunePtr == nil {

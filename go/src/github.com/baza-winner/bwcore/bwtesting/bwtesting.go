@@ -257,7 +257,9 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 		var outValues []reflect.Value
 		func() {
 			if test.Panic != nil {
-				defer func() { panicVal = recover() }()
+				if s, ok := test.Panic.(string); !ok || len(s) > 0 {
+					defer func() { panicVal = recover() }()
+				}
 			}
 			outValues = testeeValue.Call(inValues)
 		}()
@@ -268,7 +270,24 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 				t.Error(bw.Spew.Sprintf(fmtString, fmtArgs...))
 			}
 		} else if test.Panic != nil {
-			initFmt(func() string { return ansi.String(" should <ansiErr>Panic<ansi>") })
+			initFmt(func() (result string) {
+				result = fmt.Sprintf(ansi.String(" should <ansiErr>Panic<ansi> as:\n<ansiVar>q<ansi>: %#v\n<ansiVar>json<ansi>: %s"), test.Panic, test.Panic)
+				if numOut > 0 {
+					prefix := "<ansiErr>but returned"
+					s := ansi.String(":\n  <ansiVar>q<ansi>: %#v\n  <ansiVar>json<ansi>: %s")
+					if numOut == 1 {
+						val := outValues[0].Interface()
+						result += fmt.Sprintf(ansi.String(prefix)+s, val, val)
+					} else {
+						result += fmt.Sprintf(ansi.String(prefix+" %d values:"), numOut)
+						for i := 0; i < numOut; i++ {
+							val := outValues[i].Interface()
+							result += fmt.Sprintf(ansi.String("\n<ansiPath>%d<ansi>"+s), i, val, val)
+						}
+					}
+				}
+				return
+			})
 			t.Error(bw.Spew.Sprintf(fmtString, fmtArgs...))
 		} else {
 			for i := 0; i < numOut; i++ {
