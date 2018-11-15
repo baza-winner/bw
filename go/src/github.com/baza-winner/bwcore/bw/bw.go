@@ -166,7 +166,7 @@ func (v ValPath) String() (result string) {
 		for _, vpi := range v {
 			switch vpi.Type {
 			case ValPathItemPath:
-				ss = append(ss, "{"+vpi.Path.String()+"}")
+				ss = append(ss, "("+vpi.Path.String()+")")
 			case ValPathItemKey:
 				ss = append(ss, vpi.Key)
 			case ValPathItemVar:

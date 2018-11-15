@@ -27,7 +27,7 @@ func TestPath(t *testing.T) {
 			{Type: bw.ValPathItemKey, Key: "some"},
 			{Type: bw.ValPathItemHash},
 		},
-		"{some.thing}.good": bw.ValPath{
+		"(some.thing).good": bw.ValPath{
 			{Type: bw.ValPathItemPath,
 				Path: bw.ValPath{
 					{Type: bw.ValPathItemKey, Key: "some"},
@@ -36,7 +36,7 @@ func TestPath(t *testing.T) {
 			},
 			{Type: bw.ValPathItemKey, Key: "good"},
 		},
-		"$some.thing.{good}": bw.ValPath{
+		"$some.thing.(good)": bw.ValPath{
 			{Type: bw.ValPathItemVar, Key: "some"},
 			{Type: bw.ValPathItemKey, Key: "thing"},
 			{Type: bw.ValPathItemPath,
@@ -66,7 +66,7 @@ func TestPath(t *testing.T) {
 		"-a":      "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m-\u001b[91ma\u001b[0m\n",
 		"1a":      "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m1\u001b[91ma\u001b[0m\n",
 		"12.#.4":  "unexpected char \x1b[96;1m'.'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m46\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m4\x1b[0m: \x1b[32m12.#\x1b[91m.\x1b[0m4\n",
-		"12.{4":   "unexpected end of string at pos \u001b[38;5;252;1m5\u001b[0m: \u001b[32m12.{4\n",
+		"12.(4":   "unexpected end of string at pos \u001b[38;5;252;1m5\u001b[0m: \u001b[32m12.(4\n",
 		"12.$a":   "unexpected char \u001b[96;1m'$'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m36\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m3\u001b[0m: \u001b[32m12.\u001b[91m$\u001b[0ma\n",
 		"$1.some": "unexpected base path idx \x1b[96;1m1\x1b[0m (len(bases): \x1b[96;1m0)\x1b[0m at pos \x1b[38;5;252;1m1\x1b[0m: \x1b[32m$\x1b[91m1\x1b[0m.some\n",
 	} {
@@ -112,30 +112,11 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 				result = nil
 			}
 		}()
-		var (
-			// isEOF bool
-			// r  rune
-			ok bool
-		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if err = p.Forward(bwparse.NonEOF); err != nil {
+		if result, err = p.PathContent(bwparse.AutoForward, optBases...); err != nil {
 			return
 		}
-		// p.MustPullRune(bwparse.NonEOF)
-		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
-		// 	if err == nil {
-		// 		err = p.Unexpected(p.Curr)
-		// 	}
-		// 	return
-		// }
-		if result, _, ok, err = p.Path(optBases...); err != nil || !ok {
-			if err == nil {
-				err = p.Unexpected(p.Curr)
-			}
-			return
-		}
-		// bwdebug.Print("*p.Curr.RunePtr", string(*p.Curr.RunePtr))
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
@@ -181,8 +162,6 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 			}
 		}()
 		var (
-			// isEOF bool
-			// r  rune
 			ok bool
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
@@ -190,16 +169,6 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		if err = p.Forward(bwparse.NonEOF); err != nil {
 			return
 		}
-		// if _, err = p.PullNonEOFRune(); err != nil {
-		// 	return
-		// }
-
-		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
-		// 	if err == nil {
-		// 		err = p.Unexpected(p.Curr)
-		// 	}
-		// 	return
-		// }
 		if result, _, ok, err = p.Int(); err != nil {
 			return
 		} else if !ok {
@@ -209,15 +178,6 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
-		// if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
-		// 	return
-		// }
-		// if _, ok, err = bwparse.ParseSpace(p, r); err != nil {
-		// 	return
-		// } else if !ok {
-		// 	err = p.Unexpected(p.Curr)
-		// 	return
-		// }
 		return
 	}(s, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
@@ -248,6 +208,10 @@ func TestVal(t *testing.T) {
 			"keyword": "Bool",
 		},
 		`[ qw/a b c/ qw{ d e f} qw(g i j ) qw<h k l> qw[ m n ogo ]]`: []interface{}{"a", "b", "c", "d", "e", "f", "g", "i", "j", "h", "k", "l", "m", "n", "ogo"},
+		`{{$a}}`: bw.ValPath{{Type: bw.ValPathItemVar, Key: "a"}},
+		`{ some {{ $a }} }`: map[string]interface{}{
+			"some": bw.ValPath{{Type: bw.ValPathItemVar, Key: "a"}},
+		},
 	} {
 		tests[k] = bwtesting.Case{
 			In:  []interface{}{func(testName string) string { return testName }},
@@ -269,6 +233,7 @@ func TestVal(t *testing.T) {
 		`{ key: 1_000_000_000_000_000_000_000_000 }`: "strconv.ParseInt: parsing \"1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ key: \x1b[91m1_000_000_000_000_000_000_000_000\x1b[0m }\n",
 		`{ type Number keyA valA keyB valB }`:        "unexpected \x1b[91;1m\"valA\"\x1b[0m at pos \x1b[38;5;252;1m19\x1b[0m: \x1b[32m{ type Number keyA \x1b[91mvalA\x1b[0m keyB valB }\n",
 		"{ val: nil def: Array":                      "unexpected end of string at pos \x1b[38;5;252;1m21\x1b[0m: \x1b[32m{ val: nil def: Array\n",
+		`{ some { { $a }} }`:                         "unexpected char \x1b[96;1m'{'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m123\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m9\x1b[0m: \x1b[32m{ some { \x1b[91m{\x1b[0m $a }} }\n",
 	} {
 		tests[k] = bwtesting.Case{
 			In:    []interface{}{func(testName string) string { return testName }},
@@ -290,8 +255,6 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 			}
 		}()
 		var (
-			// isEOF bool
-			// r  rune
 			ok bool
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
@@ -299,12 +262,6 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		if err = p.Forward(bwparse.NonEOF); err != nil {
 			return
 		}
-		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
-		// 	if err == nil {
-		// 		err = p.Unexpected(p.Curr)
-		// 	}
-		// 	return
-		// }
 		if result, _, ok, err = p.Val(); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)

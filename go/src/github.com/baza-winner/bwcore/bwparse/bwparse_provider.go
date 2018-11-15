@@ -156,15 +156,27 @@ func (p *Provider) pullRune(ps *PosStruct) (err error) {
 	return
 }
 
+var ansiBackwardFailed string
+
+func init() {
+	ansiBackwardFailed = "<ansiPath>bwparse.Provider.<ansiFunc>Backward<ansi>() failed, must <ansiFunc>.SetMaxBackwardCount<ansi>(<ansiVal>%d<ansi>)"
+}
+
 func (p *Provider) Backward() {
 	if len(p.Prev) == 0 {
-		bwerr.Panic("len(p.Prev) == 0")
+		bwerr.Panic(ansiBackwardFailed, p.maxBackward+1)
 	} else {
 		p.Next = append(p.Next, p.Curr)
 		p.Curr = p.Prev[len(p.Prev)-1]
 		p.Prev = p.Prev[:len(p.Prev)-1]
 	}
 	return
+}
+
+var ansiPosStructFailed string
+
+func init() {
+	ansiPosStructFailed = "<ansiPath>bwparse.Provider.<ansiFunc>PosStruct<ansi>(%d) failed, must <ansiFunc>.SetMaxBackwardCount<ansi>(<ansiVal>%d<ansi>)"
 }
 
 func (p *Provider) PosStruct(optOfs ...int) (ps PosStruct, err error) {
@@ -176,9 +188,8 @@ func (p *Provider) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 		if len(p.Prev) >= -ofs {
 			ps = p.Prev[len(p.Prev)+ofs]
 		} else {
-			err = bwerr.From("len(p.Prev) < %d", -ofs)
+			err = bwerr.From(ansiPosStructFailed, ofs, -ofs+1)
 			return
-			// bwerr.Panic("len(p.Prev) < %d", -ofs)
 		}
 	} else if ofs > 0 {
 		if len(p.Next) >= ofs {
@@ -210,10 +221,11 @@ func (p *Provider) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 }
 
 var (
-	ansiOK      string
-	ansiErr     string
-	ansiPos     string
-	ansiLineCol string
+	ansiOK              string
+	ansiErr             string
+	ansiPos             string
+	ansiLineCol         string
+	ansiGetSuffixAssert string
 )
 
 func init() {
@@ -221,11 +233,12 @@ func init() {
 	ansiErr = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true})).String()
 	ansiPos = ansi.String(" at pos <ansiPath>%d<ansi>")
 	ansiLineCol = ansi.String(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)")
+	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
 }
 
 func (p *Provider) GetSuffix(ps PosStruct) (suffix string) {
 	if ps.Pos > p.Curr.Pos {
-		bwerr.Panic("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)", ps.Pos, p.Curr.Pos)
+		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
 	}
 	preLineCount := p.preLineCount
 	postLineCount := p.postLineCount

@@ -15,18 +15,9 @@ import (
 func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 	var err error
 	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
-		var (
-			// r  rune
-			ok bool
-		)
+
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
-		if err = p.Forward(bwparse.NonEOF); err != nil {
-			return
-		}
-		if result, _, ok, err = p.Path(optBases...); err != nil || !ok {
-			if err == nil {
-				err = p.Unexpected(p.Curr)
-			}
+		if result, err = p.PathContent(bwparse.AutoForward, optBases...); err != nil {
 			return
 		}
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
@@ -50,7 +41,6 @@ func MustPathVal(v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) (
 			ansiMustPathValFailed,
 			path, bwjson.Pretty(v), varsJSON(path, optVars),
 		)))
-		// bwerr.PanicA(bwerr.Err(err))
 	}
 	return result
 }
@@ -76,15 +66,13 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 				result = nil
 			}
 		}()
-		var (
-			// r  rune
-			ok bool
-		)
+
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
 		if err = p.Forward(bwparse.NonEOF); err != nil {
 			return
 		}
+		var ok bool
 		if result, _, ok, err = p.Val(); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
@@ -94,9 +82,44 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
-		return
+		return expandPaths(result, result, true, optVars...)
 	}(s, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
+}
+
+func expandPaths(val interface{}, rootVal interface{}, isRoot bool, optVars ...map[string]interface{}) (result interface{}, err error) {
+	var path bw.ValPath
+	var ok bool
+	if path, ok = val.(bw.ValPath); ok {
+		var h Holder
+		if isRoot {
+			h = Holder{}
+		} else {
+			h = Holder{Val: rootVal}
+		}
+		result, err = h.PathVal(path, optVars...)
+	} else {
+		result = val
+		switch _, kind := Kind(val); kind {
+		case ValMap:
+			m := result.(map[string]interface{})
+			for key, val := range m {
+				if val, err = expandPaths(val, rootVal, false, optVars...); err != nil {
+					return
+				}
+				m[key] = val
+			}
+		case ValArray:
+			vals := result.([]interface{})
+			for i, val := range vals {
+				if val, err = expandPaths(val, rootVal, false, optVars...); err != nil {
+					return
+				}
+				vals[i] = val
+			}
+		}
 	}
 	return
 }
