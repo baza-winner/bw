@@ -114,12 +114,12 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		}()
 		var (
 			// isEOF bool
-			r  rune
+			// r  rune
 			ok bool
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if r, err = p.PullNonEOFRune(); err != nil {
+		if _, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
 		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
@@ -128,14 +128,14 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		// 	}
 		// 	return
 		// }
-		if result, _, ok, err = bwparse.Path(p, r, optBases...); err != nil || !ok {
+		if result, _, ok, err = p.Path(optBases...); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
 			}
 			return
 		}
 		// bwdebug.Print("*p.Curr.RunePtr", string(*p.Curr.RunePtr))
-		if err = bwparse.SkipOptionalSpaceTillEOF(p); err != nil {
+		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
 		return
@@ -181,12 +181,12 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		}()
 		var (
 			// isEOF bool
-			r  rune
+			// r  rune
 			ok bool
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if r, err = p.PullNonEOFRune(); err != nil {
+		if _, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
 
@@ -196,13 +196,13 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		// 	}
 		// 	return
 		// }
-		if result, _, ok, err = bwparse.ParseInt(p, r); err != nil {
+		if result, _, ok, err = p.Int(); err != nil {
 			return
 		} else if !ok {
 			err = p.Unexpected(p.Curr)
 			return
 		}
-		if err = bwparse.SkipOptionalSpaceTillEOF(p); err != nil {
+		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
 		// if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
@@ -287,12 +287,12 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		}()
 		var (
 			// isEOF bool
-			r  rune
+			// r  rune
 			ok bool
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if r, err = p.PullNonEOFRune(); err != nil {
+		if _, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
 		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
@@ -301,13 +301,13 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		// 	}
 		// 	return
 		// }
-		if result, _, ok, err = bwparse.ParseVal(p, r); err != nil || !ok {
+		if result, _, ok, err = p.Val(); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
 			}
 			return
 		}
-		if err = bwparse.SkipOptionalSpaceTillEOF(p); err != nil {
+		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
 		return

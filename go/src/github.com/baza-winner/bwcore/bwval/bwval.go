@@ -16,20 +16,20 @@ func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 	var err error
 	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
 		var (
-			r  rune
+			// r  rune
 			ok bool
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
-		if r, err = p.PullNonEOFRune(); err != nil {
+		if _, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
-		if result, _, ok, err = bwparse.Path(p, r, optBases...); err != nil || !ok {
+		if result, _, ok, err = p.Path(optBases...); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
 			}
 			return
 		}
-		if err = bwparse.SkipOptionalSpaceTillEOF(p); err != nil {
+		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
 
@@ -77,21 +77,21 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 			}
 		}()
 		var (
-			r  rune
+			// r  rune
 			ok bool
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if r, err = p.PullNonEOFRune(); err != nil {
+		if _, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
-		if result, _, ok, err = bwparse.ParseVal(p, r); err != nil || !ok {
+		if result, _, ok, err = p.Val(); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
 			}
 			return
 		}
-		if err = bwparse.SkipOptionalSpaceTillEOF(p); err != nil {
+		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
 		return

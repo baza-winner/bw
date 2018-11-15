@@ -14,7 +14,7 @@ import (
 
 // ============================================================================
 
-func ArrayOfString(p *Provider, r rune) (result []string, start PosStruct, ok bool, err error) {
+func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, err error) {
 	type State bool
 	const (
 		expectSpaceOrQwItemOrDelimiter State = true
@@ -29,6 +29,7 @@ func ArrayOfString(p *Provider, r rune) (result []string, start PosStruct, ok bo
 		// isEOF     bool
 		ps PosStruct
 	)
+	r := p.Curr.Rune
 
 	// bwdebug.Print("r", string(r))
 	if r == '<' {
@@ -96,7 +97,8 @@ var Braces = map[rune]rune{
 
 // ============================================================================
 
-func Id(p *Provider, r rune) (result string, start PosStruct, ok bool, err error) {
+func (p *Provider) Id() (result string, start PosStruct, ok bool, err error) {
+	r := p.Curr.Rune
 	if unicode.IsLetter(r) || r == '_' {
 		result = string(r)
 		start = p.Curr
@@ -120,35 +122,9 @@ LOOP:
 	return
 }
 
-// // ============================================================================
-
-// func ParseVarName(p *Provider, r rune) (result string, start PosStruct, ok bool, err error) {
-// 	if r == '$' {
-// 		// result = string(r)
-// 		start = p.Curr
-// 		ok = true
-// 	} else {
-// 		ok = false
-// 		return
-// 	}
-// LOOP:
-// 	for {
-// 		if r, _, err = p.PullRuneOrEOF(); err != nil {
-// 			return
-// 		}
-// 		if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
-// 			result += string(r)
-// 		} else {
-// 			_ = p.PushRune()
-// 			break LOOP
-// 		}
-// 	}
-// 	return
-// }
-
 // ============================================================================
 
-func String(p *Provider, r rune) (result string, start PosStruct, ok bool, err error) {
+func (p *Provider) String() (result string, start PosStruct, ok bool, err error) {
 	type State bool
 	const (
 		expectContent        State = true
@@ -161,6 +137,7 @@ func String(p *Provider, r rune) (result string, start PosStruct, ok bool, err e
 		b         bool
 		state     State
 	)
+	r := p.Curr.Rune
 
 	if r == '"' || r == '\'' {
 		delimiter = r
@@ -218,8 +195,9 @@ var EscapeRunes = map[rune]rune{
 
 // ============================================================================
 
-func ParseInt(p *Provider, r rune) (result int, start PosStruct, ok bool, err error) {
+func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 	var s string
+	r := p.Curr.Rune
 
 	switch r {
 	case '-', '+':
@@ -279,7 +257,7 @@ LOOP:
 
 // ============================================================================
 
-func ParseNumber(p *Provider, r rune) (result interface{}, start PosStruct, ok bool, err error) {
+func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err error) {
 	type State bool
 	const (
 		expectDigitOrUnderscore      State = true
@@ -289,6 +267,7 @@ func ParseNumber(p *Provider, r rune) (result interface{}, start PosStruct, ok b
 		s     string
 		state State
 	)
+	r := p.Curr.Rune
 
 	switch r {
 	case '-', '+':
@@ -371,32 +350,9 @@ var underscoreRegexp = regexp.MustCompile("[_]+")
 
 var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
-// // ============================================================================
-
-// func ParseSpace(p *Provider, r rune) (result rune, isEOF bool, start PosStruct, ok bool, err error) {
-// 	if unicode.IsSpace(r) {
-// 		start = p.Curr
-// 		ok = true
-// 	} else {
-// 		ok = false
-// 		return
-// 	}
-// LOOP:
-// 	for {
-// 		result = r
-// 		if r, isEOF, err = p.PullRuneOrEOF(); err != nil {
-// 			return
-// 		} else if isEOF || !unicode.IsSpace(r) {
-// 			p.PushRune()
-// 			break LOOP
-// 		}
-// 	}
-// 	return
-// }
-
 // ============================================================================
 
-func SkipOptionalSpaceTillEOF(p *Provider) (err error) {
+func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 	var isEOF bool
 	var r rune
 	for {
@@ -409,7 +365,7 @@ func SkipOptionalSpaceTillEOF(p *Provider) (err error) {
 	}
 }
 
-func SkipOptionalSpace(p *Provider) (r rune, err error) {
+func (p *Provider) SkipOptionalSpace() (r rune, err error) {
 	if r, err = p.PullNonEOFRune(); err != nil {
 		return
 	}
@@ -426,7 +382,10 @@ func SkipOptionalSpace(p *Provider) (r rune, err error) {
 	return
 }
 
-func ParseArray(p *Provider, r rune) (result []interface{}, start PosStruct, ok bool, err error) {
+// ============================================================================
+
+func (p *Provider) Array() (result []interface{}, start PosStruct, ok bool, err error) {
+	r := p.Curr.Rune
 	if r != '[' {
 		ok = false
 		return
@@ -435,7 +394,7 @@ func ParseArray(p *Provider, r rune) (result []interface{}, start PosStruct, ok 
 	start = p.Curr
 	result = []interface{}{}
 	ok = true
-	if r, err = SkipOptionalSpace(p); err != nil {
+	if r, err = p.SkipOptionalSpace(); err != nil {
 		return
 	}
 LOOP:
@@ -445,7 +404,7 @@ LOOP:
 		}
 
 		var val interface{}
-		if val, _, ok, err = ParseVal(p, r); err != nil || !ok {
+		if val, _, ok, err = p.Val(); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
 			}
@@ -458,11 +417,11 @@ LOOP:
 				result = append(result, s)
 			}
 		}
-		if r, err = SkipOptionalSpace(p); err != nil {
+		if r, err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
 		if r == ',' {
-			if r, err = SkipOptionalSpace(p); err != nil {
+			if r, err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
 		}
@@ -471,7 +430,8 @@ LOOP:
 	return
 }
 
-func Map(p *Provider, r rune) (result map[string]interface{}, start PosStruct, ok bool, err error) {
+func (p *Provider) Map() (result map[string]interface{}, start PosStruct, ok bool, err error) {
+	r := p.Curr.Rune
 	if r != '{' {
 		ok = false
 		return
@@ -480,7 +440,7 @@ func Map(p *Provider, r rune) (result map[string]interface{}, start PosStruct, o
 	start = p.Curr
 	result = map[string]interface{}{}
 	ok = true
-	if r, err = SkipOptionalSpace(p); err != nil {
+	if r, err = p.SkipOptionalSpace(); err != nil {
 		return
 	}
 LOOP:
@@ -493,11 +453,11 @@ LOOP:
 			b   bool
 		)
 
-		if key, _, b, err = String(p, r); err != nil || b {
+		if key, _, b, err = p.String(); err != nil || b {
 			if err != nil {
 				return
 			}
-		} else if key, _, b, err = Id(p, r); err != nil || b {
+		} else if key, _, b, err = p.Id(); err != nil || b {
 			if err != nil {
 				return
 			}
@@ -506,12 +466,12 @@ LOOP:
 			return
 		}
 
-		if r, err = SkipOptionalSpace(p); err != nil {
+		if r, err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
 
 		if r == ':' {
-			if r, err = SkipOptionalSpace(p); err != nil {
+			if r, err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
 		} else if r == '=' {
@@ -522,13 +482,13 @@ LOOP:
 				err = p.Unexpected(p.Curr)
 				return
 			}
-			if r, err = SkipOptionalSpace(p); err != nil {
+			if r, err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
 		}
 
 		var val interface{}
-		if val, _, ok, err = ParseVal(p, r); err != nil || !ok {
+		if val, _, ok, err = p.Val(); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
 			}
@@ -537,11 +497,11 @@ LOOP:
 
 		result[key] = val
 
-		if r, err = SkipOptionalSpace(p); err != nil {
+		if r, err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
 		if r == ',' {
-			if r, err = SkipOptionalSpace(p); err != nil {
+			if r, err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
 		}
@@ -551,7 +511,7 @@ LOOP:
 	return
 }
 
-func ParseVal(p *Provider, r rune) (result interface{}, start PosStruct, ok bool, err error) {
+func (p *Provider) Val() (result interface{}, start PosStruct, ok bool, err error) {
 
 	var (
 		s    string
@@ -562,36 +522,37 @@ func ParseVal(p *Provider, r rune) (result interface{}, start PosStruct, ok bool
 		m    map[string]interface{}
 		b    bool
 	)
-	// r, _, _ = p.Rune()
+	// r := p.Curr.Rune
+
 	ok = true
 	start = p.Curr
 
-	if m, _, b, err = Map(p, r); err != nil || b {
+	if m, _, b, err = p.Map(); err != nil || b {
 		if err != nil {
 			return
 		}
 		result = m
-	} else if vals, _, b, err = ParseArray(p, r); err != nil || b {
+	} else if vals, _, b, err = p.Array(); err != nil || b {
 		if err != nil {
 			return
 		}
 		result = vals
-	} else if s, _, b, err = String(p, r); err != nil || b {
+	} else if s, _, b, err = p.String(); err != nil || b {
 		if err != nil {
 			return
 		}
 		result = s
-	} else if val, _, b, err = ParseNumber(p, r); err != nil || b {
+	} else if val, _, b, err = p.Number(); err != nil || b {
 		if err != nil {
 			return
 		}
 		result = val
-	} else if ss, _, b, err = ArrayOfString(p, r); err != nil || b {
+	} else if ss, _, b, err = p.ArrayOfString(); err != nil || b {
 		if err != nil {
 			return
 		}
 		result = ss
-	} else if s, ps, b, err = Id(p, r); err != nil || b {
+	} else if s, ps, b, err = p.Id(); err != nil || b {
 		if err != nil {
 			return
 		}
@@ -618,7 +579,7 @@ func ParseVal(p *Provider, r rune) (result interface{}, start PosStruct, ok bool
 
 // ============================================================================
 
-func Path(p *Provider, r rune, optBases ...[]bw.ValPath) (result bw.ValPath, start PosStruct, ok bool, err error) {
+func (p *Provider) Path(optBases ...[]bw.ValPath) (result bw.ValPath, start PosStruct, ok bool, err error) {
 
 	ok = true
 	start = p.Curr
@@ -632,6 +593,8 @@ func Path(p *Provider, r rune, optBases ...[]bw.ValPath) (result bw.ValPath, sta
 	if len(optBases) > 0 {
 		bases = optBases[0]
 	}
+
+	r := p.Curr.Rune
 
 LOOP:
 	for {
@@ -655,7 +618,7 @@ LOOP:
 				err = p.Unexpected(p.Curr)
 				return
 			}
-		} else if idx, _, b, err = ParseInt(p, r); b || err != nil {
+		} else if idx, _, b, err = p.Int(); b || err != nil {
 			if err != nil {
 				return
 			}
@@ -666,7 +629,7 @@ LOOP:
 				bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: idx},
 			)
 
-		} else if s, _, b, err = Id(p, r); b || err != nil {
+		} else if s, _, b, err = p.Id(); b || err != nil {
 
 			if err != nil {
 				return
@@ -676,7 +639,7 @@ LOOP:
 				bw.ValPathItem{Type: bw.ValPathItemKey, Key: s},
 			)
 
-		} else if sp, _, b, err = subPath(p, r); b || err != nil {
+		} else if sp, _, b, err = p.subPath(); b || err != nil {
 			if err != nil {
 				return
 			}
@@ -697,7 +660,7 @@ LOOP:
 					if r, err = p.PullNonEOFRune(); err != nil {
 						return
 					}
-					if s, _, b, err = Id(p, r); err != nil || b {
+					if s, _, b, err = p.Id(); err != nil || b {
 						if err != nil {
 							return
 						}
@@ -706,7 +669,7 @@ LOOP:
 							bw.ValPathItem{Type: bw.ValPathItemVar, Key: s},
 						)
 						goto CONTINUE
-					} else if idx, ps, b, err = ParseInt(p, r); err != nil || b {
+					} else if idx, ps, b, err = p.Int(); err != nil || b {
 						if err != nil {
 							return
 						}
@@ -747,17 +710,18 @@ LOOP:
 	return
 }
 
-func subPath(p *Provider, r rune, optBases ...[]bw.ValPath) (result bw.ValPath, start PosStruct, ok bool, err error) {
+func (p *Provider) subPath(optBases ...[]bw.ValPath) (result bw.ValPath, start PosStruct, ok bool, err error) {
 	b := true
 	defer func() {
 		if !b && err == nil {
 			err = p.Unexpected(p.Curr)
 		}
 	}()
+	r := p.Curr.Rune
 	if r == '{' {
 		start = p.Curr
 		r, err = p.PullNonEOFRune()
-		if result, _, b, err = Path(p, r, optBases...); err != nil || !b {
+		if result, _, b, err = p.Path(optBases...); err != nil || !b {
 			return
 		}
 		if r, err = p.PullNonEOFRune(); err != nil || r != '}' {
