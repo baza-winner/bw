@@ -202,6 +202,9 @@ func TestHolderValidVal(t *testing.T) {
 	}
 
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "UnexpectedItem")
+	// bwmap.CropMap(tests, "{ val: { key: <some thing> } def: { type Map elem { type <ArrayOf String> enum <some good>}} }")
+	// for _, test := range tests {
+	// 	bwdebug.Print("test", bwjson.Pretty(test))
+	// }
 	bwtesting.BwRunTests(t, "MustValidVal", tests)
 }

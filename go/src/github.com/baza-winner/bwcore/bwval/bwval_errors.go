@@ -19,6 +19,8 @@ var (
 	ansiWrongVal             string
 	ansiUnexpectedEnumValue  string
 	ansiVars                 string
+	ansiNotEnoughRange       string
+	ansiCanNotSetNonString   string
 	ansiVarsIsNil            string
 	ansiMustSetPathValFailed string
 	ansiHasNoKey             string
@@ -31,6 +33,9 @@ func init() {
 	valPathPrefix := "<ansiPath>%s<ansi>"
 	ansiWrongVal = ansi.String(valPathPrefix + " is <ansiErr>%#v")
 	ansiUnexpectedEnumValue = ansi.String(valPathPrefix + ": expected one of <ansiVal>%s<ansi> instead of <ansiErr>%q")
+
+	ansiNotEnoughRange = ansi.String(" has not enough length (<ansiVal>%d<ansi>) for idx (<ansiVal>%d)")
+	ansiCanNotSetNonString = ansi.String(" can not set elem[%d] to non string <ansiVal>%#v")
 
 	ansiType = ansi.String("<ansiType>%s")
 	ansiVars = ansi.String(" with <ansiVar>vars<ansi> <ansiVal>%s<ansi>")
@@ -82,11 +87,13 @@ var notOfValKindInfix = map[bool]string{
 // ============================================================================
 
 func (v Holder) notEnoughRangeError(l int, idx int) error {
-	return bwerr.From(
-		v.ansiString()+
-			ansi.String(" has not enough length (<ansiVal>%d<ansi>) for idx (<ansiVal>%d)"),
-		l, idx,
-	)
+	return bwerr.From(v.ansiString()+ansiNotEnoughRange, l, idx)
+}
+
+// ============================================================================
+
+func (v Holder) canNotSetNonStringError(idx int, val interface{}) error {
+	return bwerr.From(v.ansiString()+ansiCanNotSetNonString, idx, val)
 }
 
 // ============================================================================

@@ -373,46 +373,42 @@ var underscoreRegexp = regexp.MustCompile("[_]+")
 
 var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
-// ============================================================================
+// // ============================================================================
 
-func ParseSpace(p *runeprovider.Proxy, r rune) (result rune, isEOF bool, start runeprovider.PosStruct, ok bool, err error) {
-	if unicode.IsSpace(r) {
-		start = p.Curr
-		ok = true
-	} else {
-		ok = false
-		return
-	}
-LOOP:
-	for {
-		result = r
-		if r, isEOF, err = p.PullRuneOrEOF(); err != nil {
-			return
-		} else if isEOF || !unicode.IsSpace(r) {
-			p.PushRune()
-			break LOOP
-		}
-	}
-	return
-}
+// func ParseSpace(p *runeprovider.Proxy, r rune) (result rune, isEOF bool, start runeprovider.PosStruct, ok bool, err error) {
+// 	if unicode.IsSpace(r) {
+// 		start = p.Curr
+// 		ok = true
+// 	} else {
+// 		ok = false
+// 		return
+// 	}
+// LOOP:
+// 	for {
+// 		result = r
+// 		if r, isEOF, err = p.PullRuneOrEOF(); err != nil {
+// 			return
+// 		} else if isEOF || !unicode.IsSpace(r) {
+// 			p.PushRune()
+// 			break LOOP
+// 		}
+// 	}
+// 	return
+// }
 
 // ============================================================================
 
 func SkipOptionalSpaceTillEOF(p *runeprovider.Proxy) (err error) {
-	var isEOF, ok bool
+	var isEOF bool
 	var r rune
-	if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
-		return
+	for {
+		if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
+			return
+		} else if !unicode.IsSpace(r) {
+			err = p.Unexpected(p.Curr)
+			return
+		}
 	}
-
-	if _, isEOF, _, ok, err = ParseSpace(p, r); err != nil || ok && isEOF {
-		return
-	} else {
-		_ = p.PullRune()
-		err = p.Unexpected(p.Curr)
-		return
-	}
-	return
 }
 
 func SkipOptionalSpace(p *runeprovider.Proxy) (r rune, err error) {
@@ -664,6 +660,7 @@ LOOP:
 			if err != nil {
 				return
 			}
+			// bwdebug.Print("idx", idx)
 
 			result = append(
 				result,

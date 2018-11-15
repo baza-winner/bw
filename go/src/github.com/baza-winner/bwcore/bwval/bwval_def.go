@@ -86,7 +86,7 @@ func compileDef(def Holder) (result *Def, err error) {
 			return
 		}
 		switch _, kind := Kind(defType.Val); kind {
-		case ValString, ValArray:
+		case ValString, ValArray, ValArrayOfString:
 		default:
 			err = defType.notOfValKindError(ValKindSetFrom(ValString, ValArray))
 			return
@@ -260,7 +260,7 @@ func getDeftype(defType Holder, isSimple bool) (result ValKindSet, err error) {
 	case ValString:
 		ss = []string{MustString(val)}
 		isString = true
-	case ValArray:
+	case ValArray, ValArrayOfString:
 		if ss, err = defType.ArrayOfString(); err != nil {
 			return
 		}
@@ -312,6 +312,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 			v.Val = map[string]interface{}{}
 		} else {
 			// ss := def.Types.ToSliceOfStrings()
+			// bwdebug.Print("def.Types", bwjson.Pretty(def.Types))
 			err = v.notOfValKindError(def.Types)
 			return
 		}
@@ -342,12 +343,17 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		} else if !skipArrayOf && def.Types.Has(ValArrayOf) {
 			valDeftype = ValArrayOf
 		}
+	case ValArrayOfString:
+		if def.Types.Has(ValArray) {
+			valDeftype = ValArray
+		} else if !skipArrayOf && def.Types.Has(ValArrayOf) {
+			valDeftype = ValArrayOf
+		}
 	case ValString:
 		if def.Types.Has(ValString) {
 			valDeftype = ValString
 		}
 	}
-
 	if valDeftype == ValUnknown {
 		types := def.Types
 		if skipArrayOf {
@@ -397,6 +403,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		} else if def.Elem != nil {
 			m, _ := Map(v.Val)
 			for k := range m {
+				// // bwdebug.Print("m:json", m, "k", k)
 				if err = v.mapHelper(k, *(def.Elem)); err != nil {
 					return
 				}
@@ -413,6 +420,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 			}
 		}
 	case ValArrayOf:
+		// // bwdebug.Print("v:json", v, "def:json", def)
 		if v.Val, err = v.arrayHelper(def, true); err != nil {
 			return
 		}
@@ -429,6 +437,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 	vp, _ := v.Key(key)
 	var val interface{}
+	// // bwdebug.Print("vp:json", vp, "elemDef:json", elemDef)
 	if val, err = vp.validVal(elemDef); err != nil {
 		return
 	} else if val != nil {
@@ -451,18 +460,55 @@ func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 // }
 
 func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (result interface{}, err error) {
-	arr := MustArray(v.Val)
-	newArr := make([]interface{}, 0, len(arr))
-	var vp Holder
-	for i := range arr {
-		vp, _ = v.Idx(i)
-		var val interface{}
-		if val, err = vp.validVal(elemDef, optSkipArrayOf...); err != nil {
-			return
+	switch val, kind := Kind(v.Val); kind {
+	case ValArray:
+		arr, _ := val.([]interface{})
+		newArr := make([]interface{}, 0, len(arr))
+		var vp Holder
+		for i := range arr {
+			if vp, err = v.Idx(i); err != nil {
+				return
+			}
+			var val interface{}
+			if val, err = vp.validVal(elemDef, optSkipArrayOf...); err != nil {
+				return
+			}
+			newArr = append(newArr, val)
 		}
-		newArr = append(newArr, val)
+		result = newArr
+	case ValArrayOfString:
+		ss, _ := val.([]string)
+		newArr := make([]interface{}, 0, len(ss))
+		var vp Holder
+		for i := range ss {
+			if vp, err = v.Idx(i); err != nil {
+				return
+			}
+			var val interface{}
+			// bwdebug.Print("vp", vp)
+			if val, err = vp.validVal(elemDef, optSkipArrayOf...); err != nil {
+				return
+			}
+			newArr = append(newArr, val)
+		}
+		result = newArr
+		// default:
+
+		// arr := MustArray(v.Val)
 	}
-	result = newArr
+
+	// arr := MustArray(v.Val)
+	// newArr := make([]interface{}, 0, len(arr))
+	// var vp Holder
+	// for i := range arr {
+	// 	vp, _ = v.Idx(i)
+	// 	var val interface{}
+	// 	if val, err = vp.validVal(elemDef, optSkipArrayOf...); err != nil {
+	// 		return
+	// 	}
+	// 	newArr = append(newArr, val)
+	// }
+	// result = newArr
 	return
 }
 

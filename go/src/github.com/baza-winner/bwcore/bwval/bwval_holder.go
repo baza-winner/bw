@@ -317,19 +317,6 @@ func (v Holder) SetKeyVal(val interface{}, key string) (err error) {
 	return
 }
 
-func (v Holder) SetIdxVal(val interface{}, idx int) (err error) {
-	var vals []interface{}
-	var gotIdx int
-	if vals, gotIdx, err = v.arrayIdx(idx); err == nil {
-		if gotIdx < 0 {
-			err = v.notEnoughRangeError(len(vals), idx)
-		} else {
-			vals[gotIdx] = val
-		}
-	}
-	return
-}
-
 func (v Holder) Idx(idx int) (result Holder, err error) {
 	var val interface{}
 	if val, err = v.IdxVal(idx); err == nil {
@@ -370,6 +357,30 @@ func (v Holder) MustKeyVal(key string, optDefaultVal ...interface{}) (result int
 	return
 }
 
+func (v Holder) SetIdxVal(val interface{}, idx int) (err error) {
+	err = v.idxHelper(idx,
+		func(vals []interface{}, nidx int, ok bool) (err error) {
+			if !ok {
+				err = v.notEnoughRangeError(len(vals), idx)
+			} else {
+				vals[nidx] = val
+			}
+			return
+		},
+		func(ss []string, nidx int, ok bool) (err error) {
+			if !ok {
+				err = v.notEnoughRangeError(len(ss), idx)
+			} else if s, ok := val.(string); !ok {
+				err = v.canNotSetNonStringError(idx, val)
+			} else {
+				ss[nidx] = s
+			}
+			return
+		},
+	)
+	return
+}
+
 func (v Holder) IdxVal(idx int, optDefaultVal ...interface{}) (result interface{}, err error) {
 	if v.Val == nil {
 		if len(optDefaultVal) > 0 {
@@ -379,24 +390,34 @@ func (v Holder) IdxVal(idx int, optDefaultVal ...interface{}) (result interface{
 		}
 		return
 	}
-	var vals []interface{}
-	var gotIdx int
-	if vals, gotIdx, err = v.arrayIdx(idx); err == nil {
-		if gotIdx >= 0 {
-			result = vals[gotIdx]
-		} else {
-			if len(optDefaultVal) > 0 {
+	err = v.idxHelper(idx,
+		func(vals []interface{}, nidx int, ok bool) (err error) {
+			if ok {
+				result = vals[nidx]
+			} else if len(optDefaultVal) > 0 {
 				result = optDefaultVal[0]
 			} else {
 				err = v.notEnoughRangeError(len(vals), idx)
 			}
-		}
-	}
+			return
+		},
+		func(ss []string, nidx int, ok bool) (err error) {
+			if ok {
+				result = ss[nidx]
+			} else if len(optDefaultVal) > 0 {
+				result = optDefaultVal[0]
+			} else {
+				err = v.notEnoughRangeError(len(ss), idx)
+			}
+			return
+		},
+	)
 	return
 }
 
 func (v Holder) ValidVal(def Def) (result interface{}, err error) {
 	result, err = v.validVal(def)
+	// bwdebug.Print("v:json", v)
 	if err != nil {
 		err = bwerr.Refine(err, ansi.String("<ansiVal>%s<ansi>::{Error}"), bwjson.Pretty(v.Val))
 	}
@@ -405,6 +426,7 @@ func (v Holder) ValidVal(def Def) (result interface{}, err error) {
 
 func (v Holder) MustValidVal(def Def) (result interface{}) {
 	var err error
+	// bwdebug.Print("v:json", v, "def:json", def)
 	if result, err = v.ValidVal(def); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
@@ -436,23 +458,26 @@ func (v *Holder) simplifyPath(path bw.ValPath, optVars []map[string]interface{})
 	return
 }
 
-func (v Holder) arrayIdx(idx int) ([]interface{}, int, error) {
-	var err error
+func (v Holder) idxHelper(
+	idx int,
+	onArray func(vals []interface{}, nidx int, ok bool) error,
+	onArrayOfString func(ss []string, nidx int, ok bool) error,
+) (err error) {
+	var nidx int
 	var ok bool
-	var vals []interface{}
-	if vals, ok = Array(v.Val); !ok {
+	switch val, kind := Kind(v.Val); kind {
+	case ValArray:
+		vals, _ := val.([]interface{})
+		nidx, ok = bw.NormalIdx(idx, len(vals))
+		err = onArray(vals, nidx, ok)
+	case ValArrayOfString:
+		ss, _ := val.([]string)
+		nidx, ok = bw.NormalIdx(idx, len(ss))
+		err = onArrayOfString(ss, nidx, ok)
+	default:
 		err = v.notOfValKindError(ValKindSetFrom(ValArray))
-	} else {
-		l := len(vals)
-		minIdx := -l
-		maxIdx := l - 1
-		if !(minIdx <= idx && idx <= maxIdx) {
-			idx = -1
-		} else if idx < 0 {
-			idx = l + idx
-		}
 	}
-	return vals, idx, err
+	return
 }
 
 // ============================================================================
