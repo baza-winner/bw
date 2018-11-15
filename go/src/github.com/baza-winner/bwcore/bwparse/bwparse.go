@@ -63,9 +63,14 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 
 LOOP:
 	for {
-		if r, err = p.PullNonEOFRune(); err != nil {
+		// if r, err = p.PullNonEOFRune(); err != nil {
+		// if err = p.PullRune(NonEOF); err != nil {
+		// 	return
+		// }
+		if err = p.PullRune(NonEOF); err != nil {
 			return
 		}
+		r = p.Curr.Rune
 		if state {
 			if r == delimiter {
 				break LOOP
@@ -109,9 +114,11 @@ func (p *Provider) Id() (result string, start PosStruct, ok bool, err error) {
 	}
 LOOP:
 	for {
-		if r, _, err = p.PullRuneOrEOF(); err != nil {
+		// if r, _, err = p.PullRuneOrEOF(); err != nil {
+		if err = p.PullRune(); err != nil {
 			return
 		}
+		r = p.Curr.Rune
 		if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
 			result += string(r)
 		} else {
@@ -151,9 +158,11 @@ func (p *Provider) String() (result string, start PosStruct, ok bool, err error)
 
 LOOP:
 	for {
-		if r, err = p.PullNonEOFRune(); err != nil {
+		// p.MustPullRune()
+		if err = p.PullRune(NonEOF); err != nil {
 			return
 		}
+		r = p.Curr.Rune
 		if state {
 			switch r {
 			case delimiter:
@@ -205,9 +214,11 @@ func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 		s = string(r)
 		ok = true
 		start = p.Curr
-		if r, err = p.PullNonEOFRune(); err != nil {
+		if err = p.PullRune(NonEOF); err != nil {
 			return
 		}
+		// p.MustPullRune(NonEOF)
+		r = p.Curr.Rune
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			s += string(r)
@@ -227,9 +238,11 @@ func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 
 LOOP:
 	for {
-		if r, _, err = p.PullRuneOrEOF(); err != nil {
+		if err = p.PullRune(); err != nil {
 			return
 		}
+		// p.MustPullRune()
+		r = p.Curr.Rune
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
 			s += string(r)
@@ -275,9 +288,10 @@ func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err e
 		s = string(r)
 		ok = true
 		start = p.Curr
-		if r, err = p.PullNonEOFRune(); err != nil {
+		if err = p.PullRune(NonEOF); err != nil {
 			return
 		}
+		r = p.Curr.Rune
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			s += string(r)
@@ -299,9 +313,10 @@ func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err e
 
 LOOP:
 	for {
-		if r, _, err = p.PullRuneOrEOF(); err != nil {
+		if err = p.PullRune(); err != nil {
 			return
 		}
+		r = p.Curr.Rune
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
 			s += string(r)
@@ -353,28 +368,26 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 // ============================================================================
 
 func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
-	var isEOF bool
-	var r rune
 	for {
-		if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
+		if p.PullRune(); err != nil || p.Curr.IsEOF {
 			return
-		} else if !unicode.IsSpace(r) {
+		} else if !unicode.IsSpace(p.Curr.Rune) {
 			err = p.Unexpected(p.Curr)
 			return
 		}
 	}
 }
 
-func (p *Provider) SkipOptionalSpace() (r rune, err error) {
-	if r, err = p.PullNonEOFRune(); err != nil {
+func (p *Provider) SkipOptionalSpace() (err error) {
+	if err = p.PullRune(NonEOF); err != nil {
 		return
 	}
-	if unicode.IsSpace(r) {
+	if unicode.IsSpace(p.Curr.Rune) {
 	LOOP:
 		for {
-			if r, err = p.PullNonEOFRune(); err != nil {
+			if err = p.PullRune(NonEOF); err != nil {
 				return
-			} else if !unicode.IsSpace(r) {
+			} else if !unicode.IsSpace(p.Curr.Rune) {
 				break LOOP
 			}
 		}
@@ -385,8 +398,7 @@ func (p *Provider) SkipOptionalSpace() (r rune, err error) {
 // ============================================================================
 
 func (p *Provider) Array() (result []interface{}, start PosStruct, ok bool, err error) {
-	r := p.Curr.Rune
-	if r != '[' {
+	if p.Curr.Rune != '[' {
 		ok = false
 		return
 	}
@@ -394,12 +406,12 @@ func (p *Provider) Array() (result []interface{}, start PosStruct, ok bool, err 
 	start = p.Curr
 	result = []interface{}{}
 	ok = true
-	if r, err = p.SkipOptionalSpace(); err != nil {
+	if err = p.SkipOptionalSpace(); err != nil {
 		return
 	}
 LOOP:
 	for {
-		if r == ']' {
+		if p.Curr.Rune == ']' {
 			break LOOP
 		}
 
@@ -417,11 +429,11 @@ LOOP:
 				result = append(result, s)
 			}
 		}
-		if r, err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
-		if r == ',' {
-			if r, err = p.SkipOptionalSpace(); err != nil {
+		if p.Curr.Rune == ',' {
+			if err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
 		}
@@ -431,8 +443,7 @@ LOOP:
 }
 
 func (p *Provider) Map() (result map[string]interface{}, start PosStruct, ok bool, err error) {
-	r := p.Curr.Rune
-	if r != '{' {
+	if p.Curr.Rune != '{' {
 		ok = false
 		return
 	}
@@ -440,12 +451,13 @@ func (p *Provider) Map() (result map[string]interface{}, start PosStruct, ok boo
 	start = p.Curr
 	result = map[string]interface{}{}
 	ok = true
-	if r, err = p.SkipOptionalSpace(); err != nil {
+	if err = p.SkipOptionalSpace(); err != nil {
 		return
 	}
+
 LOOP:
 	for {
-		if r == '}' {
+		if p.Curr.Rune == '}' {
 			break LOOP
 		}
 		var (
@@ -466,23 +478,23 @@ LOOP:
 			return
 		}
 
-		if r, err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
 
-		if r == ':' {
-			if r, err = p.SkipOptionalSpace(); err != nil {
+		if p.Curr.Rune == ':' {
+			if err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
-		} else if r == '=' {
-			if r, err = p.PullNonEOFRune(); err != nil {
+		} else if p.Curr.Rune == '=' {
+			if err = p.PullRune(NonEOF); err != nil {
 				return
 			}
-			if r != '>' {
+			if p.Curr.Rune != '>' {
 				err = p.Unexpected(p.Curr)
 				return
 			}
-			if r, err = p.SkipOptionalSpace(); err != nil {
+			if err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
 		}
@@ -497,11 +509,11 @@ LOOP:
 
 		result[key] = val
 
-		if r, err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
-		if r == ',' {
-			if r, err = p.SkipOptionalSpace(); err != nil {
+		if p.Curr.Rune == ',' {
+			if err = p.SkipOptionalSpace(); err != nil {
 				return
 			}
 		}
@@ -594,8 +606,6 @@ func (p *Provider) Path(optBases ...[]bw.ValPath) (result bw.ValPath, start PosS
 		bases = optBases[0]
 	}
 
-	r := p.Curr.Rune
-
 LOOP:
 	for {
 		var (
@@ -606,7 +616,7 @@ LOOP:
 			ps  PosStruct
 		)
 		// bwdebug.Print("r", string(r), "len(result)", len(result), "len(bases)", len(bases))
-		if r == '.' &&
+		if p.Curr.Rune == '.' &&
 			len(result) == 0 {
 			if len(bases) == 0 {
 				break LOOP
@@ -648,7 +658,7 @@ LOOP:
 				bw.ValPathItem{Type: bw.ValPathItemPath, Path: sp},
 			)
 
-		} else if r == '#' {
+		} else if p.Curr.Rune == '#' {
 			result = append(
 				result,
 				bw.ValPathItem{Type: bw.ValPathItemHash},
@@ -656,8 +666,8 @@ LOOP:
 			break LOOP
 		} else {
 			if len(result) == 0 {
-				if r == '$' {
-					if r, err = p.PullNonEOFRune(); err != nil {
+				if p.Curr.Rune == '$' {
+					if err = p.PullRune(NonEOF); err != nil {
 						return
 					}
 					if s, _, b, err = p.Id(); err != nil || b {
@@ -693,17 +703,17 @@ LOOP:
 		}
 	CONTINUE:
 
-		if r, _, err = p.PullRuneOrEOF(); err != nil {
+		if err = p.PullRune(); err != nil {
 			return
 		}
 		// bwdebug.Print("r", string(r))
 
-		if r != '.' {
+		if p.Curr.Rune != '.' {
 			p.PushRune()
 			break LOOP
 		}
 
-		if r, _, err = p.PullRuneOrEOF(); err != nil {
+		if err = p.PullRune(); err != nil {
 			return
 		}
 	}
@@ -717,14 +727,13 @@ func (p *Provider) subPath(optBases ...[]bw.ValPath) (result bw.ValPath, start P
 			err = p.Unexpected(p.Curr)
 		}
 	}()
-	r := p.Curr.Rune
-	if r == '{' {
+	if p.Curr.Rune == '{' {
 		start = p.Curr
-		r, err = p.PullNonEOFRune()
+		err = p.PullRune(NonEOF)
 		if result, _, b, err = p.Path(optBases...); err != nil || !b {
 			return
 		}
-		if r, err = p.PullNonEOFRune(); err != nil || r != '}' {
+		if err = p.PullRune(NonEOF); err != nil || p.Curr.Rune != '}' {
 			b = false
 			return
 		}

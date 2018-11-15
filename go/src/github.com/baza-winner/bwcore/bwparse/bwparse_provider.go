@@ -87,7 +87,9 @@ func (p *Provider) MarshalJSON() ([]byte, error) {
 	return json.Marshal(result)
 }
 
-func (p *Provider) PullRune() (err error) {
+const NonEOF = true
+
+func (p *Provider) PullRune(optNonEOF ...bool) (err error) {
 	if p.Curr.Pos < 0 || !p.Curr.IsEOF {
 		p.Prev = append(p.Prev, p.Curr)
 		if len(p.Prev) > p.maxBehindRuneCount {
@@ -100,29 +102,40 @@ func (p *Provider) PullRune() (err error) {
 			err = p.pullRune(&p.Curr)
 		}
 	}
-	return
-}
-
-func (p *Provider) PullNonEOFRune() (result rune, err error) {
-	var isEOF bool
-	if result, isEOF, err = p.PullRuneOrEOF(); err != nil {
-		return
-	}
-	if isEOF {
+	if len(optNonEOF) > 0 && optNonEOF[0] && p.Curr.IsEOF {
 		err = p.Unexpected(p.Curr)
 		return
 	}
 	return
 }
 
-func (p *Provider) PullRuneOrEOF() (result rune, isEOF bool, err error) {
-	if err = p.PullRune(); err != nil {
-		return
-	}
-	result = p.Curr.Rune
-	isEOF = p.Curr.IsEOF
-	return
-}
+// func (p *Provider) MustPullRune(optNonEOF ...bool) {
+// 	var err error
+// 	if err = p.PullRune(optNonEOF...); err != nil {
+// 		return
+// 	}
+// }
+
+// func (p *Provider) PullNonEOFRune() (result rune, err error) {
+// 	var isEOF bool
+// 	if result, isEOF, err = p.PullRuneOrEOF(); err != nil {
+// 		return
+// 	}
+// 	if isEOF {
+// 		err = p.Unexpected(p.Curr)
+// 		return
+// 	}
+// 	return
+// }
+
+// func (p *Provider) PullRuneOrEOF() (result rune, isEOF bool, err error) {
+// 	if err = p.PullRune(); err != nil {
+// 		return
+// 	}
+// 	result = p.Curr.Rune
+// 	isEOF = p.Curr.IsEOF
+// 	return
+// }
 
 func (p *Provider) pullRune(ps *PosStruct) (err error) {
 	var runePtr *rune
@@ -164,15 +177,6 @@ func (p *Provider) PushRune() (err error) {
 	}
 	return
 }
-
-// func (p *Provider) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
-// 	var ps PosStruct
-// 	if ps, err = p.PosStruct(optOfs...); err == nil {
-// 		result = ps.Rune
-// 		isEOF = ps.IsEOF
-// 	}
-// 	return
-// }
 
 func (p *Provider) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 	var ofs int
