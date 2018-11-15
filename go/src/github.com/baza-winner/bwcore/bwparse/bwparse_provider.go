@@ -51,24 +51,27 @@ func (v PosStructs) MarshalJSON() ([]byte, error) {
 // ============================================================================
 
 type Provider struct {
-	Curr               PosStruct
-	Prev               PosStructs
-	Next               PosStructs
-	Prov               bwrune.Provider
-	preLineCount       int
-	postLineCount      int
-	maxBehindRuneCount int
+	Curr          PosStruct
+	Prev          PosStructs
+	Next          PosStructs
+	Prov          bwrune.Provider
+	preLineCount  uint
+	postLineCount uint
+	maxBackward   uint
 }
 
-func ProviderFrom(p bwrune.Provider) (result *Provider) {
+func ProviderFrom(p bwrune.Provider, optMaxBackward ...uint) (result *Provider) {
 	result = &Provider{
-		Curr:               PosStruct{Pos: -1, Line: 1},
-		Prev:               PosStructs{},
-		Next:               PosStructs{},
-		Prov:               p,
-		preLineCount:       3,
-		postLineCount:      3,
-		maxBehindRuneCount: 2,
+		Curr:          PosStruct{Pos: -1, Line: 1},
+		Prev:          PosStructs{},
+		Next:          PosStructs{},
+		Prov:          p,
+		preLineCount:  3,
+		postLineCount: 3,
+		maxBackward:   1,
+	}
+	if len(optMaxBackward) > 0 {
+		result.maxBackward = optMaxBackward[0]
 	}
 	return
 }
@@ -89,17 +92,32 @@ func (p *Provider) MarshalJSON() ([]byte, error) {
 
 const NonEOF = true
 
-func (p *Provider) PullRune(optNonEOF ...bool) (err error) {
+func (p *Provider) SetMaxBackwardCount(newValue uint) (prev uint) {
+	prev = p.maxBackward
+	p.maxBackward = newValue
+	if len(p.Prev) > int(p.maxBackward) {
+		p.Prev = p.Prev[len(p.Prev)-int(p.maxBackward):]
+	}
+	return
+}
+
+func (p *Provider) Forward(optNonEOF ...bool) (err error) {
 	if p.Curr.Pos < 0 || !p.Curr.IsEOF {
-		p.Prev = append(p.Prev, p.Curr)
-		if len(p.Prev) > p.maxBehindRuneCount {
-			p.Prev = p.Prev[len(p.Prev)-p.maxBehindRuneCount:]
+		if p.maxBackward > 0 {
+			if p.maxBackward == 1 && len(p.Prev) == 1 {
+				p.Prev[0] = p.Curr
+			} else {
+				if len(p.Prev) >= int(p.maxBackward) {
+					p.Prev = p.Prev[len(p.Prev)-int(p.maxBackward)+1:]
+				}
+				p.Prev = append(p.Prev, p.Curr)
+			}
 		}
-		if len(p.Next) > 0 {
+		if len(p.Next) == 0 {
+			err = p.pullRune(&p.Curr)
+		} else {
 			p.Curr = p.Next[len(p.Next)-1]
 			p.Next = p.Next[:len(p.Next)-1]
-		} else {
-			err = p.pullRune(&p.Curr)
 		}
 	}
 	if len(optNonEOF) > 0 && optNonEOF[0] && p.Curr.IsEOF {
@@ -108,34 +126,6 @@ func (p *Provider) PullRune(optNonEOF ...bool) (err error) {
 	}
 	return
 }
-
-// func (p *Provider) MustPullRune(optNonEOF ...bool) {
-// 	var err error
-// 	if err = p.PullRune(optNonEOF...); err != nil {
-// 		return
-// 	}
-// }
-
-// func (p *Provider) PullNonEOFRune() (result rune, err error) {
-// 	var isEOF bool
-// 	if result, isEOF, err = p.PullRuneOrEOF(); err != nil {
-// 		return
-// 	}
-// 	if isEOF {
-// 		err = p.Unexpected(p.Curr)
-// 		return
-// 	}
-// 	return
-// }
-
-// func (p *Provider) PullRuneOrEOF() (result rune, isEOF bool, err error) {
-// 	if err = p.PullRune(); err != nil {
-// 		return
-// 	}
-// 	result = p.Curr.Rune
-// 	isEOF = p.Curr.IsEOF
-// 	return
-// }
 
 func (p *Provider) pullRune(ps *PosStruct) (err error) {
 	var runePtr *rune
@@ -149,7 +139,7 @@ func (p *Provider) pullRune(ps *PosStruct) (err error) {
 		} else {
 			ps.Line++
 			ps.Col = 1
-			if int(ps.Line) > p.preLineCount {
+			if int(ps.Line) > int(p.preLineCount) {
 				i := strings.Index(ps.Prefix, "\n")
 				ps.Prefix = ps.Prefix[i+1:]
 				ps.PrefixStart += i + 1
@@ -166,10 +156,9 @@ func (p *Provider) pullRune(ps *PosStruct) (err error) {
 	return
 }
 
-func (p *Provider) PushRune() (err error) {
+func (p *Provider) Backward() {
 	if len(p.Prev) == 0 {
-		err = bwerr.From("len(p.Prev) == 0")
-		// bwerr.Panic("len(p.Prev) == 0")
+		bwerr.Panic("len(p.Prev) == 0")
 	} else {
 		p.Next = append(p.Next, p.Curr)
 		p.Curr = p.Prev[len(p.Prev)-1]
@@ -259,7 +248,7 @@ func (p *Provider) GetSuffix(ps PosStruct) (suffix string) {
 		suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
 		suffix += ansi.Reset()
 		for !p.Curr.IsEOF && postLineCount > 0 {
-			p.PullRune()
+			p.Forward()
 			if !p.Curr.IsEOF {
 				suffix += string(p.Curr.Rune)
 				if p.Curr.Rune == '\n' {

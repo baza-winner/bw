@@ -119,7 +119,7 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if err = p.PullRune(bwparse.NonEOF); err != nil {
+		if err = p.Forward(bwparse.NonEOF); err != nil {
 			return
 		}
 		// p.MustPullRune(bwparse.NonEOF)
@@ -187,7 +187,7 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if err = p.PullRune(bwparse.NonEOF); err != nil {
+		if err = p.Forward(bwparse.NonEOF); err != nil {
 			return
 		}
 		// if _, err = p.PullNonEOFRune(); err != nil {
@@ -296,7 +296,7 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if err = p.PullRune(bwparse.NonEOF); err != nil {
+		if err = p.Forward(bwparse.NonEOF); err != nil {
 			return
 		}
 		// if r, isEOF, err = p.Rune(); err != nil || isEOF {

@@ -53,8 +53,8 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 		} else {
 			delimiter = r
 		}
-		p.PullRune()
-		p.PullRune()
+		p.Forward()
+		p.Forward()
 	}
 	start = p.Curr
 	ok = true
@@ -64,10 +64,10 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 LOOP:
 	for {
 		// if r, err = p.PullNonEOFRune(); err != nil {
-		// if err = p.PullRune(NonEOF); err != nil {
+		// if err = p.Forward(NonEOF); err != nil {
 		// 	return
 		// }
-		if err = p.PullRune(NonEOF); err != nil {
+		if err = p.Forward(NonEOF); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -80,7 +80,7 @@ LOOP:
 			}
 		} else {
 			if r == delimiter || unicode.IsSpace(r) {
-				_ = p.PushRune()
+				p.Backward()
 				result = append(result, s)
 				state = expectSpaceOrQwItemOrDelimiter
 			} else {
@@ -112,17 +112,18 @@ func (p *Provider) Id() (result string, start PosStruct, ok bool, err error) {
 		ok = false
 		return
 	}
+	// p.SetMaxBackwardCount(1)
 LOOP:
 	for {
 		// if r, _, err = p.PullRuneOrEOF(); err != nil {
-		if err = p.PullRune(); err != nil {
+		if err = p.Forward(); err != nil {
 			return
 		}
 		r = p.Curr.Rune
 		if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
 			result += string(r)
 		} else {
-			_ = p.PushRune()
+			p.Backward()
 			break LOOP
 		}
 	}
@@ -159,7 +160,7 @@ func (p *Provider) String() (result string, start PosStruct, ok bool, err error)
 LOOP:
 	for {
 		// p.MustPullRune()
-		if err = p.PullRune(NonEOF); err != nil {
+		if err = p.Forward(NonEOF); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -214,7 +215,7 @@ func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 		s = string(r)
 		ok = true
 		start = p.Curr
-		if err = p.PullRune(NonEOF); err != nil {
+		if err = p.Forward(NonEOF); err != nil {
 			return
 		}
 		// p.MustPullRune(NonEOF)
@@ -238,7 +239,7 @@ func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 
 LOOP:
 	for {
-		if err = p.PullRune(); err != nil {
+		if err = p.Forward(); err != nil {
 			return
 		}
 		// p.MustPullRune()
@@ -247,7 +248,7 @@ LOOP:
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
 			s += string(r)
 		default:
-			p.PushRune()
+			p.Backward()
 			break LOOP
 		}
 	}
@@ -288,7 +289,7 @@ func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err e
 		s = string(r)
 		ok = true
 		start = p.Curr
-		if err = p.PullRune(NonEOF); err != nil {
+		if err = p.Forward(NonEOF); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -313,7 +314,7 @@ func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err e
 
 LOOP:
 	for {
-		if err = p.PullRune(); err != nil {
+		if err = p.Forward(); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -325,7 +326,7 @@ LOOP:
 				s += string(r)
 				state = expectDigitOrUnderscore
 			} else {
-				p.PushRune()
+				p.Backward()
 				break LOOP
 			}
 		}
@@ -369,7 +370,7 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 	for {
-		if p.PullRune(); err != nil || p.Curr.IsEOF {
+		if p.Forward(); err != nil || p.Curr.IsEOF {
 			return
 		} else if !unicode.IsSpace(p.Curr.Rune) {
 			err = p.Unexpected(p.Curr)
@@ -379,13 +380,13 @@ func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 }
 
 func (p *Provider) SkipOptionalSpace() (err error) {
-	if err = p.PullRune(NonEOF); err != nil {
+	if err = p.Forward(NonEOF); err != nil {
 		return
 	}
 	if unicode.IsSpace(p.Curr.Rune) {
 	LOOP:
 		for {
-			if err = p.PullRune(NonEOF); err != nil {
+			if err = p.Forward(NonEOF); err != nil {
 				return
 			} else if !unicode.IsSpace(p.Curr.Rune) {
 				break LOOP
@@ -487,7 +488,7 @@ LOOP:
 				return
 			}
 		} else if p.Curr.Rune == '=' {
-			if err = p.PullRune(NonEOF); err != nil {
+			if err = p.Forward(NonEOF); err != nil {
 				return
 			}
 			if p.Curr.Rune != '>' {
@@ -606,6 +607,7 @@ func (p *Provider) Path(optBases ...[]bw.ValPath) (result bw.ValPath, start PosS
 		bases = optBases[0]
 	}
 
+	// p.SetMaxBackwardCount(1)
 LOOP:
 	for {
 		var (
@@ -622,7 +624,7 @@ LOOP:
 				break LOOP
 			} else if len(result) == 0 {
 				result = append(result, bases[0]...)
-				p.PushRune()
+				p.Backward()
 
 			} else {
 				err = p.Unexpected(p.Curr)
@@ -667,7 +669,7 @@ LOOP:
 		} else {
 			if len(result) == 0 {
 				if p.Curr.Rune == '$' {
-					if err = p.PullRune(NonEOF); err != nil {
+					if err = p.Forward(NonEOF); err != nil {
 						return
 					}
 					if s, _, b, err = p.Id(); err != nil || b {
@@ -703,17 +705,17 @@ LOOP:
 		}
 	CONTINUE:
 
-		if err = p.PullRune(); err != nil {
+		if err = p.Forward(); err != nil {
 			return
 		}
 		// bwdebug.Print("r", string(r))
 
 		if p.Curr.Rune != '.' {
-			p.PushRune()
+			p.Backward()
 			break LOOP
 		}
 
-		if err = p.PullRune(); err != nil {
+		if err = p.Forward(); err != nil {
 			return
 		}
 	}
@@ -729,11 +731,11 @@ func (p *Provider) subPath(optBases ...[]bw.ValPath) (result bw.ValPath, start P
 	}()
 	if p.Curr.Rune == '{' {
 		start = p.Curr
-		err = p.PullRune(NonEOF)
+		err = p.Forward(NonEOF)
 		if result, _, b, err = p.Path(optBases...); err != nil || !b {
 			return
 		}
-		if err = p.PullRune(NonEOF); err != nil || p.Curr.Rune != '}' {
+		if err = p.Forward(); err != nil || p.Curr.Rune != '}' {
 			b = false
 			return
 		}
