@@ -26,23 +26,24 @@ func ArrayOfString(p *Provider, r rune) (result []string, start PosStruct, ok bo
 		r2        rune
 		delimiter rune
 		s         string
-		isEOF     bool
+		// isEOF     bool
+		ps PosStruct
 	)
 
 	// bwdebug.Print("r", string(r))
 	if r == '<' {
 		delimiter = '>'
 	} else {
-		// if r, isEOF, err = p.Rune(); err != nil || isEOF || r != 'q' {
 		if r != 'q' {
 			return
 		}
-		if r, isEOF, err = p.Rune(1); err != nil || isEOF || r != 'w' {
+		if ps, err = p.PosStruct(1); err != nil || ps.IsEOF || ps.Rune != 'w' {
 			return
 		}
-		if r, isEOF, err = p.Rune(2); err != nil || isEOF {
+		if ps, err = p.PosStruct(2); err != nil || ps.IsEOF {
 			return
 		}
+		r = ps.Rune
 		if r2, b = Braces[r]; !(b || unicode.IsPunct(r) || unicode.IsSymbol(r)) {
 			return
 		}
@@ -54,8 +55,6 @@ func ArrayOfString(p *Provider, r rune) (result []string, start PosStruct, ok bo
 		p.PullRune()
 		p.PullRune()
 	}
-	// p.PullRune()
-	// bwdebug.Print("!!!", "r", string(r))
 	start = p.Curr
 	ok = true
 	result = []string{}

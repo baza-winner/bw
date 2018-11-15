@@ -119,7 +119,9 @@ func (p *Provider) PullRuneOrEOF() (result rune, isEOF bool, err error) {
 	if err = p.PullRune(); err != nil {
 		return
 	}
-	return p.Rune()
+	result = p.Curr.Rune
+	isEOF = p.Curr.IsEOF
+	return
 }
 
 func (p *Provider) pullRune(ps *PosStruct) (err error) {
@@ -163,14 +165,14 @@ func (p *Provider) PushRune() (err error) {
 	return
 }
 
-func (p *Provider) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
-	var ps PosStruct
-	if ps, err = p.PosStruct(optOfs...); err == nil {
-		result = ps.Rune
-		isEOF = ps.IsEOF
-	}
-	return
-}
+// func (p *Provider) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
+// 	var ps PosStruct
+// 	if ps, err = p.PosStruct(optOfs...); err == nil {
+// 		result = ps.Rune
+// 		isEOF = ps.IsEOF
+// 	}
+// 	return
+// }
 
 func (p *Provider) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 	var ofs int
