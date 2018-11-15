@@ -5,6 +5,7 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 )
@@ -45,16 +46,36 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 		}
 		h := Holder{Val: target}
 		return h.PathVal(simplePath[1:])
-		// return FromVal(target).PathVal(simplePath[1:])
 	}
 
 	result = v.Val
 	for i, vpi := range simplePath {
 		switch vpi.Type {
 		case bw.ValPathItemKey:
-			result, err = Holder{result, path[:i+1]}.KeyVal(vpi.Key, nil)
+			result, err = Holder{result, path[:i]}.KeyVal(vpi.Key,
+				func() (result interface{}, ok bool) {
+					for _, vpi := range path[i:] {
+						if vpi.IsOptional {
+							ok = true
+							break
+						}
+					}
+					return
+				},
+			)
 		case bw.ValPathItemIdx:
-			result, err = Holder{result, path[:i+1]}.IdxVal(vpi.Idx, nil)
+			bwdebug.Print("path[:i]:json", path[:i], "path[]:json", path, "path[i:]:json", path[i:])
+			result, err = Holder{result, path[:i]}.IdxVal(vpi.Idx,
+				func() (result interface{}, ok bool) {
+					for _, vpi := range path[i:] {
+						if vpi.IsOptional {
+							ok = true
+							break
+						}
+					}
+					return
+				},
+			)
 		case bw.ValPathItemHash:
 			if result == nil {
 				result = 0
@@ -293,17 +314,17 @@ func (v Holder) MustMap() (result map[string]interface{}) {
 	return
 }
 
-func (v Holder) Key(key string, optDefaultVal ...interface{}) (result Holder, err error) {
+func (v Holder) Key(key string, optDefaultValProvider ...func() (interface{}, bool)) (result Holder, err error) {
 	var val interface{}
-	if val, err = v.KeyVal(key, optDefaultVal...); err == nil {
+	if val, err = v.KeyVal(key, optDefaultValProvider...); err == nil {
 		result = Holder{val, v.Pth.AppendKey(key)}
 	}
 	return
 }
 
-func (v Holder) MustKey(key string, optDefaultVal ...interface{}) (result Holder) {
+func (v Holder) MustKey(key string, optDefaultValProvider ...func() (interface{}, bool)) (result Holder) {
 	var err error
-	if result, err = v.Key(key, optDefaultVal...); err != nil {
+	if result, err = v.Key(key, optDefaultValProvider...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
@@ -325,11 +346,13 @@ func (v Holder) Idx(idx int) (result Holder, err error) {
 	return
 }
 
-func (v Holder) KeyVal(key string, optDefaultVal ...interface{}) (result interface{}, err error) {
+func (v Holder) KeyVal(key string, optDefaultValProvider ...func() (interface{}, bool)) (result interface{}, err error) {
 	if v.Val == nil {
-		if len(optDefaultVal) > 0 {
-			result = optDefaultVal[0]
-		} else {
+		var ok bool
+		if len(optDefaultValProvider) > 0 {
+			result, ok = optDefaultValProvider[0]()
+		}
+		if !ok {
 			err = v.wrongValError()
 		}
 		return
@@ -340,18 +363,57 @@ func (v Holder) KeyVal(key string, optDefaultVal ...interface{}) (result interfa
 	}
 	var ok bool
 	if result, ok = m[key]; !ok {
-		if len(optDefaultVal) > 0 {
-			result = optDefaultVal[0]
-		} else {
+		if len(optDefaultValProvider) > 0 {
+			result, ok = optDefaultValProvider[0]()
+		}
+		if !ok {
 			err = v.hasNoKeyError(key)
 		}
 	}
 	return
 }
 
-func (v Holder) MustKeyVal(key string, optDefaultVal ...interface{}) (result interface{}) {
+func (v Holder) IdxVal(idx int, optDefaultValProvider ...func() (interface{}, bool)) (result interface{}, err error) {
+	if v.Val == nil {
+		var ok bool
+		if len(optDefaultValProvider) > 0 {
+			result, ok = optDefaultValProvider[0]()
+		}
+		if !ok {
+			err = v.wrongValError()
+		}
+		return
+	}
+	err = v.idxHelper(idx,
+		func(vals []interface{}, nidx int, ok bool) (err error) {
+			if ok {
+				result = vals[nidx]
+			} else if len(optDefaultValProvider) > 0 {
+				result, ok = optDefaultValProvider[0]()
+			}
+			if !ok {
+				err = v.notEnoughRangeError(len(vals), idx)
+			}
+			return
+		},
+		func(ss []string, nidx int, ok bool) (err error) {
+			if ok {
+				result = ss[nidx]
+			} else if len(optDefaultValProvider) > 0 {
+				result, ok = optDefaultValProvider[0]()
+			}
+			if !ok {
+				err = v.notEnoughRangeError(len(ss), idx)
+			}
+			return
+		},
+	)
+	return
+}
+
+func (v Holder) MustKeyVal(key string, optDefaultValProvider ...func() (interface{}, bool)) (result interface{}) {
 	var err error
-	if result, err = v.KeyVal(key, optDefaultVal...); err != nil {
+	if result, err = v.KeyVal(key, optDefaultValProvider...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
@@ -374,40 +436,6 @@ func (v Holder) SetIdxVal(val interface{}, idx int) (err error) {
 				err = v.canNotSetNonStringError(idx, val)
 			} else {
 				ss[nidx] = s
-			}
-			return
-		},
-	)
-	return
-}
-
-func (v Holder) IdxVal(idx int, optDefaultVal ...interface{}) (result interface{}, err error) {
-	if v.Val == nil {
-		if len(optDefaultVal) > 0 {
-			result = optDefaultVal[0]
-		} else {
-			err = v.wrongValError()
-		}
-		return
-	}
-	err = v.idxHelper(idx,
-		func(vals []interface{}, nidx int, ok bool) (err error) {
-			if ok {
-				result = vals[nidx]
-			} else if len(optDefaultVal) > 0 {
-				result = optDefaultVal[0]
-			} else {
-				err = v.notEnoughRangeError(len(vals), idx)
-			}
-			return
-		},
-		func(ss []string, nidx int, ok bool) (err error) {
-			if ok {
-				result = ss[nidx]
-			} else if len(optDefaultVal) > 0 {
-				result = optDefaultVal[0]
-			} else {
-				err = v.notEnoughRangeError(len(ss), idx)
 			}
 			return
 		},

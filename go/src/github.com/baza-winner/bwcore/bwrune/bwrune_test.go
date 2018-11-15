@@ -87,8 +87,8 @@ func TestGetFirstLine(t *testing.T) {
 			Out: []interface{}{
 				"Рад",
 				bwerr.From(
-					"utf-8 encoding <ansiVal>%#v<ansi> is invalid at pos <ansiPath>%d",
-					5, 2,
+					"utf-8 encoding <ansiVal>%#v<ansi> is invalid at pos <ansiPath>%d<ansi> of file <ansiPath>%s",
+					5, 2, getTestFileSpec("invalid utf8"),
 				),
 			},
 		},

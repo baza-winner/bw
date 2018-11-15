@@ -101,7 +101,7 @@ var (
 )
 
 func init() {
-	ansiInvalidByte = ansi.String("utf-8 encoding <ansiVal>%#v<ansi> is invalid at pos <ansiPath>%d<ansi>")
+	ansiInvalidByte = ansi.String("utf-8 encoding <ansiVal>%#v<ansi> is invalid at pos <ansiPath>%d<ansi> of file <ansiPath>%s")
 }
 
 func (v *fileProvider) PullRune() (result *rune, err error) {
@@ -120,7 +120,7 @@ func (v *fileProvider) PullRune() (result *rune, err error) {
 		if len(v.buf) != 0 {
 			currRune, size := utf8.DecodeRune(v.buf)
 			if currRune == utf8.RuneError {
-				err = bwerr.From(ansiInvalidByte, v.bytePos, v.pos)
+				err = bwerr.From(ansiInvalidByte, v.bytePos, v.pos, v.fileSpec)
 			} else {
 				result = &currRune
 				v.buf = v.buf[size:]

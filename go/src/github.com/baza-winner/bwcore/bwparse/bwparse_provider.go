@@ -114,7 +114,7 @@ func (p *Provider) Forward(optNonEOF ...bool) (err error) {
 			}
 		}
 		if len(p.Next) == 0 {
-			err = p.pullRune(&p.Curr)
+			p.pullRune(&p.Curr)
 		} else {
 			p.Curr = p.Next[len(p.Next)-1]
 			p.Next = p.Next[:len(p.Next)-1]
@@ -127,10 +127,11 @@ func (p *Provider) Forward(optNonEOF ...bool) (err error) {
 	return
 }
 
-func (p *Provider) pullRune(ps *PosStruct) (err error) {
+func (p *Provider) pullRune(ps *PosStruct) {
 	var runePtr *rune
+	var err error
 	if runePtr, err = p.Prov.PullRune(); err != nil {
-		return
+		bwerr.PanicA(bwerr.Err(err))
 	}
 	ps.Pos++
 	if runePtr != nil && !ps.IsEOF {

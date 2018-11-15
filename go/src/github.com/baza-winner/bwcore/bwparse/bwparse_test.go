@@ -53,6 +53,17 @@ func TestPath(t *testing.T) {
 			{Type: bw.ValPathItemIdx, Idx: -1},
 			{Type: bw.ValPathItemKey, Key: "some"},
 		},
+		"2?": bw.ValPath{
+			{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
+		},
+		"some.2?": bw.ValPath{
+			{Type: bw.ValPathItemKey, Key: "some"},
+			{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
+		},
+		"some.(2?)": bw.ValPath{
+			{Type: bw.ValPathItemKey, Key: "some"},
+			{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
+		},
 	} {
 		tests[k] = bwtesting.Case{
 			In:  []interface{}{func(testName string) string { return testName }},
@@ -100,7 +111,7 @@ func TestPath(t *testing.T) {
 		},
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, ".some")
+	// bwmap.CropMap(tests, "2?")
 	bwtesting.BwRunTests(t, mustPath, tests)
 }
 
@@ -114,7 +125,11 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		}()
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		if result, err = p.PathContent(bwparse.AutoForward, optBases...); err != nil {
+		pco := bwparse.PathOpt{}
+		if len(optBases) > 0 {
+			pco.Bases = optBases[0]
+		}
+		if result, err = p.PathContent(bwparse.AutoForward, pco); err != nil {
 			return
 		}
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {

@@ -140,10 +140,11 @@ func (v ValPathItemType) MarshalJSON() ([]byte, error) {
 }
 
 type ValPathItem struct {
-	Type ValPathItemType
-	Idx  int
-	Key  string
-	Path ValPath
+	Type       ValPathItemType
+	Idx        int
+	Key        string
+	Path       ValPath
+	IsOptional bool
 }
 
 type Path []ValPathItem
@@ -164,20 +165,25 @@ func (v ValPath) String() (result string) {
 		result = "."
 	} else {
 		for _, vpi := range v {
+			var s string
 			switch vpi.Type {
 			case ValPathItemPath:
-				ss = append(ss, "("+vpi.Path.String()+")")
+				s = "(" + vpi.Path.String() + ")"
 			case ValPathItemKey:
-				ss = append(ss, vpi.Key)
+				s = vpi.Key
 			case ValPathItemVar:
-				ss = append(ss, "$"+vpi.Key)
+				s = "$" + vpi.Key
 			case ValPathItemIdx:
-				ss = append(ss, strconv.FormatInt(int64(vpi.Idx), 10))
+				s = strconv.FormatInt(int64(vpi.Idx), 10)
 			case ValPathItemHash:
-				ss = append(ss, "#")
+				s = "#"
 			default:
 				panic(Spew.Sprintf("%#v", vpi.Type))
 			}
+			if vpi.Type != ValPathItemHash && vpi.IsOptional {
+				s += "?"
+			}
+			ss = append(ss, s)
 		}
 		result = strings.Join(ss, ".")
 	}
