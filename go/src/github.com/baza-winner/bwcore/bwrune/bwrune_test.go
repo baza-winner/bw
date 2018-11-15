@@ -1,4 +1,4 @@
-package runeprovider
+package bwrune_test
 
 import (
 	"io/ioutil"
@@ -8,11 +8,12 @@ import (
 
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
+	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwtesting"
 )
 
 func getTestFileSpec(basename string) string {
-	return filepath.Join(os.Getenv("GOPATH"), "src", "github.com/baza-winner/bwcore/runeprovider", basename+".test_file")
+	return filepath.Join(os.Getenv("GOPATH"), "src", "github.com/baza-winner/bwcore/bwrune", basename+".test_file")
 }
 
 func prepareTestFile(basename string, content []byte) {
@@ -46,8 +47,8 @@ func myTeardownFunction() {
 }
 
 func getFirstLine(fileSpec string) (result string, err error) {
-	var p RuneProvider
-	p, err = FromFile(fileSpec)
+	var p bwrune.Provider
+	p, err = bwrune.ProviderFromFile(fileSpec)
 	if err != nil {
 		err = bwerr.FromA(bwerr.E{Error: err})
 	} else {

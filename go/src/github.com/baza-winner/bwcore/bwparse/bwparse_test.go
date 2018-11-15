@@ -7,8 +7,8 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwparse"
+	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwtesting"
-	"github.com/baza-winner/bwcore/runeprovider"
 )
 
 func TestPath(t *testing.T) {
@@ -116,7 +116,7 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 			r  rune
 			ok bool
 		)
-		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
@@ -177,7 +177,7 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 			r  rune
 			ok bool
 		)
-		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
@@ -276,7 +276,7 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 			r  rune
 			ok bool
 		)
-		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return

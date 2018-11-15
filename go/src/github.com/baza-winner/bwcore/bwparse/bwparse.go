@@ -10,12 +10,11 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/runeprovider"
 )
 
 // ============================================================================
 
-func ArrayOfString(p *runeprovider.Proxy, r rune) (result []string, start runeprovider.PosStruct, ok bool, err error) {
+func ArrayOfString(p *Provider, r rune) (result []string, start PosStruct, ok bool, err error) {
 	type State bool
 	const (
 		expectSpaceOrQwItemOrDelimiter State = true
@@ -98,7 +97,7 @@ var Braces = map[rune]rune{
 
 // ============================================================================
 
-func Id(p *runeprovider.Proxy, r rune) (result string, start runeprovider.PosStruct, ok bool, err error) {
+func Id(p *Provider, r rune) (result string, start PosStruct, ok bool, err error) {
 	if unicode.IsLetter(r) || r == '_' {
 		result = string(r)
 		start = p.Curr
@@ -124,7 +123,7 @@ LOOP:
 
 // // ============================================================================
 
-// func ParseVarName(p *runeprovider.Proxy, r rune) (result string, start runeprovider.PosStruct, ok bool, err error) {
+// func ParseVarName(p *Provider, r rune) (result string, start PosStruct, ok bool, err error) {
 // 	if r == '$' {
 // 		// result = string(r)
 // 		start = p.Curr
@@ -150,7 +149,7 @@ LOOP:
 
 // ============================================================================
 
-func String(p *runeprovider.Proxy, r rune) (result string, start runeprovider.PosStruct, ok bool, err error) {
+func String(p *Provider, r rune) (result string, start PosStruct, ok bool, err error) {
 	type State bool
 	const (
 		expectContent        State = true
@@ -220,7 +219,7 @@ var EscapeRunes = map[rune]rune{
 
 // ============================================================================
 
-func ParseInt(p *runeprovider.Proxy, r rune) (result int, start runeprovider.PosStruct, ok bool, err error) {
+func ParseInt(p *Provider, r rune) (result int, start PosStruct, ok bool, err error) {
 	var s string
 
 	switch r {
@@ -281,7 +280,7 @@ LOOP:
 
 // ============================================================================
 
-func ParseNumber(p *runeprovider.Proxy, r rune) (result interface{}, start runeprovider.PosStruct, ok bool, err error) {
+func ParseNumber(p *Provider, r rune) (result interface{}, start PosStruct, ok bool, err error) {
 	type State bool
 	const (
 		expectDigitOrUnderscore      State = true
@@ -375,7 +374,7 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // // ============================================================================
 
-// func ParseSpace(p *runeprovider.Proxy, r rune) (result rune, isEOF bool, start runeprovider.PosStruct, ok bool, err error) {
+// func ParseSpace(p *Provider, r rune) (result rune, isEOF bool, start PosStruct, ok bool, err error) {
 // 	if unicode.IsSpace(r) {
 // 		start = p.Curr
 // 		ok = true
@@ -398,7 +397,7 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // ============================================================================
 
-func SkipOptionalSpaceTillEOF(p *runeprovider.Proxy) (err error) {
+func SkipOptionalSpaceTillEOF(p *Provider) (err error) {
 	var isEOF bool
 	var r rune
 	for {
@@ -411,7 +410,7 @@ func SkipOptionalSpaceTillEOF(p *runeprovider.Proxy) (err error) {
 	}
 }
 
-func SkipOptionalSpace(p *runeprovider.Proxy) (r rune, err error) {
+func SkipOptionalSpace(p *Provider) (r rune, err error) {
 	if r, err = p.PullNonEOFRune(); err != nil {
 		return
 	}
@@ -428,7 +427,7 @@ func SkipOptionalSpace(p *runeprovider.Proxy) (r rune, err error) {
 	return
 }
 
-func ParseArray(p *runeprovider.Proxy, r rune) (result []interface{}, start runeprovider.PosStruct, ok bool, err error) {
+func ParseArray(p *Provider, r rune) (result []interface{}, start PosStruct, ok bool, err error) {
 	if r != '[' {
 		ok = false
 		return
@@ -473,7 +472,7 @@ LOOP:
 	return
 }
 
-func Map(p *runeprovider.Proxy, r rune) (result map[string]interface{}, start runeprovider.PosStruct, ok bool, err error) {
+func Map(p *Provider, r rune) (result map[string]interface{}, start PosStruct, ok bool, err error) {
 	if r != '{' {
 		ok = false
 		return
@@ -553,11 +552,11 @@ LOOP:
 	return
 }
 
-func ParseVal(p *runeprovider.Proxy, r rune) (result interface{}, start runeprovider.PosStruct, ok bool, err error) {
+func ParseVal(p *Provider, r rune) (result interface{}, start PosStruct, ok bool, err error) {
 
 	var (
 		s    string
-		ps   runeprovider.PosStruct
+		ps   PosStruct
 		val  interface{}
 		vals []interface{}
 		ss   []string
@@ -620,7 +619,7 @@ func ParseVal(p *runeprovider.Proxy, r rune) (result interface{}, start runeprov
 
 // ============================================================================
 
-func Path(p *runeprovider.Proxy, r rune, optBases ...[]bw.ValPath) (result bw.ValPath, start runeprovider.PosStruct, ok bool, err error) {
+func Path(p *Provider, r rune, optBases ...[]bw.ValPath) (result bw.ValPath, start PosStruct, ok bool, err error) {
 
 	ok = true
 	start = p.Curr
@@ -642,7 +641,7 @@ LOOP:
 			s   string
 			b   bool
 			sp  bw.ValPath
-			ps  runeprovider.PosStruct
+			ps  PosStruct
 		)
 		if r == '.' &&
 			len(result) == 0 {
@@ -747,7 +746,7 @@ LOOP:
 	return
 }
 
-func subPath(p *runeprovider.Proxy, r rune, optBases ...[]bw.ValPath) (result bw.ValPath, start runeprovider.PosStruct, ok bool, err error) {
+func subPath(p *Provider, r rune, optBases ...[]bw.ValPath) (result bw.ValPath, start PosStruct, ok bool, err error) {
 	b := true
 	defer func() {
 		if !b && err == nil {

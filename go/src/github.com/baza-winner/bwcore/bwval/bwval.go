@@ -6,7 +6,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwparse"
-	"github.com/baza-winner/bwcore/runeprovider"
+	"github.com/baza-winner/bwcore/bwrune"
 )
 
 // ============================================================================
@@ -19,7 +19,7 @@ func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 			r  rune
 			ok bool
 		)
-		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
@@ -80,7 +80,7 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 			r  rune
 			ok bool
 		)
-		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
+		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return

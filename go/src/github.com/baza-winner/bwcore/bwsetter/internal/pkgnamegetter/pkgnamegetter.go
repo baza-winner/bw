@@ -4,7 +4,7 @@ import (
 	"unicode"
 
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/runeprovider"
+	"github.com/baza-winner/bwcore/bwrune"
 )
 
 type parsePrimaryState uint8
@@ -41,8 +41,8 @@ type parseState struct {
 //go:generate stringer -type=parsePrimaryState,parseSecondaryState
 
 func GetPackageName(fileSpec string) (packageName string, err error) {
-	var p runeprovider.RuneProvider
-	p, err = runeprovider.FromFile(fileSpec)
+	var p bwrune.Provider
+	p, err = bwrune.ProviderFromFile(fileSpec)
 	if err != nil {
 		err = bwerr.FromA(bwerr.E{Error: err})
 	} else {

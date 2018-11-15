@@ -1,27 +1,17 @@
-package runeprovider
+package bwparse
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwrune"
 )
 
-type RuneProvider interface {
-	PullRune() (*rune, error)
-	Close()
-	Line() int
-	Col() int
-	Pos() int
-	IsEOF() bool
-}
+// ============================================================================
 
 type PosStruct struct {
 	IsEOF       bool
@@ -33,9 +23,7 @@ type PosStruct struct {
 	PrefixStart int
 }
 
-// func (v PosStruct) copyPtr() *PosStruct {
-// 	return &PosStruct{v.IsEOF, v.RunePtr, v.Pos, v.Line, v.Col, v.Prefix, v.PrefixStart}
-// }
+type PosStructs []PosStruct
 
 func (v PosStruct) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
@@ -52,31 +40,7 @@ func (v PosStruct) MarshalJSON() ([]byte, error) {
 	return json.Marshal(result)
 }
 
-type Proxy struct {
-	Curr               PosStruct
-	Prev               RunePtrStructs
-	Next               RunePtrStructs
-	Prov               RuneProvider
-	preLineCount       int
-	postLineCount      int
-	maxBehindRuneCount int
-}
-
-func ProxyFrom(p RuneProvider) *Proxy {
-	return &Proxy{
-		PosStruct{Pos: -1, Line: 1},
-		RunePtrStructs{},
-		RunePtrStructs{},
-		p,
-		3,
-		3,
-		2,
-	}
-}
-
-type RunePtrStructs []PosStruct
-
-func (v RunePtrStructs) MarshalJSON() ([]byte, error) {
+func (v PosStructs) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
 	for _, i := range v {
 		result = append(result, i)
@@ -84,19 +48,45 @@ func (v RunePtrStructs) MarshalJSON() ([]byte, error) {
 	return json.Marshal(result)
 }
 
-func (p *Proxy) MarshalJSON() ([]byte, error) {
+// ============================================================================
+
+type Provider struct {
+	Curr               PosStruct
+	Prev               PosStructs
+	Next               PosStructs
+	Prov               bwrune.Provider
+	preLineCount       int
+	postLineCount      int
+	maxBehindRuneCount int
+}
+
+func ProviderFrom(p bwrune.Provider) *Provider {
+	return &Provider{
+		PosStruct{Pos: -1, Line: 1},
+		PosStructs{},
+		PosStructs{},
+		p,
+		3,
+		3,
+		2,
+	}
+}
+
+// ============================================================================
+
+func (p *Provider) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
 	result["curr"] = p.Curr
 	// if len(p.Prev) > 0 {
-	// 	result["prev"] = p.Prev.DataForJSON()
+	//  result["prev"] = p.Prev.DataForJSON()
 	// }
 	// if len(p.Next) > 0 {
-	// 	result["next"] = p.Next.DataForJSON()
+	//  result["next"] = p.Next.DataForJSON()
 	// }
 	return json.Marshal(result)
 }
 
-func (p *Proxy) PullRune() (err error) {
+func (p *Provider) PullRune() (err error) {
 	if p.Curr.Pos < 0 || p.Curr.RunePtr != nil {
 		p.Prev = append(p.Prev, p.Curr)
 		if len(p.Prev) > p.maxBehindRuneCount {
@@ -112,7 +102,7 @@ func (p *Proxy) PullRune() (err error) {
 	return
 }
 
-func (p *Proxy) PullNonEOFRune() (result rune, err error) {
+func (p *Provider) PullNonEOFRune() (result rune, err error) {
 	var isEOF bool
 	if result, isEOF, err = p.PullRuneOrEOF(); err != nil {
 		return
@@ -124,14 +114,14 @@ func (p *Proxy) PullNonEOFRune() (result rune, err error) {
 	return
 }
 
-func (p *Proxy) PullRuneOrEOF() (result rune, isEOF bool, err error) {
+func (p *Provider) PullRuneOrEOF() (result rune, isEOF bool, err error) {
 	if err = p.PullRune(); err != nil {
 		return
 	}
 	return p.Rune()
 }
 
-func (p *Proxy) pullRune(ps *PosStruct) (err error) {
+func (p *Provider) pullRune(ps *PosStruct) (err error) {
 	var runePtr *rune
 	if runePtr, err = p.Prov.PullRune(); err != nil {
 		return
@@ -158,7 +148,7 @@ func (p *Proxy) pullRune(ps *PosStruct) (err error) {
 	return
 }
 
-func (p *Proxy) PushRune() (err error) {
+func (p *Provider) PushRune() (err error) {
 	if len(p.Prev) == 0 {
 		err = bwerr.From("len(p.Prev) == 0")
 		// bwerr.Panic("len(p.Prev) == 0")
@@ -170,7 +160,7 @@ func (p *Proxy) PushRune() (err error) {
 	return
 }
 
-func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
+func (p *Provider) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
 	var ps PosStruct
 	ps, err = p.PosStruct(optOfs...)
 	if err != nil {
@@ -186,7 +176,7 @@ func (p *Proxy) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
 	return
 }
 
-func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct, err error) {
+func (p *Provider) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 	var ofs int
 	if optOfs != nil {
 		ofs = optOfs[0]
@@ -208,7 +198,7 @@ func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 			} else {
 				ps = p.Curr
 			}
-			lookahead := RunePtrStructs{}
+			lookahead := PosStructs{}
 			for i := ofs - len(p.Next); i > 0; i-- {
 				p.pullRune(&ps)
 				lookahead = append(lookahead, ps)
@@ -216,7 +206,7 @@ func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 					break
 				}
 			}
-			newNext := RunePtrStructs{}
+			newNext := PosStructs{}
 			for i := len(lookahead) - 1; i >= 0; i-- {
 				newNext = append(newNext, lookahead[i])
 			}
@@ -227,25 +217,6 @@ func (p *Proxy) PosStruct(optOfs ...int) (ps PosStruct, err error) {
 	}
 	return
 }
-
-// func init() {
-// 	ansi.MustAddTag("ansiDarkGreen",
-// 		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
-// 		ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
-// 		// ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
-// 		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: true}),
-// 	)
-// 	ansi.MustAddTag("ansiLightRed",
-// 		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true}),
-// 		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
-// 		// ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
-// 		// ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
-// 		// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: true}),
-// 	)
-// 	// ansi.MustAddTag("ansiDarkGreen",
-// 	// ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen}),
-// 	// ansi.MustSGRCodeOfCmd(ansi.SGRCmdFaint),
-// }
 
 var (
 	ansiOK      string
@@ -261,11 +232,10 @@ func init() {
 	ansiLineCol = ansi.String(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)")
 }
 
-func (p *Proxy) GetSuffix(ps PosStruct) (suffix string) {
+func (p *Provider) GetSuffix(ps PosStruct) (suffix string) {
 	if ps.Pos > p.Curr.Pos {
 		bwerr.Panic("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)", ps.Pos, p.Curr.Pos)
 	}
-	// bwdebug.Print("ps", ps)
 	preLineCount := p.preLineCount
 	postLineCount := p.postLineCount
 	if p.Curr.RunePtr == nil {
@@ -312,7 +282,7 @@ func init() {
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 }
 
-func (p *Proxy) Unexpected(ps PosStruct, optFmt ...bw.I) (result error) {
+func (p *Provider) Unexpected(ps PosStruct, optFmt ...bw.I) (result error) {
 	var msg string
 	if ps.RunePtr == nil {
 		msg = ansiUnexpectedEOF
@@ -326,135 +296,4 @@ func (p *Proxy) Unexpected(ps PosStruct, optFmt ...bw.I) (result error) {
 	return
 }
 
-func FromString(source string) RuneProvider {
-	result := stringRuneProvider{pos: -1, src: []rune(source)}
-	return &result
-}
-
-func FromFile(fileSpec string) (result RuneProvider, err error) {
-	p := &fileRuneProvider{fileSpec: fileSpec, pos: -1, bytePos: -1, line: 1}
-	p.data, err = os.Open(fileSpec)
-	if err == nil {
-		p.reader = bufio.NewReader(p.data)
-		result = p
-	}
-	return
-}
-
-type stringRuneProvider struct {
-	src  []rune
-	line int
-	col  int
-	pos  int
-}
-
-func (v *stringRuneProvider) PullRune() (result *rune, err error) {
-	v.pos++
-	if v.pos < len(v.src) {
-		currRune := v.src[v.pos]
-		result = &currRune
-		if currRune == '\n' {
-			v.line++
-			v.col = 0
-		} else {
-			v.col++
-		}
-	}
-	return
-}
-
-func (v *stringRuneProvider) Close() {
-	v.src = nil
-}
-
-func (v *stringRuneProvider) Pos() int {
-	return v.pos
-}
-
-func (v *stringRuneProvider) Line() int {
-	return v.line
-}
-
-func (v *stringRuneProvider) Col() int {
-	return v.col
-}
-
-func (v *stringRuneProvider) IsEOF() bool {
-	return v.pos >= len(v.src)
-}
-
-const chunksize int = 1024
-
-type fileRuneProvider struct {
-	fileSpec string
-	data     *os.File
-	buf      []byte
-	reader   *bufio.Reader
-	pos      int
-	line     int
-	col      int
-	bytePos  int
-	isEOF    bool
-}
-
-var (
-	ansiInvalidByte string
-)
-
-func init() {
-	ansiInvalidByte = ansi.String("utf-8 encoding <ansiVal>%#v<ansi> is invalid at pos <ansiPath>%d<ansi>")
-}
-
-func (v *fileRuneProvider) PullRune() (result *rune, err error) {
-	if len(v.buf) < utf8.UTFMax && !v.isEOF {
-		chunk := make([]byte, chunksize)
-		var count int
-		count, err = v.reader.Read(chunk)
-		if err == io.EOF {
-			v.isEOF = true
-			err = nil
-		} else if err == nil {
-			v.buf = append(v.buf, chunk[:count]...)
-		}
-	}
-	if err == nil {
-		if len(v.buf) != 0 {
-			currRune, size := utf8.DecodeRune(v.buf)
-			if currRune == utf8.RuneError {
-				err = bwerr.From(ansiInvalidByte, v.bytePos, v.pos)
-			} else {
-				result = &currRune
-				v.buf = v.buf[size:]
-				v.pos++
-				v.bytePos += size
-				if currRune == '\n' {
-					v.line++
-					v.col = 0
-				} else {
-					v.col++
-				}
-			}
-		}
-	}
-	return
-}
-
-func (v *fileRuneProvider) Close() {
-	v.data.Close()
-}
-
-func (v *fileRuneProvider) Pos() int {
-	return v.pos
-}
-
-func (v *fileRuneProvider) Line() int {
-	return v.line
-}
-
-func (v *fileRuneProvider) Col() int {
-	return v.col
-}
-
-func (v *fileRuneProvider) IsEOF() bool {
-	return v.isEOF && len(v.buf) == 0
-}
+// ============================================================================
