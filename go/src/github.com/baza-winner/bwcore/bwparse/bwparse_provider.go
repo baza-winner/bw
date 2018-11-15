@@ -15,7 +15,7 @@ import (
 
 type PosStruct struct {
 	IsEOF       bool
-	RunePtr     *rune
+	Rune        rune
 	Pos         int
 	Line        uint
 	Col         uint
@@ -27,10 +27,10 @@ type PosStructs []PosStruct
 
 func (v PosStruct) MarshalJSON() ([]byte, error) {
 	result := map[string]interface{}{}
-	if v.RunePtr == nil {
+	if v.IsEOF {
 		result["rune"] = "EOF"
 	} else {
-		result["rune"] = string(*(v.RunePtr))
+		result["rune"] = string(v.Rune)
 	}
 	result["line"] = v.Line
 	result["col"] = v.Col
@@ -60,16 +60,17 @@ type Provider struct {
 	maxBehindRuneCount int
 }
 
-func ProviderFrom(p bwrune.Provider) *Provider {
-	return &Provider{
-		PosStruct{Pos: -1, Line: 1},
-		PosStructs{},
-		PosStructs{},
-		p,
-		3,
-		3,
-		2,
+func ProviderFrom(p bwrune.Provider) (result *Provider) {
+	result = &Provider{
+		Curr:               PosStruct{Pos: -1, Line: 1},
+		Prev:               PosStructs{},
+		Next:               PosStructs{},
+		Prov:               p,
+		preLineCount:       3,
+		postLineCount:      3,
+		maxBehindRuneCount: 2,
 	}
+	return
 }
 
 // ============================================================================
@@ -87,7 +88,7 @@ func (p *Provider) MarshalJSON() ([]byte, error) {
 }
 
 func (p *Provider) PullRune() (err error) {
-	if p.Curr.Pos < 0 || p.Curr.RunePtr != nil {
+	if p.Curr.Pos < 0 || !p.Curr.IsEOF {
 		p.Prev = append(p.Prev, p.Curr)
 		if len(p.Prev) > p.maxBehindRuneCount {
 			p.Prev = p.Prev[len(p.Prev)-p.maxBehindRuneCount:]
@@ -127,8 +128,8 @@ func (p *Provider) pullRune(ps *PosStruct) (err error) {
 		return
 	}
 	ps.Pos++
-	if runePtr != nil && ps.RunePtr != nil {
-		if *(ps.RunePtr) != '\n' {
+	if runePtr != nil && !ps.IsEOF {
+		if ps.Rune != '\n' {
 			ps.Col++
 		} else {
 			ps.Line++
@@ -140,9 +141,11 @@ func (p *Provider) pullRune(ps *PosStruct) (err error) {
 			}
 		}
 	}
-	ps.RunePtr = runePtr
 	ps.IsEOF = runePtr == nil
-	if !ps.IsEOF {
+	if runePtr == nil {
+		ps.Rune = '\000'
+	} else {
+		ps.Rune = *runePtr
 		ps.Prefix += string(*runePtr)
 	}
 	return
@@ -162,16 +165,9 @@ func (p *Provider) PushRune() (err error) {
 
 func (p *Provider) Rune(optOfs ...int) (result rune, isEOF bool, err error) {
 	var ps PosStruct
-	ps, err = p.PosStruct(optOfs...)
-	if err != nil {
-		return
-	}
-	if ps.RunePtr == nil {
-		result = '\000'
-		isEOF = true
-	} else {
-		result = *ps.RunePtr
-		isEOF = false
+	if ps, err = p.PosStruct(optOfs...); err == nil {
+		result = ps.Rune
+		isEOF = ps.IsEOF
 	}
 	return
 }
@@ -238,7 +234,7 @@ func (p *Provider) GetSuffix(ps PosStruct) (suffix string) {
 	}
 	preLineCount := p.preLineCount
 	postLineCount := p.postLineCount
-	if p.Curr.RunePtr == nil {
+	if p.Curr.IsEOF {
 		preLineCount += postLineCount
 	}
 
@@ -252,15 +248,15 @@ func (p *Provider) GetSuffix(ps PosStruct) (suffix string) {
 	suffix += ":" + separator + ansiOK
 
 	suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
-	if p.Curr.RunePtr != nil {
+	if !p.Curr.IsEOF {
 		suffix += ansiErr
 		suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
 		suffix += ansi.Reset()
-		for p.Curr.RunePtr != nil && postLineCount > 0 {
+		for !p.Curr.IsEOF && postLineCount > 0 {
 			p.PullRune()
-			if p.Curr.RunePtr != nil {
-				suffix += string(*p.Curr.RunePtr)
-				if *p.Curr.RunePtr == '\n' {
+			if !p.Curr.IsEOF {
+				suffix += string(p.Curr.Rune)
+				if p.Curr.Rune == '\n' {
 					postLineCount -= 1
 				}
 			}
@@ -284,10 +280,10 @@ func init() {
 
 func (p *Provider) Unexpected(ps PosStruct, optFmt ...bw.I) (result error) {
 	var msg string
-	if ps.RunePtr == nil {
+	if ps.IsEOF {
 		msg = ansiUnexpectedEOF
 	} else if len(optFmt) == 0 {
-		r := *ps.RunePtr
+		r := ps.Rune
 		msg = fmt.Sprintf(ansiUnexpectedChar, r, r)
 	} else {
 		msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)

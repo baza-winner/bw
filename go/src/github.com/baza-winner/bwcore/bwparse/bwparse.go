@@ -643,6 +643,7 @@ LOOP:
 			sp  bw.ValPath
 			ps  PosStruct
 		)
+		// bwdebug.Print("r", string(r), "len(result)", len(result), "len(bases)", len(bases))
 		if r == '.' &&
 			len(result) == 0 {
 			if len(bases) == 0 {
@@ -733,6 +734,7 @@ LOOP:
 		if r, _, err = p.PullRuneOrEOF(); err != nil {
 			return
 		}
+		// bwdebug.Print("r", string(r))
 
 		if r != '.' {
 			p.PushRune()

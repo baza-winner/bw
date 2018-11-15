@@ -100,7 +100,7 @@ func TestPath(t *testing.T) {
 		},
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "1a")
+	// bwmap.CropMap(tests, ".some")
 	bwtesting.BwRunTests(t, mustPath, tests)
 }
 
@@ -113,6 +113,7 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 			}
 		}()
 		var (
+			// isEOF bool
 			r  rune
 			ok bool
 		)
@@ -121,6 +122,12 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
+		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
+		// 	if err == nil {
+		// 		err = p.Unexpected(p.Curr)
+		// 	}
+		// 	return
+		// }
 		if result, _, ok, err = bwparse.Path(p, r, optBases...); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
@@ -182,6 +189,13 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
+
+		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
+		// 	if err == nil {
+		// 		err = p.Unexpected(p.Curr)
+		// 	}
+		// 	return
+		// }
 		if result, _, ok, err = bwparse.ParseInt(p, r); err != nil {
 			return
 		} else if !ok {
@@ -281,6 +295,12 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
+		// if r, isEOF, err = p.Rune(); err != nil || isEOF {
+		// 	if err == nil {
+		// 		err = p.Unexpected(p.Curr)
+		// 	}
+		// 	return
+		// }
 		if result, _, ok, err = bwparse.ParseVal(p, r); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
