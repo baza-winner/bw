@@ -16,24 +16,20 @@ func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 	var err error
 	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
 		var (
-			isEOF bool
-			r     rune
-			ok    bool
+			r  rune
+			ok bool
 		)
 		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
-		if result, err = bwparse.Path(p, r, optBases...); err != nil {
+		if result, _, ok, err = bwparse.Path(p, r, optBases...); err != nil || !ok {
+			if err == nil {
+				err = p.Unexpected(p.Curr)
+			}
 			return
 		}
-		if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
-			return
-		}
-		if _, ok, err = bwparse.ParseSpace(p, r); err != nil {
-			return
-		} else if !ok {
-			err = p.Unexpected(p.Curr)
+		if err = bwparse.SkipOptionalSpaceTillEOF(p); err != nil {
 			return
 		}
 
@@ -81,25 +77,21 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 			}
 		}()
 		var (
-			isEOF bool
-			r     rune
-			ok    bool
+			r  rune
+			ok bool
 		)
 		p := runeprovider.ProxyFrom(runeprovider.FromString(s))
 
 		if r, err = p.PullNonEOFRune(); err != nil {
 			return
 		}
-		if result, err = bwparse.ParseVal(p, r); err != nil {
+		if result, _, ok, err = bwparse.ParseVal(p, r); err != nil || !ok {
+			if err == nil {
+				err = p.Unexpected(p.Curr)
+			}
 			return
 		}
-		if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
-			return
-		}
-		if _, ok, err = bwparse.ParseSpace(p, r); err != nil {
-			return
-		} else if !ok {
-			err = p.Unexpected(p.Curr)
+		if err = bwparse.SkipOptionalSpaceTillEOF(p); err != nil {
 			return
 		}
 		return
@@ -211,6 +203,35 @@ func Array(val interface{}) (result []interface{}, ok bool) {
 
 // MustArray - must-обертка Array()
 func MustArray(val interface{}) (result []interface{}) {
+	var ok bool
+	if result, ok = Array(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Array")
+	}
+	return result
+}
+
+// Map - пытается извлечь []string из interface{}
+func ArrayOfString(val interface{}) (result []string, ok bool) {
+	switch v, kind := Kind(val); kind {
+	case ValArrayOfString:
+		result, ok = v.([]string)
+	case ValArray:
+		vals, _ := v.([]interface{})
+		result = []string{}
+		var s string
+		for _, val := range vals {
+			if s, ok = val.(string); !ok {
+				return
+			}
+			result = append(result, s)
+		}
+		ok = true
+	}
+	return
+}
+
+// MustArray - must-обертка Array()
+func MustArrayOfString(val interface{}) (result []interface{}) {
 	var ok bool
 	if result, ok = Array(val); !ok {
 		bwerr.Panic(ansiIsNotOfType, val, "Array")

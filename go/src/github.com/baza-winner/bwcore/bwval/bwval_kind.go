@@ -22,6 +22,7 @@ const (
 	ValNumber
 	ValString
 	ValArray
+	ValArrayOfString
 	ValArrayOf
 	ValMap
 	ValKindAbove
@@ -128,6 +129,9 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 		case []interface{}:
 			result = t
 			kind = ValArray
+		case []string:
+			result = t
+			kind = ValArrayOfString
 		}
 	}
 	return

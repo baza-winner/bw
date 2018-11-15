@@ -248,18 +248,23 @@ func (v Holder) MustArray() (result []interface{}) {
 }
 
 func (v Holder) ArrayOfString() (result []string, err error) {
-	var vals interface{}
-	if vals, err = v.Array(); err != nil {
-		return
-	}
-	result = []string{}
-	var s string
-	for i := range MustArray(vals) {
-		vp, _ := v.Idx(i)
-		if s, err = vp.String(); err != nil {
-			return
+	switch t, kind := Kind(v.Val); kind {
+	case ValArrayOfString:
+		result, _ = t.([]string)
+	case ValArray:
+		vals, _ := t.([]interface{})
+		result = []string{}
+		for i, val := range vals {
+			if s, ok := val.(string); ok {
+				result = append(result, s)
+			} else {
+				h := Holder{val, v.Pth.AppendIdx(i)}
+				err = h.notOfValKindError(ValKindSetFrom(ValString))
+				return
+			}
 		}
-		result = append(result, s)
+	default:
+		err = v.notOfValKindError(ValKindSetFrom(ValArray))
 	}
 	return
 }

@@ -398,8 +398,9 @@ LOOP:
 
 // ============================================================================
 
-func SkipOptionalSpaceTillEOF(p *runeprovider.Proxy, r rune) (err error) {
+func SkipOptionalSpaceTillEOF(p *runeprovider.Proxy) (err error) {
 	var isEOF, ok bool
+	var r rune
 	if r, isEOF, err = p.PullRuneOrEOF(); err != nil || isEOF {
 		return
 	}

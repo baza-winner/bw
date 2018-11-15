@@ -8,7 +8,7 @@ import (
 	"sort"
 )
 
-// ValKindSet - множество значений типа ValKind с поддержкой интерфейсов Stringer и MarshalJSON
+// ValKindSet - множество значений типа ValKind с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
 type ValKindSet map[ValKind]struct{}
 
 // ValKindSetFrom - конструктор ValKindSet
@@ -65,7 +65,7 @@ func (v ValKindSet) String() string {
 // MarshalJSON - поддержка интерфейса MarshalJSON
 func (v ValKindSet) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
-	for _, k := range v.ToSlice() {
+	for k, _ := range v {
 		result = append(result, k)
 	}
 	return json.Marshal(result)
