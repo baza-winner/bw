@@ -541,7 +541,7 @@ func (p *Provider) Val() (result interface{}, start PosStruct, ok bool, err erro
 			return
 		}
 		result = val
-	} else if path, _, b, err = p.Path(); err != nil || b {
+	} else if path, _, b, err = p.Path(PathA{}); err != nil || b {
 		if err != nil {
 			return
 		}
@@ -589,7 +589,7 @@ func init() {
 
 // ============================================================================
 
-func (p *Provider) Path(opt ...PathOpt) (result bw.ValPath, start PosStruct, ok bool, err error) {
+func (p *Provider) Path(a PathA) (result bw.ValPath, start PosStruct, ok bool, err error) {
 	start = p.Curr
 	var ps PosStruct
 	if p.Curr.Rune != '{' {
@@ -605,11 +605,7 @@ func (p *Provider) Path(opt ...PathOpt) (result bw.ValPath, start PosStruct, ok 
 	if err = p.SkipOptionalSpace(); err != nil {
 		return
 	}
-	// var bases []bw.ValPath
-	// if len(optBases) > 0 {
-	// 	bases = optBases[0]
-	// }
-	if result, err = p.PathContent(NoAutoForward, opt...); err != nil {
+	if result, err = p.PathContent(a); err != nil {
 		return
 	}
 	if err = p.SkipOptionalSpace(); err != nil {
@@ -628,19 +624,15 @@ func (p *Provider) Path(opt ...PathOpt) (result bw.ValPath, start PosStruct, ok 
 	return
 }
 
-func (p *Provider) subPath(opt ...PathOpt) (result bw.ValPath, start PosStruct, ok bool, err error) {
+func (p *Provider) subPath(a PathA) (result bw.ValPath, start PosStruct, ok bool, err error) {
 	if p.Curr.Rune == '(' {
 		ok = true
 		start = p.Curr
 		if err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
-		// opt.isSubPath = true
-		pco := PathOpt{isSubPath: true}
-		if len(opt) > 0 {
-			pco.Bases = opt[0].Bases
-		}
-		if result, err = p.PathContent(NoAutoForward, pco); err != nil {
+		a.isSubPath = true
+		if result, err = p.PathContent(a); err != nil {
 			return
 		}
 		if err = p.SkipOptionalSpace(); err != nil {
@@ -659,18 +651,16 @@ const (
 	AutoForward   bool = false
 )
 
-type PathOpt struct {
+type PathA struct {
 	Bases     []bw.ValPath
 	isSubPath bool
 }
 
-func (p *Provider) PathContent(noAutoForward bool, opt ...PathOpt) (result bw.ValPath, err error) {
+func (p *Provider) PathContent(a PathA) (result bw.ValPath, err error) {
 
-	if !noAutoForward {
-		p.Forward(true)
-		if err = p.CheckNotEOF(); err != nil {
-			return
-		}
+	p.Forward(Initial)
+	if err = p.CheckNotEOF(); err != nil {
+		return
 	}
 
 	var (
@@ -679,16 +669,15 @@ func (p *Provider) PathContent(noAutoForward bool, opt ...PathOpt) (result bw.Va
 		b   bool
 		sp  bw.ValPath
 		ps  PosStruct
-		// bases []bw.ValPath
 	)
 
 LOOP:
 	for {
 		if p.Curr.Rune == '.' && len(result) == 0 {
-			if len(opt) == 0 || len(opt[0].Bases) == 0 {
+			if len(a.Bases) == 0 {
 				break LOOP
 			} else if len(result) == 0 {
-				result = append(result, opt[0].Bases[0]...)
+				result = append(result, a.Bases[0]...)
 				p.Backward()
 
 			} else {
@@ -715,7 +704,7 @@ LOOP:
 				bw.ValPathItem{Type: bw.ValPathItemKey, Key: s},
 			)
 
-		} else if sp, _, b, err = p.subPath(opt...); b || err != nil {
+		} else if sp, _, b, err = p.subPath(a); b || err != nil {
 			if err != nil {
 				return
 			}
@@ -751,16 +740,12 @@ LOOP:
 							return
 						}
 						var nidx int
-						var bases []bw.ValPath
-						if len(opt) > 0 {
-							bases = opt[0].Bases
-						}
-						l := len(bases)
-						if nidx, b = bw.NormalIdx(idx, len(bases)); !b {
+						l := len(a.Bases)
+						if nidx, b = bw.NormalIdx(idx, l); !b {
 							err = p.Unexpected(ps, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
 							return
 						}
-						result = append(result, bases[nidx]...)
+						result = append(result, a.Bases[nidx]...)
 						goto CONTINUE
 					}
 				}
@@ -776,7 +761,7 @@ LOOP:
 
 		p.Forward(true)
 
-		if len(opt) > 0 && !opt[0].isSubPath && p.Curr.Rune == '?' {
+		if !a.isSubPath && p.Curr.Rune == '?' {
 			result[len(result)-1].IsOptional = true
 			p.Forward(true)
 		}

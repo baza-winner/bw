@@ -126,11 +126,11 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		}()
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		pco := bwparse.PathOpt{}
+		pco := bwparse.PathA{}
 		if len(optBases) > 0 {
 			pco.Bases = optBases[0]
 		}
-		if result, err = p.PathContent(bwparse.AutoForward, pco); err != nil {
+		if result, err = p.PathContent(pco); err != nil {
 			return
 		}
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
