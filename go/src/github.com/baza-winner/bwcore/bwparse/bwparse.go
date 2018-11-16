@@ -60,7 +60,8 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 
 LOOP:
 	for {
-		if err = p.Forward(NonEOF); err != nil {
+		p.Forward()
+		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -146,7 +147,8 @@ func (p *Provider) String() (result string, start PosStruct, ok bool, err error)
 
 LOOP:
 	for {
-		if err = p.Forward(NonEOF); err != nil {
+		p.Forward()
+		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -201,7 +203,8 @@ func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 		s = string(r)
 		ok = true
 		start = p.Curr
-		if err = p.Forward(NonEOF); err != nil {
+		p.Forward()
+		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -271,7 +274,8 @@ func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err e
 		s = string(r)
 		ok = true
 		start = p.Curr
-		if err = p.Forward(NonEOF); err != nil {
+		p.Forward()
+		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
 		r = p.Curr.Rune
@@ -360,13 +364,15 @@ func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 }
 
 func (p *Provider) SkipOptionalSpace() (err error) {
-	if err = p.Forward(NonEOF); err != nil {
+	p.Forward()
+	if err = p.CheckNotEOF(); err != nil {
 		return
 	}
 	if unicode.IsSpace(p.Curr.Rune) {
 	LOOP:
 		for {
-			if err = p.Forward(NonEOF); err != nil {
+			p.Forward()
+			if err = p.CheckNotEOF(); err != nil {
 				return
 			} else if !unicode.IsSpace(p.Curr.Rune) {
 				break LOOP
@@ -468,7 +474,8 @@ LOOP:
 				return
 			}
 		} else if p.Curr.Rune == '=' {
-			if err = p.Forward(NonEOF); err != nil {
+			p.Forward()
+			if err = p.CheckNotEOF(); err != nil {
 				return
 			}
 			if p.Curr.Rune != '>' {
@@ -660,7 +667,8 @@ type PathOpt struct {
 func (p *Provider) PathContent(noAutoForward bool, opt ...PathOpt) (result bw.ValPath, err error) {
 
 	if !noAutoForward {
-		if err = p.Forward(NonEOF); err != nil {
+		p.Forward()
+		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
 	}
@@ -725,7 +733,8 @@ LOOP:
 		} else {
 			if len(result) == 0 {
 				if p.Curr.Rune == '$' {
-					if err = p.Forward(NonEOF); err != nil {
+					p.Forward()
+					if err = p.CheckNotEOF(); err != nil {
 						return
 					}
 					if s, _, b, err = p.Id(); err != nil || b {

@@ -101,7 +101,7 @@ func (p *Provider) SetMaxBackwardCount(newValue uint) (prev uint) {
 	return
 }
 
-func (p *Provider) Forward(optNonEOF ...bool) (err error) {
+func (p *Provider) Forward() {
 	if p.Curr.Pos < 0 || !p.Curr.IsEOF {
 		if p.maxBackward > 0 {
 			if p.maxBackward == 1 && len(p.Prev) == 1 {
@@ -120,9 +120,11 @@ func (p *Provider) Forward(optNonEOF ...bool) (err error) {
 			p.Next = p.Next[:len(p.Next)-1]
 		}
 	}
-	if len(optNonEOF) > 0 && optNonEOF[0] && p.Curr.IsEOF {
+}
+
+func (p *Provider) CheckNotEOF() (err error) {
+	if p.Curr.IsEOF {
 		err = p.Unexpected(p.Curr)
-		return
 	}
 	return
 }
