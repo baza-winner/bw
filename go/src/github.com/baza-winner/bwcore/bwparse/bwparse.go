@@ -183,6 +183,7 @@ LOOP:
 
 		r = p.Curr.Rune
 		if r == delimiter {
+			p.Forward(true)
 			break LOOP
 		}
 
@@ -201,7 +202,6 @@ LOOP:
 		}
 		result = append(result, s)
 	}
-	p.Forward(true)
 	return
 }
 
@@ -217,14 +217,13 @@ var Braces = map[rune]rune{
 func (p *P) Id() (result string, start PosInfo, ok bool, err error) {
 	p.Forward(Initial)
 	r := p.Curr.Rune
-	if unicode.IsLetter(r) || r == '_' {
-		result = string(r)
-		start = p.Curr
-		ok = true
-	} else {
-		ok = false
+	if !(unicode.IsLetter(r) || r == '_') {
 		return
 	}
+	ok = true
+	result = string(r)
+	start = p.Curr
+
 LOOP:
 	for {
 		p.Forward(true)
@@ -232,7 +231,6 @@ LOOP:
 		if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
 			result += string(r)
 		} else {
-			// p.Backward()
 			break LOOP
 		}
 	}
@@ -318,62 +316,27 @@ var EscapeRunes = map[rune]rune{
 // ============================================================================
 
 func (p *P) Int() (result int, start PosInfo, ok bool, err error) {
-	var s string
+	var (
+		s string
+		r rune
+	)
 
-	p.Forward(Initial)
-	r := p.Curr.Rune
-
-	switch r {
-	case '-', '+':
-		start = p.Curr
-		s = string(r)
-		ok = true
-		start = p.Curr
-		p.Forward(true)
-		if err = p.CheckNotEOF(); err != nil {
-			return
-		}
-		r = p.Curr.Rune
-		switch r {
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			s += string(r)
-		default:
-			err = p.Unexpected(p.Curr)
-			return
-		}
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		start = p.Curr
-		s = string(r)
-		ok = true
-		start = p.Curr
-	default:
-		ok = false
+	if s, start, ok, err = p.looksLikeNumber(); err != nil || !ok {
 		return
 	}
 
 LOOP:
 	for {
-		p.Forward(true)
 		r = p.Curr.Rune
-		switch r {
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
+		if '0' <= r && r <= '9' || r == '_' {
 			s += string(r)
-		default:
-			// p.Backward()
+		} else {
 			break LOOP
 		}
+		p.Forward(true)
 	}
 
-	s = underscoreRegexp.ReplaceAllLiteralString(s, "")
-	var _int64 int64
-	if _int64, err = strconv.ParseInt(underscoreRegexp.ReplaceAllLiteralString(s, ""), 10, 64); err == nil {
-		if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
-			result = int(_int64)
-		} else {
-			err = fmt.Errorf("%d is out of range [%d, %d]", _int64, bw.MinInt, bw.MaxInt)
-		}
-	}
-	if err != nil {
+	if result, err = parseInt(underscoreRegexp.ReplaceAllLiteralString(s, "")); err != nil {
 		err = p.Unexpected(start, bwerr.Err(err))
 	}
 
@@ -385,63 +348,33 @@ LOOP:
 func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
 	type State bool
 	const (
-		expectDigitOrUnderscore      State = true
-		expectDigitOrUnderscoreOrDot State = false
+		expectDigitOrUnderscore      State = false
+		expectDigitOrUnderscoreOrDot State = true
 	)
 	var (
 		s     string
 		state State
+		r     rune
 	)
 
-	p.Forward(Initial)
-	r := p.Curr.Rune
-
-	switch r {
-	case '-', '+':
-		start = p.Curr
-		s = string(r)
-		ok = true
-		start = p.Curr
-		p.Forward(true)
-		if err = p.CheckNotEOF(); err != nil {
-			return
-		}
-		r = p.Curr.Rune
-		switch r {
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			s += string(r)
-			state = expectDigitOrUnderscoreOrDot
-		default:
-			err = p.Unexpected(p.Curr)
-			return
-		}
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		start = p.Curr
-		s = string(r)
-		state = expectDigitOrUnderscoreOrDot
-		ok = true
-		start = p.Curr
-	default:
-		ok = false
+	if s, start, ok, err = p.looksLikeNumber(); err != nil || !ok {
 		return
 	}
 
+	state = expectDigitOrUnderscoreOrDot
+
 LOOP:
 	for {
-		p.Forward(true)
 		r = p.Curr.Rune
-		switch r {
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
+		if '0' <= r && r <= '9' || r == '_' {
 			s += string(r)
-		default:
-			if state == expectDigitOrUnderscoreOrDot && r == '.' {
-				s += string(r)
-				state = expectDigitOrUnderscore
-			} else {
-				// p.Backward()
-				break LOOP
-			}
+		} else if state && r == '.' {
+			s += string(r)
+			state = expectDigitOrUnderscore
+		} else {
+			break LOOP
 		}
+		p.Forward(true)
 	}
 
 	s = underscoreRegexp.ReplaceAllLiteralString(s, "")
@@ -454,18 +387,7 @@ LOOP:
 		if pos := strings.LastIndex(s, "."); pos >= 0 {
 			s = s[:pos]
 		}
-		var _int64 int64
-		if _int64, err = strconv.ParseInt(s, 10, 64); err == nil {
-			if int64(bw.MinInt8) <= _int64 && _int64 <= int64(bw.MaxInt8) {
-				result = int8(_int64)
-			} else if int64(bw.MinInt16) <= _int64 && _int64 <= int64(bw.MaxInt16) {
-				result = int16(_int64)
-			} else if int64(bw.MinInt32) <= _int64 && _int64 <= int64(bw.MaxInt32) {
-				result = int32(_int64)
-			} else {
-				result = _int64
-			}
-		}
+		result, err = parseInt(s)
 	}
 	if err != nil {
 		err = p.Unexpected(start, bwerr.Err(err))
@@ -483,29 +405,27 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 func (p *P) Array() (result []interface{}, start PosInfo, ok bool, err error) {
 	p.Forward(Initial)
 	if p.Curr.Rune != '[' {
-		// ok = false
 		return
 	}
+	ok = true
 	start = p.Curr
 	result = []interface{}{}
-	ok = true
 
-	p.Forward(true)
-	if err = p.SkipSpace(TillNonEOF); err != nil {
-		return
-	}
+	var b bool
 LOOP:
 	for {
+		p.Forward(true)
+		if err = p.SkipSpace(TillNonEOF); err != nil {
+			return
+		}
+	NEXT:
 		if p.Curr.Rune == ']' {
 			p.Forward(true)
 			break LOOP
 		}
 
 		var val interface{}
-		if val, _, ok, err = p.Val(); err != nil || !ok {
-			if err == nil {
-				err = p.Unexpected(p.Curr)
-			}
+		if val, err = p.parseVal(); err != nil {
 			return
 		}
 		if ss, b := val.([]string); !b {
@@ -515,14 +435,11 @@ LOOP:
 				result = append(result, s)
 			}
 		}
-		if err = p.SkipSpace(TillNonEOF); err != nil {
+
+		if b, err = p.skipComma(); err != nil {
 			return
-		}
-		if p.Curr.Rune == ',' {
-			p.Forward(true)
-			if err = p.SkipSpace(TillNonEOF); err != nil {
-				return
-			}
+		} else if !b {
+			goto NEXT
 		}
 	}
 
@@ -532,29 +449,27 @@ LOOP:
 func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err error) {
 	p.Forward(Initial)
 	if p.Curr.Rune != '{' {
-		// ok = false
 		return
 	}
-
+	ok = true
 	start = p.Curr
 	result = map[string]interface{}{}
-	ok = true
 
-	p.Forward(true)
-	if err = p.SkipSpace(TillNonEOF); err != nil {
-		return
-	}
-
+	var (
+		key string
+		b   bool
+	)
 LOOP:
 	for {
+		p.Forward(true)
+		if err = p.SkipSpace(TillNonEOF); err != nil {
+			return
+		}
+	NEXT:
 		if p.Curr.Rune == '}' {
 			p.Forward(true)
 			break LOOP
 		}
-		var (
-			key string
-			b   bool
-		)
 
 		if key, _, b, err = p.String(); err != nil || b {
 			if err != nil {
@@ -573,46 +488,33 @@ LOOP:
 			return
 		}
 
+		var needForwardAndSkipSpace bool
 		if p.Curr.Rune == ':' {
-			p.Forward(true)
-			if err = p.SkipSpace(TillNonEOF); err != nil {
-				return
-			}
+			needForwardAndSkipSpace = true
 		} else if p.Curr.Rune == '=' {
 			p.Forward(true)
-			if err = p.CheckNotEOF(); err != nil {
-				return
-			}
 			if p.Curr.Rune != '>' {
 				err = p.Unexpected(p.Curr)
 				return
 			}
+			needForwardAndSkipSpace = true
+		}
+		if needForwardAndSkipSpace {
 			p.Forward(true)
 			if err = p.SkipSpace(TillNonEOF); err != nil {
 				return
 			}
 		}
 
-		var val interface{}
-		if val, _, ok, err = p.Val(); err != nil || !ok {
-			if err == nil {
-				err = p.Unexpected(p.Curr)
-			}
+		if result[key], err = p.parseVal(); err != nil {
 			return
 		}
 
-		result[key] = val
-
-		if err = p.SkipSpace(TillNonEOF); err != nil {
+		if b, err = p.skipComma(); err != nil {
 			return
+		} else if !b {
+			goto NEXT
 		}
-		if p.Curr.Rune == ',' {
-			p.Forward(true)
-			if err = p.SkipSpace(TillNonEOF); err != nil {
-				return
-			}
-		}
-
 	}
 
 	return
@@ -620,52 +522,21 @@ LOOP:
 
 func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 	var (
-		s    string
-		ps   PosInfo
-		val  interface{}
-		vals []interface{}
-		ss   []string
-		m    map[string]interface{}
-		b    bool
-		path bw.ValPath
+		s string
+		b bool
 	)
 
 	ok = true
 
 	p.Forward(Initial)
-	start = p.Curr
 
-	if vals, _, b, err = p.Array(); err != nil || b {
-		if err != nil {
-			return
-		}
-		result = vals
-	} else if s, _, b, err = p.String(); err != nil || b {
-		if err != nil {
-			return
-		}
-		result = s
-	} else if val, _, b, err = p.Number(); err != nil || b {
-		if err != nil {
-			return
-		}
-		result = val
-	} else if path, _, b, err = p.Path(PathA{}); err != nil || b {
-		if err != nil {
-			return
-		}
-		result = path
-	} else if m, _, b, err = p.Map(); err != nil || b {
-		if err != nil {
-			return
-		}
-		result = m
-	} else if ss, _, b, err = p.ArrayOfString(); err != nil || b {
-		if err != nil {
-			return
-		}
-		result = ss
-	} else if s, ps, b, err = p.Id(); err != nil || b {
+	if result, _, b, err = p.Array(); b {
+	} else if result, start, b, err = p.String(); b {
+	} else if result, start, b, err = p.Number(); b {
+	} else if result, start, b, err = p.Path(PathA{}); b {
+	} else if result, start, b, err = p.Map(); b {
+	} else if result, start, b, err = p.ArrayOfString(); b {
+	} else if s, start, b, err = p.Id(); b {
 		if err != nil {
 			return
 		}
@@ -679,7 +550,7 @@ func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 		case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
 			result = s
 		default:
-			err = p.Unexpected(ps, bw.Fmt(ansiUnexpectedWord, s))
+			err = p.Unexpected(start, bw.Fmt(ansiUnexpectedWord, s))
 			return
 		}
 	} else {
@@ -697,16 +568,15 @@ func (p *P) Path(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error)
 	p.Forward(Initial)
 	start = p.Curr
 	if p.Curr.Rune != '{' {
-		ok = false
 		return
 	}
 	var ps PosInfo
 	if ps, err = p.PosInfo(1); err != nil || ps.IsEOF || ps.Rune != '{' {
 		return
 	}
-	p.Forward(true)
-	p.Forward(true)
 	ok = true
+	p.Forward(true)
+	p.Forward(true)
 
 	if err = p.SkipSpace(TillNonEOF); err != nil {
 		return
@@ -717,17 +587,13 @@ func (p *P) Path(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error)
 	if err = p.SkipSpace(TillNonEOF); err != nil {
 		return
 	}
-	if p.Curr.Rune != '}' {
-		err = p.Unexpected(p.Curr)
-		return
+	for i := 2; i > 0; i-- {
+		if p.Curr.Rune != '}' {
+			err = p.Unexpected(p.Curr)
+			return
+		}
+		p.Forward(true)
 	}
-	p.Forward(true)
-
-	if p.Curr.Rune != '}' {
-		err = p.Unexpected(p.Curr)
-		return
-	}
-	p.Forward(true)
 
 	return
 }
@@ -765,23 +631,19 @@ LOOP:
 				break LOOP
 			} else if len(result) == 0 {
 				result = append(result, a.Bases[0]...)
-
 			} else {
 				err = p.Unexpected(p.Curr)
 				return
 			}
-		} else if idx, _, b, err = p.Int(); b || err != nil {
+		} else if idx, _, b, err = p.Int(); b {
 			if err != nil {
 				return
 			}
-
 			result = append(
 				result,
 				bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: idx},
 			)
-
-		} else if s, _, b, err = p.Id(); b || err != nil {
-
+		} else if s, _, b, err = p.Id(); b {
 			if err != nil {
 				return
 			}
@@ -789,8 +651,7 @@ LOOP:
 				result,
 				bw.ValPathItem{Type: bw.ValPathItemKey, Key: s},
 			)
-
-		} else if sp, _, b, err = p.subPath(a); b || err != nil {
+		} else if sp, _, b, err = p.subPath(a); b {
 			if err != nil {
 				return
 			}
@@ -798,7 +659,6 @@ LOOP:
 				result,
 				bw.ValPathItem{Type: bw.ValPathItemPath, Path: sp},
 			)
-
 		} else if p.Curr.Rune == '#' {
 			result = append(
 				result,
@@ -813,28 +673,54 @@ LOOP:
 					if err = p.CheckNotEOF(); err != nil {
 						return
 					}
-					if s, _, b, err = p.Id(); err != nil || b {
-						if err != nil {
-							return
-						}
-						result = append(
-							result,
-							bw.ValPathItem{Type: bw.ValPathItemVar, Key: s},
-						)
-						goto CONTINUE
-					} else if idx, ps, b, err = p.Int(); err != nil || b {
-						if err != nil {
-							return
-						}
-						var nidx int
-						l := len(a.Bases)
-						if nidx, b = bw.NormalIdx(idx, l); !b {
-							err = p.Unexpected(ps, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
-							return
-						}
-						result = append(result, a.Bases[nidx]...)
+					if b, err = p.processOn([]on{
+						onInt{f: func(idx int, start PosInfo) {
+							result = append(
+								result,
+								bw.ValPathItem{Type: bw.ValPathItemVar, Key: s},
+							)
+						}},
+						onId{f: func(s string, start PosInfo) {
+							var nidx int
+							l := len(a.Bases)
+							if nidx, b = bw.NormalIdx(idx, l); !b {
+								err = p.Unexpected(ps, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
+								return
+							}
+							result = append(result, a.Bases[nidx]...)
+						}},
+					}); err != nil {
+						return
+					}
+					if b {
 						goto CONTINUE
 					}
+					// var gotoCONTINUE bool
+					// if s, _, b, err = p.Id(); b {
+					// 	if err != nil {
+					// 		return
+					// 	}
+					// 	result = append(
+					// 		result,
+					// 		bw.ValPathItem{Type: bw.ValPathItemVar, Key: s},
+					// 	)
+					// 	gotoCONTINUE = true
+					// } else if idx, ps, b, err = p.Int(); b {
+					// 	if err != nil {
+					// 		return
+					// 	}
+					// 	var nidx int
+					// 	l := len(a.Bases)
+					// 	if nidx, b = bw.NormalIdx(idx, l); !b {
+					// 		err = p.Unexpected(ps, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
+					// 		return
+					// 	}
+					// 	result = append(result, a.Bases[nidx]...)
+					// 	gotoCONTINUE = true
+					// }
+					// if gotoCONTINUE {
+					// 	goto CONTINUE
+					// }
 				}
 			}
 			if len(result) == 0 {

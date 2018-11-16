@@ -2,6 +2,7 @@ package bwparse
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
@@ -21,6 +22,7 @@ var (
 	ansiUnexpectedEOF   string
 	ansiUnexpectedChar  string
 	ansiUnexpectedWord  string
+	ansiOutOfRange      string
 )
 
 func init() {
@@ -34,6 +36,7 @@ func init() {
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>%q<ansi>")
+	ansiOutOfRange = ansi.String("<ansiVal>%d<ansi> is out of range <ansiVal>%d..%d")
 }
 
 func (p *P) pullRune(ps *PosInfo) {
@@ -126,6 +129,116 @@ func (p *P) suffix(ps PosInfo) (suffix string) {
 	}
 
 	return suffix
+}
+
+// ============================================================================
+
+func (p *P) parseVal() (result interface{}, err error) {
+	var ok bool
+	if result, _, ok, err = p.Val(); err != nil || !ok {
+		if err == nil {
+			err = p.Unexpected(p.Curr)
+		}
+		return
+	}
+	return
+}
+
+func (p *P) skipComma() (ok bool, err error) {
+	if err = p.SkipSpace(TillNonEOF); err == nil {
+		ok = p.Curr.Rune == ','
+	}
+	return
+}
+
+// ============================================================================
+
+type onInt struct {
+	f func(idx int, start PosInfo)
+}
+
+func (onInt) IsOn() string { return "Int" }
+
+type onId struct {
+	f func(s string, start PosInfo)
+}
+
+func (onId) IsOn() string { return "Id" }
+
+type on interface {
+	IsOn() string
+}
+
+// ============================================================================
+
+func (p *P) processOn(processors []on) (ok bool, err error) {
+	var (
+		idx   int
+		s     string
+		start PosInfo
+	)
+	for _, processor := range processors {
+		switch t := processor.(type) {
+		case onInt:
+			if idx, start, ok, err = p.Int(); ok {
+				if err != nil {
+					return
+				}
+				t.f(idx, start)
+				return
+			}
+		case onId:
+			if s, start, ok, err = p.Id(); ok {
+				if err != nil {
+					return
+				}
+				t.f(s, start)
+				return
+			}
+		}
+	}
+	return
+}
+
+// ============================================================================
+
+func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
+	p.Forward(Initial)
+	r := p.Curr.Rune
+
+	var needDigit bool
+	if r == '-' || r == '+' {
+		needDigit = true
+	} else if !('0' <= r && r <= '9') {
+		return
+	}
+	ok = true
+	start = p.Curr
+	s = string(r)
+	if needDigit {
+		p.Forward(true)
+		r = p.Curr.Rune
+		if '0' <= r && r <= '9' {
+			s += string(r)
+		} else {
+			err = p.Unexpected(p.Curr)
+			return
+		}
+	}
+	p.Forward(true)
+	return
+}
+
+func parseInt(s string) (result int, err error) {
+	var _int64 int64
+	if _int64, err = strconv.ParseInt(underscoreRegexp.ReplaceAllLiteralString(s, ""), 10, 64); err == nil {
+		if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
+			result = int(_int64)
+		} else {
+			err = bwerr.From(ansiOutOfRange, _int64, bw.MinInt, bw.MaxInt)
+		}
+	}
+	return
 }
 
 // ============================================================================
