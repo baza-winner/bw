@@ -5,7 +5,6 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 )
@@ -64,7 +63,7 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 				},
 			)
 		case bw.ValPathItemIdx:
-			bwdebug.Print("path[:i]:json", path[:i], "path[]:json", path, "path[i:]:json", path[i:])
+			// bwdebug.Print("path[:i]:json", path[:i], "path[]:json", path, "path[i:]:json", path[i:])
 			result, err = Holder{result, path[:i]}.IdxVal(vpi.Idx,
 				func() (result interface{}, ok bool) {
 					for _, vpi := range path[i:] {

@@ -101,8 +101,10 @@ func (p *Provider) SetMaxBackwardCount(newValue uint) (prev uint) {
 	return
 }
 
-func (p *Provider) Forward() {
-	if p.Curr.Pos < 0 || !p.Curr.IsEOF {
+const Initial bool = false
+
+func (p *Provider) Forward(nonInitial bool) {
+	if p.Curr.Pos < 0 || nonInitial && !p.Curr.IsEOF {
 		if p.maxBackward > 0 {
 			if p.maxBackward == 1 && len(p.Prev) == 1 {
 				p.Prev[0] = p.Curr
@@ -264,7 +266,7 @@ func (p *Provider) GetSuffix(ps PosStruct) (suffix string) {
 		suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
 		suffix += ansi.Reset()
 		for !p.Curr.IsEOF && postLineCount > 0 {
-			p.Forward()
+			p.Forward(true)
 			if !p.Curr.IsEOF {
 				suffix += string(p.Curr.Rune)
 				if p.Curr.Rune == '\n' {

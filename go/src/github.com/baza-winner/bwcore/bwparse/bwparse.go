@@ -51,8 +51,8 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 		} else {
 			delimiter = r
 		}
-		p.Forward()
-		p.Forward()
+		p.Forward(true)
+		p.Forward(true)
 	}
 	ok = true
 	result = []string{}
@@ -60,7 +60,7 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 
 LOOP:
 	for {
-		p.Forward()
+		p.Forward(true)
 		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
@@ -106,7 +106,7 @@ func (p *Provider) Id() (result string, start PosStruct, ok bool, err error) {
 	}
 LOOP:
 	for {
-		p.Forward()
+		p.Forward(true)
 		r = p.Curr.Rune
 		if unicode.IsLetter(r) || r == '_' || unicode.IsDigit(r) {
 			result += string(r)
@@ -147,7 +147,7 @@ func (p *Provider) String() (result string, start PosStruct, ok bool, err error)
 
 LOOP:
 	for {
-		p.Forward()
+		p.Forward(true)
 		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
@@ -203,7 +203,7 @@ func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 		s = string(r)
 		ok = true
 		start = p.Curr
-		p.Forward()
+		p.Forward(true)
 		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
@@ -227,7 +227,7 @@ func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
 
 LOOP:
 	for {
-		p.Forward()
+		p.Forward(true)
 		r = p.Curr.Rune
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
@@ -274,7 +274,7 @@ func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err e
 		s = string(r)
 		ok = true
 		start = p.Curr
-		p.Forward()
+		p.Forward(true)
 		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
@@ -300,7 +300,7 @@ func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err e
 
 LOOP:
 	for {
-		p.Forward()
+		p.Forward(true)
 		r = p.Curr.Rune
 		switch r {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_':
@@ -354,7 +354,7 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 	for {
-		if p.Forward(); p.Curr.IsEOF {
+		if p.Forward(true); p.Curr.IsEOF {
 			return
 		} else if !unicode.IsSpace(p.Curr.Rune) {
 			err = p.Unexpected(p.Curr)
@@ -364,14 +364,14 @@ func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 }
 
 func (p *Provider) SkipOptionalSpace() (err error) {
-	p.Forward()
+	p.Forward(true)
 	if err = p.CheckNotEOF(); err != nil {
 		return
 	}
 	if unicode.IsSpace(p.Curr.Rune) {
 	LOOP:
 		for {
-			p.Forward()
+			p.Forward(true)
 			if err = p.CheckNotEOF(); err != nil {
 				return
 			} else if !unicode.IsSpace(p.Curr.Rune) {
@@ -474,7 +474,7 @@ LOOP:
 				return
 			}
 		} else if p.Curr.Rune == '=' {
-			p.Forward()
+			p.Forward(true)
 			if err = p.CheckNotEOF(); err != nil {
 				return
 			}
@@ -599,7 +599,7 @@ func (p *Provider) Path(opt ...PathOpt) (result bw.ValPath, start PosStruct, ok 
 	if ps, err = p.PosStruct(1); err != nil || ps.IsEOF || ps.Rune != '{' {
 		return
 	}
-	p.Forward()
+	p.Forward(true)
 	ok = true
 
 	if err = p.SkipOptionalSpace(); err != nil {
@@ -619,7 +619,7 @@ func (p *Provider) Path(opt ...PathOpt) (result bw.ValPath, start PosStruct, ok 
 		err = p.Unexpected(p.Curr)
 		return
 	}
-	p.Forward()
+	p.Forward(true)
 	if p.Curr.Rune != '}' {
 		err = p.Unexpected(p.Curr)
 		return
@@ -667,7 +667,7 @@ type PathOpt struct {
 func (p *Provider) PathContent(noAutoForward bool, opt ...PathOpt) (result bw.ValPath, err error) {
 
 	if !noAutoForward {
-		p.Forward()
+		p.Forward(true)
 		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
@@ -733,7 +733,7 @@ LOOP:
 		} else {
 			if len(result) == 0 {
 				if p.Curr.Rune == '$' {
-					p.Forward()
+					p.Forward(true)
 					if err = p.CheckNotEOF(); err != nil {
 						return
 					}
@@ -774,11 +774,11 @@ LOOP:
 		}
 	CONTINUE:
 
-		p.Forward()
+		p.Forward(true)
 
 		if len(opt) > 0 && !opt[0].isSubPath && p.Curr.Rune == '?' {
 			result[len(result)-1].IsOptional = true
-			p.Forward()
+			p.Forward(true)
 		}
 
 		if p.Curr.Rune != '.' {
@@ -786,7 +786,7 @@ LOOP:
 			break LOOP
 		}
 
-		p.Forward()
+		p.Forward(true)
 	}
 	return
 }
