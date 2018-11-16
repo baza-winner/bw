@@ -17,7 +17,11 @@ func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
 
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
-		if result, err = p.PathContent(bwparse.AutoForward, optBases...); err != nil {
+		pco := bwparse.PathOpt{}
+		if len(optBases) > 0 {
+			pco.Bases = optBases[0]
+		}
+		if result, err = p.PathContent(bwparse.AutoForward, pco); err != nil {
 			return
 		}
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {

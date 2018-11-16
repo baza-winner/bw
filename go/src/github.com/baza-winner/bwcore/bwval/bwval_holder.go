@@ -314,7 +314,7 @@ func (v Holder) MustMap() (result map[string]interface{}) {
 	return
 }
 
-func (v Holder) Key(key string, optDefaultValProvider ...func() (interface{}, bool)) (result Holder, err error) {
+func (v Holder) Key(key string, optDefaultValProvider ...defaultValProvider) (result Holder, err error) {
 	var val interface{}
 	if val, err = v.KeyVal(key, optDefaultValProvider...); err == nil {
 		result = Holder{val, v.Pth.AppendKey(key)}
@@ -322,7 +322,15 @@ func (v Holder) Key(key string, optDefaultValProvider ...func() (interface{}, bo
 	return
 }
 
-func (v Holder) MustKey(key string, optDefaultValProvider ...func() (interface{}, bool)) (result Holder) {
+func (v Holder) Idx(idx int, optDefaultValProvider ...defaultValProvider) (result Holder, err error) {
+	var val interface{}
+	if val, err = v.IdxVal(idx, optDefaultValProvider...); err == nil {
+		result = Holder{val, v.Pth.AppendIdx(idx)}
+	}
+	return
+}
+
+func (v Holder) MustKey(key string, optDefaultValProvider ...defaultValProvider) (result Holder) {
 	var err error
 	if result, err = v.Key(key, optDefaultValProvider...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
@@ -338,21 +346,10 @@ func (v Holder) SetKeyVal(val interface{}, key string) (err error) {
 	return
 }
 
-func (v Holder) Idx(idx int) (result Holder, err error) {
-	var val interface{}
-	if val, err = v.IdxVal(idx); err == nil {
-		result = Holder{val, v.Pth.AppendIdx(idx)}
-	}
-	return
-}
-
-func (v Holder) KeyVal(key string, optDefaultValProvider ...func() (interface{}, bool)) (result interface{}, err error) {
+func (v Holder) KeyVal(key string, optDefaultValProvider ...defaultValProvider) (result interface{}, err error) {
 	if v.Val == nil {
 		var ok bool
-		if len(optDefaultValProvider) > 0 {
-			result, ok = optDefaultValProvider[0]()
-		}
-		if !ok {
+		if result, ok = defaultVal(optDefaultValProvider); !ok {
 			err = v.wrongValError()
 		}
 		return
@@ -363,17 +360,14 @@ func (v Holder) KeyVal(key string, optDefaultValProvider ...func() (interface{},
 	}
 	var ok bool
 	if result, ok = m[key]; !ok {
-		if len(optDefaultValProvider) > 0 {
-			result, ok = optDefaultValProvider[0]()
-		}
-		if !ok {
+		if result, ok = defaultVal(optDefaultValProvider); !ok {
 			err = v.hasNoKeyError(key)
 		}
 	}
 	return
 }
 
-func (v Holder) IdxVal(idx int, optDefaultValProvider ...func() (interface{}, bool)) (result interface{}, err error) {
+func (v Holder) IdxVal(idx int, optDefaultValProvider ...defaultValProvider) (result interface{}, err error) {
 	if v.Val == nil {
 		var ok bool
 		if len(optDefaultValProvider) > 0 {
@@ -388,8 +382,8 @@ func (v Holder) IdxVal(idx int, optDefaultValProvider ...func() (interface{}, bo
 		func(vals []interface{}, nidx int, ok bool) (err error) {
 			if ok {
 				result = vals[nidx]
-			} else if len(optDefaultValProvider) > 0 {
-				result, ok = optDefaultValProvider[0]()
+			} else {
+				result, ok = defaultVal(optDefaultValProvider)
 			}
 			if !ok {
 				err = v.notEnoughRangeError(len(vals), idx)
@@ -399,8 +393,8 @@ func (v Holder) IdxVal(idx int, optDefaultValProvider ...func() (interface{}, bo
 		func(ss []string, nidx int, ok bool) (err error) {
 			if ok {
 				result = ss[nidx]
-			} else if len(optDefaultValProvider) > 0 {
-				result, ok = optDefaultValProvider[0]()
+			} else {
+				result, ok = defaultVal(optDefaultValProvider)
 			}
 			if !ok {
 				err = v.notEnoughRangeError(len(ss), idx)
@@ -411,7 +405,7 @@ func (v Holder) IdxVal(idx int, optDefaultValProvider ...func() (interface{}, bo
 	return
 }
 
-func (v Holder) MustKeyVal(key string, optDefaultValProvider ...func() (interface{}, bool)) (result interface{}) {
+func (v Holder) MustKeyVal(key string, optDefaultValProvider ...defaultValProvider) (result interface{}) {
 	var err error
 	if result, err = v.KeyVal(key, optDefaultValProvider...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
@@ -504,6 +498,20 @@ func (v Holder) idxHelper(
 		err = onArrayOfString(ss, nidx, ok)
 	default:
 		err = v.notOfValKindError(ValKindSetFrom(ValArray))
+	}
+	return
+}
+
+type defaultValProvider func() (interface{}, bool)
+
+func defaultVal(optDefaultValProvider []defaultValProvider) (result interface{}, ok bool) {
+	if len(optDefaultValProvider) > 0 {
+		if optDefaultValProvider[0] == nil {
+			result = nil
+			ok = true
+		} else {
+			result, ok = optDefaultValProvider[0]()
+		}
 	}
 	return
 }

@@ -60,10 +60,10 @@ func TestPath(t *testing.T) {
 			{Type: bw.ValPathItemKey, Key: "some"},
 			{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
 		},
-		"some.(2?)": bw.ValPath{
-			{Type: bw.ValPathItemKey, Key: "some"},
-			{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
-		},
+		// "some.(2?)": bw.ValPath{
+		// 	{Type: bw.ValPathItemKey, Key: "some"},
+		// 	{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
+		// },
 	} {
 		tests[k] = bwtesting.Case{
 			In:  []interface{}{func(testName string) string { return testName }},
@@ -71,15 +71,16 @@ func TestPath(t *testing.T) {
 		}
 	}
 	for k, v := range map[string]string{
-		"":        "unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
-		"1.":      "unexpected end of string at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m1.\n",
-		"1.@":     "unexpected char \u001b[96;1m'@'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m64\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m2\u001b[0m: \u001b[32m1.\u001b[91m@\u001b[0m\n",
-		"-a":      "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m-\u001b[91ma\u001b[0m\n",
-		"1a":      "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m1\u001b[91ma\u001b[0m\n",
-		"12.#.4":  "unexpected char \x1b[96;1m'.'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m46\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m4\x1b[0m: \x1b[32m12.#\x1b[91m.\x1b[0m4\n",
-		"12.(4":   "unexpected end of string at pos \u001b[38;5;252;1m5\u001b[0m: \u001b[32m12.(4\n",
-		"12.$a":   "unexpected char \u001b[96;1m'$'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m36\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m3\u001b[0m: \u001b[32m12.\u001b[91m$\u001b[0ma\n",
-		"$1.some": "unexpected base path idx \x1b[96;1m1\x1b[0m (len(bases): \x1b[96;1m0)\x1b[0m at pos \x1b[38;5;252;1m1\x1b[0m: \x1b[32m$\x1b[91m1\x1b[0m.some\n",
+		"":          "unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
+		"1.":        "unexpected end of string at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m1.\n",
+		"1.@":       "unexpected char \u001b[96;1m'@'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m64\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m2\u001b[0m: \u001b[32m1.\u001b[91m@\u001b[0m\n",
+		"-a":        "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m-\u001b[91ma\u001b[0m\n",
+		"1a":        "unexpected char \u001b[96;1m'a'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m97\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m1\u001b[0m: \u001b[32m1\u001b[91ma\u001b[0m\n",
+		"12.#.4":    "unexpected char \x1b[96;1m'.'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m46\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m4\x1b[0m: \x1b[32m12.#\x1b[91m.\x1b[0m4\n",
+		"12.(4":     "unexpected end of string at pos \u001b[38;5;252;1m5\u001b[0m: \u001b[32m12.(4\n",
+		"12.$a":     "unexpected char \u001b[96;1m'$'\u001b[0m (\u001b[38;5;201;1mcharCode\u001b[0m: \u001b[96;1m36\u001b[0m)\u001b[0m at pos \u001b[38;5;252;1m3\u001b[0m: \u001b[32m12.\u001b[91m$\u001b[0ma\n",
+		"$1.some":   "unexpected base path idx \x1b[96;1m1\x1b[0m (len(bases): \x1b[96;1m0)\x1b[0m at pos \x1b[38;5;252;1m1\x1b[0m: \x1b[32m$\x1b[91m1\x1b[0m.some\n",
+		"some.(2?)": "unexpected char \x1b[96;1m'?'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m63\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32msome.(2\x1b[91m?\x1b[0m)\n",
 	} {
 		tests[k] = bwtesting.Case{
 			In:    []interface{}{func(testName string) string { return testName }},

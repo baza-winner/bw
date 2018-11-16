@@ -217,6 +217,6 @@ func TestDefFrom(t *testing.T) {
 	}
 
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "{ type Map keys true }")
+	// bwmap.CropMap(tests, "{ type Int min 2.0 }")
 	bwtesting.BwRunTests(t, bwval.DefFrom, tests)
 }

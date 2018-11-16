@@ -767,10 +767,10 @@ LOOP:
 
 		p.Forward()
 
-		// if len(opt) == 0 || !opt[0].isSubPath || p.Curr.Rune == '?' {
-		// 	result[len(result)-1].IsOptional = true
-		// 	p.Forward()
-		// }
+		if len(opt) > 0 && !opt[0].isSubPath && p.Curr.Rune == '?' {
+			result[len(result)-1].IsOptional = true
+			p.Forward()
+		}
 
 		if p.Curr.Rune != '.' {
 			p.Backward()
