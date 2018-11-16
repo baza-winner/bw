@@ -135,14 +135,14 @@ func (p *P) subPath(a PathA) (result bw.ValPath, start PosInfo, ok bool, err err
 		ok = true
 		start = p.Curr
 		p.Forward(true)
-		if err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipSpace(TillNonEOF); err != nil {
 			return
 		}
 		a.isSubPath = true
 		if result, err = p.PathContent(a); err != nil {
 			return
 		}
-		if err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipSpace(TillNonEOF); err != nil {
 			return
 		}
 		if p.Curr.Rune != ')' {

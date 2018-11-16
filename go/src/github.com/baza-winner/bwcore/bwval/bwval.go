@@ -24,7 +24,7 @@ func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		if result, err = p.PathContent(a); err != nil {
 			return
 		}
-		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
+		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
 			return
 		}
 
@@ -84,7 +84,7 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 			}
 			return
 		}
-		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
+		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
 			return
 		}
 		return expandPaths(result, result, true, optVars...)

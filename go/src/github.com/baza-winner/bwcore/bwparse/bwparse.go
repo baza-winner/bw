@@ -112,6 +112,29 @@ func (p *P) Unexpected(ps PosInfo, optFmt ...bw.I) (result error) {
 
 // ============================================================================
 
+const (
+	TillNonEOF bool = false
+	TillEOF    bool = true
+)
+
+func (p *P) SkipSpace(tillEOF bool) (err error) {
+	p.Forward(Initial)
+
+	for {
+		if p.Curr.IsEOF || !unicode.IsSpace(p.Curr.Rune) {
+			break
+		}
+		p.Forward(true)
+	}
+	if !tillEOF && p.Curr.IsEOF || tillEOF && !p.Curr.IsEOF {
+		err = p.Unexpected(p.Curr)
+		return
+	}
+	return
+}
+
+// ============================================================================
+
 func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error) {
 	var (
 		b         bool
@@ -154,7 +177,7 @@ func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error)
 	p.Forward(true)
 LOOP:
 	for {
-		if err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipSpace(TillNonEOF); err != nil {
 			return
 		}
 
@@ -457,39 +480,6 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // ============================================================================
 
-func (p *P) SkipOptionalSpaceTillEOF() (err error) {
-	p.Forward(Initial)
-
-	for {
-		if p.Curr.IsEOF {
-			break
-		}
-		if !unicode.IsSpace(p.Curr.Rune) {
-			err = p.Unexpected(p.Curr)
-			return
-		}
-		p.Forward(true)
-	}
-	return
-}
-
-func (p *P) SkipOptionalSpace() (err error) {
-	p.Forward(Initial)
-
-	for {
-		if err = p.CheckNotEOF(); err != nil {
-			return
-		}
-		if !unicode.IsSpace(p.Curr.Rune) {
-			break
-		}
-		p.Forward(true)
-	}
-	return
-}
-
-// ============================================================================
-
 func (p *P) Array() (result []interface{}, start PosInfo, ok bool, err error) {
 	p.Forward(Initial)
 	if p.Curr.Rune != '[' {
@@ -501,7 +491,7 @@ func (p *P) Array() (result []interface{}, start PosInfo, ok bool, err error) {
 	ok = true
 
 	p.Forward(true)
-	if err = p.SkipOptionalSpace(); err != nil {
+	if err = p.SkipSpace(TillNonEOF); err != nil {
 		return
 	}
 LOOP:
@@ -525,12 +515,12 @@ LOOP:
 				result = append(result, s)
 			}
 		}
-		if err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipSpace(TillNonEOF); err != nil {
 			return
 		}
 		if p.Curr.Rune == ',' {
 			p.Forward(true)
-			if err = p.SkipOptionalSpace(); err != nil {
+			if err = p.SkipSpace(TillNonEOF); err != nil {
 				return
 			}
 		}
@@ -551,7 +541,7 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 	ok = true
 
 	p.Forward(true)
-	if err = p.SkipOptionalSpace(); err != nil {
+	if err = p.SkipSpace(TillNonEOF); err != nil {
 		return
 	}
 
@@ -579,13 +569,13 @@ LOOP:
 			return
 		}
 
-		if err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipSpace(TillNonEOF); err != nil {
 			return
 		}
 
 		if p.Curr.Rune == ':' {
 			p.Forward(true)
-			if err = p.SkipOptionalSpace(); err != nil {
+			if err = p.SkipSpace(TillNonEOF); err != nil {
 				return
 			}
 		} else if p.Curr.Rune == '=' {
@@ -598,7 +588,7 @@ LOOP:
 				return
 			}
 			p.Forward(true)
-			if err = p.SkipOptionalSpace(); err != nil {
+			if err = p.SkipSpace(TillNonEOF); err != nil {
 				return
 			}
 		}
@@ -613,12 +603,12 @@ LOOP:
 
 		result[key] = val
 
-		if err = p.SkipOptionalSpace(); err != nil {
+		if err = p.SkipSpace(TillNonEOF); err != nil {
 			return
 		}
 		if p.Curr.Rune == ',' {
 			p.Forward(true)
-			if err = p.SkipOptionalSpace(); err != nil {
+			if err = p.SkipSpace(TillNonEOF); err != nil {
 				return
 			}
 		}
@@ -718,13 +708,13 @@ func (p *P) Path(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error)
 	p.Forward(true)
 	ok = true
 
-	if err = p.SkipOptionalSpace(); err != nil {
+	if err = p.SkipSpace(TillNonEOF); err != nil {
 		return
 	}
 	if result, err = p.PathContent(a); err != nil {
 		return
 	}
-	if err = p.SkipOptionalSpace(); err != nil {
+	if err = p.SkipSpace(TillNonEOF); err != nil {
 		return
 	}
 	if p.Curr.Rune != '}' {

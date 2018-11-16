@@ -136,7 +136,7 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 			return
 		}
 		bwdebug.Print("p.Curr.Rune", string(p.Curr.Rune), "result:json", result)
-		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
+		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
 			return
 		}
 		return
@@ -195,7 +195,7 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 			err = p.Unexpected(p.Curr)
 			return
 		}
-		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
+		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
 			return
 		}
 		return
@@ -289,7 +289,7 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 			}
 			return
 		}
-		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
+		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
 			return
 		}
 		return
