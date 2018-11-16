@@ -284,7 +284,7 @@ func (pfa *PfaStruct) VarValue(varPath VarPath) (result VarValue, err error) {
 					currRune, _ := pfa.Proxy.Rune(ofs)
 					result.Val = currRune
 				case "runePos":
-					ps := pfa.Proxy.PosStruct(ofs)
+					ps := pfa.Proxy.PosInfo(ofs)
 					result.Val = ps
 				}
 				return

@@ -157,7 +157,7 @@ func TestPfa_getVarValue2(t *testing.T) {
 	pfa := core.PfaFrom(runeprovider.FromString("some"), core.TraceNone)
 	runeA := 'a'
 	runeB := 'b'
-	itemPos := runeprovider.PosStruct{
+	itemPos := runeprovider.PosInfo{
 		IsEOF:       false,
 		RunePtr:     &runeB,
 		Pos:         25,
@@ -172,7 +172,7 @@ func TestPfa_getVarValue2(t *testing.T) {
 		"needFinish":      true,
 		"stack": []interface{}{
 			map[string]interface{}{
-				"itemPos": runeprovider.PosStruct{
+				"itemPos": runeprovider.PosInfo{
 					IsEOF: false,
 					// RunePtr: (*int32)(0xc0001b6a60),
 					RunePtr:     &runeA,

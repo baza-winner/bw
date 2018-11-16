@@ -23,8 +23,8 @@ func (v UnexpectedAction) Execute(pfa *core.PfaStruct) (err error) {
 	} else {
 		var varValue core.VarValue
 		if varValue, err = pfa.VarValue(v.varPath); err == nil {
-			if ps, ok := varValue.Val.(runeprovider.PosStruct); !ok {
-				err = pfa.Error("Unexpected varPath must point to runeprovider.PosStruct but it points to %#v", varValue.Val)
+			if ps, ok := varValue.Val.(runeprovider.PosInfo); !ok {
+				err = pfa.Error("Unexpected varPath must point to runeprovider.PosInfo but it points to %#v", varValue.Val)
 			} else {
 				if ps.Pos < pfa.Proxy.Curr.Pos {
 					bwdebug.Print(
@@ -60,7 +60,7 @@ func (v UnexpectedAction) Execute(pfa *core.PfaStruct) (err error) {
 // 		varValue := pfa.VarValue(v.varPath)
 // 		if pfa.Err != nil {
 // 			pfa.PanicErr(pfa.Err)
-// 		} else if ps, ok := varValue.Val.(runeprovider.PosStruct); !ok {
+// 		} else if ps, ok := varValue.Val.(runeprovider.PosInfo); !ok {
 // 			pfa.Panic(bw.StructFrom("%#v", varValue.Val))
 // 		} else if ps.Pos < pfa.Proxy.Curr.Pos {
 // 			item := pfa.Proxy.Curr.Prefix[ps.Pos-pfa.Proxy.Curr.PrefixStart:]

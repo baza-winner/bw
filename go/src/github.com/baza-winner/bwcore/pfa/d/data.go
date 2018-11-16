@@ -345,7 +345,7 @@ func (v *VarIs) ConformsTo(pfa *core.PfaStruct) (result bool, err error) {
 			}
 		case "runePos":
 			// i := len(pfa.Stack)
-			ps := pfa.Proxy.PosStruct(ofs)
+			ps := pfa.Proxy.PosInfo(ofs)
 			if v.intSet != nil {
 				result = v.intSet.Has(ps.Pos)
 				if pfa.TraceLevel > core.TraceNone {

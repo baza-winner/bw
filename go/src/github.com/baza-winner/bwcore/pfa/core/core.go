@@ -249,7 +249,7 @@ func (Stack *ParseStack) String() (result string) {
 // ============================================================================
 
 type ParseStackItem struct {
-	Start runeprovider.PosStruct
+	Start runeprovider.PosInfo
 	Vars  map[string]interface{}
 }
 

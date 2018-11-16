@@ -10,17 +10,115 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwrune"
 )
 
 // ============================================================================
 
-func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, err error) {
+type PosInfo struct {
+	IsEOF       bool
+	Rune        rune
+	Pos         int
+	Line        uint
+	Col         uint
+	Prefix      string
+	PrefixStart int
+}
+
+// ============================================================================
+
+type P struct {
+	Prov          bwrune.Provider
+	Curr          PosInfo
+	Next          []PosInfo
+	preLineCount  uint
+	postLineCount uint
+}
+
+func From(p bwrune.Provider) (result *P) {
+	result = &P{
+		Prov:          p,
+		Curr:          PosInfo{Pos: -1, Line: 1},
+		Next:          []PosInfo{},
+		preLineCount:  3,
+		postLineCount: 3,
+	}
+	return
+}
+
+const Initial bool = false
+
+func (p *P) Forward(nonInitial bool) {
+	if p.Curr.Pos < 0 || nonInitial && !p.Curr.IsEOF {
+		if len(p.Next) == 0 {
+			p.pullRune(&p.Curr)
+		} else {
+			p.Curr = p.Next[len(p.Next)-1]
+			p.Next = p.Next[:len(p.Next)-1]
+		}
+	}
+}
+
+func (p *P) CheckNotEOF() (err error) {
+	if p.Curr.IsEOF {
+		err = p.Unexpected(p.Curr)
+	}
+	return
+}
+
+func (p *P) PosInfo(ofs uint) (ps PosInfo, err error) {
+	if ofs > 0 {
+		if len(p.Next) >= int(ofs) {
+			ps = p.Next[len(p.Next)-int(ofs)]
+		} else {
+			if len(p.Next) > 0 {
+				ps = p.Next[0]
+			} else {
+				ps = p.Curr
+			}
+			lookahead := []PosInfo{}
+			for i := int(ofs) - len(p.Next); i > 0; i-- {
+				p.pullRune(&ps)
+				lookahead = append(lookahead, ps)
+				if ps.IsEOF {
+					break
+				}
+			}
+			newNext := []PosInfo{}
+			for i := len(lookahead) - 1; i >= 0; i-- {
+				newNext = append(newNext, lookahead[i])
+			}
+			p.Next = append(newNext, p.Next...)
+		}
+	} else {
+		ps = p.Curr
+	}
+	return
+}
+
+func (p *P) Unexpected(ps PosInfo, optFmt ...bw.I) (result error) {
+	var msg string
+	if ps.IsEOF {
+		msg = ansiUnexpectedEOF
+	} else if len(optFmt) == 0 {
+		r := ps.Rune
+		msg = fmt.Sprintf(ansiUnexpectedChar, r, r)
+	} else {
+		msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)
+	}
+	result = bwerr.From(msg + p.suffix(ps))
+	return
+}
+
+// ============================================================================
+
+func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error) {
 	var (
 		b         bool
 		r, r2     rune
 		delimiter rune
 		s         string
-		ps        PosStruct
+		ps        PosInfo
 	)
 
 	p.Forward(Initial)
@@ -32,10 +130,10 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 		if r != 'q' {
 			return
 		}
-		if ps, err = p.PosStruct(1); err != nil || ps.IsEOF || ps.Rune != 'w' {
+		if ps, err = p.PosInfo(1); err != nil || ps.IsEOF || ps.Rune != 'w' {
 			return
 		}
-		if ps, err = p.PosStruct(2); err != nil || ps.IsEOF {
+		if ps, err = p.PosInfo(2); err != nil || ps.IsEOF {
 			return
 		}
 		r = ps.Rune
@@ -93,7 +191,7 @@ var Braces = map[rune]rune{
 
 // ============================================================================
 
-func (p *Provider) Id() (result string, start PosStruct, ok bool, err error) {
+func (p *P) Id() (result string, start PosInfo, ok bool, err error) {
 	p.Forward(Initial)
 	r := p.Curr.Rune
 	if unicode.IsLetter(r) || r == '_' {
@@ -120,7 +218,7 @@ LOOP:
 
 // ============================================================================
 
-func (p *Provider) String() (result string, start PosStruct, ok bool, err error) {
+func (p *P) String() (result string, start PosInfo, ok bool, err error) {
 	type State bool
 	const (
 		expectContent        State = true
@@ -196,7 +294,7 @@ var EscapeRunes = map[rune]rune{
 
 // ============================================================================
 
-func (p *Provider) Int() (result int, start PosStruct, ok bool, err error) {
+func (p *P) Int() (result int, start PosInfo, ok bool, err error) {
 	var s string
 
 	p.Forward(Initial)
@@ -261,7 +359,7 @@ LOOP:
 
 // ============================================================================
 
-func (p *Provider) Number() (result interface{}, start PosStruct, ok bool, err error) {
+func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
 	type State bool
 	const (
 		expectDigitOrUnderscore      State = true
@@ -359,7 +457,7 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // ============================================================================
 
-func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
+func (p *P) SkipOptionalSpaceTillEOF() (err error) {
 	p.Forward(Initial)
 
 	for {
@@ -375,7 +473,7 @@ func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 	return
 }
 
-func (p *Provider) SkipOptionalSpace() (err error) {
+func (p *P) SkipOptionalSpace() (err error) {
 	p.Forward(Initial)
 
 	for {
@@ -392,7 +490,7 @@ func (p *Provider) SkipOptionalSpace() (err error) {
 
 // ============================================================================
 
-func (p *Provider) Array() (result []interface{}, start PosStruct, ok bool, err error) {
+func (p *P) Array() (result []interface{}, start PosInfo, ok bool, err error) {
 	p.Forward(Initial)
 	if p.Curr.Rune != '[' {
 		// ok = false
@@ -441,7 +539,7 @@ LOOP:
 	return
 }
 
-func (p *Provider) Map() (result map[string]interface{}, start PosStruct, ok bool, err error) {
+func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err error) {
 	p.Forward(Initial)
 	if p.Curr.Rune != '{' {
 		// ok = false
@@ -530,10 +628,10 @@ LOOP:
 	return
 }
 
-func (p *Provider) Val() (result interface{}, start PosStruct, ok bool, err error) {
+func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 	var (
 		s    string
-		ps   PosStruct
+		ps   PosInfo
 		val  interface{}
 		vals []interface{}
 		ss   []string
@@ -602,15 +700,9 @@ func (p *Provider) Val() (result interface{}, start PosStruct, ok bool, err erro
 	return
 }
 
-var ansiUnexpectedWord string
-
-func init() {
-	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>%q<ansi>")
-}
-
 // ============================================================================
 
-func (p *Provider) Path(a PathA) (result bw.ValPath, start PosStruct, ok bool, err error) {
+func (p *P) Path(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error) {
 
 	p.Forward(Initial)
 	start = p.Curr
@@ -618,8 +710,8 @@ func (p *Provider) Path(a PathA) (result bw.ValPath, start PosStruct, ok bool, e
 		ok = false
 		return
 	}
-	var ps PosStruct
-	if ps, err = p.PosStruct(1); err != nil || ps.IsEOF || ps.Rune != '{' {
+	var ps PosInfo
+	if ps, err = p.PosInfo(1); err != nil || ps.IsEOF || ps.Rune != '{' {
 		return
 	}
 	p.Forward(true)
@@ -640,36 +732,13 @@ func (p *Provider) Path(a PathA) (result bw.ValPath, start PosStruct, ok bool, e
 		return
 	}
 	p.Forward(true)
+
 	if p.Curr.Rune != '}' {
 		err = p.Unexpected(p.Curr)
 		return
 	}
 	p.Forward(true)
 
-	return
-}
-
-func (p *Provider) subPath(a PathA) (result bw.ValPath, start PosStruct, ok bool, err error) {
-	if p.Curr.Rune == '(' {
-		ok = true
-		start = p.Curr
-		p.Forward(true)
-		if err = p.SkipOptionalSpace(); err != nil {
-			return
-		}
-		a.isSubPath = true
-		if result, err = p.PathContent(a); err != nil {
-			return
-		}
-		if err = p.SkipOptionalSpace(); err != nil {
-			return
-		}
-		if p.Curr.Rune != ')' {
-			err = p.Unexpected(p.Curr)
-			return
-		}
-		p.Forward(true)
-	}
 	return
 }
 
@@ -683,7 +752,7 @@ type PathA struct {
 	isSubPath bool
 }
 
-func (p *Provider) PathContent(a PathA) (result bw.ValPath, err error) {
+func (p *P) PathContent(a PathA) (result bw.ValPath, err error) {
 
 	p.Forward(Initial)
 	if err = p.CheckNotEOF(); err != nil {
@@ -695,7 +764,7 @@ func (p *Provider) PathContent(a PathA) (result bw.ValPath, err error) {
 		s   string
 		b   bool
 		sp  bw.ValPath
-		ps  PosStruct
+		ps  PosInfo
 	)
 
 LOOP:
@@ -706,7 +775,6 @@ LOOP:
 				break LOOP
 			} else if len(result) == 0 {
 				result = append(result, a.Bases[0]...)
-				// p.Backward()
 
 			} else {
 				err = p.Unexpected(p.Curr)
@@ -788,15 +856,12 @@ LOOP:
 		}
 	CONTINUE:
 
-		// p.Forward(true)
-
 		if !a.isSubPath && p.Curr.Rune == '?' {
 			result[len(result)-1].IsOptional = true
 			p.Forward(true)
 		}
 
 		if p.Curr.Rune != '.' {
-			// p.Backward()
 			break LOOP
 		}
 

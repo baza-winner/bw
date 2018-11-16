@@ -16,7 +16,7 @@ func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 	var err error
 	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
 
-		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
+		p := bwparse.From(bwrune.ProviderFromString(s))
 		a := bwparse.PathA{}
 		if len(optBases) > 0 {
 			a.Bases = optBases[0]
@@ -71,7 +71,7 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 			}
 		}()
 
-		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
+		p := bwparse.From(bwrune.ProviderFromString(s))
 
 		p.Forward(true)
 		if err = p.CheckNotEOF(); err != nil {

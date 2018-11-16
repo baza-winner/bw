@@ -126,7 +126,7 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 				result = nil
 			}
 		}()
-		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
+		p := bwparse.From(bwrune.ProviderFromString(s))
 
 		pco := bwparse.PathA{}
 		if len(optBases) > 0 {
@@ -183,7 +183,7 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		var (
 			ok bool
 		)
-		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
+		p := bwparse.From(bwrune.ProviderFromString(s))
 
 		// p.Forward(true)
 		// if err = p.CheckNotEOF(); err != nil {
@@ -277,7 +277,7 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		var (
 			ok bool
 		)
-		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
+		p := bwparse.From(bwrune.ProviderFromString(s))
 
 		// p.Forward(true)
 		// if err = p.CheckNotEOF(); err != nil {

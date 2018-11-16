@@ -7,112 +7,12 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwrune"
 )
 
 // ============================================================================
 
-type PosStruct struct {
-	IsEOF       bool
-	Rune        rune
-	Pos         int
-	Line        uint
-	Col         uint
-	Prefix      string
-	PrefixStart int
-}
-
-type PosStructs []PosStruct
-
-// ============================================================================
-
-type Provider struct {
-	Prov          bwrune.Provider
-	Curr          PosStruct
-	Next          PosStructs
-	preLineCount  uint
-	postLineCount uint
-}
-
-func ProviderFrom(p bwrune.Provider) (result *Provider) {
-	result = &Provider{
-		Prov:          p,
-		Curr:          PosStruct{Pos: -1, Line: 1},
-		Next:          PosStructs{},
-		preLineCount:  3,
-		postLineCount: 3,
-	}
-	return
-}
-
-const Initial bool = false
-
-func (p *Provider) Forward(nonInitial bool) {
-	if p.Curr.Pos < 0 || nonInitial && !p.Curr.IsEOF {
-		if len(p.Next) == 0 {
-			p.pullRune(&p.Curr)
-		} else {
-			p.Curr = p.Next[len(p.Next)-1]
-			p.Next = p.Next[:len(p.Next)-1]
-		}
-	}
-}
-
-func (p *Provider) CheckNotEOF() (err error) {
-	if p.Curr.IsEOF {
-		err = p.Unexpected(p.Curr)
-	}
-	return
-}
-
-func (p *Provider) PosStruct(ofs uint) (ps PosStruct, err error) {
-	if ofs > 0 {
-		if len(p.Next) >= int(ofs) {
-			ps = p.Next[len(p.Next)-int(ofs)]
-		} else {
-			if len(p.Next) > 0 {
-				ps = p.Next[0]
-			} else {
-				ps = p.Curr
-			}
-			lookahead := PosStructs{}
-			for i := int(ofs) - len(p.Next); i > 0; i-- {
-				p.pullRune(&ps)
-				lookahead = append(lookahead, ps)
-				if ps.IsEOF {
-					break
-				}
-			}
-			newNext := PosStructs{}
-			for i := len(lookahead) - 1; i >= 0; i-- {
-				newNext = append(newNext, lookahead[i])
-			}
-			p.Next = append(newNext, p.Next...)
-		}
-	} else {
-		ps = p.Curr
-	}
-	return
-}
-
-func (p *Provider) Unexpected(ps PosStruct, optFmt ...bw.I) (result error) {
-	var msg string
-	if ps.IsEOF {
-		msg = ansiUnexpectedEOF
-	} else if len(optFmt) == 0 {
-		r := ps.Rune
-		msg = fmt.Sprintf(ansiUnexpectedChar, r, r)
-	} else {
-		msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)
-	}
-	result = bwerr.From(msg + p.suffix(ps))
-	return
-}
-
-// ============================================================================
-
 var (
-	ansiPosStructFailed string
+	ansiPosInfoFailed   string
 	ansiOK              string
 	ansiErr             string
 	ansiPos             string
@@ -120,21 +20,23 @@ var (
 	ansiGetSuffixAssert string
 	ansiUnexpectedEOF   string
 	ansiUnexpectedChar  string
+	ansiUnexpectedWord  string
 )
 
 func init() {
 	ansiOK = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: false})).String()
 	ansiErr = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true})).String()
 
-	ansiPosStructFailed = "<ansiPath>bwparse.Provider.<ansiFunc>PosStruct<ansi>(%d) failed, must <ansiFunc>.SetMaxBackwardCount<ansi>(<ansiVal>%d<ansi>)"
+	ansiPosInfoFailed = "<ansiPath>bwparse.Provider.<ansiFunc>PosInfo<ansi>(%d) failed, must <ansiFunc>.SetMaxBackwardCount<ansi>(<ansiVal>%d<ansi>)"
 	ansiPos = ansi.String(" at pos <ansiPath>%d<ansi>")
 	ansiLineCol = ansi.String(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)")
 	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
+	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>%q<ansi>")
 }
 
-func (p *Provider) pullRune(ps *PosStruct) {
+func (p *P) pullRune(ps *PosInfo) {
 	var runePtr *rune
 	var err error
 	if runePtr, err = p.Prov.PullRune(); err != nil {
@@ -169,7 +71,7 @@ func (p *Provider) pullRune(ps *PosStruct) {
 	return
 }
 
-func (p *Provider) suffix(ps PosStruct) (suffix string) {
+func (p *P) suffix(ps PosInfo) (suffix string) {
 	if ps.Pos > p.Curr.Pos {
 		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
 	}
@@ -224,6 +126,32 @@ func (p *Provider) suffix(ps PosStruct) (suffix string) {
 	}
 
 	return suffix
+}
+
+// ============================================================================
+
+func (p *P) subPath(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error) {
+	if p.Curr.Rune == '(' {
+		ok = true
+		start = p.Curr
+		p.Forward(true)
+		if err = p.SkipOptionalSpace(); err != nil {
+			return
+		}
+		a.isSubPath = true
+		if result, err = p.PathContent(a); err != nil {
+			return
+		}
+		if err = p.SkipOptionalSpace(); err != nil {
+			return
+		}
+		if p.Curr.Rune != ')' {
+			err = p.Unexpected(p.Curr)
+			return
+		}
+		p.Forward(true)
+	}
+	return
 }
 
 // ============================================================================

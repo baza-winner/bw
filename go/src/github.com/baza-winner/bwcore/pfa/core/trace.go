@@ -37,7 +37,7 @@ func (pfa *PfaStruct) TraceVal(val interface{}) (result formatted.String) {
 					valStr = pfa.TraceVal(r)
 				}
 			case "runePos":
-				ps := pfa.Proxy.PosStruct(ofs)
+				ps := pfa.Proxy.PosInfo(ofs)
 				valStr = pfa.TraceVal(ps.Pos)
 			default:
 				bwerr.Unreachable()
