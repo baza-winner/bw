@@ -153,21 +153,27 @@ func (p *P) skipComma() (ok bool, err error) {
 
 // ============================================================================
 
+type on interface {
+	IsOn() string
+}
+
 type onInt struct {
-	f func(idx int, start PosInfo)
+	f func(idx int, start PosInfo) (err error)
 }
 
 func (onInt) IsOn() string { return "Int" }
 
 type onId struct {
-	f func(s string, start PosInfo)
+	f func(s string, start PosInfo) (err error)
 }
 
 func (onId) IsOn() string { return "Id" }
 
-type on interface {
-	IsOn() string
+type onMap struct {
+	f func(m map[string]interface{}, start PosInfo) (err error)
 }
+
+func (onId) IsMap() string { return "Map" }
 
 // ============================================================================
 
@@ -178,24 +184,25 @@ func (p *P) processOn(processors []on) (ok bool, err error) {
 		start PosInfo
 	)
 	for _, processor := range processors {
+		switch processor.(type) {
+		case onInt:
+			idx, start, ok, err = p.Int()
+		case onId:
+			s, start, ok, err = p.Id()
+		}
+		if !ok {
+			continue
+		}
+		if err != nil {
+			return
+		}
 		switch t := processor.(type) {
 		case onInt:
-			if idx, start, ok, err = p.Int(); ok {
-				if err != nil {
-					return
-				}
-				t.f(idx, start)
-				return
-			}
+			err = t.f(idx, start)
 		case onId:
-			if s, start, ok, err = p.Id(); ok {
-				if err != nil {
-					return
-				}
-				t.f(s, start)
-				return
-			}
+			err = t.f(s, start)
 		}
+		return
 	}
 	return
 }

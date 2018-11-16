@@ -620,7 +620,7 @@ func (p *P) PathContent(a PathA) (result bw.ValPath, err error) {
 		s   string
 		b   bool
 		sp  bw.ValPath
-		ps  PosInfo
+		// ps  PosInfo
 	)
 
 LOOP:
@@ -674,20 +674,22 @@ LOOP:
 						return
 					}
 					if b, err = p.processOn([]on{
-						onInt{f: func(idx int, start PosInfo) {
+						onInt{f: func(idx int, start PosInfo) (err error) {
+							var nidx int
+							l := len(a.Bases)
+							if nidx, b = bw.NormalIdx(idx, l); !b {
+								err = p.Unexpected(start, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
+								return
+							}
+							result = append(result, a.Bases[nidx]...)
+							return
+						}},
+						onId{f: func(s string, start PosInfo) (err error) {
 							result = append(
 								result,
 								bw.ValPathItem{Type: bw.ValPathItemVar, Key: s},
 							)
-						}},
-						onId{f: func(s string, start PosInfo) {
-							var nidx int
-							l := len(a.Bases)
-							if nidx, b = bw.NormalIdx(idx, l); !b {
-								err = p.Unexpected(ps, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
-								return
-							}
-							result = append(result, a.Bases[nidx]...)
+							return
 						}},
 					}); err != nil {
 						return
@@ -695,32 +697,6 @@ LOOP:
 					if b {
 						goto CONTINUE
 					}
-					// var gotoCONTINUE bool
-					// if s, _, b, err = p.Id(); b {
-					// 	if err != nil {
-					// 		return
-					// 	}
-					// 	result = append(
-					// 		result,
-					// 		bw.ValPathItem{Type: bw.ValPathItemVar, Key: s},
-					// 	)
-					// 	gotoCONTINUE = true
-					// } else if idx, ps, b, err = p.Int(); b {
-					// 	if err != nil {
-					// 		return
-					// 	}
-					// 	var nidx int
-					// 	l := len(a.Bases)
-					// 	if nidx, b = bw.NormalIdx(idx, l); !b {
-					// 		err = p.Unexpected(ps, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
-					// 		return
-					// 	}
-					// 	result = append(result, a.Bases[nidx]...)
-					// 	gotoCONTINUE = true
-					// }
-					// if gotoCONTINUE {
-					// 	goto CONTINUE
-					// }
 				}
 			}
 			if len(result) == 0 {
