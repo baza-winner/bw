@@ -241,46 +241,6 @@ func init() {
 	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
 }
 
-func (p *Provider) GetSuffix(ps PosStruct) (suffix string) {
-	if ps.Pos > p.Curr.Pos {
-		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
-	}
-	preLineCount := p.preLineCount
-	postLineCount := p.postLineCount
-	if p.Curr.IsEOF {
-		preLineCount += postLineCount
-	}
-
-	separator := "\n"
-	if p.Curr.Line <= 1 {
-		suffix += fmt.Sprintf(ansiPos, ps.Pos)
-		separator = " "
-	} else {
-		suffix += fmt.Sprintf(ansiLineCol, ps.Line, ps.Col, ps.Pos)
-	}
-	suffix += ":" + separator + ansiOK
-
-	suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
-	if !p.Curr.IsEOF {
-		suffix += ansiErr
-		suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
-		suffix += ansi.Reset()
-		for !p.Curr.IsEOF && postLineCount > 0 {
-			p.Forward(true)
-			if !p.Curr.IsEOF {
-				suffix += string(p.Curr.Rune)
-				if p.Curr.Rune == '\n' {
-					postLineCount -= 1
-				}
-			}
-		}
-	}
-	if byte(suffix[len(suffix)-1]) != '\n' {
-		suffix += string('\n')
-	}
-	return suffix
-}
-
 var (
 	ansiUnexpectedEOF  string
 	ansiUnexpectedChar string
@@ -301,8 +261,71 @@ func (p *Provider) Unexpected(ps PosStruct, optFmt ...bw.I) (result error) {
 	} else {
 		msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)
 	}
-	result = bwerr.From(msg + p.GetSuffix(ps))
+	result = bwerr.From(msg + p.suffix(ps))
 	return
+}
+
+func (p *Provider) suffix(ps PosStruct) (suffix string) {
+	if ps.Pos > p.Curr.Pos {
+		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
+	}
+	preLineCount := p.preLineCount
+	postLineCount := p.postLineCount
+	if p.Curr.IsEOF {
+		preLineCount += postLineCount
+	}
+
+	separator := "\n"
+	if p.Curr.Line <= 1 {
+		suffix += fmt.Sprintf(ansiPos, ps.Pos)
+		separator = " "
+	} else {
+		suffix += fmt.Sprintf(ansiLineCol, ps.Line, ps.Col, ps.Pos)
+	}
+	suffix += ":" + separator + ansiOK
+
+	suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
+	if ps.Pos == p.Curr.Pos {
+		if !p.Curr.IsEOF {
+			suffix += ansiErr
+			suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
+			suffix += ansi.Reset()
+			for !p.Curr.IsEOF && postLineCount > 0 {
+				p.Forward(true)
+				if !p.Curr.IsEOF {
+					suffix += string(p.Curr.Rune)
+					if p.Curr.Rune == '\n' {
+						postLineCount -= 1
+					}
+				}
+			}
+		}
+	} else {
+		if !p.Curr.IsEOF {
+			suffix += ansiErr
+			suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart : len(p.Curr.Prefix)-1]
+			suffix += ansi.Reset()
+			suffix += p.Curr.Prefix[len(p.Curr.Prefix)-1:]
+			for !p.Curr.IsEOF && postLineCount > 0 {
+				p.Forward(true)
+				if !p.Curr.IsEOF {
+					suffix += string(p.Curr.Rune)
+					if p.Curr.Rune == '\n' {
+						postLineCount -= 1
+					}
+				}
+			}
+		} else {
+			suffix += ansiErr
+			suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
+			suffix += ansi.Reset()
+			// suffix += p.Curr.Prefix[len(p.Curr.Prefix)-1:]
+		}
+	}
+	if byte(suffix[len(suffix)-1]) != '\n' {
+		suffix += string('\n')
+	}
+	return suffix
 }
 
 // ============================================================================

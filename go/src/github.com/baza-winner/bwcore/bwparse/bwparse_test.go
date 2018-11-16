@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwparse"
@@ -113,6 +114,7 @@ func TestPath(t *testing.T) {
 	}
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "2?")
+	// bwmap.CropMap(tests, "some.#")
 	bwtesting.BwRunTests(t, mustPath, tests)
 }
 
@@ -133,6 +135,7 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 		if result, err = p.PathContent(pco); err != nil {
 			return
 		}
+		bwdebug.Print("p.Curr.Rune", string(p.Curr.Rune), "result:json", result)
 		if err = p.SkipOptionalSpaceTillEOF(); err != nil {
 			return
 		}
@@ -165,7 +168,7 @@ func TestInt(t *testing.T) {
 		}
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "1a")
+	// bwmap.CropMap(tests, "some.#")
 	bwtesting.BwRunTests(t, mustInt, tests)
 }
 
@@ -182,10 +185,10 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		p.Forward(true)
-		if err = p.CheckNotEOF(); err != nil {
-			return
-		}
+		// p.Forward(true)
+		// if err = p.CheckNotEOF(); err != nil {
+		// 	return
+		// }
 		if result, _, ok, err = p.Int(); err != nil {
 			return
 		} else if !ok {
@@ -276,10 +279,10 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 		)
 		p := bwparse.ProviderFrom(bwrune.ProviderFromString(s))
 
-		p.Forward(true)
-		if err = p.CheckNotEOF(); err != nil {
-			return
-		}
+		// p.Forward(true)
+		// if err = p.CheckNotEOF(); err != nil {
+		// 	return
+		// }
 		if result, _, ok, err = p.Val(); err != nil || !ok {
 			if err == nil {
 				err = p.Unexpected(p.Curr)
