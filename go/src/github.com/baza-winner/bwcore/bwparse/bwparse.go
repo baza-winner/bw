@@ -15,13 +15,7 @@ import (
 // ============================================================================
 
 func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, err error) {
-	type State bool
-	const (
-		expectSpaceOrQwItemOrDelimiter State = true
-		expectEndOfQwItem              State = false
-	)
 	var (
-		state     State
 		b         bool
 		r, r2     rune
 		delimiter rune
@@ -31,10 +25,11 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 
 	p.Forward(Initial)
 	start = p.Curr
-	if p.Curr.Rune == '<' {
+	r = p.Curr.Rune
+	if r == '<' {
 		delimiter = '>'
 	} else {
-		if p.Curr.Rune != 'q' {
+		if r != 'q' {
 			return
 		}
 		if ps, err = p.PosStruct(1); err != nil || ps.IsEOF || ps.Rune != 'w' {
@@ -57,33 +52,35 @@ func (p *Provider) ArrayOfString() (result []string, start PosStruct, ok bool, e
 	}
 	ok = true
 	result = []string{}
-	state = expectSpaceOrQwItemOrDelimiter
 
+	p.Forward(true)
 LOOP:
 	for {
-		p.Forward(true)
-		if err = p.CheckNotEOF(); err != nil {
+		if err = p.SkipOptionalSpace(); err != nil {
 			return
 		}
+
 		r = p.Curr.Rune
-		if state {
-			if r == delimiter {
-				p.Forward(true)
-				break LOOP
-			} else if !unicode.IsSpace(r) {
-				s = string(r)
-				state = expectEndOfQwItem
-			}
-		} else {
-			if r == delimiter || unicode.IsSpace(r) {
-				p.Backward()
-				result = append(result, s)
-				state = expectSpaceOrQwItemOrDelimiter
-			} else {
-				s += string(r)
-			}
+		if r == delimiter {
+			break LOOP
 		}
+
+		s = string(r)
+
+		for {
+			p.Forward(true)
+			if err = p.CheckNotEOF(); err != nil {
+				return
+			}
+			r = p.Curr.Rune
+			if unicode.IsSpace(r) || r == delimiter {
+				break
+			}
+			s += string(r)
+		}
+		result = append(result, s)
 	}
+	p.Forward(true)
 	return
 }
 
@@ -371,7 +368,7 @@ func (p *Provider) SkipOptionalSpaceTillEOF() (err error) {
 		}
 		if !unicode.IsSpace(p.Curr.Rune) {
 			err = p.Unexpected(p.Curr)
-			break
+			return
 		}
 		p.Forward(true)
 	}
@@ -383,7 +380,7 @@ func (p *Provider) SkipOptionalSpace() (err error) {
 
 	for {
 		if err = p.CheckNotEOF(); err != nil {
-			break
+			return
 		}
 		if !unicode.IsSpace(p.Curr.Rune) {
 			break
