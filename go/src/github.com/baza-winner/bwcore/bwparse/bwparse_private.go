@@ -2,12 +2,14 @@ package bwparse
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwerr/where"
+	"github.com/baza-winner/bwcore/bwrune"
 )
 
 // ============================================================================
@@ -32,7 +34,7 @@ func init() {
 	ansiPosInfoFailed = "<ansiPath>bwparse.Provider.<ansiFunc>PosInfo<ansi>(%d) failed, must <ansiFunc>.SetMaxBackwardCount<ansi>(<ansiVal>%d<ansi>)"
 	ansiPos = ansi.String(" at pos <ansiPath>%d<ansi>")
 	ansiLineCol = ansi.String(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)")
-	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
+	ansiGetSuffixAssert = ansi.String("%s: <ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>%q<ansi>")
@@ -40,11 +42,7 @@ func init() {
 }
 
 func (p *P) pullRune(ps *PosInfo) {
-	var runePtr *rune
-	var err error
-	if runePtr, err = p.Prov.PullRune(); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
+	runePtr := bwrune.MustPull(p.Prov)
 	if !ps.IsEOF {
 		if ps.Pos >= 0 {
 			ps.Prefix += string(ps.Rune)
@@ -62,214 +60,325 @@ func (p *P) pullRune(ps *PosInfo) {
 				}
 			}
 		}
+		if runePtr == nil {
+			ps.Rune, ps.IsEOF = '\000', true
+		} else {
+			ps.Rune, ps.IsEOF = *runePtr, false
+		}
+		ps.Pos++
 	}
-	if runePtr == nil {
-		ps.Rune = '\000'
-		ps.IsEOF = true
-	} else {
-		ps.Rune = *runePtr
-		ps.IsEOF = false
-	}
-	ps.Pos++
 	return
 }
 
 func (p *P) suffix(ps PosInfo) (suffix string) {
 	if ps.Pos > p.Curr.Pos {
-		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
+		bwerr.Panic(ansiGetSuffixAssert, where.MustFrom(0).String(), ps.Pos, p.Curr.Pos)
 	}
-	preLineCount := p.preLineCount
-	postLineCount := p.postLineCount
+
+	preLineCount, postLineCount := p.preLineCount, p.postLineCount
 	if p.Curr.IsEOF {
 		preLineCount += postLineCount
 	}
 
-	separator := "\n"
-	if p.Curr.Line <= 1 {
+	var separator string
+	if p.Curr.Line > 1 {
+		suffix += fmt.Sprintf(ansiLineCol, ps.Line, ps.Col, ps.Pos)
+		separator = "\n"
+	} else {
 		suffix += fmt.Sprintf(ansiPos, ps.Pos)
 		separator = " "
-	} else {
-		suffix += fmt.Sprintf(ansiLineCol, ps.Line, ps.Col, ps.Pos)
 	}
-	suffix += ":" + separator + ansiOK
+	suffix += ":" + separator + ansiOK + p.Curr.Prefix[0:ps.Pos-p.Curr.PrefixStart]
 
-	suffix += p.Curr.Prefix[0 : ps.Pos-p.Curr.PrefixStart]
 	var needPostLines, noNeedNewline bool
 	if ps.Pos < p.Curr.Pos {
-		suffix += ansiErr
-		suffix += p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:]
-		noNeedNewline = suffix[len(suffix)-1] == '\n'
-		suffix += ansi.Reset()
+		noNeedNewline = p.Curr.Prefix[len(p.Curr.Prefix)-1] == '\n'
+		suffix += ansiErr + p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:] + ansi.Reset()
 		needPostLines = true
 	} else if !p.Curr.IsEOF {
-		suffix += ansiErr
-		suffix += string(p.Curr.Rune)
 		noNeedNewline = p.Curr.Rune == '\n'
-		suffix += ansi.Reset()
-		p.Forward(true)
+		suffix += ansiErr + string(p.Curr.Rune) + ansi.Reset()
+		p.Forward(1)
 		needPostLines = true
 	}
 
-	if needPostLines {
-		for !p.Curr.IsEOF && postLineCount > 0 {
-			suffix += string(p.Curr.Rune)
-			if p.Curr.Rune == '\n' {
-				postLineCount -= 1
-				noNeedNewline = true
-			} else {
-				noNeedNewline = false
-			}
-			p.Forward(true)
+	for needPostLines && !p.Curr.IsEOF && postLineCount > 0 {
+		suffix += string(p.Curr.Rune)
+		if noNeedNewline = p.Curr.Rune == '\n'; noNeedNewline {
+			postLineCount -= 1
 		}
+		p.Forward(1)
 	}
-	_ = noNeedNewline
 
 	if !noNeedNewline {
 		suffix += string('\n')
 	}
-
-	return suffix
-}
-
-// ============================================================================
-
-func (p *P) parseVal() (result interface{}, err error) {
-	var ok bool
-	if result, _, ok, err = p.Val(); err != nil || !ok {
-		if err == nil {
-			err = p.Unexpected(p.Curr)
-		}
-		return
-	}
 	return
 }
 
-func (p *P) skipComma() (ok bool, err error) {
-	if err = p.SkipSpace(TillNonEOF); err == nil {
-		ok = p.Curr.Rune == ','
+func (p *P) forward() {
+	if len(p.Next) == 0 {
+		p.pullRune(&p.Curr)
+	} else {
+		last := len(p.Next) - 1
+		p.Curr, p.Next = p.Next[last], p.Next[:last]
 	}
-	return
 }
 
 // ============================================================================
 
 type on interface {
-	IsOn() string
+	IsOn()
 }
 
 type onInt struct {
 	f func(idx int, start PosInfo) (err error)
 }
 
-func (onInt) IsOn() string { return "Int" }
+func (onInt) IsOn() {}
+
+type onNumber struct {
+	f func(val interface{}, start PosInfo) (err error)
+}
+
+func (onNumber) IsOn() {}
 
 type onId struct {
 	f func(s string, start PosInfo) (err error)
 }
 
-func (onId) IsOn() string { return "Id" }
+func (onId) IsOn() {}
+
+type onString struct {
+	f func(s string, start PosInfo) (err error)
+}
+
+func (onString) IsOn() {}
+
+type onSubPath struct {
+	f func(path bw.ValPath, start PosInfo) (err error)
+	a PathA
+}
+
+func (onSubPath) IsOn() {}
+
+type onPath struct {
+	f func(path bw.ValPath, start PosInfo) (err error)
+	a PathA
+}
+
+func (onPath) IsOn() {}
+
+type onArray struct {
+	f func(vals []interface{}, start PosInfo) (err error)
+}
+
+func (onArray) IsOn() {}
+
+type onArrayOfString struct {
+	f func(ss []string, start PosInfo) (err error)
+}
+
+func (onArrayOfString) IsOn() {}
 
 type onMap struct {
 	f func(m map[string]interface{}, start PosInfo) (err error)
 }
 
-func (onId) IsMap() string { return "Map" }
+func (onMap) IsOn() {}
 
 // ============================================================================
 
-func (p *P) processOn(processors []on) (ok bool, err error) {
+func (p *P) processOn(processors ...on) (ok bool, err error) {
 	var (
+		start PosInfo
 		idx   int
 		s     string
-		start PosInfo
+		path  bw.ValPath
+		val   interface{}
+		vals  []interface{}
+		ss    []string
+		m     map[string]interface{}
 	)
 	for _, processor := range processors {
-		switch processor.(type) {
+		switch t := processor.(type) {
 		case onInt:
 			idx, start, ok, err = p.Int()
+		case onNumber:
+			val, start, ok, err = p.Number()
+		case onString:
+			s, start, ok, err = p.String()
 		case onId:
 			s, start, ok, err = p.Id()
-		}
-		if !ok {
-			continue
+		case onSubPath:
+			path, start, ok, err = p.subPath(t.a)
+		case onPath:
+			path, start, ok, err = p.Path(t.a)
+		case onArray:
+			vals, start, ok, err = p.Array()
+		case onArrayOfString:
+			ss, start, ok, err = p.ArrayOfString()
+		case onMap:
+			m, start, ok, err = p.Map()
 		}
 		if err != nil {
 			return
 		}
-		switch t := processor.(type) {
-		case onInt:
-			err = t.f(idx, start)
-		case onId:
-			err = t.f(s, start)
+		if ok {
+			switch t := processor.(type) {
+			case onInt:
+				err = t.f(idx, start)
+			case onNumber:
+				err = t.f(val, start)
+			case onString:
+				err = t.f(s, start)
+			case onId:
+				err = t.f(s, start)
+			case onSubPath:
+				err = t.f(path, start)
+			case onPath:
+				err = t.f(path, start)
+			case onArray:
+				err = t.f(vals, start)
+			case onArrayOfString:
+				err = t.f(ss, start)
+			case onMap:
+				err = t.f(m, start)
+			}
+			return
 		}
-		return
 	}
 	return
 }
 
 // ============================================================================
 
-func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
+func (p *P) start() PosInfo {
 	p.Forward(Initial)
-	r := p.Curr.Rune
+	return p.Curr
+}
 
-	var needDigit bool
-	if r == '-' || r == '+' {
-		needDigit = true
-	} else if !('0' <= r && r <= '9') {
-		return
-	}
-	ok = true
-	start = p.Curr
-	s = string(r)
-	if needDigit {
-		p.Forward(true)
-		r = p.Curr.Rune
-		if '0' <= r && r <= '9' {
-			s += string(r)
-		} else {
-			err = p.Unexpected(p.Curr)
-			return
+func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter rune, f func() error) (start PosInfo, ok bool, err error) {
+	start = p.start()
+	if ok = p.skipRunes(openDelimiter); ok {
+	LOOP:
+		for err == nil {
+			if err = p.SkipSpace(TillNonEOF); err == nil {
+			NEXT:
+				if p.skipRunes(closeDelimiter) {
+					break LOOP
+				}
+				if err = f(); err == nil {
+					if err = p.SkipSpace(TillNonEOF); err == nil {
+						if !p.skipRunes(',') {
+							goto NEXT
+						}
+					}
+				}
+			}
 		}
 	}
-	p.Forward(true)
 	return
 }
 
-func parseInt(s string) (result int, err error) {
-	var _int64 int64
-	if _int64, err = strconv.ParseInt(underscoreRegexp.ReplaceAllLiteralString(s, ""), 10, 64); err == nil {
-		if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
-			result = int(_int64)
+func (p *P) parseVal() (result interface{}, err error) {
+	var ok bool
+	if result, _, ok, err = p.Val(); err == nil && !ok {
+		err = p.Unexpected(p.Curr)
+	}
+	return
+}
+
+func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
+	start = p.start()
+	var (
+		r         rune
+		needDigit bool
+	)
+	if r = p.Curr.Rune; r == '-' || r == '+' {
+		needDigit = true
+	} else if !isDigit(r) {
+		return
+	}
+	ok = true
+	p.Forward(1)
+	s = string(r)
+	if needDigit {
+		if r = p.Curr.Rune; !isDigit(r) {
+			err = p.Unexpected(p.Curr)
 		} else {
-			err = bwerr.From(ansiOutOfRange, _int64, bw.MinInt, bw.MaxInt)
+			p.Forward(1)
+			s += string(r)
 		}
 	}
 	return
+}
+
+// func parseInt(s string) (result int, err error) {
+// 	if _int64, err := strconv.ParseInt(s, 10, 64); err != nil {
+// 		return 0, err
+// 	} else {
+// 		// } else if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
+// 		return int(_int64), nil
+// 		// } else {
+// 		// 	return 0, bwerr.From(ansiOutOfRange, _int64, bw.MinInt, bw.MaxInt)
+// 	}
+// }
+
+func (p *P) addDigit(r rune, s string) (string, bool) {
+	if isDigit(r) {
+		s += string(r)
+	} else if r != '_' {
+		return s, false
+	}
+	p.Forward(1)
+	return s, true
+}
+
+func (p *P) canSkipRunes(rr ...rune) bool {
+	for i, r := range rr {
+		if pi := p.LookAhead(uint(i)); pi.IsEOF || pi.Rune != r {
+			return false
+		}
+	}
+	return true
+}
+
+func (p *P) skipRunes(rr ...rune) (ok bool) {
+	if ok = p.canSkipRunes(rr...); ok {
+		p.Forward(uint(len(rr)))
+	}
+	return
+}
+
+func isDigit(r rune) bool {
+	return '0' <= r && r <= '9'
+}
+
+func isLetter(r rune) bool {
+	return unicode.IsLetter(r) || r == '_'
+}
+
+func isPunctOrSymbol(r rune) bool {
+	return unicode.IsPunct(r) || unicode.IsSymbol(r)
 }
 
 // ============================================================================
 
 func (p *P) subPath(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error) {
-	if p.Curr.Rune == '(' {
-		ok = true
-		start = p.Curr
-		p.Forward(true)
-		if err = p.SkipSpace(TillNonEOF); err != nil {
-			return
+	start = p.start()
+	if ok = p.skipRunes('('); ok {
+		if err = p.SkipSpace(TillNonEOF); err == nil {
+			if result, err = p.PathContent(PathA{isSubPath: true, Bases: a.Bases}); err == nil {
+				if err = p.SkipSpace(TillNonEOF); err == nil {
+					if p.Curr.Rune == ')' {
+						p.Forward(1)
+					} else {
+						err = p.Unexpected(p.Curr)
+					}
+				}
+			}
 		}
-		a.isSubPath = true
-		if result, err = p.PathContent(a); err != nil {
-			return
-		}
-		if err = p.SkipSpace(TillNonEOF); err != nil {
-			return
-		}
-		if p.Curr.Rune != ')' {
-			err = p.Unexpected(p.Curr)
-			return
-		}
-		p.Forward(true)
 	}
 	return
 }

@@ -38,6 +38,14 @@ func ProviderFromFile(fileSpec string) (result Provider, err error) {
 	return
 }
 
+func MustPull(p Provider) (result *rune) {
+	var err error
+	if result, err = p.PullRune(); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
+}
+
 // ============================================================================
 
 type stringProvider struct {

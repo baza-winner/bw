@@ -1,16 +1,63 @@
 package bwparse_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwparse"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwtesting"
 )
+
+func TestUnexpected(t *testing.T) {
+	tests := map[string]bwtesting.Case{}
+	tests["panic"] = bwtesting.Case{
+		V:     testUnexpectedHelper("some", 2),
+		In:    []interface{}{bwparse.PosInfo{Pos: 4}},
+		Panic: "\x1b[32;1mgithub.com/baza-winner/bwcore/bwparse.(*P).suffix\x1b[38;5;243m@\x1b[97;1mbwparse_private.go:75\x1b[0m: \x1b[38;5;201;1mps.Pos\x1b[0m (\x1b[96;1m4\x1b[0m) > \x1b[38;5;201;1mp.Curr.Pos\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m",
+	}
+	p := testUnexpectedHelper("{\n key wrong \n} ", 0)
+	p.Forward(7)
+	pi := p.Curr
+	p.Forward(5)
+	tests["normal"] = bwtesting.Case{
+		V:   p,
+		In:  []interface{}{pi},
+		Out: []interface{}{"unexpected \x1b[91;1m\"wrong\"\x1b[0m at line \x1b[38;5;252;1m2\x1b[0m, col \x1b[38;5;252;1m6\x1b[0m (pos \x1b[38;5;252;1m7\x1b[0m)\x1b[0m:\n\x1b[32m{\n key \x1b[91mwrong\x1b[0m \n} \n"},
+	}
+	bwmap.CropMap(tests)
+	// bwmap.CropMap(tests, "some.#")
+	bwtesting.BwRunTests(t, "Unexpected", tests)
+}
+
+func testUnexpectedHelper(s string, ofs uint) *bwparse.P {
+	p := bwparse.From(bwrune.ProviderFromString(s))
+	p.Forward(ofs)
+	return p
+}
+
+func TestLookAhead(t *testing.T) {
+	s := "s\no\nm\ne\nt\nhing"
+	p := bwparse.From(bwrune.ProviderFromString(s))
+	p.Forward(0)
+	tests := map[string]bwtesting.Case{}
+	for i, r := range s {
+		tests[fmt.Sprintf("%d", i)] = bwtesting.Case{
+			In:  []interface{}{p, i},
+			Out: []interface{}{r},
+		}
+	}
+	bwmap.CropMap(tests)
+	// bwmap.CropMap(tests, "some.#")
+	bwtesting.BwRunTests(t, lookAheadTestHelper, tests)
+}
+
+func lookAheadTestHelper(p *bwparse.P, i int) rune {
+	return p.LookAhead(uint(i)).Rune
+}
 
 func TestPath(t *testing.T) {
 	tests := map[string]bwtesting.Case{}
@@ -61,10 +108,6 @@ func TestPath(t *testing.T) {
 			{Type: bw.ValPathItemKey, Key: "some"},
 			{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
 		},
-		// "some.(2?)": bw.ValPath{
-		// 	{Type: bw.ValPathItemKey, Key: "some"},
-		// 	{Type: bw.ValPathItemIdx, Idx: 2, IsOptional: true},
-		// },
 	} {
 		tests[k] = bwtesting.Case{
 			In:  []interface{}{func(testName string) string { return testName }},
@@ -113,7 +156,6 @@ func TestPath(t *testing.T) {
 		},
 	}
 	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "2?")
 	// bwmap.CropMap(tests, "some.#")
 	bwtesting.BwRunTests(t, mustPath, tests)
 }
@@ -126,18 +168,13 @@ func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 				result = nil
 			}
 		}()
-		p := bwparse.From(bwrune.ProviderFromString(s))
-
 		pco := bwparse.PathA{}
 		if len(optBases) > 0 {
 			pco.Bases = optBases[0]
 		}
-		if result, err = p.PathContent(pco); err != nil {
-			return
-		}
-		bwdebug.Print("p.Curr.Rune", string(p.Curr.Rune), "result:json", result)
-		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
-			return
+		p := bwparse.From(bwrune.ProviderFromString(s))
+		if result, err = p.PathContent(pco); err == nil {
+			err = end(p, true)
 		}
 		return
 	}(s, optBases...); err != nil {
@@ -172,6 +209,14 @@ func TestInt(t *testing.T) {
 	bwtesting.BwRunTests(t, mustInt, tests)
 }
 
+func end(p *bwparse.P, ok bool) (err error) {
+	if !ok {
+		err = p.Unexpected(p.Curr)
+	} else {
+		err = p.SkipSpace(bwparse.TillEOF)
+	}
+	return
+}
 func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 	var err error
 	if result, err = func(s string, optVars ...map[string]interface{}) (result int, err error) {
@@ -180,23 +225,10 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 				result = 0
 			}
 		}()
-		var (
-			ok bool
-		)
 		p := bwparse.From(bwrune.ProviderFromString(s))
-
-		// p.Forward(true)
-		// if err = p.CheckNotEOF(); err != nil {
-		// 	return
-		// }
-		if result, _, ok, err = p.Int(); err != nil {
-			return
-		} else if !ok {
-			err = p.Unexpected(p.Curr)
-			return
-		}
-		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
-			return
+		var ok bool
+		if result, _, ok, err = p.Int(); err == nil {
+			err = end(p, ok)
 		}
 		return
 	}(s, optVars...); err != nil {
@@ -204,6 +236,7 @@ func mustInt(s string, optVars ...map[string]interface{}) (result interface{}) {
 	}
 	return result
 }
+
 func TestVal(t *testing.T) {
 	tests := map[string]bwtesting.Case{}
 	for k, v := range map[string]interface{}{
@@ -212,6 +245,7 @@ func TestVal(t *testing.T) {
 		"false":             false,
 		"0":                 0,
 		"-1_000_000":        -1000000,
+		"+3.14":             3.14,
 		"+2.0":              2.0,
 		"[0, 1]":            []interface{}{0, 1},
 		`"a"`:               "a",
@@ -232,6 +266,12 @@ func TestVal(t *testing.T) {
 		`{ some {{ $a }} }`: map[string]interface{}{
 			"some": bw.ValPath{{Type: bw.ValPathItemVar, Key: "a"}},
 		},
+		`{ some $a.thing }`: map[string]interface{}{
+			"some": bw.ValPath{
+				{Type: bw.ValPathItemVar, Key: "a"},
+				{Type: bw.ValPathItemKey, Key: "thing"},
+			},
+		},
 	} {
 		tests[k] = bwtesting.Case{
 			In:  []interface{}{func(testName string) string { return testName }},
@@ -241,7 +281,7 @@ func TestVal(t *testing.T) {
 	for k, v := range map[string]string{
 		"":                     "unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
 		`"some" "thing"`:       "unexpected char \x1b[96;1m'\"'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m34\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m\"some\" \x1b[91m\"\x1b[0mthing\"\n",
-		`{ some = > "thing" }`: "unexpected char \x1b[96;1m' '\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m32\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m8\x1b[0m: \x1b[32m{ some =\x1b[91m \x1b[0m> \"thing\" }\n",
+		`{ some = > "thing" }`: "unexpected char \x1b[96;1m'='\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m61\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ some \x1b[91m=\x1b[0m > \"thing\" }\n",
 		`qw/ one two three`:    "unexpected end of string at pos \x1b[38;5;252;1m17\x1b[0m: \x1b[32mqw/ one two three\n",
 		`qw/ one two three `:   "unexpected end of string at pos \x1b[38;5;252;1m18\x1b[0m: \x1b[32mqw/ one two three \n",
 		`"one two three `:      "unexpected end of string at pos \x1b[38;5;252;1m15\x1b[0m: \x1b[32m\"one two three \n",
@@ -254,6 +294,7 @@ func TestVal(t *testing.T) {
 		`{ type Number keyA valA keyB valB }`:        "unexpected \x1b[91;1m\"valA\"\x1b[0m at pos \x1b[38;5;252;1m19\x1b[0m: \x1b[32m{ type Number keyA \x1b[91mvalA\x1b[0m keyB valB }\n",
 		"{ val: nil def: Array":                      "unexpected end of string at pos \x1b[38;5;252;1m21\x1b[0m: \x1b[32m{ val: nil def: Array\n",
 		`{ some { { $a }} }`:                         "unexpected char \x1b[96;1m'{'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m123\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m9\x1b[0m: \x1b[32m{ some { \x1b[91m{\x1b[0m $a }} }\n",
+		`{ some {{ $a } } }`:                         "unexpected char \x1b[96;1m'}'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m125\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m13\x1b[0m: \x1b[32m{ some {{ $a \x1b[91m}\x1b[0m } }\n",
 	} {
 		tests[k] = bwtesting.Case{
 			In:    []interface{}{func(testName string) string { return testName }},
@@ -274,23 +315,10 @@ func mustVal(s string, optVars ...map[string]interface{}) (result interface{}) {
 				result = nil
 			}
 		}()
-		var (
-			ok bool
-		)
 		p := bwparse.From(bwrune.ProviderFromString(s))
-
-		// p.Forward(true)
-		// if err = p.CheckNotEOF(); err != nil {
-		// 	return
-		// }
-		if result, _, ok, err = p.Val(); err != nil || !ok {
-			if err == nil {
-				err = p.Unexpected(p.Curr)
-			}
-			return
-		}
-		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
-			return
+		var ok bool
+		if result, _, ok, err = p.Val(); err == nil {
+			err = end(p, ok)
 		}
 		return
 	}(s, optVars...); err != nil {

@@ -73,7 +73,7 @@ func From(s string, optVars ...map[string]interface{}) (result interface{}) {
 
 		p := bwparse.From(bwrune.ProviderFromString(s))
 
-		p.Forward(true)
+		p.Forward(1)
 		if err = p.CheckNotEOF(); err != nil {
 			return
 		}
