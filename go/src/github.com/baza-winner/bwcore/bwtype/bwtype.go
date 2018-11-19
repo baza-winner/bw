@@ -1,21 +1,75 @@
-package bwval
+package bwtype
 
 import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 )
 
 // ============================================================================
-
 type Number struct {
 	val interface{}
 }
 
+func Int(val interface{}) (result int, ok bool) {
+	ok = true
+	switch t := val.(type) {
+	case int8:
+		result = int(t)
+		kind = ValInt
+	case int16:
+		result = int(t)
+		kind = ValInt
+	case int32:
+		result = int(t)
+		kind = ValInt
+	case int64:
+		if int64(bw.MinInt) <= t && t <= int64(bw.MaxInt) {
+			result = int(t)
+			kind = ValInt
+		} else {
+			ok = false
+		}
+	case int:
+		result = t
+		kind = ValInt
+	case uint8:
+		result = int(t)
+		kind = ValInt
+	case uint16:
+		result = int(t)
+		kind = ValInt
+	case uint32:
+		result = int(t)
+		kind = ValInt
+	case uint64:
+		if t <= uint64(bw.MaxInt) {
+			result = int(t)
+			kind = ValInt
+		}
+	case uint:
+		if t <= uint(bw.MaxInt) {
+			result = int(t)
+			kind = ValInt
+		} else {
+			ok = false
+		}
+	default:
+		ok = false
+	}
+	return
+}
+
+func Float64(val interface{}) (result float64, ok bool) {
+
+}
+
 func NumberFrom(val interface{}) (result Number, err error) {
-	switch t, kind := Kind(val); kind {
+	switch t, kind := val.(type); kind {
 	case ValInt:
 		i, _ := t.(int)
 		result = NumberFromInt(i)
@@ -131,7 +185,7 @@ func (n Number) MarshalJSON() ([]byte, error) {
 // var ansiIsNotOfType string
 
 // func init() {
-// 	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
+//  ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
 // }
 
 // ============================================================================
@@ -148,39 +202,38 @@ const (
 )
 
 type Range struct {
-	Min, Max Number
+	min, max Number
 }
 
-// func RangeFrom(min, max Number) (result Range, err error) {
-// 	result = Range{min: min, max: max}
-// 	if result.Kind() == RangeMinMax {
-// 		var isValidRange bool
-// 		if i, ok := min.Int(); ok {
-// 			if j, ok := max.Int(); ok {
-// 				isValidRange = i <= j
-// 			} else {
-// 				isValidRange = float64(i) <= max.MustFloat64()
-// 			}
-// 		} else {
-// 			isValidRange = min.MustFloat64() <= max.MustFloat64()
-// 		}
-// 		if !isValidRange {
-// 			err = bwerr.From(
-// 				"<ansiVar>max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiVar>min<ansi> (<ansiVal>%s<ansi>)",
-// 				bwjson.Pretty(max), bwjson.Pretty(min),
-// 			)
-// 		}
-// 	}
-// 	return
-// }
+func (r Range) Min() Number {
+	return r.min
+}
 
-// func MustRangeFrom(min, max Number) (result Range) {
-// 	var err error
-// 	if result, err = RangeFrom(min, max); err != nil {
-// 		bwerr.PanicA(bwerr.Err(err))
-// 	}
-// 	return
-// }
+func (r Range) Max() Number {
+	return r.max
+}
+
+func RangeFrom(min, max Number) (result Range, err error) {
+	result = Range{min: min, max: max}
+	if result.Kind() == RangeMinMax {
+		var isValidRange bool
+		if max.IsLessThan(min) {
+			err = bwerr.From(
+				"<ansiVar>max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiVar>min<ansi> (<ansiVal>%s<ansi>)",
+				bwjson.Pretty(max), bwjson.Pretty(min),
+			)
+		}
+	}
+	return
+}
+
+func MustRangeFrom(min, max Number) (result Range) {
+	var err error
+	if result, err = RangeFrom(min, max); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
+}
 
 func (r Range) Kind() (result RangeKindValue) {
 	if !r.Min.IsNaN() {
@@ -258,4 +311,14 @@ func (r Range) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.String())
 }
 
-// // ============================================================================
+// ============================================================================
+
+var (
+	ansiIsNotOfType string
+)
+
+func init() {
+	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
+}
+
+// ============================================================================

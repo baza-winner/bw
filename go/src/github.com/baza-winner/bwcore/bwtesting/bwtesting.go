@@ -216,6 +216,10 @@ func BwRunTests(
 			v := getCalculableValue(test.V, nil, testFunc, testName, test, "V")
 
 			testeeValue = v.MethodByName(s)
+			zeroValue := reflect.Value{}
+			if testeeValue == zeroValue {
+				bwerr.Panic(ansi.String("method <ansiFunc>%s<ansi> not found for <ansiVal>%#v<ansi>"), s, test.V)
+			}
 			testeeType = testeeValue.Type()
 			testeeFunc = fmt.Sprintf("%T.%s", test.V, s)
 			ansiTestTitle = ansiTestTitleFunc + ansiTestTitleOpenBrace
@@ -325,9 +329,7 @@ func BwRunTests(
 
 func getCalculableValue(val interface{}, def reflect.Type, testFunc, testName string, test Case, path string) (result reflect.Value) {
 	result = reflect.ValueOf(val)
-	// bwdebug.Print("result", result)
 	if result.Kind() == reflect.Func {
-		// zeroType :=
 		if valType := reflect.TypeOf(val); valType.NumOut() != 1 {
 			bwerr.Panic(
 				ansiExpectsOneReturnValue,
@@ -361,7 +363,6 @@ func getCalculableValue(val interface{}, def reflect.Type, testFunc, testName st
 					)
 				}
 
-				// bwdebug.Print("result", result)
 			case 2:
 				if valType.In(0).Kind() == reflect.String && valType.In(1).Name() == "Case" {
 					result = reflect.ValueOf(val).Call([]reflect.Value{
@@ -399,73 +400,12 @@ func getInOutValue(vals []interface{}, path string, def []reflect.Type, i int, t
 	if val == nil {
 		result = reflect.New(def[i]).Elem()
 	} else {
-		// bwdebug.Print("i", i, "len(def)", len(def), "testName", testName, "def", def, "testFunc", testFunc)
 		result = getCalculableValue(val, def[j], testFunc, testName, test, fmt.Sprintf("%s.%d", path, i))
-		// result = reflect.ValueOf(val)
-		// if result.Kind() == reflect.Func {
-		// 	if valType := reflect.TypeOf(val); valType.NumOut() != 1 {
-		// 		bwerr.Panic(
-		// 			ansiExpectsOneReturnValue,
-		// 			testFunc, testName, fmt.Sprintf("%s.%d", path, i),
-		// 			valType.NumOut(),
-		// 		)
-		// 	} else if valType.Out(0) != def[i] {
-		// 		bwerr.Panic(
-		// 			ansiExpectsTypeOfReturnValue,
-		// 			testFunc, testName, fmt.Sprintf("%s.%d", path, i),
-		// 			def[i],
-		// 			valType.Out(0),
-		// 		)
-		// 	} else {
-		// 		switch valType.NumIn() {
-		// 		case 0:
-		// 			result = reflect.ValueOf(val).Call([]reflect.Value{})[0]
-		// 		case 1:
-		// 			if valType.In(0).Kind() == reflect.String {
-		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
-		// 					reflect.ValueOf(testName),
-		// 				})[0]
-		// 			} else if valType.In(0).Name() == "Case" {
-		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
-		// 					reflect.ValueOf(test),
-		// 				})[0]
-		// 			} else {
-		// 				bwerr.Panic(
-		// 					ansiExpectsFuncParams,
-		// 					testFunc, testName, path, i,
-		// 				)
-		// 			}
-		// 		case 2:
-		// 			if valType.In(0).Kind() == reflect.String && valType.In(1).Name() == "Case" {
-		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
-		// 					reflect.ValueOf(testName),
-		// 					reflect.ValueOf(test),
-		// 				})[0]
-		// 			} else if valType.In(1).Kind() == reflect.String && valType.In(0).Name() == "Case" {
-		// 				result = reflect.ValueOf(val).Call([]reflect.Value{
-		// 					reflect.ValueOf(test),
-		// 					reflect.ValueOf(testName),
-		// 				})[0]
-		// 			} else {
-		// 				bwerr.Panic(
-		// 					ansiExpectsFuncParams,
-		// 					testFunc, testName, path, i,
-		// 				)
-		// 			}
-		// 		default:
-		// 			bwerr.Panic(
-		// 				ansiExpectsFuncParams,
-		// 				testFunc, testName, path, i,
-		// 			)
-		// 		}
-		// 	}
-		// }
 	}
 
 	if def[j].Kind() != reflect.Interface {
 		if i >= len(def)-1 && len(optIsVariadic) > 0 && optIsVariadic[0] {
 			if def[j].Elem().Kind() != reflect.Interface && result.Kind() != def[j].Elem().Kind() {
-				// bwdebug.Print("def", def, "j", j, "i", "i")
 				bwerr.Panic(
 					ansiExpectsParamType,
 					testFunc, testName, path, i,
@@ -526,16 +466,18 @@ func getErrStr(val interface{}) (result string) {
 }
 
 func cmpVals(tstResult, etaResult interface{}, fmtString *string, fmtArgs *[]interface{}) (hasDiff bool) {
-	if cmp := pretty.Compare(tstResult, etaResult); len(cmp) > 0 {
+	if !reflect.DeepEqual(tstResult, etaResult) {
 		hasDiff = true
-		*fmtString += ansiDiffBegin + colorizedCmp(cmp) + ansiDiffEnd + ansiVal
+		if cmp := pretty.Compare(tstResult, etaResult); len(cmp) > 0 {
+			*fmtString += ansiDiffBegin + colorizedCmp(cmp) + ansiDiffEnd
+		}
+		*fmtString += ansiVal
 		*fmtArgs = append(*fmtArgs,
 			tstResult,
 			etaResult,
 			bwjson.Pretty(tstResult),
 			bwjson.Pretty(etaResult),
 		)
-		// bwdebug.Print("json", bwjson.Pretty(tstResult), "tstResult", tstResult)
 	}
 	return
 }

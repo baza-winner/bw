@@ -19,6 +19,7 @@ const (
 	ValNil
 	ValBool
 	ValInt
+	ValFloat64
 	ValNumber
 	ValString
 	ValArray
@@ -115,10 +116,10 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 			}
 		case float32:
 			result = float64(t)
-			kind = ValNumber
+			kind = ValFloat64
 		case float64:
 			result = t
-			kind = ValNumber
+			kind = ValFloat64
 		case string:
 			result = t
 			kind = ValString
@@ -131,7 +132,14 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 		case []string:
 			result = t
 			kind = ValArrayOfString
+		case Number:
+			result = t
+			kind = ValNumber
 		}
 	}
+	// bwdebug.Print("val:#v", val, "kind", kind, "result", result)
 	return
 }
+
+// ============================================================================
+

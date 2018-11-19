@@ -109,7 +109,7 @@ func (v Holder) nonSupportedValueError() error {
 
 func (v Holder) outOfRangeError(rng Range) (err error) {
 	var s string
-	switch RangeKind(rng) {
+	switch rng.Kind() {
 	case RangeMinMax:
 		s = ansi.String(" is <ansiErr>out of range<ansi> <ansiVal>%s")
 	case RangeMin:
@@ -118,14 +118,14 @@ func (v Holder) outOfRangeError(rng Range) (err error) {
 		s = ansi.String(" is <ansiErr>more<ansi> than<ansiVal>%s")
 	}
 	if len(s) > 0 {
-		err = bwerr.From(v.ansiString()+s, RangeString(rng))
+		err = bwerr.From(v.ansiString()+s, rng.String())
 	}
 	return
 }
 
 // ============================================================================
 
-func (v Holder) maxLessThanMinError(max, min interface{}) error {
+func (v Holder) maxLessThanMinError(max, min Number) error {
 	return bwerr.From(v.ansiString()+
 		": <ansiPath>.max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiPath>.min<ansi> (<ansiVal>%s<ansi>)",
 		bwjson.Pretty(max), bwjson.Pretty(min),

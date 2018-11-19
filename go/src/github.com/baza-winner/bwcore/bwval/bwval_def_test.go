@@ -17,7 +17,8 @@ func TestDefMarshalJSON(t *testing.T) {
 					Types:      bwval.ValKindSetFrom(bwval.ValInt),
 					IsOptional: true,
 					Enum:       bwset.StringFrom("valueA", "valueB"),
-					Range:      bwval.IntRange{MinPtr: bwval.PtrToInt(-1), MaxPtr: bwval.PtrToInt(1)},
+					// Range:      bwval.IntRange{MinPtr: bwval.PtrToInt(-1), MaxPtr: bwval.PtrToInt(1)},
+					Range: bwval.Range{Min: bwval.NumberFromInt(-1), Max: bwval.NumberFromInt(1)},
 					Keys: map[string]bwval.Def{
 						"boolKey": {Types: bwval.ValKindSetFrom(bwval.ValBool)},
 					},
@@ -60,11 +61,13 @@ func TestDefFrom(t *testing.T) {
 		},
 		`{ type Int min 1 max 2 }`: {
 			Types: bwval.ValKindSetFrom(bwval.ValInt),
-			Range: bwval.IntRange{bwval.PtrToInt(1), bwval.PtrToInt(2)},
+			Range: bwval.Range{Min: bwval.NumberFromInt(1), Max: bwval.NumberFromInt(2)},
+			// Range: bwval.IntRange{bwval.PtrToInt(1), bwval.PtrToInt(2)},
 		},
 		`{ type Number min 1 max 2 }`: {
 			Types: bwval.ValKindSetFrom(bwval.ValNumber),
-			Range: bwval.NumberRange{bwval.PtrToNumber(1), bwval.PtrToNumber(2)},
+			Range: bwval.Range{Min: bwval.NumberFromInt(1), Max: bwval.NumberFromInt(2)},
+			// Range: bwval.NumberRange{bwval.PtrToNumber(1), bwval.PtrToNumber(2)},
 		},
 		`{ type String default "some" }`: {
 			Types:      bwval.ValKindSetFrom(bwval.ValString),
@@ -79,7 +82,8 @@ func TestDefFrom(t *testing.T) {
 		`{ type Int min 2.0 }`: {
 			Types:      bwval.ValKindSetFrom(bwval.ValInt),
 			IsOptional: false,
-			Range:      bwval.IntRange{MinPtr: bwval.PtrToInt(2)},
+			Range:      bwval.Range{Min: bwval.NumberFromInt(2)},
+			// Range:      bwval.IntRange{MinPtr: bwval.PtrToInt(2)},
 		},
 	} {
 		tests[k] = bwtesting.Case{

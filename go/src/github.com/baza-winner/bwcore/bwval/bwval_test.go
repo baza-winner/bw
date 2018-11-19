@@ -627,38 +627,83 @@ func TestMustInt(t *testing.T) {
 	bwtesting.BwRunTests(t, bwval.MustInt, tests)
 }
 
-func TestMustNumber(t *testing.T) {
+func TestMustFloat64(t *testing.T) {
 	tests := map[string]bwtesting.Case{
-		"Number(float32)": {
+		"Float64(Int)": {
 			In: []interface{}{
-				float32(273),
+				int(273),
 			},
 			Out: []interface{}{
 				float64(273),
-				// nil,
 			},
 		},
-		"Number(float64)": {
+		"Float64(Float64)": {
 			In: []interface{}{
 				float64(273),
 			},
 			Out: []interface{}{
 				float64(273),
-				// nil,
 			},
 		},
-		"non Number": {
+		"Float64(Number)": {
+			In: []interface{}{
+				bwval.NumberFromInt(273),
+			},
+			Out: []interface{}{
+				float64(273),
+			},
+		},
+		"non Float64": {
 			In: []interface{}{
 				"some",
 			},
-			Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
+			Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mFloat64\x1b[0m",
 		},
 	}
 
 	bwmap.CropMap(tests)
 	// bwmap.CropMap(tests, "UnexpectedItem")
-	bwtesting.BwRunTests(t, bwval.MustNumber, tests)
+	bwtesting.BwRunTests(t, bwval.MustFloat64, tests)
 }
+
+// func TestMustNumber(t *testing.T) {
+// 	tests := map[string]bwtesting.Case{
+// 		"Number(int)": {
+// 			In: []interface{}{
+// 				int(273),
+// 			},
+// 			Out: []interface{}{
+// 				bwval.NumberFromInt(273),
+// 			},
+// 		},
+// 		"Number(float64)": {
+// 			In: []interface{}{
+// 				float64(273),
+// 			},
+// 			Out: []interface{}{
+// 				bwval.NumberFromFloat64(273),
+// 			},
+// 		},
+// 		"Number(Number)": {
+// 			In: []interface{}{
+// 				bwval.NumberFromFloat64(273),
+// 			},
+// 			Out: []interface{}{
+// 				bwval.NumberFromFloat64(273),
+// 			},
+// 		},
+// 		"non Number": {
+// 			In: []interface{}{
+// 				"some",
+// 			},
+// 			Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
+// 		},
+// 	}
+
+// 	bwmap.CropMap(tests)
+// 	// bwmap.CropMap(tests, "UnexpectedItem")
+// 	bwtesting.BwRunTests(t, bwval.MustNumber, tests)
+// }
 
 func TestMustBool(t *testing.T) {
 	tests := map[string]bwtesting.Case{

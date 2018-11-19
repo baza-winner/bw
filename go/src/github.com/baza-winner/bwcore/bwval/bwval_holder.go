@@ -239,21 +239,37 @@ func (v Holder) MustInt() (result int) {
 	return
 }
 
-func (v Holder) Number() (result float64, err error) {
+func (v Holder) Float64() (result float64, err error) {
 	var ok bool
-	if result, ok = Number(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValNumber))
+	if result, ok = Float64(v.Val); !ok {
+		err = v.notOfValKindError(ValKindSetFrom(ValFloat64))
 	}
 	return
 }
 
-func (v Holder) MustNumber() (result float64) {
+func (v Holder) MustFloat64() (result float64) {
 	var err error
-	if result, err = v.Number(); err != nil {
+	if result, err = v.Float64(); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
 }
+
+// func (v Holder) Number() (result Number, err error) {
+// 	var ok bool
+// 	if result, ok = Number(v.Val); !ok {
+// 		err = v.notOfValKindError(ValKindSetFrom(ValNumber))
+// 	}
+// 	return
+// }
+
+// func (v Holder) MustNumber() (result Number) {
+// 	var err error
+// 	if result, err = v.Number(); err != nil {
+// 		bwerr.PanicA(bwerr.Err(err))
+// 	}
+// 	return
+// }
 
 func (v Holder) Array() (result []interface{}, err error) {
 	var ok bool
@@ -444,7 +460,7 @@ func (v Holder) SetIdxVal(val interface{}, idx int) (err error) {
 
 func (v Holder) ValidVal(def Def) (result interface{}, err error) {
 	result, err = v.validVal(def)
-	// bwdebug.Print("v:json", v)
+	// bwdebug.Print("v:#v", v, "result:#v", result)
 	if err != nil {
 		err = bwerr.Refine(err, ansi.String("<ansiVal>%s<ansi>::{Error}"), bwjson.Pretty(v.Val))
 	}
@@ -453,10 +469,10 @@ func (v Holder) ValidVal(def Def) (result interface{}, err error) {
 
 func (v Holder) MustValidVal(def Def) (result interface{}) {
 	var err error
-	// bwdebug.Print("v:json", v, "def:json", def)
 	if result, err = v.ValidVal(def); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
+	// bwdebug.Print("v:#v", v, "result:#v", result, "def:json", def)
 	return
 }
 

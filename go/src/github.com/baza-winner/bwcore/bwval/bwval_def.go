@@ -29,7 +29,7 @@ func (v Def) MarshalJSON() ([]byte, error) {
 	if v.Enum != nil {
 		result["Enum"] = v.Enum
 	}
-	if RangeKind(v.Range) != RangeNo {
+	if v.Range.Kind() != RangeNo {
 		result["Range"] = v.Range
 	}
 	if v.Keys != nil {
@@ -153,61 +153,54 @@ func compileDef(def Holder) (result *Def, err error) {
 				}
 			}
 		}
-		if types.Has(ValInt) {
+		hasInt := types.Has(ValInt)
+		if hasInt || types.Has(ValNumber) {
 			validDefKeys.Add("min", "max")
-			rng := IntRange{}
-			var limCount, n int
-			if vp = def.MustKey("min", nil); vp.Val != nil {
-				if n, err = vp.Int(); err != nil {
+			var min, max Number
+			var limCount int
+			var getLimit func(key string) (result Number, err error)
+
+			if hasInt {
+				getLimit = func(key string) (result Number, err error) {
+					if vp = def.MustKey(key, nil); vp.Val != nil {
+						var i int
+						if i, err = vp.Int(); err != nil {
+							return
+						} else {
+							result = NumberFromInt(i)
+							limCount++
+						}
+					}
 					return
-				} else {
-					rng.MinPtr = PtrToInt(n)
-					limCount++
+				}
+			} else {
+				getLimit = func(key string) (result Number, err error) {
+					if vp = def.MustKey(key, nil); vp.Val != nil {
+						if result, err = NumberFrom(vp.Val); err != nil {
+							err = vp.notOfValKindError(ValKindSetFrom(ValNumber))
+							return
+						} else {
+							limCount++
+						}
+					}
+					return
 				}
 			}
-			if vp = def.MustKey("max", nil); vp.Val != nil {
-				if n, err = vp.Int(); err != nil {
-					return
-				} else {
-					rng.MaxPtr = PtrToInt(n)
-					limCount++
-				}
+			if min, err = getLimit("min"); err != nil {
+				return
 			}
-			if limCount == 2 && *(rng.MinPtr) > *(rng.MaxPtr) {
-				err = def.maxLessThanMinError(*rng.MaxPtr, *rng.MinPtr)
+			if max, err = getLimit("max"); err != nil {
+				return
+			}
+			if limCount == 2 && max.IsLessThan(min) {
+				err = def.maxLessThanMinError(max, min)
 				return
 			}
 			if limCount > 0 {
-				result.Range = rng
-			}
-		} else if types.Has(ValNumber) {
-			validDefKeys.Add("min", "max")
-			rng := NumberRange{}
-			var limCount, n float64
-			if vp, _ = def.Key("min", nil); vp.Val != nil {
-				if n, err = vp.Number(); err != nil {
-					return
-				} else {
-					rng.MinPtr = PtrToNumber(n)
-					limCount++
-				}
-			}
-			if vp, _ = def.Key("max", nil); vp.Val != nil {
-				if n, err = vp.Number(); err != nil {
-					return
-				} else {
-					rng.MaxPtr = PtrToNumber(n)
-					limCount++
-				}
-			}
-			if limCount == 2 && *(rng.MinPtr) > *(rng.MaxPtr) {
-				err = def.maxLessThanMinError(*rng.MaxPtr, *rng.MinPtr)
-				return
-			}
-			if limCount > 0 {
-				result.Range = rng
+				result.Range = Range{Min: min, Max: max}
 			}
 		}
+
 		validDefKeys.Add("default")
 		if vp, err = def.Key("default"); err != nil || vp.Val == nil {
 			err = nil
@@ -230,7 +223,7 @@ func compileDef(def Holder) (result *Def, err error) {
 			if result.Default, err = vp.validVal(dfltDef); err != nil {
 				return nil, err
 			}
-			// bwdebug.Print("vp.Val", vp.Val, "result.Default", result.Default)
+			// bwdebug.Print("vp.Val:#v", vp.Val, "result.Default", result.Default, "dfltDef:json", dfltDef)
 		}
 
 		validDefKeys.Add("isOptional")
@@ -294,7 +287,7 @@ func getDeftype(defType Holder, isSimple bool) (result ValKindSet, err error) {
 // ============================================================================
 
 func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, err error) {
-	// bwdebug.Print("v.Val:#v", v.Val)
+	// // bwdebug.Print("v.Val:#v", v.Val)
 	// bwerr.Panic("here")
 	skipArrayOf := optSkipArrayOf != nil && optSkipArrayOf[0]
 	if v.Val == nil {
@@ -314,7 +307,8 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		}
 	}
 	var valDeftype ValKind
-	switch _, kind := Kind(v.Val); kind {
+	var kind ValKind
+	switch _, kind = Kind(v.Val); kind {
 	case ValBool:
 		if def.Types.Has(ValBool) {
 			valDeftype = ValBool
@@ -325,9 +319,20 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		} else if def.Types.Has(ValNumber) {
 			valDeftype = ValNumber
 		}
+	case ValFloat64:
+		if def.Types.Has(ValNumber) {
+			valDeftype = ValNumber
+		}
 	case ValNumber:
 		if def.Types.Has(ValNumber) {
 			valDeftype = ValNumber
+		} else if def.Types.Has(ValInt) {
+			n, _ := v.Val.(Number)
+			if n.IsInt() {
+				valDeftype = ValInt
+			}
+			// && v.MustNumber().IsInt() {
+			// // bwdebug.Print("!HERE")
 		}
 	case ValMap:
 		if def.Types.Has(ValMap) {
@@ -350,13 +355,15 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 			valDeftype = ValString
 		}
 	}
-	// bwdebug.Print("valDeftype", valDeftype, "def.Types:s", def.Types, "v.Val", v.Val)
+	// bwdebug.Print("v.Val:#v", v.Val, "valDeftype", valDeftype, "kind:s", kind, "def:json", def)
+	// // bwdebug.Print()
 	if valDeftype == ValUnknown {
 		types := def.Types
 		if skipArrayOf {
 			types = types.Copy()
 			types.Del(ValArrayOf)
 		}
+		// bwdebug.Print("v.Val:#v", v.Val, "kind", kind)
 		err = v.notOfValKindError(types)
 		return
 	}
@@ -371,11 +378,16 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 			}
 		}
 	case ValInt, ValNumber:
-		// if def.Range != nil && def.Range{}
-		if !RangeContains(def.Range, v.Val) {
-			// if !v.inRange(def.Range) {
+		// bwdebug.Print("!HERE", "def.Range", def.Range, "v.Val:#v", v.Val, "def.Range.Contains(v.Val)", def.Range.Contains(v.Val))
+		if !def.Range.Contains(v.Val) {
 			err = v.outOfRangeError(def.Range)
 			return
+		}
+		// bwdebug.Print("!THERE")
+		if valDeftype == ValInt && kind == ValNumber {
+			n, _ := v.Val.(Number)
+			v.Val = n.MustInt()
+			// v.MustNumber().MustInt()
 		}
 	case ValMap:
 		if def.Keys != nil {
@@ -400,7 +412,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		} else if def.Elem != nil {
 			m, _ := Map(v.Val)
 			for k := range m {
-				// // // bwdebug.Print("m:json", m, "k", k)
+				// // // // bwdebug.Print("m:json", m, "k", k)
 				if err = v.mapHelper(k, *(def.Elem)); err != nil {
 					return
 				}
@@ -411,14 +423,19 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		if elemDef == nil {
 			elemDef = def.Elem
 		}
-		// bwdebug.Print("elemDef:json", elemDef)
 		if elemDef != nil {
 			if v.Val, err = v.arrayHelper(*elemDef); err != nil {
 				return
 			}
+		} else if kind == ValArrayOfString {
+			ss, _ := v.Val.([]string)
+			newArr := make([]interface{}, 0, len(ss))
+			for _, s := range ss {
+				newArr = append(newArr, s)
+			}
+			v.Val = newArr
 		}
 	case ValArrayOf:
-		// // // bwdebug.Print("v:json", v, "def:json", def)
 		if v.Val, err = v.arrayHelper(def, true); err != nil {
 			return
 		}
@@ -428,6 +445,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		v.Val = []interface{}{v.Val}
 	}
 
+	// bwdebug.Print("v.Val:#v", v.Val, "valDeftype", valDeftype, "kind:s", kind, "def:json", def)
 	result = v.Val
 	return
 }
@@ -435,7 +453,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 	vp, _ := v.Key(key)
 	var val interface{}
-	// // // bwdebug.Print("vp:json", vp, "elemDef:json", elemDef)
+	// // // // bwdebug.Print("vp:json", vp, "elemDef:json", elemDef)
 	if val, err = vp.validVal(elemDef); err != nil {
 		return
 	} else if val != nil {
@@ -466,6 +484,7 @@ func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (result interfa
 				result = append(newArr, val)
 			}
 		}
+		// bwdebug.Print("v:#v", v, "result", result, "elemDef:json", elemDef)
 		return
 	}
 	switch val, kind := Kind(v.Val); kind {

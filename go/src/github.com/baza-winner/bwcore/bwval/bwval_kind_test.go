@@ -6,7 +6,6 @@ import (
 
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwjson"
-	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/bwval"
 )
@@ -73,128 +72,116 @@ func TestKind(t *testing.T) {
 		"Int(int8)": {
 			In: []interface{}{bw.MaxInt8},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxInt8),
 				bwval.ValInt,
 			},
 		},
 		"Int(int16)": {
 			In: []interface{}{bw.MaxInt16},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxInt16),
 				bwval.ValInt,
 			},
 		},
 		"Int(int32)": {
 			In: []interface{}{bw.MaxInt32},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxInt32),
 				bwval.ValInt,
 			},
 		},
 		"Int(int64(bw.MaxInt32))": {
 			In: []interface{}{int64(bw.MaxInt32)},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxInt32),
 				bwval.ValInt,
 			},
 		},
-		"Int(bw.MaxInt64)": {
-			In: []interface{}{int64(bw.MaxInt64)},
-			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
-				func() (result bwval.ValKind) {
-					if bw.MaxInt64 > int64(bw.MaxInt) {
-						result = bwval.ValUnknown
-					} else {
-						result = bwval.ValInt
-					}
-					return
-				},
-			},
-		},
+		// "Int(bw.MaxInt64)": {
+		// 	In: []interface{}{int64(bw.MaxInt64)},
+		// 	Out: []interface{}{
+		// 		func(test bwtesting.Case) interface{} { return test.In[0] },
+		// 		func() (result bwval.ValKind) {
+		// 			if bw.MaxInt64 > int64(bw.MaxInt) {
+		// 				result = bwval.ValUnknown
+		// 			} else {
+		// 				result = bwval.ValInt
+		// 			}
+		// 			return
+		// 		},
+		// 	},
+		// },
 		"Int(int)": {
 			In: []interface{}{bw.MaxInt},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				bw.MaxInt,
 				bwval.ValInt,
 			},
 		},
 		"Int(uint8)": {
 			In: []interface{}{bw.MaxUint8},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxUint8),
 				bwval.ValInt,
 			},
 		},
 		"Int(uint16)": {
 			In: []interface{}{bw.MaxUint16},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxUint16),
 				bwval.ValInt,
 			},
 		},
 		"Int(uint32)": {
 			In: []interface{}{bw.MaxUint32},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxUint32),
 				bwval.ValInt,
 			},
 		},
 		"Int(uint64(bw.MaxInt32))": {
 			In: []interface{}{uint64(bw.MaxUint32)},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(bw.MaxUint32),
 				bwval.ValInt,
 			},
 		},
-		"Int(bw.MaxUint64)": {
-			In: []interface{}{bw.MaxUint64},
-			Out: []interface{}{
-				func(test bwtesting.Case) (result interface{}) {
-					if bw.MaxUint64 <= uint64(bw.MaxInt) {
-						result = test.In[0]
-					}
-					return
-				},
-				func() (result bwval.ValKind) {
-					if bw.MaxUint64 > uint64(bw.MaxInt) {
-						result = bwval.ValUnknown
-					} else {
-						result = bwval.ValInt
-					}
-					return
-				},
-			},
-		},
+		// "Int(bw.MaxUint64)": {
+		// 	In: []interface{}{bw.MaxUint64},
+		// 	Out: []interface{}{
+		// 		func(test bwtesting.Case) (result interface{}) {
+		// 			if bw.MaxUint64 <= uint64(bw.MaxInt) {
+		// 				result = test.In[0]
+		// 			}
+		// 			return
+		// 		},
+		// 		func() (result bwval.ValKind) {
+		// 			if bw.MaxUint64 > uint64(bw.MaxInt) {
+		// 				result = bwval.ValUnknown
+		// 			} else {
+		// 				result = bwval.ValInt
+		// 			}
+		// 			return
+		// 		},
+		// 	},
+		// },
 		"Int(bw.MaxUint)": {
 			In: []interface{}{bw.MaxUint},
 			Out: []interface{}{
-				func(test bwtesting.Case) (result interface{}) {
-					if bw.MaxUint <= uint(bw.MaxInt) {
-						result = test.In[0]
-					}
-					return
-				},
-				func() (result bwval.ValKind) {
-					if bw.MaxUint > uint(bw.MaxInt) {
-						result = bwval.ValUnknown
-					} else {
-						result = bwval.ValInt
-					}
-					return
-				},
+				nil,
+				bwval.ValUnknown,
 			},
 		},
 		"Int(uint(0))": {
 			In: []interface{}{uint(0)},
 			Out: []interface{}{
-				func(test bwtesting.Case) interface{} { return test.In[0] },
+				int(0),
 				bwval.ValInt,
 			},
 		},
 	}
 
-	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "Bool")
-	bwtesting.BwRunTests(t, bwval.Kind, tests)
+	bwtesting.BwRunTests(t, bwval.Kind, tests,
+		nil,
+	)
 }

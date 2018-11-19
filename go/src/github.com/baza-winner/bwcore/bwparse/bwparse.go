@@ -266,12 +266,20 @@ func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
 			}
 		}
 		if hasDot && !zeroAfterDotRegexp.MatchString(s) {
-			result, err = strconv.ParseFloat(s, 64)
+			var f float64
+			if f, err = strconv.ParseFloat(s, 64); err == nil {
+				result = f
+				// result = NumberFromFloat64(f)
+			}
 		} else {
 			if pos := strings.LastIndex(s, string(dotRune)); pos >= 0 {
 				s = s[:pos]
 			}
-			result, err = parseInt(s)
+			var i int
+			if i, err = parseInt(s); err == nil {
+				result = i
+				// result = NumberFromInt(i)
+			}
 		}
 		if err != nil {
 			err = p.Unexpected(start, bwerr.Err(err))
@@ -279,6 +287,44 @@ func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
 	}
 	return
 }
+
+// func (p *P) Number() (result Number, start PosInfo, ok bool, err error) {
+// 	var (
+// 		s      string
+// 		hasDot bool
+// 		b      bool
+// 	)
+// 	if s, start, ok, err = p.looksLikeNumber(); err == nil && ok {
+// 		for {
+// 			if s, b = p.addDigit(p.Curr.Rune, s); !b {
+// 				if hasDot || !p.skipRunes(dotRune) {
+// 					break
+// 				} else {
+// 					s += string(dotRune)
+// 					hasDot = true
+// 				}
+// 			}
+// 		}
+// 		if hasDot && !zeroAfterDotRegexp.MatchString(s) {
+// 			var f float64
+// 			if f, err = strconv.ParseFloat(s, 64); err == nil {
+// 				result = NumberFromFloat64(f)
+// 			}
+// 		} else {
+// 			if pos := strings.LastIndex(s, string(dotRune)); pos >= 0 {
+// 				s = s[:pos]
+// 			}
+// 			var i int
+// 			if i, err = parseInt(s); err == nil {
+// 				result = NumberFromInt(i)
+// 			}
+// 		}
+// 		if err != nil {
+// 			err = p.Unexpected(start, bwerr.Err(err))
+// 		}
+// 	}
+// 	return
+// }
 
 var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
@@ -393,6 +439,7 @@ func (p *P) PathContent(a PathA) (result bw.ValPath, err error) {
 		b, isEmptyResult bool
 	)
 
+	result = bw.ValPath{}
 	for err == nil {
 		isEmptyResult = len(result) == 0
 		b = true

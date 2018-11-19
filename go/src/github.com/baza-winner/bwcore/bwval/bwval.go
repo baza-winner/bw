@@ -152,8 +152,13 @@ func MustBool(val interface{}) (result bool) {
 
 // Int - пытается извлечь int из interface{}
 func Int(val interface{}) (result int, ok bool) {
-	if v, kind := Kind(val); kind == ValInt {
-		result, ok = v.(int)
+	switch v, kind := Kind(val); kind {
+	case ValInt:
+		result, _ = v.(int)
+		ok = true
+	case ValNumber:
+		n, _ := v.(Number)
+		result, ok = n.Int()
 	}
 	return
 }
@@ -167,27 +172,64 @@ func MustInt(val interface{}) (result int) {
 	return
 }
 
-// Number - пытается извлечь float64 из interface{}
-func Number(val interface{}) (result float64, ok bool) {
+// Float64 - пытается извлечь float64 из interface{}
+func Float64(val interface{}) (result float64, ok bool) {
 	switch v, kind := Kind(val); kind {
 	case ValInt:
 		var i int
-		i, ok = v.(int)
+		i, _ = v.(int)
 		result = float64(i)
+		ok = true
+	case ValFloat64:
+		result, _ = v.(float64)
+		ok = true
 	case ValNumber:
-		result, ok = v.(float64)
+		n, _ := v.(Number)
+		result, ok = n.Float64()
 	}
 	return
 }
 
-// MustNumber - must-обертка Number()
-func MustNumber(val interface{}) (result float64) {
+// MustFloat64 - must-обертка Float64()
+func MustFloat64(val interface{}) (result float64) {
 	var ok bool
-	if result, ok = Number(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Number")
+	if result, ok = Float64(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Float64")
 	}
 	return
 }
+
+// // Number - пытается извлечь Number из interface{}
+// func Number(val interface{}) (result Number, ok bool) {
+//  var (
+//    kind ValKind
+//    t    interface{}
+//  )
+//  switch t, kind = Kind(val); kind {
+//  case ValInt:
+//    i, _ := t.(int)
+//    result = NumberFromInt(i)
+//    ok = true
+//  case ValFloat64:
+//    f, _ := t.(float64)
+//    result = NumberFromFloat64(f)
+//    ok = true
+//  case ValNumber:
+//    result, _ = t.(Number)
+//    ok = true
+//  }
+//  // bwdebug.Print("kind", kind, "t", t, "val:#v", val)
+//  return
+// }
+
+// // MustNumber - must-обертка Number()
+// func MustNumber(val interface{}) (result Number) {
+//  var ok bool
+//  if result, ok = Number(val); !ok {
+//    bwerr.Panic(ansiIsNotOfType, val, "Number")
+//  }
+//  return
+// }
 
 // String - пытается извлечь string из interface{}
 func String(val interface{}) (result string, ok bool) {
@@ -268,5 +310,7 @@ func MustArrayOfString(val interface{}) (result []string) {
 	}
 	return result
 }
+
+// ============================================================================
 
 // ============================================================================

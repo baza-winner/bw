@@ -156,9 +156,10 @@ func TestPath(t *testing.T) {
 			},
 		},
 	}
-	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "some.#")
-	bwtesting.BwRunTests(t, mustPath, tests)
+	bwtesting.BwRunTests(t, mustPath, tests,
+		// ".",
+		nil,
+	)
 }
 
 func mustPath(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
@@ -247,10 +248,10 @@ func TestVal(t *testing.T) {
 		"0":                 0,
 		"-1_000_000":        -1000000,
 		"+3.14":             3.14,
-		"+2.0":              2.0,
+		"+2.0":              2,
 		"[0, 1]":            []interface{}{0, 1},
 		`"a"`:               "a",
-		`<a b c>`:           []interface{}{"a", "b", "c"},
+		`<a b c>`:           []string{"a", "b", "c"},
 		`[<a b c>]`:         []interface{}{"a", "b", "c"},
 		`["x" <a b c> "z"]`: []interface{}{"x", "a", "b", "c", "z"},
 		`{ key "value" bool true }`: map[string]interface{}{
