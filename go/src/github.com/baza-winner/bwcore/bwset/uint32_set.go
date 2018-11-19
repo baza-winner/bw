@@ -4,7 +4,6 @@ package bwset
 
 import (
 	"encoding/json"
-	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"sort"
 	"strconv"
 )
@@ -60,7 +59,8 @@ func _Uint32ToSliceTestHelper(kk []uint32) []uint32 {
 
 // String - поддержка интерфейса Stringer
 func (v Uint32) String() string {
-	return bwjson.Pretty(v)
+	result, _ := json.Marshal(v)
+	return string(result)
 }
 
 // MarshalJSON - поддержка интерфейса MarshalJSON

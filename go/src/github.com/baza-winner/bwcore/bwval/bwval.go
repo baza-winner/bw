@@ -15,19 +15,14 @@ import (
 func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 	var err error
 	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
-
 		p := bwparse.From(bwrune.ProviderFromString(s))
 		a := bwparse.PathA{}
 		if len(optBases) > 0 {
 			a.Bases = optBases[0]
 		}
-		if result, err = p.PathContent(a); err != nil {
-			return
+		if result, err = p.PathContent(a); err == nil {
+			err = p.SkipSpace(bwparse.TillEOF)
 		}
-		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
-			return
-		}
-
 		return
 	}(s, optBases...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
@@ -63,32 +58,39 @@ func MustSetPathVal(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[s
 // ============================================================================
 
 func From(s string, optVars ...map[string]interface{}) (result interface{}) {
+	return FromTemplate(TemplateFrom(s), optVars...)
+}
+
+type Template struct {
+	val interface{}
+}
+
+func TemplateFrom(s string) (result Template) {
 	var err error
-	if result, err = func(s string, optVars ...map[string]interface{}) (result interface{}, err error) {
+	var val interface{}
+	if val, err = func(s string) (result interface{}, err error) {
 		defer func() {
 			if err != nil {
 				result = nil
 			}
 		}()
-
 		p := bwparse.From(bwrune.ProviderFromString(s))
-
-		p.Forward(1)
-		if err = p.CheckNotEOF(); err != nil {
-			return
-		}
 		var ok bool
-		if result, _, ok, err = p.Val(); err != nil || !ok {
-			if err == nil {
-				err = p.Unexpected(p.Curr)
-			}
-			return
+		if result, _, ok, err = p.Val(); err == nil && ok {
+			err = p.SkipSpace(bwparse.TillEOF)
+		} else if err == nil {
+			err = p.Unexpected(p.Curr)
 		}
-		if err = p.SkipSpace(bwparse.TillEOF); err != nil {
-			return
-		}
-		return expandPaths(result, result, true, optVars...)
-	}(s, optVars...); err != nil {
+		return
+	}(s); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return Template{val: val}
+}
+
+func FromTemplate(template Template, optVars ...map[string]interface{}) (result interface{}) {
+	var err error
+	if result, err = expandPaths(template.val, template.val, true, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
@@ -259,10 +261,10 @@ func ArrayOfString(val interface{}) (result []string, ok bool) {
 }
 
 // MustArray - must-обертка Array()
-func MustArrayOfString(val interface{}) (result []interface{}) {
+func MustArrayOfString(val interface{}) (result []string) {
 	var ok bool
-	if result, ok = Array(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Array")
+	if result, ok = ArrayOfString(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "ArrayOfString")
 	}
 	return result
 }

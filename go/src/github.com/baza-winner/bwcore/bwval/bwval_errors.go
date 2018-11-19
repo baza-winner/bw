@@ -29,7 +29,10 @@ var (
 func init() {
 	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
 	ansiMustSetPathValFailed = ansi.String("Failed to set <ansiPath>%s<ansi> of <ansiVal>%s<ansi>%s: {Error}")
+
+	// ansiMustPathValFailed = ansi.String("Failed to get <ansiPath>%s<ansi> of <ansiVal>%s<ansi>%s: {Error}")
 	ansiMustPathValFailed = ansi.String("Failed to get <ansiPath>%s<ansi> of <ansiVal>%s<ansi>%s: {Error}")
+
 	valPathPrefix := "<ansiPath>%s<ansi>"
 	ansiWrongVal = ansi.String(valPathPrefix + " is <ansiErr>%#v")
 	ansiUnexpectedEnumValue = ansi.String(valPathPrefix + ": expected one of <ansiVal>%s<ansi> instead of <ansiErr>%q")

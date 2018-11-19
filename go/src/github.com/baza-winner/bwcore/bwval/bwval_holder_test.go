@@ -29,9 +29,9 @@ func TestHolderMarshalJSON(t *testing.T) {
 		},
 	}
 
-	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "Bool")
-	bwtesting.BwRunTests(t, HolderPretty, tests)
+	bwtesting.BwRunTests(t, HolderPretty, tests,
+		nil,
+	)
 }
 
 func HolderPretty(v bwval.Holder) string {
@@ -166,25 +166,33 @@ func TestHolderMustMap(t *testing.T) {
 		},
 	}
 
-	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "UnexpectedItem")
-	bwtesting.BwRunTests(t, "MustMap", tests)
+	bwtesting.BwRunTests(t, "MustMap", tests,
+		nil,
+	)
 }
 
 func TestHolderValidVal(t *testing.T) {
 	tests := map[string]bwtesting.Case{}
+	testProto := func() bwtesting.Case {
+		return bwtesting.Case{
+			V: func(testName string) bwval.Holder {
+				return bwval.Holder{Val: bwval.HolderFrom(testName).MustKeyVal("val")}
+			},
+			In: []interface{}{
+				func(testName string) bwval.Def { return bwval.DefFrom(bwval.HolderFrom(testName).MustKeyVal("def")) },
+			},
+		}
+	}
 	for k, v := range map[string]interface{}{
 		"{ val: true, def: Bool }":                                            true,
 		"{ val: nil def: { type Int default 273} }":                           273,
 		"{ val: nil def: { type Int isOptional true} }":                       nil,
 		"{ val: nil def: { type Map keys { some {type Int default 273} } } }": map[string]interface{}{"some": 273},
+		"{ val: <some thing> def: { type Array } }":                           []interface{}{"some", "thing"},
 	} {
-		h := bwval.HolderFrom(k)
-		tests[k] = bwtesting.Case{
-			V:   bwval.Holder{Val: h.MustKeyVal("val")},
-			In:  []interface{}{bwval.DefFrom(h.MustKeyVal("def"))},
-			Out: []interface{}{v},
-		}
+		test := testProto()
+		test.Out = []interface{}{v}
+		tests[k] = test
 	}
 	for k, v := range map[string]string{
 		"{ val: 0, def: Bool }": "\x1b[96;1m0\x1b[0m::\x1b[38;5;252;1m.\x1b[0m (\x1b[96;1m0\x1b[0m)\x1b[0m is not \x1b[97;1mBool\x1b[0m\x1b[0m",
@@ -192,19 +200,18 @@ func TestHolderValidVal(t *testing.T) {
 		"{ val: [true 0], def: [ArrayOf Bool] }": "\x1b[96;1m[\n  true,\n  0\n]\x1b[0m::\x1b[38;5;252;1m1\x1b[0m (\x1b[96;1m0\x1b[0m)\x1b[0m is not \x1b[97;1mBool\x1b[0m\x1b[0m",
 		"{ val: nil def: Array}":                 "\x1b[96;1mnull\x1b[0m::\x1b[38;5;252;1m.\x1b[0m (\x1b[96;1mnull\x1b[0m)\x1b[0m is not \x1b[97;1mArray\x1b[0m\x1b[0m",
 		"{ val: { key: <some thing> } def: { type Map elem { type <ArrayOf String> enum <some good>}} }": "\x1b[96;1m{\n  \"key\": [\n    \"some\",\n    \"thing\"\n  ]\n}\x1b[0m::\x1b[38;5;252;1mkey.1\x1b[0m: expected one of \x1b[96;1m[\n  \"good\",\n  \"some\"\n]\x1b[0m instead of \x1b[91;1m\"thing\"\x1b[0m\x1b[0m",
+		"{ val: { some: 0 thing: 1 } def: { type Map keys { some Int } } }":                              "\x1b[96;1m{\n  \"some\": 0,\n  \"thing\": 1\n}\x1b[0m::\x1b[38;5;252;1m.\x1b[0m (\x1b[96;1m{\n  \"some\": 0,\n  \"thing\": 1\n}\x1b[0m)\x1b[0m has unexpected key \x1b[96;1m\"thing\"\x1b[0m\x1b[0m",
+		"{ val: { some: 0 thing: 1 } def: { type Map keys { some Int } elem Bool } }":                    "\x1b[96;1m{\n  \"some\": 0,\n  \"thing\": 1\n}\x1b[0m::\x1b[38;5;252;1mthing\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m is not \x1b[97;1mBool\x1b[0m\x1b[0m",
+		"{ val: { some: 0 } def: { type Map keys { some Bool } } }":                                      "\x1b[96;1m{\n  \"some\": 0\n}\x1b[0m::\x1b[38;5;252;1msome\x1b[0m (\x1b[96;1m0\x1b[0m)\x1b[0m is not \x1b[97;1mBool\x1b[0m\x1b[0m",
+		"{ val: [0, true] def: { type Array elem Int } }":                                                "\x1b[96;1m[\n  0,\n  true\n]\x1b[0m::\x1b[38;5;252;1m1\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mInt\x1b[0m\x1b[0m",
 	} {
-		h := bwval.HolderFrom(k)
-		tests[k] = bwtesting.Case{
-			V:     bwval.Holder{Val: h.MustKeyVal("val")},
-			In:    []interface{}{bwval.DefFrom(h.MustKeyVal("def"))},
-			Panic: v,
-		}
+		test := testProto()
+		test.Panic = v
+		tests[k] = test
 	}
 
-	bwmap.CropMap(tests)
-	// bwmap.CropMap(tests, "{ val: { key: <some thing> } def: { type Map elem { type <ArrayOf String> enum <some good>}} }")
-	// for _, test := range tests {
-	// 	bwdebug.Print("test", bwjson.Pretty(test))
-	// }
-	bwtesting.BwRunTests(t, "MustValidVal", tests)
+	bwtesting.BwRunTests(t, "MustValidVal", tests,
+		// "{ val: <some thing> def: { type Array } }",
+		nil,
+	)
 }

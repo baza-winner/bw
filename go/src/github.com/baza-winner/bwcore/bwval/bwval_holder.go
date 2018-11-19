@@ -20,6 +20,15 @@ func HolderFrom(s string, optVars ...map[string]interface{}) Holder {
 	return Holder{Val: From(s, optVars...)}
 }
 
+func hasOptional(path bw.ValPath) bool {
+	for _, vpi := range path {
+		if vpi.IsOptional {
+			return true
+		}
+	}
+	return false
+}
+
 // PathVal - реализация интерфейса bw.Val
 func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (result interface{}, err error) {
 	if len(path) == 0 {
@@ -39,9 +48,15 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 	}
 
 	if path[0].Type == bw.ValPathItemVar {
+		varName := path[0].Key
 		var target interface{}
-		if len(optVars) > 0 {
-			target = optVars[0][path[0].Key]
+		var ok bool
+		if ok = len(optVars) > 0; ok {
+			target, ok = optVars[0][varName]
+		}
+		if !ok && !hasOptional(path) {
+			err = bwerr.From(ansi.String("var <ansiVar>%s<ansi> is not defined"), varName)
+			return
 		}
 		h := Holder{Val: target}
 		return h.PathVal(simplePath[1:])
@@ -53,25 +68,14 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 		case bw.ValPathItemKey:
 			result, err = Holder{result, path[:i]}.KeyVal(vpi.Key,
 				func() (result interface{}, ok bool) {
-					for _, vpi := range path[i:] {
-						if vpi.IsOptional {
-							ok = true
-							break
-						}
-					}
+					ok = hasOptional(path[i:])
 					return
 				},
 			)
 		case bw.ValPathItemIdx:
-			// bwdebug.Print("path[:i]:json", path[:i], "path[]:json", path, "path[i:]:json", path[i:])
 			result, err = Holder{result, path[:i]}.IdxVal(vpi.Idx,
 				func() (result interface{}, ok bool) {
-					for _, vpi := range path[i:] {
-						if vpi.IsOptional {
-							ok = true
-							break
-						}
-					}
+					ok = hasOptional(path[i:])
 					return
 				},
 			)
@@ -384,6 +388,7 @@ func (v Holder) IdxVal(idx int, optDefaultValProvider ...defaultValProvider) (re
 			} else {
 				result, ok = defaultVal(optDefaultValProvider)
 			}
+			// bwdebug.Print("!HERE")
 			if !ok {
 				err = v.notEnoughRangeError(len(vals), idx)
 			}
@@ -395,6 +400,7 @@ func (v Holder) IdxVal(idx int, optDefaultValProvider ...defaultValProvider) (re
 			} else {
 				result, ok = defaultVal(optDefaultValProvider)
 			}
+			// bwdebug.Print("!HERE")
 			if !ok {
 				err = v.notEnoughRangeError(len(ss), idx)
 			}

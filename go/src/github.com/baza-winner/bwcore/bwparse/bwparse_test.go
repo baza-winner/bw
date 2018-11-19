@@ -15,9 +15,10 @@ import (
 func TestUnexpected(t *testing.T) {
 	tests := map[string]bwtesting.Case{}
 	tests["panic"] = bwtesting.Case{
-		V:     testUnexpectedHelper("some", 2),
-		In:    []interface{}{bwparse.PosInfo{Pos: 4}},
-		Panic: "\x1b[32;1mgithub.com/baza-winner/bwcore/bwparse.(*P).suffix\x1b[38;5;243m@\x1b[97;1mbwparse_private.go:75\x1b[0m: \x1b[38;5;201;1mps.Pos\x1b[0m (\x1b[96;1m4\x1b[0m) > \x1b[38;5;201;1mp.Curr.Pos\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m",
+		V:  testUnexpectedHelper("some", 2),
+		In: []interface{}{bwparse.PosInfo{Pos: 4}},
+		// Out: []interface{}{"some"},
+		Panic: "\x1b[38;5;201;1mps.Pos\x1b[0m (\x1b[96;1m4\x1b[0m) > \x1b[38;5;201;1mp.Curr.Pos\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m",
 	}
 	p := testUnexpectedHelper("{\n key wrong \n} ", 0)
 	p.Forward(7)

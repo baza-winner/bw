@@ -4,7 +4,6 @@ package bwset
 
 import (
 	"encoding/json"
-	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"sort"
 	"strconv"
 )
@@ -55,7 +54,8 @@ func (v Bool) ToSlice() []bool {
 
 // String - поддержка интерфейса Stringer
 func (v Bool) String() string {
-	return bwjson.Pretty(v)
+	result, _ := json.Marshal(v)
+	return string(result)
 }
 
 // MarshalJSON - поддержка интерфейса MarshalJSON

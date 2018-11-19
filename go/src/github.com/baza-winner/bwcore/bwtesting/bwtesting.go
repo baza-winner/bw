@@ -93,7 +93,40 @@ func init() {
 	ansiDiffEnd = "\n------- END DIFF -------\n"
 }
 
-func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
+func BwRunTests(
+	t *testing.T,
+	testee interface{},
+	tests map[string]Case,
+	cropTestNames ...interface{},
+) {
+	if len(cropTestNames) > 0 {
+		var ss []string
+		for _, val := range cropTestNames {
+			if s, ok := val.(string); ok {
+				ss = append(ss, s)
+			}
+		}
+		if len(ss) > 0 {
+			croppedTests := map[string]Case{}
+			for _, s := range ss {
+				if test, ok := tests[s]; ok {
+					croppedTests[s] = test
+				} else {
+					bwerr.Panic(ansi.String("can not crop to non existent test %q"), s)
+				}
+			}
+			tests = croppedTests
+			// bwmap.CropMap(tests, vals...)
+			var s string
+			if len(ss) == 1 {
+				s = bwjson.Pretty(ss[0])
+			} else {
+				s = bwjson.Pretty(ss)
+			}
+			t.Logf(ansi.String("<ansiWarn>Tests cropped to <ansiVal>%s"), s)
+		}
+	}
+
 	if len(tests) == 0 {
 		bwerr.Panic("no tests to run")
 	}
@@ -181,28 +214,6 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 
 		if s, ok := testee.(string); ok {
 			v := getCalculableValue(test.V, nil, testFunc, testName, test, "V")
-			// v := getCalculableValue(test.V, reflect.TypeOf((*interface{})(nil)).Elem(), testFunc, testName, test, "V")
-			// bwdebug.Print("v", v)
-			// v := reflect.ValueOf(test.V)
-
-			// if v.Kind() == reflect.Func {
-			// 	if valType := reflect.TypeOf(test.V); valType.NumOut() != 1 {
-			// 		bwerr.Panic(
-			// 			ansiExpectsOneReturnValue,
-			// 			testFunc, testName, "V",
-			// 			valType.NumOut(),
-			// 		)
-			// 	} else if valType.Out(0).Kind != reflect.Interface {
-			// 		bwerr.Panic(
-			// 			ansiExpectsTypeOfReturnValue,
-			// 			testFunc, testName, "V",
-			// 			reflect.Interface,
-			// 			valType.Out(0),
-			// 		)
-			// 	} else {
-
-			// 	}
-			// }
 
 			testeeValue = v.MethodByName(s)
 			testeeType = testeeValue.Type()
@@ -273,8 +284,8 @@ func BwRunTests(t *testing.T, testee interface{}, tests map[string]Case) {
 			initFmt(func() (result string) {
 				result = fmt.Sprintf(ansi.String(" should <ansiErr>Panic<ansi> as:\n<ansiVar>q<ansi>: %#v\n<ansiVar>json<ansi>: %s"), test.Panic, test.Panic)
 				if numOut > 0 {
-					prefix := "<ansiErr>but returned"
-					s := ansi.String(":\n  <ansiVar>q<ansi>: %#v\n  <ansiVar>json<ansi>: %s")
+					prefix := "\n<ansiErr>but returned"
+					s := ansi.String(":\n  <ansiVar>q<ansi>: %#v\n  <ansiVar>s<ansi>: %s")
 					if numOut == 1 {
 						val := outValues[0].Interface()
 						result += fmt.Sprintf(ansi.String(prefix)+s, val, val)

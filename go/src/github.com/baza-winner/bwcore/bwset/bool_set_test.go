@@ -4,7 +4,6 @@ package bwset
 
 import (
 	"encoding/json"
-	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"strconv"
 	"testing"
@@ -50,8 +49,11 @@ func TestBool(t *testing.T) {
 		Out: []interface{}{[]bool{_BoolTestItemA}},
 	}})
 	bwtesting.BwRunTests(t, Bool.String, map[string]bwtesting.Case{"Bool.String": {
-		In:  []interface{}{Bool{_BoolTestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.Pretty([]bool{_BoolTestItemA})},
+		In: []interface{}{Bool{_BoolTestItemA: struct{}{}}},
+		Out: []interface{}{func() string {
+			result, _ := json.Marshal(_BoolTestItemA)
+			return "[" + string(result) + "]"
+		}()},
 	}})
 	bwtesting.BwRunTests(t, Bool.MarshalJSON, map[string]bwtesting.Case{"Bool.MarshalJSON": {
 		In: []interface{}{Bool{_BoolTestItemA: struct{}{}}},

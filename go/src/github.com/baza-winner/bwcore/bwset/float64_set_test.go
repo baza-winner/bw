@@ -4,7 +4,6 @@ package bwset
 
 import (
 	"encoding/json"
-	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"strconv"
 	"testing"
@@ -54,8 +53,11 @@ func TestFloat64(t *testing.T) {
 		Out: []interface{}{[]float64{_Float64TestItemA, _Float64TestItemB}},
 	}})
 	bwtesting.BwRunTests(t, Float64.String, map[string]bwtesting.Case{"Float64.String": {
-		In:  []interface{}{Float64{_Float64TestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.Pretty([]float64{_Float64TestItemA})},
+		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}},
+		Out: []interface{}{func() string {
+			result, _ := json.Marshal(_Float64TestItemA)
+			return "[" + string(result) + "]"
+		}()},
 	}})
 	bwtesting.BwRunTests(t, Float64.MarshalJSON, map[string]bwtesting.Case{"Float64.MarshalJSON": {
 		In: []interface{}{Float64{_Float64TestItemA: struct{}{}}},

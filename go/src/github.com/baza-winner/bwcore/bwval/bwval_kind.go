@@ -51,7 +51,6 @@ func init() {
 		mapValKindFromString[i.String()] = i
 	}
 	ansiUknownValKind = ansi.String("<ansiPath>ValKindFromString<ansi>: uknown <ansiVal>%s")
-	return
 }
 
 func ValKindFromString(s string) (result ValKind, err error) {

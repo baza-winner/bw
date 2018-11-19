@@ -4,7 +4,6 @@ package bwval
 
 import (
 	"encoding/json"
-	bwjson "github.com/baza-winner/bwcore/bwjson"
 	bwtesting "github.com/baza-winner/bwcore/bwtesting"
 	"testing"
 )
@@ -53,8 +52,11 @@ func TestValKindSet(t *testing.T) {
 		Out: []interface{}{[]ValKind{_ValKindSetTestItemA, _ValKindSetTestItemB}},
 	}})
 	bwtesting.BwRunTests(t, ValKindSet.String, map[string]bwtesting.Case{"ValKindSet.String": {
-		In:  []interface{}{ValKindSet{_ValKindSetTestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.Pretty([]ValKind{_ValKindSetTestItemA})},
+		In: []interface{}{ValKindSet{_ValKindSetTestItemA: struct{}{}}},
+		Out: []interface{}{func() string {
+			result, _ := json.Marshal(_ValKindSetTestItemA)
+			return "[" + string(result) + "]"
+		}()},
 	}})
 	bwtesting.BwRunTests(t, ValKindSet.MarshalJSON, map[string]bwtesting.Case{"ValKindSet.MarshalJSON": {
 		In: []interface{}{ValKindSet{_ValKindSetTestItemA: struct{}{}}},

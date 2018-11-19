@@ -4,11 +4,10 @@ package bwval
 
 import (
 	"encoding/json"
-	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"sort"
 )
 
-// ValKindSet - множество значений типа ValKind с поддержкой интерфейсов Stringer и github.com/baza-winner/bwcore/bwjson.Jsonable
+// ValKindSet - множество значений типа ValKind с поддержкой интерфейсов Stringer и MarshalJSON
 type ValKindSet map[ValKind]struct{}
 
 // ValKindSetFrom - конструктор ValKindSet
@@ -59,13 +58,14 @@ func _ValKindSetToSliceTestHelper(kk []ValKind) []ValKind {
 
 // String - поддержка интерфейса Stringer
 func (v ValKindSet) String() string {
-	return bwjson.Pretty(v)
+	result, _ := json.Marshal(v)
+	return string(result)
 }
 
 // MarshalJSON - поддержка интерфейса MarshalJSON
 func (v ValKindSet) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
-	for k, _ := range v {
+	for _, k := range v.ToSlice() {
 		result = append(result, k)
 	}
 	return json.Marshal(result)

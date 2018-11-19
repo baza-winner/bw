@@ -54,7 +54,8 @@ func (v Interface) ToSlice() []interface{} {
 
 // String - поддержка интерфейса Stringer
 func (v Interface) String() string {
-	return bwjson.Pretty(v)
+	result, _ := json.Marshal(v)
+	return string(result)
 }
 
 // MarshalJSON - поддержка интерфейса MarshalJSON

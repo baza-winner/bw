@@ -14,30 +14,30 @@ import (
 )
 
 var (
-	ansiDebugVarValue         string
-	ansiDebugVarValueAsString string
-	ansiDebugMark             string
-	ansiDebugVarName          string
-	ansiExpectsVarVal         string
-	ansiMustBeString          string
-	ansiMustBeNonEmptyString  string
-	ansiMustBeNonEmptyVarName string
+	ansiDebugVarValue              string
+	ansiDebugVarValueAsVerboseHash string
+	ansiDebugVarValueAsString      string
+	ansiDebugMark                  string
+	ansiDebugVarName               string
+	ansiExpectsVarVal              string
+	ansiMustBeString               string
+	ansiMustBeNonEmptyString       string
+	ansiMustBeNonEmptyVarName      string
 )
 
 func init() {
 	ansi.MustAddTag("ansiDebugMark",
 		ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorYellow, Bright: true}),
-		// ansi.SGRCodeOfColor256(ansi.Color256{Code: 201}),
 		ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
 	)
-	ansiDebugVarValue = ansi.String("<ansiVal>%#v<ansi>")
+	ansiDebugVarValue = ansi.String("<ansiVal>%v<ansi>")
+	ansiDebugVarValueAsVerboseHash = ansi.String("<ansiVal>%#v<ansi>")
 	ansiDebugVarValueAsString = ansi.String("<ansiVal>%s<ansi>")
 	ansiDebugMark = ansi.String("<ansiDebugMark>%s<ansi>, ")
 	ansiDebugVarName = ansi.String("<ansiVar>%s<ansi>: ")
 	ansiExpectsVarVal = ansi.String("expects val for <ansiVar>%s")
 	ansiMustBeString = "<ansiVar>args<ansiPath>.%d<ansi> (<ansiVal>%#v<ansi>) must be <ansiType>string"
 	ansiMustBeNonEmptyString = "<ansiVar>args<ansiPath>.%d<ansi> must be <ansiType>non empty string"
-	// ansiMustBeNonEmptyVarName = "<ansiVar>args<ansiPath>.%d<ansi> must be <ansiType>non empty var name"
 }
 
 func Print(args ...interface{}) {
@@ -51,6 +51,7 @@ func Print(args ...interface{}) {
 var asJSONSuffix = regexp.MustCompile(":json$")
 var asStringSuffix = regexp.MustCompile(":s$")
 var asVerboseSuffix = regexp.MustCompile(":v$")
+var asVerboseHashSuffix = regexp.MustCompile(":#v$")
 
 func stringToPrint(depth uint, args ...interface{}) (result string, err error) {
 	markPrefix := ""
@@ -62,6 +63,7 @@ func stringToPrint(depth uint, args ...interface{}) (result string, err error) {
 	type valueFormat uint8
 	const (
 		vfVerbose valueFormat = iota
+		vfVerboseHash
 		vfString
 		vfJSON
 	)
@@ -74,10 +76,20 @@ func stringToPrint(depth uint, args ...interface{}) (result string, err error) {
 			switch vf {
 			case vfString:
 				fmtString += ansiDebugVarValueAsString
-				fmtArgs = append(fmtArgs, arg)
+				switch t := arg.(type) {
+				case rune:
+					fmtArgs = append(fmtArgs, string(t))
+				case fmt.Stringer:
+					fmtArgs = append(fmtArgs, t.String())
+				default:
+					fmtArgs = append(fmtArgs, arg)
+				}
 			case vfJSON:
 				fmtString += ansiDebugVarValueAsString
 				fmtArgs = append(fmtArgs, bwjson.Pretty(arg))
+			case vfVerboseHash:
+				fmtString += ansiDebugVarValueAsVerboseHash
+				fmtArgs = append(fmtArgs, arg)
 			default:
 				fmtString += ansiDebugVarValue
 				fmtArgs = append(fmtArgs, arg)
@@ -104,6 +116,9 @@ func stringToPrint(depth uint, args ...interface{}) (result string, err error) {
 			} else if asVerboseSuffix.MatchString(s) {
 				s = s[:len(s)-2]
 				vf = vfVerbose
+			} else if asVerboseHashSuffix.MatchString(s) {
+				s = s[:len(s)-3]
+				vf = vfVerboseHash
 			} else {
 				vf = vfDefault
 			}

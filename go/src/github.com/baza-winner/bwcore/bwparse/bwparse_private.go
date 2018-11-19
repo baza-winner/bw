@@ -8,14 +8,12 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwerr/where"
 	"github.com/baza-winner/bwcore/bwrune"
 )
 
 // ============================================================================
 
 var (
-	ansiPosInfoFailed   string
 	ansiOK              string
 	ansiErr             string
 	ansiPos             string
@@ -31,10 +29,9 @@ func init() {
 	ansiOK = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: false})).String()
 	ansiErr = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true})).String()
 
-	ansiPosInfoFailed = "<ansiPath>bwparse.Provider.<ansiFunc>PosInfo<ansi>(%d) failed, must <ansiFunc>.SetMaxBackwardCount<ansi>(<ansiVal>%d<ansi>)"
 	ansiPos = ansi.String(" at pos <ansiPath>%d<ansi>")
 	ansiLineCol = ansi.String(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)")
-	ansiGetSuffixAssert = ansi.String("%s: <ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
+	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>%q<ansi>")
@@ -67,12 +64,11 @@ func (p *P) pullRune(ps *PosInfo) {
 		}
 		ps.Pos++
 	}
-	return
 }
 
 func (p *P) suffix(ps PosInfo) (suffix string) {
 	if ps.Pos > p.Curr.Pos {
-		bwerr.Panic(ansiGetSuffixAssert, where.MustFrom(0).String(), ps.Pos, p.Curr.Pos)
+		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
 	}
 
 	preLineCount, postLineCount := p.preLineCount, p.postLineCount

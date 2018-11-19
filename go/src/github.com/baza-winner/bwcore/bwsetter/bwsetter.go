@@ -147,25 +147,34 @@ func main() {
 	}
 
 	// if !*nodataforjsonFlag {
-	prettyJsonArg := jen.Index().Id(code.IdItem).Values(jen.Id(code.TestItemString(A)))
-	if code.IdItem == "uint8" {
-		prettyJsonArg = jen.Index().Id("uint16").Values(jen.Id("uint16").Call(jen.Id(code.TestItemString(A))))
-	}
+	// prettyJsonArg := jen.Index().Id(code.IdItem).Values(jen.Id(code.TestItemString(A)))
+	// if code.IdItem == "uint8" {
+	// 	prettyJsonArg = jen.Index().Id("uint16").Values(jen.Id("uint16").Call(jen.Id(code.TestItemString(A))))
+	// }
 	code.SetMethod(
 		"поддержка интерфейса Stringer",
 		"String", ParamNone, ReturnString,
 		[]*jen.Statement{
-			jen.Return(jen.Qual(bwjsonPackageName, "Pretty").Call(jen.Id("v"))),
+			jen.List(jen.Id("result"), jen.Id("_")).Op(":=").Qual("encoding/json", "Marshal").Call(jen.Id("v")),
+			jen.Return(jen.Id("string").Call(jen.Id("result"))),
+			// jen.Return(jen.Qual(bwjsonPackageName, "Pretty").Call(jen.Id("v"))),
 		},
 		TestCase{
 			In: []interface{}{[]TestItem{A}},
 			Out: []interface{}{
-				jen.Qual(bwjsonPackageName, "Pretty").Call(
-					prettyJsonArg,
-				),
+				jen.Func().Params().String().Block(
+					jen.List(jen.Id("result"), jen.Id("_")).Op(":=").Qual("encoding/json", "Marshal").Call(jen.Id(code.TestItemString(A))),
+					jen.Return(jen.Lit("[").Op("+").String().Call(jen.Id("result")).Op("+").Lit("]")),
+				).Call(),
 			},
 		},
 	)
+
+	// func (v ValKindSet) String() string {
+	// 	result, _ := json.Marshal(v)
+	// 	return string(result)
+	// }
+	// func() { result, _ := json.Marshal(v); return "[" + string(result) + "]"}
 
 	code.SetMethod(
 		"поддержка интерфейса MarshalJSON",

@@ -49,8 +49,11 @@ func TestInterface(t *testing.T) {
 		Out: []interface{}{[]interface{}{_InterfaceTestItemA}},
 	}})
 	bwtesting.BwRunTests(t, Interface.String, map[string]bwtesting.Case{"Interface.String": {
-		In:  []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
-		Out: []interface{}{bwjson.Pretty([]interface{}{_InterfaceTestItemA})},
+		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
+		Out: []interface{}{func() string {
+			result, _ := json.Marshal(_InterfaceTestItemA)
+			return "[" + string(result) + "]"
+		}()},
 	}})
 	bwtesting.BwRunTests(t, Interface.MarshalJSON, map[string]bwtesting.Case{"Interface.MarshalJSON": {
 		In: []interface{}{Interface{_InterfaceTestItemA: struct{}{}}},
