@@ -7,6 +7,7 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -255,21 +256,21 @@ func (v Holder) MustFloat64() (result float64) {
 	return
 }
 
-// func (v Holder) Number() (result Number, err error) {
-// 	var ok bool
-// 	if result, ok = Number(v.Val); !ok {
-// 		err = v.notOfValKindError(ValKindSetFrom(ValNumber))
-// 	}
-// 	return
-// }
+func (v Holder) Number() (result bwtype.Number, err error) {
+	var ok bool
+	if result, ok = Number(v.Val); !ok {
+		err = v.notOfValKindError(ValKindSetFrom(ValNumber))
+	}
+	return
+}
 
-// func (v Holder) MustNumber() (result Number) {
-// 	var err error
-// 	if result, err = v.Number(); err != nil {
-// 		bwerr.PanicA(bwerr.Err(err))
-// 	}
-// 	return
-// }
+func (v Holder) MustNumber() (result bwtype.Number) {
+	var err error
+	if result, err = v.Number(); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
+}
 
 func (v Holder) Array() (result []interface{}, err error) {
 	var ok bool

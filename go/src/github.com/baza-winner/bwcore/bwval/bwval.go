@@ -7,6 +7,7 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwparse"
 	"github.com/baza-winner/bwcore/bwrune"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -157,7 +158,7 @@ func Int(val interface{}) (result int, ok bool) {
 		result, _ = v.(int)
 		ok = true
 	case ValNumber:
-		n, _ := v.(Number)
+		n, _ := v.(bwtype.Number)
 		result, ok = n.Int()
 	}
 	return
@@ -184,7 +185,7 @@ func Float64(val interface{}) (result float64, ok bool) {
 		result, _ = v.(float64)
 		ok = true
 	case ValNumber:
-		n, _ := v.(Number)
+		n, _ := v.(bwtype.Number)
 		result, ok = n.Float64()
 	}
 	return
@@ -199,37 +200,38 @@ func MustFloat64(val interface{}) (result float64) {
 	return
 }
 
-// // Number - пытается извлечь Number из interface{}
-// func Number(val interface{}) (result Number, ok bool) {
-//  var (
-//    kind ValKind
-//    t    interface{}
-//  )
-//  switch t, kind = Kind(val); kind {
-//  case ValInt:
-//    i, _ := t.(int)
-//    result = NumberFromInt(i)
-//    ok = true
-//  case ValFloat64:
-//    f, _ := t.(float64)
-//    result = NumberFromFloat64(f)
-//    ok = true
-//  case ValNumber:
-//    result, _ = t.(Number)
-//    ok = true
-//  }
-//  // bwdebug.Print("kind", kind, "t", t, "val:#v", val)
-//  return
-// }
+// bwtype.Number - пытается извлечь bwtype.Number из interface{}
+func Number(val interface{}) (result bwtype.Number, ok bool) {
+	result, ok = bwtype.NumberFrom(val)
+	// var (
+	//   kind ValKind
+	//   t    interface{}
+	// )
+	// switch t, kind = Kind(val); kind {
+	// case ValInt:
+	//   i, _ := t.(int)
+	//   result = NumberFromInt(i)
+	//   ok = true
+	// case ValFloat64:
+	//   f, _ := t.(float64)
+	//   result = NumberFromFloat64(f)
+	//   ok = true
+	// case ValNumber:
+	//   result, _ = t.(bwtype.Number)
+	//   ok = true
+	// }
+	// bwdebug.Print("kind", kind, "t", t, "val:#v", val)
+	return
+}
 
-// // MustNumber - must-обертка Number()
-// func MustNumber(val interface{}) (result Number) {
-//  var ok bool
-//  if result, ok = Number(val); !ok {
-//    bwerr.Panic(ansiIsNotOfType, val, "Number")
-//  }
-//  return
-// }
+// MustNumber - must-обертка bwtype.Number()
+func MustNumber(val interface{}) (result bwtype.Number) {
+	var ok bool
+	if result, ok = Number(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Number")
+	}
+	return
+}
 
 // String - пытается извлечь string из interface{}
 func String(val interface{}) (result string, ok bool) {

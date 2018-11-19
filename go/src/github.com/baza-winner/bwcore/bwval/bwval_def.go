@@ -7,6 +7,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwset"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -15,7 +16,7 @@ type Def struct {
 	Types      ValKindSet
 	IsOptional bool
 	Enum       bwset.String
-	Range      Range
+	Range      bwtype.Range
 	Keys       map[string]Def
 	Elem       *Def
 	ArrayElem  *Def
@@ -29,7 +30,7 @@ func (v Def) MarshalJSON() ([]byte, error) {
 	if v.Enum != nil {
 		result["Enum"] = v.Enum
 	}
-	if v.Range.Kind() != RangeNo {
+	if v.Range.Kind() != bwtype.RangeNo {
 		result["Range"] = v.Range
 	}
 	if v.Keys != nil {
@@ -137,7 +138,9 @@ func compileDef(def Holder) (result *Def, err error) {
 				}
 			}
 		}
+		// bwdebug.Print("types:s", types)
 		if types.Has(ValArray) {
+			// bwdebug.Print("!HERE")
 			validDefKeys.Add("arrayElem")
 			if vp = def.MustKey("arrayElem", nil); vp.Val != nil {
 				if result.ArrayElem, err = compileDef(vp); err != nil {
@@ -156,27 +159,28 @@ func compileDef(def Holder) (result *Def, err error) {
 		hasInt := types.Has(ValInt)
 		if hasInt || types.Has(ValNumber) {
 			validDefKeys.Add("min", "max")
-			var min, max Number
+			var min, max bwtype.Number
 			var limCount int
-			var getLimit func(key string) (result Number, err error)
+			var getLimit func(key string) (result bwtype.Number, err error)
 
 			if hasInt {
-				getLimit = func(key string) (result Number, err error) {
+				getLimit = func(key string) (result bwtype.Number, err error) {
 					if vp = def.MustKey(key, nil); vp.Val != nil {
 						var i int
 						if i, err = vp.Int(); err != nil {
 							return
 						} else {
-							result = NumberFromInt(i)
+							result = bwtype.MustNumberFrom(i)
 							limCount++
 						}
 					}
 					return
 				}
 			} else {
-				getLimit = func(key string) (result Number, err error) {
+				getLimit = func(key string) (result bwtype.Number, err error) {
 					if vp = def.MustKey(key, nil); vp.Val != nil {
-						if result, err = NumberFrom(vp.Val); err != nil {
+						var ok bool
+						if result, ok = bwtype.NumberFrom(vp.Val); !ok {
 							err = vp.notOfValKindError(ValKindSetFrom(ValNumber))
 							return
 						} else {
@@ -186,6 +190,7 @@ func compileDef(def Holder) (result *Def, err error) {
 					return
 				}
 			}
+
 			if min, err = getLimit("min"); err != nil {
 				return
 			}
@@ -197,7 +202,7 @@ func compileDef(def Holder) (result *Def, err error) {
 				return
 			}
 			if limCount > 0 {
-				result.Range = Range{Min: min, Max: max}
+				result.Range = bwtype.MustRangeFrom(bwtype.A{Min: min, Max: max})
 			}
 		}
 
@@ -326,13 +331,11 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 	case ValNumber:
 		if def.Types.Has(ValNumber) {
 			valDeftype = ValNumber
-		} else if def.Types.Has(ValInt) {
-			n, _ := v.Val.(Number)
-			if n.IsInt() {
-				valDeftype = ValInt
-			}
-			// && v.MustNumber().IsInt() {
-			// // bwdebug.Print("!HERE")
+		} else if def.Types.Has(ValInt) && v.MustNumber().IsInt() {
+			// n, _ := v.Val.(bwtype.Number)
+			// if n.IsInt() {
+			valDeftype = ValInt
+			// }
 		}
 	case ValMap:
 		if def.Types.Has(ValMap) {
@@ -385,7 +388,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		}
 		// bwdebug.Print("!THERE")
 		if valDeftype == ValInt && kind == ValNumber {
-			n, _ := v.Val.(Number)
+			n, _ := v.Val.(bwtype.Number)
 			v.Val = n.MustInt()
 			// v.MustNumber().MustInt()
 		}

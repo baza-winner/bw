@@ -6,6 +6,7 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -20,12 +21,13 @@ const (
 	ValBool
 	ValInt
 	ValFloat64
-	ValNumber
 	ValString
 	ValArray
 	ValArrayOfString
 	ValArrayOf
 	ValMap
+	ValNumber
+	ValRange
 	ValKindAbove
 )
 
@@ -132,9 +134,12 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 		case []string:
 			result = t
 			kind = ValArrayOfString
-		case Number:
+		case bwtype.Number:
 			result = t
 			kind = ValNumber
+		case bwtype.Range:
+			result = t
+			kind = ValRange
 		}
 	}
 	// bwdebug.Print("val:#v", val, "kind", kind, "result", result)
@@ -142,4 +147,3 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 }
 
 // ============================================================================
-

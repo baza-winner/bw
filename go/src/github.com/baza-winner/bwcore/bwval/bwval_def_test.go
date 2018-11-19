@@ -6,6 +6,7 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwtesting"
+	"github.com/baza-winner/bwcore/bwtype"
 	"github.com/baza-winner/bwcore/bwval"
 )
 
@@ -18,7 +19,7 @@ func TestDefMarshalJSON(t *testing.T) {
 					IsOptional: true,
 					Enum:       bwset.StringFrom("valueA", "valueB"),
 					// Range:      bwval.IntRange{MinPtr: bwval.PtrToInt(-1), MaxPtr: bwval.PtrToInt(1)},
-					Range: bwval.Range{Min: bwval.NumberFromInt(-1), Max: bwval.NumberFromInt(1)},
+					Range: bwtype.MustRangeFrom(bwtype.A{Min: -1, Max: 1}),
 					Keys: map[string]bwval.Def{
 						"boolKey": {Types: bwval.ValKindSetFrom(bwval.ValBool)},
 					},
@@ -61,13 +62,11 @@ func TestDefFrom(t *testing.T) {
 		},
 		`{ type Int min 1 max 2 }`: {
 			Types: bwval.ValKindSetFrom(bwval.ValInt),
-			Range: bwval.Range{Min: bwval.NumberFromInt(1), Max: bwval.NumberFromInt(2)},
-			// Range: bwval.IntRange{bwval.PtrToInt(1), bwval.PtrToInt(2)},
+			Range: bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 2}),
 		},
 		`{ type Number min 1 max 2 }`: {
 			Types: bwval.ValKindSetFrom(bwval.ValNumber),
-			Range: bwval.Range{Min: bwval.NumberFromInt(1), Max: bwval.NumberFromInt(2)},
-			// Range: bwval.NumberRange{bwval.PtrToNumber(1), bwval.PtrToNumber(2)},
+			Range: bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 2}),
 		},
 		`{ type String default "some" }`: {
 			Types:      bwval.ValKindSetFrom(bwval.ValString),
@@ -82,8 +81,7 @@ func TestDefFrom(t *testing.T) {
 		`{ type Int min 2.0 }`: {
 			Types:      bwval.ValKindSetFrom(bwval.ValInt),
 			IsOptional: false,
-			Range:      bwval.Range{Min: bwval.NumberFromInt(2)},
-			// Range:      bwval.IntRange{MinPtr: bwval.PtrToInt(2)},
+			Range:      bwtype.MustRangeFrom(bwtype.A{Min: 2}),
 		},
 	} {
 		tests[k] = bwtesting.Case{
@@ -126,7 +124,7 @@ func TestDefFrom(t *testing.T) {
 	}
 
 	bwtesting.BwRunTests(t, bwval.DefFrom, tests,
-		// "{ type [ArrayOf Int] default [1 2 3] }",
+		// "{ type Int min 2.1 }",
 		nil,
 	)
 }

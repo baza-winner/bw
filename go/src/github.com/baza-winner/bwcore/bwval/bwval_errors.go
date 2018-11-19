@@ -8,6 +8,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -107,14 +108,14 @@ func (v Holder) nonSupportedValueError() error {
 
 // ============================================================================
 
-func (v Holder) outOfRangeError(rng Range) (err error) {
+func (v Holder) outOfRangeError(rng bwtype.Range) (err error) {
 	var s string
 	switch rng.Kind() {
-	case RangeMinMax:
+	case bwtype.RangeMinMax:
 		s = ansi.String(" is <ansiErr>out of range<ansi> <ansiVal>%s")
-	case RangeMin:
+	case bwtype.RangeMin:
 		s = ansi.String(" is <ansiErr>less<ansi> than<ansiVal>%s")
-	case RangeMax:
+	case bwtype.RangeMax:
 		s = ansi.String(" is <ansiErr>more<ansi> than<ansiVal>%s")
 	}
 	if len(s) > 0 {
@@ -125,7 +126,7 @@ func (v Holder) outOfRangeError(rng Range) (err error) {
 
 // ============================================================================
 
-func (v Holder) maxLessThanMinError(max, min Number) error {
+func (v Holder) maxLessThanMinError(max, min bwtype.Number) error {
 	return bwerr.From(v.ansiString()+
 		": <ansiPath>.max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiPath>.min<ansi> (<ansiVal>%s<ansi>)",
 		bwjson.Pretty(max), bwjson.Pretty(min),

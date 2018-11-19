@@ -2,7 +2,9 @@
 
 package bwtype
 
-import "strconv"
+import (
+	"strconv"
+)
 
 const _RangeKindValue_name = "RangeNoRangeMinRangeMaxRangeMinMax"
 

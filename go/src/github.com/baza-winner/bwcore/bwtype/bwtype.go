@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/baza-winner/bwcore/ansi"
-	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 )
@@ -15,90 +14,63 @@ type Number struct {
 	val interface{}
 }
 
-func Int(val interface{}) (result int, ok bool) {
+func Float64(val interface{}) (result float64, ok bool) {
 	ok = true
 	switch t := val.(type) {
 	case int8:
-		result = int(t)
-		kind = ValInt
+		result = float64(t)
 	case int16:
-		result = int(t)
-		kind = ValInt
+		result = float64(t)
 	case int32:
-		result = int(t)
-		kind = ValInt
+		result = float64(t)
 	case int64:
-		if int64(bw.MinInt) <= t && t <= int64(bw.MaxInt) {
-			result = int(t)
-			kind = ValInt
-		} else {
-			ok = false
-		}
+		result = float64(t)
 	case int:
-		result = t
-		kind = ValInt
+		result = float64(t)
 	case uint8:
-		result = int(t)
-		kind = ValInt
+		result = float64(t)
 	case uint16:
-		result = int(t)
-		kind = ValInt
+		result = float64(t)
 	case uint32:
-		result = int(t)
-		kind = ValInt
+		result = float64(t)
 	case uint64:
-		if t <= uint64(bw.MaxInt) {
-			result = int(t)
-			kind = ValInt
-		}
+		result = float64(t)
 	case uint:
-		if t <= uint(bw.MaxInt) {
-			result = int(t)
-			kind = ValInt
-		} else {
-			ok = false
-		}
+		result = float64(t)
+	case float32:
+		result = float64(t)
+	case float64:
+		result = t
 	default:
 		ok = false
 	}
 	return
 }
 
-func Float64(val interface{}) (result float64, ok bool) {
-
-}
-
-func NumberFrom(val interface{}) (result Number, err error) {
-	switch t, kind := val.(type); kind {
-	case ValInt:
-		i, _ := t.(int)
-		result = NumberFromInt(i)
-	case ValFloat64:
-		f, _ := t.(float64)
-		result = NumberFromFloat64(f)
-	case ValNumber:
-		n, _ := t.(Number)
-		result = n
-	default:
-		err = bwerr.From("<ansiVal>%#v<ansi> can not be a <ansiType>Number")
+func NumberFrom(val interface{}) (result Number, ok bool) {
+	var (
+		i int
+		f float64
+	)
+	if val == nil {
+		result = Number{}
+		ok = true
+	} else if i, ok = Int(val); ok {
+		result = Number{val: i}
+	} else if f, ok = Float64(val); ok {
+		result = Number{val: f}
+	} else {
+		result, ok = val.(Number)
 	}
 	return
 }
 
 func MustNumberFrom(val interface{}) (result Number) {
-	var err error
-	if result, err = NumberFrom(val); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+	var ok bool
+	if result, ok = NumberFrom(val); !ok {
+		bwerr.Panic(ansiCanNotBeNumber, val)
 	}
 	return
-}
-
-func NumberFromInt(i int) Number {
-	return Number{val: i}
-}
-
-func NumberFromFloat64(f float64) Number {
-	return Number{val: f}
 }
 
 func (n Number) Int() (result int, ok bool) {
@@ -182,12 +154,6 @@ func (n Number) MarshalJSON() ([]byte, error) {
 	return json.Marshal(n.val)
 }
 
-// var ansiIsNotOfType string
-
-// func init() {
-//  ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
-// }
-
 // ============================================================================
 
 //go:generate stringer -type=RangeKindValue
@@ -213,36 +179,46 @@ func (r Range) Max() Number {
 	return r.max
 }
 
-func RangeFrom(min, max Number) (result Range, err error) {
+type A struct {
+	Min, Max interface{}
+}
+
+func RangeFrom(a A) (result Range, err error) {
+	var min, max Number
+	var ok bool
+	if min, ok = NumberFrom(a.Min); !ok {
+		err = bwerr.From(ansiRangeLimitCanNotBeNumber, "a.Min", a.Min)
+		return
+	}
+	if max, ok = NumberFrom(a.Max); !ok {
+		err = bwerr.From(ansiRangeLimitCanNotBeNumber, "a.Max", a.Max)
+		return
+	}
 	result = Range{min: min, max: max}
 	if result.Kind() == RangeMinMax {
-		var isValidRange bool
 		if max.IsLessThan(min) {
-			err = bwerr.From(
-				"<ansiVar>max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiVar>min<ansi> (<ansiVal>%s<ansi>)",
-				bwjson.Pretty(max), bwjson.Pretty(min),
-			)
+			err = bwerr.From(ansiMaxMustNotBeLessThanMin, bwjson.Pretty(a.Max), bwjson.Pretty(a.Min))
 		}
 	}
 	return
 }
 
-func MustRangeFrom(min, max Number) (result Range) {
+func MustRangeFrom(a A) (result Range) {
 	var err error
-	if result, err = RangeFrom(min, max); err != nil {
+	if result, err = RangeFrom(a); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
 	return
 }
 
 func (r Range) Kind() (result RangeKindValue) {
-	if !r.Min.IsNaN() {
-		if !r.Max.IsNaN() {
+	if !r.min.IsNaN() {
+		if !r.max.IsNaN() {
 			result = RangeMinMax
 		} else {
 			result = RangeMin
 		}
-	} else if !r.Max.IsNaN() {
+	} else if !r.max.IsNaN() {
 		result = RangeMax
 	}
 	return
@@ -251,11 +227,11 @@ func (r Range) Kind() (result RangeKindValue) {
 func (v Range) String() (result string) {
 	switch v.Kind() {
 	case RangeMinMax:
-		result = fmt.Sprintf("%s..%s", bwjson.Pretty(v.Min), bwjson.Pretty(v.Max))
+		result = fmt.Sprintf("%s..%s", bwjson.Pretty(v.min), bwjson.Pretty(v.max))
 	case RangeMin:
-		result = fmt.Sprintf("%s..", bwjson.Pretty(v.Min))
+		result = fmt.Sprintf("%s..", bwjson.Pretty(v.min))
 	case RangeMax:
-		result = fmt.Sprintf("..%s", bwjson.Pretty(v.Max))
+		result = fmt.Sprintf("..%s", bwjson.Pretty(v.max))
 	default:
 		result = ".."
 	}
@@ -263,36 +239,18 @@ func (v Range) String() (result string) {
 }
 
 func (r Range) Contains(val interface{}) (result bool) {
-	var (
-		valKind ValKind
-		i       int
-		f       float64
-		t       interface{}
-		n       Number
-	)
-	switch t, valKind = Kind(val); valKind {
-	case ValInt:
-		i, _ = t.(int)
-		n = NumberFromInt(i)
-	case ValFloat64:
-		f, _ = t.(float64)
-		n = NumberFromFloat64(f)
-	case ValNumber:
-		n, _ = t.(Number)
-	default:
-		return false
-	}
+	n := MustNumberFrom(val)
 	var (
 		minResult, maxResult bool
 	)
 	rangeKind := r.Kind()
 	switch rangeKind {
 	case RangeMin, RangeMinMax:
-		minResult = !n.IsLessThan(r.Min)
+		minResult = !n.IsLessThan(r.min)
 	}
 	switch rangeKind {
 	case RangeMax, RangeMinMax:
-		maxResult = !r.Max.IsLessThan(n)
+		maxResult = !r.max.IsLessThan(n)
 	}
 	switch rangeKind {
 	case RangeMinMax:
@@ -314,11 +272,17 @@ func (r Range) MarshalJSON() ([]byte, error) {
 // ============================================================================
 
 var (
-	ansiIsNotOfType string
+	ansiRangeLimitCanNotBeNumber string
+	ansiCanNotBeNumber           string
+	ansiIsNotOfType              string
+	ansiMaxMustNotBeLessThanMin  string
 )
 
 func init() {
+	ansiRangeLimitCanNotBeNumber = ansi.String("<ansiVar>%s<ansi> (<ansiVal>%#v<ansi>) can not be a <ansiType>Number")
+	ansiCanNotBeNumber = ansi.String("<ansiVal>%#v<ansi> can not be a <ansiType>Number")
 	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
+	ansiMaxMustNotBeLessThanMin = ansi.String("<ansiVar>a.Max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiVar>a.Min<ansi> (<ansiVal>%s<ansi>)")
 }
 
 // ============================================================================

@@ -4,9 +4,9 @@ package bwval
 
 import "strconv"
 
-const _ValKind_name = "UnknownNilBoolIntFloat64NumberStringArrayArrayOfStringArrayOfMapKindAbove"
+const _ValKind_name = "UnknownNilBoolIntFloat64StringArrayArrayOfStringArrayOfMapNumberRangeKindAbove"
 
-var _ValKind_index = [...]uint8{0, 7, 10, 14, 17, 24, 30, 36, 41, 54, 61, 64, 73}
+var _ValKind_index = [...]uint8{0, 7, 10, 14, 17, 24, 30, 35, 48, 55, 58, 64, 69, 78}
 
 func (i ValKind) String() string {
 	if i >= ValKind(len(_ValKind_index)-1) {
