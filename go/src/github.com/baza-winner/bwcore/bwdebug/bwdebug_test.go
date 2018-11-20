@@ -1,7 +1,6 @@
 package bwdebug
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/baza-winner/bwcore/bwmap"
@@ -20,10 +19,10 @@ func TestPrint(t *testing.T) {
 				"!HERE", "varA", varA,
 			},
 			Out: []interface{}{
-				fmt.Sprintf(
-					"\x1b[93;1m!HERE\x1b[0m, \x1b[0m\x1b[32;1mgithub.com/baza-winner/bwcore/bwdebug.TestPrint\x1b[38;5;243m@\x1b[97;1mbwdebug_test.go:%d\x1b[0m: \x1b[38;5;201;1mvarA\x1b[0m: \x1b[0m\x1b[96;1m(struct { S string; N int }){S:(string)string value N:(int)273}\x1b[0m",
-					33,
-				),
+				// fmt.Sprintf(
+				"\u001b[93;1m!HERE\u001b[0m, \u001b[0m\u001b[32;1mgithub.com/baza-winner/bwcore/bwdebug.TestPrint\u001b[38;5;243m@\u001b[97;1mbwdebug_test.go:32\u001b[0m: \u001b[38;5;201;1mvarA\u001b[0m: \u001b[0m\u001b[96;1m{string value 273}\u001b[0m",
+				// 33,
+				// ),
 				nil,
 			},
 		},

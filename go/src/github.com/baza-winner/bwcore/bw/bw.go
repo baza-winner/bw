@@ -147,17 +147,17 @@ type ValPathItem struct {
 	IsOptional bool
 }
 
-type Path []ValPathItem
+// type Path []ValPathItem
 
-func (v Path) MarshalJSON() ([]byte, error) {
+type ValPath []ValPathItem
+
+func (v ValPath) MarshalJSON() ([]byte, error) {
 	result := []interface{}{}
 	for _, i := range v {
 		result = append(result, i)
 	}
 	return json.Marshal(result)
 }
-
-type ValPath []ValPathItem
 
 func (v ValPath) String() (result string) {
 	ss := []string{}
@@ -212,6 +212,16 @@ func (v ValPath) AppendVar(name string) ValPath {
 func (v ValPath) AppendHash(name string) ValPath {
 	return append(v.Clone(), ValPathItem{Type: ValPathItemHash})
 }
+
+// ============================================================================
+
+type ValPathProvider interface {
+	Path() (ValPath, error)
+	MustPath() ValPath
+}
+
+func (p ValPath) Path() (ValPath, error) { return p, nil }
+func (p ValPath) MustPath() ValPath      { return p }
 
 // ============================================================================
 

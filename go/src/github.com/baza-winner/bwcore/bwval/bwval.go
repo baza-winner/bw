@@ -23,7 +23,6 @@ func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error)
 		err = p.SkipSpace(bwparse.TillEOF)
 	}
 	return
-	return
 }
 
 // PathFrom - конструктор-парсер bw.ValPath из строки
@@ -37,9 +36,34 @@ func MustPathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
 
 // ============================================================================
 
-// MustPathVal - must-обертка bw.Val.PathVal()
-func MustPathVal(v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) (result interface{}) {
+type PathStr struct {
+	S     string
+	Bases []bw.ValPath
+}
+
+func (v PathStr) Path() (result bw.ValPath, err error) {
+	p := bwparse.From(bwrune.ProviderFromString(v.S))
+	a := bwparse.PathA{Bases: v.Bases}
+	if result, err = p.PathContent(a); err == nil {
+		err = p.SkipSpace(bwparse.TillEOF)
+	}
+	return
+}
+
+func (v PathStr) MustPath() (result bw.ValPath) {
 	var err error
+	if result, err = v.Path(); err != nil {
+		bwerr.PanicA(bwerr.Err(err))
+	}
+	return
+}
+
+// ============================================================================
+
+// MustPathVal - must-обертка bw.Val.PathVal()
+func MustPathVal(v bw.Val, pathProvider bw.ValPathProvider, optVars ...map[string]interface{}) (result interface{}) {
+	var err error
+	path := pathProvider.MustPath()
 	if result, err = v.PathVal(path, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(bwerr.Refine(err,
 			ansiMustPathValFailed,
@@ -50,8 +74,9 @@ func MustPathVal(v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) (
 }
 
 // MustSetPathVal - must-обертка bw.Val.SetPathVal()
-func MustSetPathVal(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[string]interface{}) {
+func MustSetPathVal(val interface{}, v bw.Val, pathProvider bw.ValPathProvider, optVars ...map[string]interface{}) {
 	var err error
+	path := pathProvider.MustPath()
 	if err = v.SetPathVal(val, path, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(bwerr.Refine(err,
 			ansiMustSetPathValFailed,
@@ -62,74 +87,74 @@ func MustSetPathVal(val interface{}, v bw.Val, path bw.ValPath, optVars ...map[s
 
 // ============================================================================
 
-type ValByOpt struct {
-	Bases []bw.ValPath
-	Vars  map[string]interface{}
-}
+// type ValByOpt struct {
+// 	Bases []bw.ValPath
+// 	Vars  map[string]interface{}
+// }
 
-// ValBy - обертка над PathFrom()+bw.Val.PathVal()
-func ValBy(v bw.Val, pathStr string, opt ...ValByOpt) (result interface{}, err error) {
-	var (
-		optBases [][]bw.ValPath
-		optVars  []map[string]interface{}
-		path     bw.ValPath
-	)
-	if len(opt) > 0 {
-		optBases = append(optBases, opt[0].Bases)
-		optVars = append(optVars, opt[0].Vars)
-	}
-	if path, err = PathFrom(pathStr, optBases...); err != nil {
-		return
-	}
-	if result, err = v.PathVal(path, optVars...); err != nil {
-		err = bwerr.Refine(err,
-			ansiMustPathValFailed,
-			path, bwjson.Pretty(v), varsJSON(path, optVars),
-		)
-	}
-	return
-}
+// // ValBy - обертка над PathFrom()+bw.Val.PathVal()
+// func ValBy(v bw.Val, pathStr string, opt ...ValByOpt) (result interface{}, err error) {
+// 	var (
+// 		optBases [][]bw.ValPath
+// 		optVars  []map[string]interface{}
+// 		path     bw.ValPath
+// 	)
+// 	if len(opt) > 0 {
+// 		optBases = append(optBases, opt[0].Bases)
+// 		optVars = append(optVars, opt[0].Vars)
+// 	}
+// 	if path, err = PathFrom(pathStr, optBases...); err != nil {
+// 		return
+// 	}
+// 	if result, err = v.PathVal(path, optVars...); err != nil {
+// 		err = bwerr.Refine(err,
+// 			ansiMustPathValFailed,
+// 			path, bwjson.Pretty(v), varsJSON(path, optVars),
+// 		)
+// 	}
+// 	return
+// }
 
-// MustValBy - must-обертка ValBy()
-func MustValBy(v bw.Val, pathStr string, opt ...ValByOpt) (result interface{}) {
-	var err error
-	if result, err = ValBy(v, pathStr, opt...); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-	return
-}
+// // MustValBy - must-обертка ValBy()
+// func MustValBy(v bw.Val, pathStr string, opt ...ValByOpt) (result interface{}) {
+// 	var err error
+// 	if result, err = ValBy(v, pathStr, opt...); err != nil {
+// 		bwerr.PanicA(bwerr.Err(err))
+// 	}
+// 	return
+// }
 
-// SetValBy - обертка PathFrom()+bw.Val.SetPathVal()
-func SetValBy(val interface{}, v bw.Val, pathStr string, opt ...ValByOpt) (err error) {
-	var (
-		optBases [][]bw.ValPath
-		optVars  []map[string]interface{}
-		path     bw.ValPath
-	)
-	if len(opt) > 0 {
-		optBases = append(optBases, opt[0].Bases)
-		optVars = append(optVars, opt[0].Vars)
-	}
-	if path, err = PathFrom(pathStr, optBases...); err != nil {
-		return
-	}
-	if err = v.SetPathVal(val, path, optVars...); err != nil {
-		err = bwerr.Refine(err,
-			ansiMustSetPathValFailed,
-			path, bwjson.Pretty(v), varsJSON(path, optVars),
-		)
-	}
-	return
-}
+// // SetValBy - обертка PathFrom()+bw.Val.SetPathVal()
+// func SetValBy(val interface{}, v bw.Val, pathStr string, opt ...ValByOpt) (err error) {
+// 	var (
+// 		optBases [][]bw.ValPath
+// 		optVars  []map[string]interface{}
+// 		path     bw.ValPath
+// 	)
+// 	if len(opt) > 0 {
+// 		optBases = append(optBases, opt[0].Bases)
+// 		optVars = append(optVars, opt[0].Vars)
+// 	}
+// 	if path, err = PathFrom(pathStr, optBases...); err != nil {
+// 		return
+// 	}
+// 	if err = v.SetPathVal(val, path, optVars...); err != nil {
+// 		err = bwerr.Refine(err,
+// 			ansiMustSetPathValFailed,
+// 			path, bwjson.Pretty(v), varsJSON(path, optVars),
+// 		)
+// 	}
+// 	return
+// }
 
-// MustSetPathVal - обертка PathFrom()+bw.Val.SetPathVal()
-func MustSetValBy(val interface{}, v bw.Val, pathStr string, opt ...ValByOpt) {
-	var err error
-	if err = SetValBy(val, v, pathStr, opt...); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-	return
-}
+// // MustSetPathVal - обертка PathFrom()+bw.Val.SetPathVal()
+// func MustSetValBy(val interface{}, v bw.Val, pathStr string, opt ...ValByOpt) {
+// 	var err error
+// 	if err = SetValBy(val, v, pathStr, opt...); err != nil {
+// 		bwerr.PanicA(bwerr.Err(err))
+// 	}
+// 	return
+// }
 
 // ============================================================================
 
