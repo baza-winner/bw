@@ -23,7 +23,7 @@ func TestInt(t *testing.T) {
 		"int":    {in: bw.MaxInt, out: int(bw.MaxInt)},
 		"uint8":  {in: bw.MaxUint8, out: int(bw.MaxUint8)},
 		"uint16": {in: bw.MaxUint16, out: int(bw.MaxUint16)},
-		"uint32": {in: uint32(bw.MaxInt), out: bw.MaxInt},
+		"uint32": {in: uint32(bw.MaxInt32), out: int(bw.MaxInt32)},
 		"uint64": {in: uint64(bw.MaxInt), out: bw.MaxInt},
 		"uint":   {in: uint(bw.MaxInt), out: bw.MaxInt},
 	} {
@@ -211,6 +211,11 @@ func TestRangeContains(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		"Contains",
 		map[string]bwtesting.Case{
+			"nil not in ..": {
+				V:   bwtype.MustRangeFrom(bwtype.A{}),
+				In:  []interface{}{bwtype.MustNumberFrom(nil)},
+				Out: []interface{}{false},
+			},
 			"-273 in ..": {
 				V:   bwtype.MustRangeFrom(bwtype.A{}),
 				In:  []interface{}{bwtype.MustNumberFrom(-273)},

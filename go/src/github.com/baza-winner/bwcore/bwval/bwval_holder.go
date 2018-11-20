@@ -5,6 +5,7 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwtype"
@@ -361,6 +362,7 @@ func (v Holder) MustKey(key string, optDefaultValProvider ...defaultValProvider)
 func (v Holder) SetKeyVal(val interface{}, key string) (err error) {
 	var m map[string]interface{}
 	if m, err = v.Map(); err == nil {
+		bwdebug.Print("m", m, "key", key)
 		m[key] = val
 	}
 	return

@@ -460,9 +460,10 @@ func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 	if val, err = vp.validVal(elemDef); err != nil {
 		return
 	} else if val != nil {
-		if err = v.SetKeyVal(val, key); err != nil {
-			return
-		}
+		v.SetKeyVal(val, key)
+		// if _ = ; err != nil {
+		// 	return
+		// }
 	}
 	return
 }

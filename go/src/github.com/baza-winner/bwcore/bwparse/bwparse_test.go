@@ -274,6 +274,15 @@ func TestVal(t *testing.T) {
 				{Type: bw.ValPathItemKey, Key: "thing"},
 			},
 		},
+		`{ some: {} }`: map[string]interface{}{
+			"some": map[string]interface{}{},
+		},
+		`{ some: [] }`: map[string]interface{}{
+			"some": []interface{}{},
+		},
+		`{ some: <> }`: map[string]interface{}{
+			"some": []string{},
+		},
 	} {
 		tests[k] = bwtesting.Case{
 			In:  []interface{}{func(testName string) string { return testName }},

@@ -240,9 +240,10 @@ func (v Range) String() (result string) {
 
 func (r Range) Contains(val interface{}) (result bool) {
 	n := MustNumberFrom(val)
-	var (
-		minResult, maxResult bool
-	)
+	if n.IsNaN() {
+		return false
+	}
+	var minResult, maxResult bool
 	rangeKind := r.Kind()
 	switch rangeKind {
 	case RangeMin, RangeMinMax:
