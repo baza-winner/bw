@@ -18,6 +18,26 @@ type Holder struct {
 	Pth bw.ValPath
 }
 
+// type HolderOpt struct {
+// 	Bases []bw.ValPath
+// 	Vars  map[string]interface{}
+// }
+
+type PathProvider interface {
+	Path() (bw.ValPath, error)
+	MustPath() bw.ValPath
+}
+
+type Path bw.ValPath
+
+func (p Path) Path() (bw.ValPath, error) { return p, nil }
+func (p Path) MustPath() bw.ValPath      { return p }
+
+type PathStr string
+
+func (p PathStr) Path() (bw.ValPath, error) { return PathFrom(p) }
+func (p PathStr) MustPath() bw.ValPath      { return MustPathFrom(p) }
+
 func HolderFrom(s string, optVars ...map[string]interface{}) Holder {
 	return Holder{Val: From(s, optVars...)}
 }
