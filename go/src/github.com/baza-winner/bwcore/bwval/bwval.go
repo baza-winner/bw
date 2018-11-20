@@ -12,27 +12,27 @@ import (
 
 // ============================================================================
 
-// PathFrom - конструктор-парсер bw.ValPath из строки
-func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
-	p := bwparse.From(bwrune.ProviderFromString(s))
-	a := bwparse.PathA{}
-	if len(optBases) > 0 {
-		a.Bases = optBases[0]
-	}
-	if result, err = p.PathContent(a); err == nil {
-		err = p.SkipSpace(bwparse.TillEOF)
-	}
-	return
-}
+// // PathFrom - конструктор-парсер bw.ValPath из строки
+// func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
+// 	p := bwparse.From(bwrune.ProviderFromString(s))
+// 	a := bwparse.PathA{}
+// 	if len(optBases) > 0 {
+// 		a.Bases = optBases[0]
+// 	}
+// 	if result, err = p.PathContent(a); err == nil {
+// 		err = p.SkipSpace(bwparse.TillEOF)
+// 	}
+// 	return
+// }
 
-// PathFrom - конструктор-парсер bw.ValPath из строки
-func MustPathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
-	var err error
-	if result, err = PathFrom(s, optBases...); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-	return
-}
+// // PathFrom - конструктор-парсер bw.ValPath из строки
+// func MustPathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
+// 	var err error
+// 	if result, err = PathFrom(s, optBases...); err != nil {
+// 		bwerr.PanicA(bwerr.Err(err))
+// 	}
+// 	return
+// }
 
 // ============================================================================
 
