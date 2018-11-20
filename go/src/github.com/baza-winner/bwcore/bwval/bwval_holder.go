@@ -103,8 +103,12 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 	return
 }
 
-func (v Holder) Path(path bw.ValPath, optVars ...map[string]interface{}) (result Holder, err error) {
+func (v Holder) Path(pathProvider bw.ValPathProvider, optVars ...map[string]interface{}) (result Holder, err error) {
 	var val interface{}
+	var path bw.ValPath
+	if path, err = pathProvider.Path(); err != nil {
+		return
+	}
 	if val, err = (&v).PathVal(path, optVars...); err != nil {
 		return
 	}
@@ -112,9 +116,9 @@ func (v Holder) Path(path bw.ValPath, optVars ...map[string]interface{}) (result
 	return
 }
 
-func (v Holder) MustPath(path bw.ValPath, optVars ...map[string]interface{}) (result Holder) {
+func (v Holder) MustPath(pathProvider bw.ValPathProvider, optVars ...map[string]interface{}) (result Holder) {
 	var err error
-	if result, err = v.Path(path, optVars...); err != nil {
+	if result, err = v.Path(pathProvider, optVars...); err != nil {
 		bwerr.PanicA(bwerr.Err(err))
 	}
 	return

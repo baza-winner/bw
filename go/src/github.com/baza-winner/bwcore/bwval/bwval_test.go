@@ -133,7 +133,7 @@ func TestMustSetPathVal(t *testing.T) {
 					Val: kHolder.MustPath(bwval.PathStr{S: "holder.val"}).Val,
 				},
 				bwval.PathStr{S: kHolder.MustPath(bwval.PathStr{S: "path"}).MustString()},
-				// bwval.MustPathFrom(),
+				// bwval.PathStr{S: }.MustPath(),
 			},
 			Out: []interface{}{
 				bwval.Holder{Val: vHolder.MustPath(bwval.PathStr{S: "holder.val"}.MustPath()).Val},
@@ -172,7 +172,7 @@ func TestMustSetPathVal(t *testing.T) {
 					bwval.Holder{Val: map[string]interface{}{
 						"keyA": map[string]interface{}{},
 					}},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 				},
 				Out: []interface{}{
 					bwval.Holder{Val: map[string]interface{}{
@@ -191,7 +191,7 @@ func TestMustSetPathVal(t *testing.T) {
 						273,
 						[]interface{}{"some", "thing"},
 					}},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 				},
 				Out: []interface{}{
 					bwval.Holder{Val: []interface{}{
@@ -210,7 +210,7 @@ func TestMustSetPathVal(t *testing.T) {
 						273,
 						[]interface{}{"some", "thing"},
 					}},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 					map[string]interface{}{
 						"idx": 1,
 					},
@@ -234,7 +234,7 @@ func TestMustSetPathVal(t *testing.T) {
 						"string",
 						[]interface{}{"some", "thing"},
 					}},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 				},
 				Out: []interface{}{
 					bwval.Holder{Val: []interface{}{
@@ -253,7 +253,7 @@ func TestMustSetPathVal(t *testing.T) {
 						"string",
 						[]interface{}{"some", "thing"},
 					}},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 				},
 				Out: []interface{}{
 					bwval.Holder{Val: []interface{}{
@@ -268,7 +268,7 @@ func TestMustSetPathVal(t *testing.T) {
 				In: []interface{}{
 					"good",
 					bwval.Holder{},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 				},
 				Out: []interface{}{
 					bwval.Holder{Val: "good"},
@@ -283,7 +283,7 @@ func TestMustSetPathVal(t *testing.T) {
 						"string",
 						[]interface{}{"some", "thing"},
 					}},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 				},
 				Panic: "Failed to set \x1b[38;5;252;1m2.#\x1b[0m of \x1b[96;1m[\n  {\n    \"idx\": 1\n  },\n  \"string\",\n  [\n    \"some\",\n    \"thing\"\n  ]\n]\x1b[0m: \x1b[38;5;252;1m2.#\x1b[0m is \x1b[91;1mreadonly path\x1b[0m\x1b[0m",
 			},
@@ -295,7 +295,7 @@ func TestMustSetPathVal(t *testing.T) {
 						"string",
 						[]interface{}{"some", "thing"},
 					}},
-					func(testName string) bw.ValPath { return bwval.MustPathFrom(testName) },
+					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
 				},
 				Panic: "Failed to set \x1b[38;5;252;1m1.nonMapKey.some\x1b[0m of \x1b[96;1m[\n  {\n    \"idx\": 1\n  },\n  \"string\",\n  [\n    \"some\",\n    \"thing\"\n  ]\n]\x1b[0m: \x1b[38;5;252;1m1.nonMapKey\x1b[0m (\x1b[96;1m\"string\"\x1b[0m)\x1b[0m is not \x1b[97;1mMap\x1b[0m\x1b[0m",
 			},

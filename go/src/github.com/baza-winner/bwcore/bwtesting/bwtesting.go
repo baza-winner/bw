@@ -54,7 +54,7 @@ func init() {
 			ansi.SGRCodeOfColor256(ansi.Color256{Code: 248}),
 			ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
 		},
-		S: "Running test case <ansiVal>%q",
+		S: "Running test case <ansiVal>%s",
 	})
 	testPrefixFmt := "<ansiFunc>%s<ansiVar>.tests<ansiPath>.%q"
 	ansiExpectsCountParams = ansi.String(testPrefixFmt + ".%s<ansi>: ожидается <ansiVal>%d<ansi> %s вместо <ansiVal>%d")
