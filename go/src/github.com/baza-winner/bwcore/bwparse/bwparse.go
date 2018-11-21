@@ -42,6 +42,9 @@ func (p PosInfo) Rune() rune {
 type OnMapKeyFunc func(p *P, m map[string]interface{}, key string) (ok bool, err error)
 type OnMapEndFunc func(p *P, m map[string]interface{}) (err error)
 
+// type OnArrayIdxFunc func(p *P, vals []interface{}, idx int) (ok bool, err error)
+type OnArrayEndFunc func(p *P, arr interface{}) (err error)
+
 type P struct {
 	prov          bwrune.Provider
 	curr          PosInfo
@@ -51,6 +54,8 @@ type P struct {
 	idVals        map[string]interface{}
 	onMapKey      OnMapKeyFunc
 	onMapEnd      OnMapEndFunc
+	// onArrayIdx    OnArrayIdxFunc
+	onArrayEnd OnArrayEndFunc
 }
 
 func From(p bwrune.Provider, opt ...map[string]interface{}) (result *P) {
@@ -131,21 +136,6 @@ func (p *P) LookAhead(ofs uint) (ps PosInfo) {
 	return
 }
 
-// func (p *P) Unexpected(ps PosInfo, optFmt ...bw.I) error {
-// 	var msg string
-// 	if ps.pos < p.curr.pos {
-// 		if len(optFmt) > 0 {
-// 			msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)
-// 		} else {
-// 			msg = fmt.Sprintf(ansiUnexpectedWord, p.curr.prefix[ps.pos-p.curr.prefixStart:])
-// 		}
-// 	} else if !p.curr.isEOF {
-// 		msg = fmt.Sprintf(ansiUnexpectedChar, ps.rune, ps.rune)
-// 	} else {
-// 		msg = ansiUnexpectedEOF
-// 	}
-// 	return bwerr.From(msg + p.suffix(ps))
-// }
 type UnexpectedA struct {
 	PosInfo PosInfo
 	Fmt     bw.I
@@ -392,6 +382,10 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 func (p *P) Array() (result []interface{}, start PosInfo, ok bool, err error) {
 	start, ok, err = p.parseDelimitedOptionalCommaSeparated('[', ']', func() (err error) {
+		if result == nil {
+			result = map[string]interface{}{}
+		}
+		p.parentArray = result
 		var val interface{}
 		if val, err = p.parseVal(); err == nil {
 			switch t := val.(type) {
@@ -407,6 +401,9 @@ func (p *P) Array() (result []interface{}, start PosInfo, ok bool, err error) {
 	})
 	if ok && result == nil {
 		result = []interface{}{}
+	}
+	if p.onArrayEnd != nil {
+		err = p.onArrayEnd(p, result)
 	}
 	return
 }
@@ -431,6 +428,7 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 					if result == nil {
 						result = map[string]interface{}{}
 					}
+					p.parentArray = nil
 					var b bool
 					if p.onMapKey != nil {
 						b, err = p.onMapKey(p, result, key)
