@@ -89,11 +89,11 @@ func TestFloat64(t *testing.T) {
 	)
 }
 
-func TestMustNumberFrom(t *testing.T) {
+func TestMustRangeLimitFrom(t *testing.T) {
 
 	bwtesting.BwRunTests(t,
 		func(val interface{}) int {
-			return bwtype.MustNumberFrom(val).MustInt()
+			return bwtype.MustRangeLimitFrom(val).MustInt()
 		}, map[string]bwtesting.Case{
 			"nil": {
 				In:    []interface{}{nil},
@@ -107,20 +107,20 @@ func TestMustNumberFrom(t *testing.T) {
 				In:    []interface{}{3.14},
 				Panic: "\x1b[96;1m(float64)3.14\x1b[0m is not \x1b[97;1mInt\x1b[0m",
 			},
-			"Number(-273)": {
-				In:  []interface{}{bwtype.MustNumberFrom(-273)},
+			"RangeLimit(-273)": {
+				In:  []interface{}{bwtype.MustRangeLimitFrom(-273)},
 				Out: []interface{}{-273},
 			},
 			"true": {
 				In:    []interface{}{true},
-				Panic: "\x1b[96;1m(bool)true\x1b[0m can not be a \x1b[97;1mNumber\x1b[0m",
+				Panic: "\x1b[96;1m(bool)true\x1b[0m can not be a \x1b[97;1mRangeLimit\x1b[0m",
 			},
 		},
 	)
 
 	bwtesting.BwRunTests(t,
 		func(val interface{}) bool {
-			return bwtype.MustNumberFrom(val).IsInt()
+			return bwtype.MustRangeLimitFrom(val).IsInt()
 		}, map[string]bwtesting.Case{
 			"nil": {
 				In:  []interface{}{nil},
@@ -134,12 +134,12 @@ func TestMustNumberFrom(t *testing.T) {
 				In:  []interface{}{3.14},
 				Out: []interface{}{false},
 			},
-			"Number(-273)": {
-				In:  []interface{}{bwtype.MustNumberFrom(-273)},
+			"RangeLimit(-273)": {
+				In:  []interface{}{bwtype.MustRangeLimitFrom(-273)},
 				Out: []interface{}{true},
 			},
-			"Number(-2.71)": {
-				In:  []interface{}{bwtype.MustNumberFrom(-2.71)},
+			"RangeLimit(-2.71)": {
+				In:  []interface{}{bwtype.MustRangeLimitFrom(-2.71)},
 				Out: []interface{}{false},
 			},
 		},
@@ -147,7 +147,7 @@ func TestMustNumberFrom(t *testing.T) {
 
 	bwtesting.BwRunTests(t,
 		func(val interface{}) float64 {
-			return bwtype.MustNumberFrom(val).MustFloat64()
+			return bwtype.MustRangeLimitFrom(val).MustFloat64()
 		}, map[string]bwtesting.Case{
 			"nil": {
 				In:    []interface{}{nil},
@@ -159,36 +159,36 @@ func TestMustNumberFrom(t *testing.T) {
 
 func TestMustRangeFrom(t *testing.T) {
 	bwtesting.BwRunTests(t,
-		func(a bwtype.A) (string, bwtype.Number, bwtype.Number) {
+		func(a bwtype.A) (string, bwtype.RangeLimit, bwtype.RangeLimit) {
 			r := bwtype.MustRangeFrom(a)
 			return r.String(), r.Min(), r.Max()
 		}, map[string]bwtesting.Case{
 			"..": {
 				In: []interface{}{bwtype.A{}},
 				Out: []interface{}{func(testName string) string { return testName },
-					bwtype.Number{},
-					bwtype.Number{},
+					bwtype.RangeLimit{},
+					bwtype.RangeLimit{},
 				},
 			},
 			"2..": {
 				In: []interface{}{bwtype.A{Min: 2}},
 				Out: []interface{}{func(testName string) string { return testName },
-					bwtype.MustNumberFrom(2),
-					bwtype.Number{},
+					bwtype.MustRangeLimitFrom(2),
+					bwtype.RangeLimit{},
 				},
 			},
 			"..-3.14": {
 				In: []interface{}{bwtype.A{Max: -3.14}},
 				Out: []interface{}{func(testName string) string { return testName },
-					bwtype.Number{},
-					bwtype.MustNumberFrom(-3.14),
+					bwtype.RangeLimit{},
+					bwtype.MustRangeLimitFrom(-3.14),
 				},
 			},
 			"2.71..273": {
 				In: []interface{}{bwtype.A{Min: 2.71, Max: 273}},
 				Out: []interface{}{func(testName string) string { return testName },
-					bwtype.MustNumberFrom(2.71),
-					bwtype.MustNumberFrom(273),
+					bwtype.MustRangeLimitFrom(2.71),
+					bwtype.MustRangeLimitFrom(273),
 				},
 			},
 			"2.71 > -273": {
@@ -197,11 +197,11 @@ func TestMustRangeFrom(t *testing.T) {
 			},
 			"Min: true": {
 				In:    []interface{}{bwtype.A{Min: true}},
-				Panic: "\x1b[38;5;201;1ma.Min\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) can not be a \x1b[97;1mNumber\x1b[0m",
+				Panic: "\x1b[38;5;201;1ma.Min\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) can not be a \x1b[97;1mRangeLimit\x1b[0m",
 			},
 			"Max: true": {
 				In:    []interface{}{bwtype.A{Max: true}},
-				Panic: "\x1b[38;5;201;1ma.Max\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) can not be a \x1b[97;1mNumber\x1b[0m",
+				Panic: "\x1b[38;5;201;1ma.Max\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) can not be a \x1b[97;1mRangeLimit\x1b[0m",
 			},
 		},
 	)
@@ -213,32 +213,32 @@ func TestRangeContains(t *testing.T) {
 		map[string]bwtesting.Case{
 			"nil not in ..": {
 				V:   bwtype.MustRangeFrom(bwtype.A{}),
-				In:  []interface{}{bwtype.MustNumberFrom(nil)},
+				In:  []interface{}{bwtype.MustRangeLimitFrom(nil)},
 				Out: []interface{}{false},
 			},
 			"-273 in ..": {
 				V:   bwtype.MustRangeFrom(bwtype.A{}),
-				In:  []interface{}{bwtype.MustNumberFrom(-273)},
+				In:  []interface{}{bwtype.MustRangeLimitFrom(-273)},
 				Out: []interface{}{true},
 			},
 			"-273 in ..0": {
 				V:   bwtype.MustRangeFrom(bwtype.A{Max: 0}),
-				In:  []interface{}{bwtype.MustNumberFrom(-273)},
+				In:  []interface{}{bwtype.MustRangeLimitFrom(-273)},
 				Out: []interface{}{true},
 			},
 			"-273 not in 0..": {
 				V:   bwtype.MustRangeFrom(bwtype.A{Min: 0}),
-				In:  []interface{}{bwtype.MustNumberFrom(-273)},
+				In:  []interface{}{bwtype.MustRangeLimitFrom(-273)},
 				Out: []interface{}{false},
 			},
 			"2.71 in 0..3.14": {
 				V:   bwtype.MustRangeFrom(bwtype.A{Min: 0, Max: 3.14}),
-				In:  []interface{}{bwtype.MustNumberFrom(2.71)},
+				In:  []interface{}{bwtype.MustRangeLimitFrom(2.71)},
 				Out: []interface{}{true},
 			},
 			"3.14 not in 0...2.71": {
 				V:   bwtype.MustRangeFrom(bwtype.A{Min: 0, Max: 2.71}),
-				In:  []interface{}{bwtype.MustNumberFrom(3.14)},
+				In:  []interface{}{bwtype.MustRangeLimitFrom(3.14)},
 				Out: []interface{}{false},
 			},
 		},
@@ -250,18 +250,18 @@ func TestIsEqualTo(t *testing.T) {
 		"IsEqualTo",
 		map[string]bwtesting.Case{
 			"-273 == -273": {
-				V:   bwtype.MustNumberFrom(-273),
-				In:  []interface{}{bwtype.MustNumberFrom(bwtype.MustNumberFrom(-273))},
+				V:   bwtype.MustRangeLimitFrom(-273),
+				In:  []interface{}{bwtype.MustRangeLimitFrom(bwtype.MustRangeLimitFrom(-273))},
 				Out: []interface{}{true},
 			},
 			"-273 == -273.0": {
-				V:   bwtype.MustNumberFrom(-273),
-				In:  []interface{}{bwtype.MustNumberFrom(bwtype.MustNumberFrom(-273.0))},
+				V:   bwtype.MustRangeLimitFrom(-273),
+				In:  []interface{}{bwtype.MustRangeLimitFrom(bwtype.MustRangeLimitFrom(-273.0))},
 				Out: []interface{}{true},
 			},
 			"3.14 != 2.71": {
-				V:   bwtype.MustNumberFrom(3.14),
-				In:  []interface{}{bwtype.MustNumberFrom(2.71)},
+				V:   bwtype.MustRangeLimitFrom(3.14),
+				In:  []interface{}{bwtype.MustRangeLimitFrom(2.71)},
 				Out: []interface{}{false},
 			},
 		},
@@ -327,7 +327,7 @@ func TestRangeString(t *testing.T) {
 	)
 }
 
-func TestNumberRangeMarshalJSON(t *testing.T) {
+func TestRangeLimitRangeMarshalJSON(t *testing.T) {
 	example := map[bwtype.RangeKindValue]struct {
 		r bwtype.Range
 		s string

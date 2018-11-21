@@ -201,8 +201,6 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 // func (v Holder) Bool() (result bool, err error) {
 func (v Holder) Bool() (result bool) {
 	switch t, kind := Kind(v.Val); kind {
-	case ValNil:
-		result = false
 	case ValInt:
 		i, _ := t.(int)
 		result = i != 0
@@ -222,10 +220,6 @@ func (v Holder) Bool() (result bool) {
 		ss, _ := t.([]string)
 		result = len(ss) > 0
 	}
-	// var ok bool
-	// if result, ok = Bool(v.Val); !ok {
-	// 	err = v.notOfValKindError(ValKindSetFrom(ValBool))
-	// }
 	return
 }
 

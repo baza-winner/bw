@@ -10,7 +10,10 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwjson"
+	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwrune"
+	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwstr"
 )
 
@@ -34,15 +37,34 @@ type P struct {
 	Next          []PosInfo
 	preLineCount  uint
 	postLineCount uint
+	idVals        map[string]interface{}
 }
 
-func From(p bwrune.Provider) (result *P) {
+func From(p bwrune.Provider, opt ...map[string]interface{}) (result *P) {
 	result = &P{
 		Prov:          p,
 		Curr:          PosInfo{Pos: -1, Line: 1},
 		Next:          []PosInfo{},
 		preLineCount:  3,
 		postLineCount: 3,
+	}
+	if len(opt) > 0 {
+		m := opt[0]
+		if m != nil {
+			keys := bwset.String{}
+			if i, ok := optKeyUint(m, "preLineCount", &keys); ok {
+				result.preLineCount = i
+			}
+			if i, ok := optKeyUint(m, "postLineCount", &keys); ok {
+				result.postLineCount = i
+			}
+			if m, ok := optKeyMap(m, "idVals", &keys); ok {
+				result.idVals = m
+			}
+			if unexpectedKeys := bwmap.MustUnexpectedKeys(m, keys); len(unexpectedKeys) > 0 {
+				bwerr.Panic(ansiOptHasUnexpectedKeys, bwjson.Pretty(m), unexpectedKeys)
+			}
+		}
 	}
 	return
 }
@@ -386,10 +408,12 @@ func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 				result = false
 			case "nil", "null":
 				result = nil
-			case "Bool", "String", "Int", "Number", "Map", "Array", "ArrayOf":
-				result = s
 			default:
-				err = p.Unexpected(pi, bw.Fmt(ansiUnexpectedWord, s))
+				if val, ok := p.idVals[s]; ok {
+					result = val
+				} else {
+					err = p.Unexpected(pi, bw.Fmt(ansiUnexpectedWord, s))
+				}
 				return
 			}
 			return

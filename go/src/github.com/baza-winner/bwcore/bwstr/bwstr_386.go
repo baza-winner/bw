@@ -3,6 +3,7 @@ package bwstr
 import (
 	"strconv"
 
+	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 )
@@ -15,4 +16,10 @@ func ParseInt(s string) (result int, err error) {
 	} else {
 		return 0, bwerr.From(ansiOutOfRange, _int64, bw.MinInt, bw.MaxInt)
 	}
+}
+
+var ansiOutOfRange string
+
+func init() {
+	ansiOutOfRange = ansi.String("<ansiVal>%d<ansi> is out of range <ansiVal>%d..%d")
 }

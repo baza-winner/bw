@@ -26,7 +26,7 @@ const (
 	ValArrayOfString
 	ValArrayOf
 	ValMap
-	ValNumber
+	// ValNumber
 	ValRange
 	ValKindAbove
 )

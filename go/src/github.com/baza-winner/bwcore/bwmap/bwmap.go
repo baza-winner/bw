@@ -28,12 +28,12 @@ func UnexpectedKeys(m interface{}, expected ...interface{}) (result bwset.String
 	v := reflect.ValueOf(m)
 	if v.Kind() != reflect.Map {
 		err = bwerr.From(ansiMustBeMap, m)
-		// bwerr.Panic(bw.Fmt(ansiMustBeMap, m))
+		return
 	}
 	for _, vk := range v.MapKeys() {
 		if vk.Kind() != reflect.String {
 			err = bwerr.From(ansiMustBeMapString, m)
-			// bwerr.Panic(bw.Fmt(ansiMustBeMapString, m))
+			return
 		}
 		break
 	}
@@ -55,7 +55,8 @@ func UnexpectedKeys(m interface{}, expected ...interface{}) (result bwset.String
 				expectedKeys[k] = struct{}{}
 			}
 		} else {
-			bwerr.Panic("<ansiVar>expected<ansi> (<ansiVal>%+v<ansi>) neither <ansiVal>string<ansi>, nor <ansiVal>[]string<ansi>, nor <ansiVal>map[string]interface", expected)
+			err = bwerr.From("<ansiVar>expected<ansi> (<ansiVal>%+v<ansi>) neither <ansiVal>string<ansi> nor <ansiVal>[]string<ansi> nor <ansiVal>map[string]", expected)
+			return
 		}
 	}
 	result = bwset.String{}
@@ -63,7 +64,6 @@ func UnexpectedKeys(m interface{}, expected ...interface{}) (result bwset.String
 		k := vk.String()
 		if _, ok := expectedKeys[k]; !ok {
 			result.Add(k)
-			// result = append(result, k)
 		}
 	}
 	if len(result) == 0 {

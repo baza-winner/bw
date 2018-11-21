@@ -10,7 +10,7 @@ import (
 )
 
 // ============================================================================
-type Number struct {
+type RangeLimit struct {
 	val interface{}
 }
 
@@ -47,38 +47,38 @@ func Float64(val interface{}) (result float64, ok bool) {
 	return
 }
 
-func NumberFrom(val interface{}) (result Number, ok bool) {
+func RangeLimitFrom(val interface{}) (result RangeLimit, ok bool) {
 	var (
 		i int
 		f float64
 	)
 	if val == nil {
-		result = Number{}
+		result = RangeLimit{}
 		ok = true
 	} else if i, ok = Int(val); ok {
-		result = Number{val: i}
+		result = RangeLimit{val: i}
 	} else if f, ok = Float64(val); ok {
-		result = Number{val: f}
+		result = RangeLimit{val: f}
 	} else {
-		result, ok = val.(Number)
+		result, ok = val.(RangeLimit)
 	}
 	return
 }
 
-func MustNumberFrom(val interface{}) (result Number) {
+func MustRangeLimitFrom(val interface{}) (result RangeLimit) {
 	var ok bool
-	if result, ok = NumberFrom(val); !ok {
-		bwerr.Panic(ansiCanNotBeNumber, val)
+	if result, ok = RangeLimitFrom(val); !ok {
+		bwerr.Panic(ansiValCanNotBeRangeLimit, val)
 	}
 	return
 }
 
-func (n Number) Int() (result int, ok bool) {
+func (n RangeLimit) Int() (result int, ok bool) {
 	result, ok = n.val.(int)
 	return
 }
 
-func (n Number) Float64() (result float64, ok bool) {
+func (n RangeLimit) Float64() (result float64, ok bool) {
 	switch t := n.val.(type) {
 	case int:
 		ok = true
@@ -90,7 +90,7 @@ func (n Number) Float64() (result float64, ok bool) {
 	return
 }
 
-func (n Number) MustInt() (result int) {
+func (n RangeLimit) MustInt() (result int) {
 	var ok bool
 	if result, ok = n.Int(); !ok {
 		bwerr.Panic(ansiIsNotOfType, n.val, "Int")
@@ -98,7 +98,7 @@ func (n Number) MustInt() (result int) {
 	return
 }
 
-func (n Number) MustFloat64() (result float64) {
+func (n RangeLimit) MustFloat64() (result float64) {
 	var ok bool
 	if result, ok = n.Float64(); !ok {
 		bwerr.Panic(ansiIsNotOfType, n.val, "Float64")
@@ -106,16 +106,16 @@ func (n Number) MustFloat64() (result float64) {
 	return
 }
 
-func (n Number) IsNaN() bool {
+func (n RangeLimit) IsNaN() bool {
 	return n.val == nil
 }
 
-func (n Number) IsInt() (result bool) {
+func (n RangeLimit) IsInt() (result bool) {
 	_, result = n.val.(int)
 	return
 }
 
-func (n Number) IsEqualTo(a Number) (result bool) {
+func (n RangeLimit) IsEqualTo(a RangeLimit) (result bool) {
 	return n.compareTo(a, func(isInt bool, i, j int, f, g float64) bool {
 		if isInt {
 			return i == j
@@ -125,7 +125,7 @@ func (n Number) IsEqualTo(a Number) (result bool) {
 	})
 }
 
-func (n Number) IsLessThan(a Number) bool {
+func (n RangeLimit) IsLessThan(a RangeLimit) bool {
 	return n.compareTo(a, func(isInt bool, i, j int, f, g float64) bool {
 		if isInt {
 			return i < j
@@ -135,9 +135,9 @@ func (n Number) IsLessThan(a Number) bool {
 	})
 }
 
-type numberCompare func(isInt bool, i, j int, f, g float64) (result bool)
+type compareFunc func(isInt bool, i, j int, f, g float64) (result bool)
 
-func (n Number) compareTo(a Number, f numberCompare) (result bool) {
+func (n RangeLimit) compareTo(a RangeLimit, f compareFunc) (result bool) {
 	if i, ok := n.Int(); ok {
 		if j, ok := a.Int(); ok {
 			result = f(true, i, j, 0, 0)
@@ -150,7 +150,7 @@ func (n Number) compareTo(a Number, f numberCompare) (result bool) {
 	return
 }
 
-func (n Number) MarshalJSON() ([]byte, error) {
+func (n RangeLimit) MarshalJSON() ([]byte, error) {
 	return json.Marshal(n.val)
 }
 
@@ -168,14 +168,14 @@ const (
 )
 
 type Range struct {
-	min, max Number
+	min, max RangeLimit
 }
 
-func (r Range) Min() Number {
+func (r Range) Min() RangeLimit {
 	return r.min
 }
 
-func (r Range) Max() Number {
+func (r Range) Max() RangeLimit {
 	return r.max
 }
 
@@ -184,14 +184,14 @@ type A struct {
 }
 
 func RangeFrom(a A) (result Range, err error) {
-	var min, max Number
+	var min, max RangeLimit
 	var ok bool
-	if min, ok = NumberFrom(a.Min); !ok {
-		err = bwerr.From(ansiRangeLimitCanNotBeNumber, "a.Min", a.Min)
+	if min, ok = RangeLimitFrom(a.Min); !ok {
+		err = bwerr.From(ansiVarValCanNotBeRangeLimit, "a.Min", a.Min)
 		return
 	}
-	if max, ok = NumberFrom(a.Max); !ok {
-		err = bwerr.From(ansiRangeLimitCanNotBeNumber, "a.Max", a.Max)
+	if max, ok = RangeLimitFrom(a.Max); !ok {
+		err = bwerr.From(ansiVarValCanNotBeRangeLimit, "a.Max", a.Max)
 		return
 	}
 	result = Range{min: min, max: max}
@@ -239,7 +239,7 @@ func (v Range) String() (result string) {
 }
 
 func (r Range) Contains(val interface{}) (result bool) {
-	n := MustNumberFrom(val)
+	n := MustRangeLimitFrom(val)
 	if n.IsNaN() {
 		return false
 	}
@@ -273,15 +273,15 @@ func (r Range) MarshalJSON() ([]byte, error) {
 // ============================================================================
 
 var (
-	ansiRangeLimitCanNotBeNumber string
-	ansiCanNotBeNumber           string
+	ansiVarValCanNotBeRangeLimit string
+	ansiValCanNotBeRangeLimit    string
 	ansiIsNotOfType              string
 	ansiMaxMustNotBeLessThanMin  string
 )
 
 func init() {
-	ansiRangeLimitCanNotBeNumber = ansi.String("<ansiVar>%s<ansi> (<ansiVal>%#v<ansi>) can not be a <ansiType>Number")
-	ansiCanNotBeNumber = ansi.String("<ansiVal>%#v<ansi> can not be a <ansiType>Number")
+	ansiVarValCanNotBeRangeLimit = ansi.String("<ansiVar>%s<ansi> (<ansiVal>%#v<ansi>) can not be a <ansiType>RangeLimit")
+	ansiValCanNotBeRangeLimit = ansi.String("<ansiVal>%#v<ansi> can not be a <ansiType>RangeLimit")
 	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")
 	ansiMaxMustNotBeLessThanMin = ansi.String("<ansiVar>a.Max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiVar>a.Min<ansi> (<ansiVal>%s<ansi>)")
 }

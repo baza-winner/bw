@@ -9,13 +9,19 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwrune"
+	"github.com/baza-winner/bwcore/bwset"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
 
 var (
-	ansiOK              string
-	ansiErr             string
+	ansiOptKeyIsNotOfType    string
+	ansiOptHasUnexpectedKeys string
+
+	ansiOK  string
+	ansiErr string
+
 	ansiPos             string
 	ansiLineCol         string
 	ansiGetSuffixAssert string
@@ -26,6 +32,9 @@ var (
 )
 
 func init() {
+	ansiOptKeyIsNotOfType = ansi.String("<ansiVar>opt.%s<ansi> (<ansiVal>%#v<ansi>) is not <ansiType>%s")
+	ansiOptHasUnexpectedKeys = ansi.String("<ansiVar>opt<ansi> (<ansiVal>%s<ansi>) has unexpected keys <ansiVal>%s")
+
 	ansiOK = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorGreen, Bright: false})).String()
 	ansiErr = ansi.CSIFromSGRCodes(ansi.MustSGRCodeOfColor8(ansi.Color8{Color: ansi.SGRColorRed, Bright: true})).String()
 
@@ -38,11 +47,41 @@ func init() {
 	ansiOutOfRange = ansi.String("<ansiVal>%d<ansi> is out of range <ansiVal>%d..%d")
 }
 
+func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (result uint, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = bwtype.Uint(val); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "Uint")
+		}
+	}
+	return
+}
+
+func optKeyMap(opt map[string]interface{}, key string, keys *bwset.String) (result map[string]interface{}, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = val.(map[string]interface{}); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "map[string]interface{}")
+		}
+	}
+	return
+}
+
+var ()
+
+func init() {
+}
+
+// ============================================================================
+
 func (p *P) pullRune(ps *PosInfo) {
 	runePtr := bwrune.MustPull(p.Prov)
 	if !ps.IsEOF {
 		if ps.Pos >= 0 {
 			ps.Prefix += string(ps.Rune)
+			// bwdebug.Print("ps.Prefix", ps.Prefix, "ps.Rune:s", ps.Rune)
 		}
 		if runePtr != nil {
 			if ps.Rune != '\n' {
@@ -50,10 +89,12 @@ func (p *P) pullRune(ps *PosInfo) {
 			} else {
 				ps.Line++
 				ps.Col = 1
-				if int(ps.Line) > int(p.preLineCount) {
+				if int(ps.Line) > int(p.preLineCount)+1 {
 					i := strings.Index(ps.Prefix, "\n")
+					// bwdebug.Print("ps.Prefix", ps.Prefix, "i", i)
 					ps.Prefix = ps.Prefix[i+1:]
 					ps.PrefixStart += i + 1
+					// bwdebug.Print("ps.Line", ps.Line, "p.preLineCount", p.preLineCount, "ps.Prefix", ps.Prefix, "ps.PrefixStart", ps.PrefixStart)
 				}
 			}
 		}
@@ -71,7 +112,7 @@ func (p *P) suffix(ps PosInfo) (suffix string) {
 		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
 	}
 
-	preLineCount, postLineCount := p.preLineCount, p.postLineCount
+	preLineCount, postLineCount := int(p.preLineCount), int(p.postLineCount)
 	if p.Curr.IsEOF {
 		preLineCount += postLineCount
 	}
@@ -98,8 +139,10 @@ func (p *P) suffix(ps PosInfo) (suffix string) {
 		needPostLines = true
 	}
 
-	for needPostLines && !p.Curr.IsEOF && postLineCount > 0 {
+	// bwdebug.Print("needPostLines", needPostLines, "p.Curr.IsEOF", p.Curr.IsEOF, "postLineCount", postLineCount)
+	for needPostLines && !p.Curr.IsEOF && postLineCount >= 0 {
 		suffix += string(p.Curr.Rune)
+		// bwdebug.Print("p.Curr.Rune:s", p.Curr.Rune, "postLineCount", postLineCount)
 		if noNeedNewline = p.Curr.Rune == '\n'; noNeedNewline {
 			postLineCount -= 1
 		}

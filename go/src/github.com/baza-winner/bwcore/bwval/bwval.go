@@ -7,7 +7,6 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwparse"
 	"github.com/baza-winner/bwcore/bwrune"
-	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -235,43 +234,43 @@ func expandPaths(val interface{}, rootVal interface{}, isRoot bool, optVars ...m
 // ============================================================================
 
 // Bool - пытается извлечь bool из interface{}
-func Bool(val interface{}) (result bool, ok bool) {
-	if v, kind := Kind(val); kind == ValBool {
-		result, ok = v.(bool)
-	}
-	return
-}
+// func Bool(val interface{}) (result bool, ok bool) {
+// 	if v, kind := Kind(val); kind == ValBool {
+// 		result, ok = v.(bool)
+// 	}
+// 	return
+// }
 
-// MustBool - must-обертка Bool()
-func MustBool(val interface{}) (result bool) {
-	var ok bool
-	if result, ok = Bool(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Bool")
-	}
-	return
-}
+// // MustBool - must-обертка Bool()
+// func MustBool(val interface{}) (result bool) {
+// 	var ok bool
+// 	if result, ok = Bool(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "Bool")
+// 	}
+// 	return
+// }
 
-// Int - пытается извлечь int из interface{}
-func Int(val interface{}) (result int, ok bool) {
-	switch v, kind := Kind(val); kind {
-	case ValInt:
-		result, _ = v.(int)
-		ok = true
-	case ValNumber:
-		n, _ := v.(bwtype.Number)
-		result, ok = n.Int()
-	}
-	return
-}
+// // Int - пытается извлечь int из interface{}
+// func Int(val interface{}) (result int, ok bool) {
+// 	switch v, kind := Kind(val); kind {
+// 	case ValInt:
+// 		result, _ = v.(int)
+// 		ok = true
+// 	// case ValNumber:
+// 	// 	n, _ := v.(bwtype.Number)
+// 	// 	result, ok = n.Int()
+// 	}
+// 	return
+// }
 
-// MustInt - must-обертка Int()
-func MustInt(val interface{}) (result int) {
-	var ok bool
-	if result, ok = Int(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Int")
-	}
-	return
-}
+// // MustInt - must-обертка Int()
+// func MustInt(val interface{}) (result int) {
+// 	var ok bool
+// 	if result, ok = Int(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "Int")
+// 	}
+// 	return
+// }
 
 // // Float64 - пытается извлечь float64 из interface{}
 // func Float64(val interface{}) (result float64, ok bool) {
@@ -333,22 +332,22 @@ func MustInt(val interface{}) (result int) {
 // 	return
 // }
 
-// String - пытается извлечь string из interface{}
-func String(val interface{}) (result string, ok bool) {
-	if v, kind := Kind(val); kind == ValString {
-		result, ok = v.(string)
-	}
-	return
-}
+// // String - пытается извлечь string из interface{}
+// func String(val interface{}) (result string, ok bool) {
+// 	if v, kind := Kind(val); kind == ValString {
+// 		result, ok = v.(string)
+// 	}
+// 	return
+// }
 
-// MustString - must-обертка String()
-func MustString(val interface{}) (result string) {
-	var ok bool
-	if result, ok = String(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "String")
-	}
-	return
-}
+// // MustString - must-обертка String()
+// func MustString(val interface{}) (result string) {
+// 	var ok bool
+// 	if result, ok = String(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "String")
+// 	}
+// 	return
+// }
 
 // // Map - пытается извлечь map[string]interface{} из interface{}
 // func Map(val interface{}) (result map[string]interface{}, ok bool) {

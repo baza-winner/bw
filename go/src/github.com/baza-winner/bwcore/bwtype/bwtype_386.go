@@ -46,3 +46,49 @@ func Int(val interface{}) (result int, ok bool) {
 	}
 	return
 }
+
+func Uint(val interface{}) (result uint, ok bool) {
+	ok = true
+	switch t := val.(type) {
+	case int8:
+		if ok = t >= 0; ok {
+			result = uint(t)
+		}
+	case int16:
+		if ok = t >= 0; ok {
+			result = uint(t)
+		}
+	case int32:
+		if ok = t >= 0; ok {
+			result = uint(t)
+		}
+	case int64:
+		if t <= int64(bw.MaxUint) {
+			result = uint(t)
+		} else {
+			ok = false
+		}
+	case int:
+		if ok = t >= 0; ok {
+			result = uint(t)
+		}
+	case uint8:
+		result = uint(t)
+	case uint16:
+		result = uint(t)
+	case uint32:
+		result = uint(t)
+	case uint64:
+		if t <= uint64(bw.MaxUint) {
+			result = uint(t)
+		} else {
+			ok = false
+		}
+		// result = uint(t)
+	case uint:
+		result = t
+	default:
+		ok = false
+	}
+	return
+}
