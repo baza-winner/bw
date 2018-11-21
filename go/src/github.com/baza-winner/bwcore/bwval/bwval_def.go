@@ -68,7 +68,7 @@ func DefFrom(src bwrune.Provider, optPathProvider ...bw.ValPathProvider) (result
 	var ok bool
 	if def, _, ok, err = p.Val(); !ok || err != nil {
 		if err == nil {
-			err = p.Unexpected(p.Curr)
+			err = p.Unexpected()
 		}
 		return
 	}

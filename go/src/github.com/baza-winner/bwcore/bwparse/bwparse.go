@@ -102,7 +102,7 @@ func (p *P) Forward(count uint) {
 
 func (p *P) CheckNotEOF() (err error) {
 	if p.curr.isEOF {
-		err = p.Unexpected(p.curr)
+		err = p.Unexpected()
 	}
 	return
 }
@@ -196,7 +196,7 @@ REDO:
 		p.Forward(1)
 	}
 	if p.curr.isEOF && !tillEOF {
-		err = p.Unexpected(p.curr)
+		err = p.Unexpected()
 		return
 	}
 	if p.canSkipRunes('/', '/') {
@@ -219,7 +219,7 @@ REDO:
 		goto REDO
 	}
 	if tillEOF && !p.curr.isEOF {
-		err = p.Unexpected(p.curr)
+		err = p.Unexpected()
 	}
 	return
 }
@@ -307,7 +307,7 @@ func (p *P) String() (result string, start PosInfo, ok bool, err error) {
 				b = b && delimiter == '"'
 			}
 			if !b {
-				err = p.Unexpected(p.curr)
+				err = p.Unexpected()
 			} else {
 				result += string(r)
 				p.Forward(1)
@@ -421,7 +421,7 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 			onString{f: func(s string, pi PosInfo) (err error) { key = s; return }},
 			onId{f: func(s string, pi PosInfo) (err error) { key = s; return }},
 		); !b {
-			err = p.Unexpected(p.curr)
+			err = p.Unexpected()
 		} else if err == nil {
 			if err = p.SkipSpace(TillNonEOF); err == nil {
 				if p.skipRunes(':') || p.skipRunes('=', '>') {
@@ -494,7 +494,7 @@ func (p *P) Path(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error)
 			if result, err = p.PathContent(a); err == nil {
 				if err = p.SkipSpace(TillNonEOF); err == nil {
 					if !p.skipRunes('}', '}') {
-						err = p.Unexpected(p.curr)
+						err = p.Unexpected()
 					}
 				}
 			}
@@ -565,7 +565,7 @@ func (p *P) PathContent(a PathA) (result bw.ValPath, err error) {
 			b = false
 		}
 		if err == nil && !b {
-			err = p.Unexpected(p.curr)
+			err = p.Unexpected()
 		}
 		if err == nil {
 			if !a.isSubPath && p.skipRunes('?') {

@@ -323,7 +323,7 @@ func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter r
 func (p *P) parseVal() (result interface{}, err error) {
 	var ok bool
 	if result, _, ok, err = p.Val(); err == nil && !ok {
-		err = p.Unexpected(p.curr)
+		err = p.Unexpected()
 	}
 	return
 }
@@ -344,7 +344,7 @@ func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
 	s = string(r)
 	if needDigit {
 		if r = p.curr.rune; !isDigit(r) {
-			err = p.Unexpected(p.curr)
+			err = p.Unexpected()
 		} else {
 			p.Forward(1)
 			s += string(r)
@@ -413,7 +413,7 @@ func (p *P) subPath(a PathA) (result bw.ValPath, start PosInfo, ok bool, err err
 					if p.curr.rune == ')' {
 						p.Forward(1)
 					} else {
-						err = p.Unexpected(p.curr)
+						err = p.Unexpected()
 					}
 				}
 			}

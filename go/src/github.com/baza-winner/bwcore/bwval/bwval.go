@@ -189,7 +189,7 @@ func TemplateFrom(s string) (result Template) {
 		if result, _, ok, err = p.Val(); err == nil && ok {
 			err = p.SkipSpace(bwparse.TillEOF)
 		} else if err == nil {
-			err = p.Unexpected(p.Curr)
+			err = p.Unexpected()
 		}
 		return
 	}(s); err != nil {
