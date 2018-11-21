@@ -1,4 +1,4 @@
-package bwparse
+package bwstr
 
 import (
 	"strconv"
@@ -7,7 +7,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 )
 
-func parseInt(s string) (result int, err error) {
+func ParseInt(s string) (result int, err error) {
 	if _int64, err := strconv.ParseInt(s, 10, 64); err != nil {
 		return 0, err
 	} else if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {

@@ -273,65 +273,65 @@ func MustInt(val interface{}) (result int) {
 	return
 }
 
-// Float64 - пытается извлечь float64 из interface{}
-func Float64(val interface{}) (result float64, ok bool) {
-	switch v, kind := Kind(val); kind {
-	case ValInt:
-		var i int
-		i, _ = v.(int)
-		result = float64(i)
-		ok = true
-	case ValFloat64:
-		result, _ = v.(float64)
-		ok = true
-	case ValNumber:
-		n, _ := v.(bwtype.Number)
-		result, ok = n.Float64()
-	}
-	return
-}
+// // Float64 - пытается извлечь float64 из interface{}
+// func Float64(val interface{}) (result float64, ok bool) {
+// 	switch v, kind := Kind(val); kind {
+// 	case ValInt:
+// 		var i int
+// 		i, _ = v.(int)
+// 		result = float64(i)
+// 		ok = true
+// 	case ValFloat64:
+// 		result, _ = v.(float64)
+// 		ok = true
+// 	case ValNumber:
+// 		n, _ := v.(bwtype.Number)
+// 		result, ok = n.Float64()
+// 	}
+// 	return
+// }
 
-// MustFloat64 - must-обертка Float64()
-func MustFloat64(val interface{}) (result float64) {
-	var ok bool
-	if result, ok = Float64(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Float64")
-	}
-	return
-}
+// // MustFloat64 - must-обертка Float64()
+// func MustFloat64(val interface{}) (result float64) {
+// 	var ok bool
+// 	if result, ok = Float64(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "Float64")
+// 	}
+// 	return
+// }
 
-// bwtype.Number - пытается извлечь bwtype.Number из interface{}
-func Number(val interface{}) (result bwtype.Number, ok bool) {
-	result, ok = bwtype.NumberFrom(val)
-	// var (
-	//   kind ValKind
-	//   t    interface{}
-	// )
-	// switch t, kind = Kind(val); kind {
-	// case ValInt:
-	//   i, _ := t.(int)
-	//   result = NumberFromInt(i)
-	//   ok = true
-	// case ValFloat64:
-	//   f, _ := t.(float64)
-	//   result = NumberFromFloat64(f)
-	//   ok = true
-	// case ValNumber:
-	//   result, _ = t.(bwtype.Number)
-	//   ok = true
-	// }
-	// bwdebug.Print("kind", kind, "t", t, "val:#v", val)
-	return
-}
+// // bwtype.Number - пытается извлечь bwtype.Number из interface{}
+// func Number(val interface{}) (result bwtype.Number, ok bool) {
+// 	result, ok = bwtype.NumberFrom(val)
+// 	// var (
+// 	//   kind ValKind
+// 	//   t    interface{}
+// 	// )
+// 	// switch t, kind = Kind(val); kind {
+// 	// case ValInt:
+// 	//   i, _ := t.(int)
+// 	//   result = NumberFromInt(i)
+// 	//   ok = true
+// 	// case ValFloat64:
+// 	//   f, _ := t.(float64)
+// 	//   result = NumberFromFloat64(f)
+// 	//   ok = true
+// 	// case ValNumber:
+// 	//   result, _ = t.(bwtype.Number)
+// 	//   ok = true
+// 	// }
+// 	// bwdebug.Print("kind", kind, "t", t, "val:#v", val)
+// 	return
+// }
 
-// MustNumber - must-обертка bwtype.Number()
-func MustNumber(val interface{}) (result bwtype.Number) {
-	var ok bool
-	if result, ok = Number(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Number")
-	}
-	return
-}
+// // MustNumber - must-обертка bwtype.Number()
+// func MustNumber(val interface{}) (result bwtype.Number) {
+// 	var ok bool
+// 	if result, ok = Number(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "Number")
+// 	}
+// 	return
+// }
 
 // String - пытается извлечь string из interface{}
 func String(val interface{}) (result string, ok bool) {
@@ -350,68 +350,68 @@ func MustString(val interface{}) (result string) {
 	return
 }
 
-// Map - пытается извлечь map[string]interface{} из interface{}
-func Map(val interface{}) (result map[string]interface{}, ok bool) {
-	if v, kind := Kind(val); kind == ValMap {
-		result, ok = v.(map[string]interface{})
-	}
-	return
-}
+// // Map - пытается извлечь map[string]interface{} из interface{}
+// func Map(val interface{}) (result map[string]interface{}, ok bool) {
+// 	if v, kind := Kind(val); kind == ValMap {
+// 		result, ok = v.(map[string]interface{})
+// 	}
+// 	return
+// }
 
-// MustMap - must-обертка Map()
-func MustMap(val interface{}) (result map[string]interface{}) {
-	var ok bool
-	if result, ok = Map(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Map")
-	}
-	return
-}
+// // MustMap - must-обертка Map()
+// func MustMap(val interface{}) (result map[string]interface{}) {
+// 	var ok bool
+// 	if result, ok = Map(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "Map")
+// 	}
+// 	return
+// }
 
-// Map - пытается извлечь []interface{} из interface{}
-func Array(val interface{}) (result []interface{}, ok bool) {
-	if v, kind := Kind(val); kind == ValArray {
-		result, ok = v.([]interface{})
-	}
-	return
-}
+// // Map - пытается извлечь []interface{} из interface{}
+// func Array(val interface{}) (result []interface{}, ok bool) {
+// 	if v, kind := Kind(val); kind == ValArray {
+// 		result, ok = v.([]interface{})
+// 	}
+// 	return
+// }
 
-// MustArray - must-обертка Array()
-func MustArray(val interface{}) (result []interface{}) {
-	var ok bool
-	if result, ok = Array(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "Array")
-	}
-	return result
-}
+// // MustArray - must-обертка Array()
+// func MustArray(val interface{}) (result []interface{}) {
+// 	var ok bool
+// 	if result, ok = Array(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "Array")
+// 	}
+// 	return result
+// }
 
-// Map - пытается извлечь []string из interface{}
-func ArrayOfString(val interface{}) (result []string, ok bool) {
-	switch v, kind := Kind(val); kind {
-	case ValArrayOfString:
-		result, ok = v.([]string)
-	case ValArray:
-		vals, _ := v.([]interface{})
-		result = []string{}
-		var s string
-		for _, val := range vals {
-			if s, ok = val.(string); !ok {
-				return
-			}
-			result = append(result, s)
-		}
-		ok = true
-	}
-	return
-}
+// // Map - пытается извлечь []string из interface{}
+// func ArrayOfString(val interface{}) (result []string, ok bool) {
+// 	switch v, kind := Kind(val); kind {
+// 	case ValArrayOfString:
+// 		result, ok = v.([]string)
+// 	case ValArray:
+// 		vals, _ := v.([]interface{})
+// 		result = []string{}
+// 		var s string
+// 		for _, val := range vals {
+// 			if s, ok = val.(string); !ok {
+// 				return
+// 			}
+// 			result = append(result, s)
+// 		}
+// 		ok = true
+// 	}
+// 	return
+// }
 
-// MustArray - must-обертка Array()
-func MustArrayOfString(val interface{}) (result []string) {
-	var ok bool
-	if result, ok = ArrayOfString(val); !ok {
-		bwerr.Panic(ansiIsNotOfType, val, "ArrayOfString")
-	}
-	return result
-}
+// // MustArray - must-обертка Array()
+// func MustArrayOfString(val interface{}) (result []string) {
+// 	var ok bool
+// 	if result, ok = ArrayOfString(val); !ok {
+// 		bwerr.Panic(ansiIsNotOfType, val, "ArrayOfString")
+// 	}
+// 	return result
+// }
 
 // ============================================================================
 

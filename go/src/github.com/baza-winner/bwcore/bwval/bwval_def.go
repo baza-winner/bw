@@ -235,8 +235,12 @@ func compileDef(def Holder) (result *Def, err error) {
 		if vp, err = def.Key("isOptional"); err != nil || vp.Val == nil {
 			err = nil
 			result.IsOptional = result.Default != nil
-		} else if result.IsOptional, err = vp.Bool(); err != nil {
+			// } else if result.IsOptional, err = vp.Bool(); err != nil {
+		} else if t, kind := Kind(vp.Val); kind != ValBool {
+			err = vp.notOfValKindError(ValKindSetFrom(ValBool))
 			return
+		} else {
+			result.IsOptional, _ = t.(bool)
 		}
 		if !result.IsOptional && result.Default != nil {
 			err = def.defaultNonOptionalError()
@@ -328,15 +332,16 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		if def.Types.Has(ValNumber) {
 			valDeftype = ValNumber
 		}
-	case ValNumber:
-		if def.Types.Has(ValNumber) {
-			valDeftype = ValNumber
-		} else if def.Types.Has(ValInt) && v.MustNumber().IsInt() {
-			// n, _ := v.Val.(bwtype.Number)
-			// if n.IsInt() {
-			valDeftype = ValInt
-			// }
-		}
+	// case ValNumber:
+	// 	if def.Types.Has(ValNumber) {
+	// 		valDeftype = ValNumber
+	// 	} else if def.Types.Has(ValInt) && v.MustNumber().IsInt() {
+
+	// 		// n, _ := v.Val.(bwtype.Number)
+	// 		// if n.IsInt() {
+	// 		valDeftype = ValInt
+	// 		// }
+	// 	}
 	case ValMap:
 		if def.Types.Has(ValMap) {
 			valDeftype = ValMap
@@ -413,9 +418,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 				}
 			}
 		} else if def.Elem != nil {
-			m, _ := Map(v.Val)
-			for k := range m {
-				// // // // bwdebug.Print("m:json", m, "k", k)
+			for k := range v.MustMap() {
 				if err = v.mapHelper(k, *(def.Elem)); err != nil {
 					return
 				}

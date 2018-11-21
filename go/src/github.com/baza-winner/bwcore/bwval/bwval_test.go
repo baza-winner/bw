@@ -5,7 +5,6 @@ import (
 
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwtesting"
-	"github.com/baza-winner/bwcore/bwtype"
 	"github.com/baza-winner/bwcore/bwval"
 )
 
@@ -27,34 +26,34 @@ import (
 // 	)
 // }
 
-func TestMustArrayOfString(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustArrayOfString,
-		map[string]bwtesting.Case{
-			`<abc def>`: {
-				In: []interface{}{
-					func(testName string) interface{} { return bwval.From(testName) },
-				},
-				Out: []interface{}{
-					[]string{"abc", "def"},
-				},
-			},
-			`["abc" "def"]`: {
-				In: []interface{}{
-					func(testName string) interface{} { return bwval.From(testName) },
-				},
-				Out: []interface{}{
-					[]string{"abc", "def"},
-				},
-			},
-			`["abc" true]`: {
-				In: []interface{}{
-					func(testName string) interface{} { return bwval.From(testName) },
-				},
-				Panic: "\x1b[96;1m([]interface {})[(string)abc (bool)true]\x1b[0m is not \x1b[97;1mArrayOfString\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustArrayOfString(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustArrayOfString,
+// 		map[string]bwtesting.Case{
+// 			`<abc def>`: {
+// 				In: []interface{}{
+// 					func(testName string) interface{} { return bwval.From(testName) },
+// 				},
+// 				Out: []interface{}{
+// 					[]string{"abc", "def"},
+// 				},
+// 			},
+// 			`["abc" "def"]`: {
+// 				In: []interface{}{
+// 					func(testName string) interface{} { return bwval.From(testName) },
+// 				},
+// 				Out: []interface{}{
+// 					[]string{"abc", "def"},
+// 				},
+// 			},
+// 			`["abc" true]`: {
+// 				In: []interface{}{
+// 					func(testName string) interface{} { return bwval.From(testName) },
+// 				},
+// 				Panic: "\x1b[96;1m([]interface {})[(string)abc (bool)true]\x1b[0m is not \x1b[97;1mArrayOfString\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }
 
 func TestFrom(t *testing.T) {
 	bwtesting.BwRunTests(t, bwval.From,
@@ -112,16 +111,26 @@ func TestMustSetPathVal(t *testing.T) {
 	for k, v := range map[string]string{
 		`{
 			val: "something",
-			holder: {
-				val: { keyA {} }
-			},
+			holder: { val: { keyA {} } },
 			path: "keyA.keyB"
 	 	}`: `{
-	 		holder: {
-		 		val: {
-		 			keyA { keyB "something" }
-			 	}
-	 		}
+	 		holder: { val: { keyA { keyB "something" } } }
+ 		}`,
+		`{
+			val: "good",
+			holder: { val: [ "string", 273, [<some thing>] ] },
+			path: "2.1"
+	 	}`: `{
+			holder: { val: [ "string", 273, [<some good>] ] },
+ 		}`,
+		`{
+			val: "good",
+			holder: { val: [ "string", 273, [<some thing>] ] },
+			path: "2.($idx)"
+			vars: { idx 1 }
+	 	}`: `{
+			holder: { val: [ "string", 273, [<some good>] ] },
+			vars: { idx 1 }
  		}`,
 	} {
 		kHolder := bwval.HolderFrom(k)
@@ -132,12 +141,12 @@ func TestMustSetPathVal(t *testing.T) {
 				bwval.Holder{
 					Val: kHolder.MustPath(bwval.PathStr{S: "holder.val"}).Val,
 				},
-				bwval.PathStr{S: kHolder.MustPath(bwval.PathStr{S: "path"}).MustString()},
-				// bwval.PathStr{S: }.MustPath(),
+				bwval.PathStr{S: kHolder.MustPath(bwval.PathStr{S: "path"}).String()}.MustPath(),
+				kHolder.MustPath(bwval.PathStr{S: "vars?"}).MustMap(),
 			},
 			Out: []interface{}{
 				bwval.Holder{Val: vHolder.MustPath(bwval.PathStr{S: "holder.val"}.MustPath()).Val},
-				vHolder.MustPath(bwval.PathStr{S: "vars?"}).Val,
+				vHolder.MustPath(bwval.PathStr{S: "vars?"}).MustMap(),
 			},
 		}
 		tests[k] = test
@@ -166,42 +175,42 @@ func TestMustSetPathVal(t *testing.T) {
 			return v, vars
 		},
 		map[string]bwtesting.Case{
-			"keyA.keyB": {
-				In: []interface{}{
-					"something",
-					bwval.Holder{Val: map[string]interface{}{
-						"keyA": map[string]interface{}{},
-					}},
-					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
-				},
-				Out: []interface{}{
-					bwval.Holder{Val: map[string]interface{}{
-						"keyA": map[string]interface{}{
-							"keyB": "something",
-						},
-					}},
-					nil,
-				},
-			},
-			"2.1": {
-				In: []interface{}{
-					"good",
-					bwval.Holder{Val: []interface{}{
-						"string",
-						273,
-						[]interface{}{"some", "thing"},
-					}},
-					func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
-				},
-				Out: []interface{}{
-					bwval.Holder{Val: []interface{}{
-						"string",
-						273,
-						[]interface{}{"some", "good"},
-					}},
-					nil,
-				},
-			},
+			// "keyA.keyB": {
+			// 	In: []interface{}{
+			// 		"something",
+			// 		bwval.Holder{Val: map[string]interface{}{
+			// 			"keyA": map[string]interface{}{},
+			// 		}},
+			// 		func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
+			// 	},
+			// 	Out: []interface{}{
+			// 		bwval.Holder{Val: map[string]interface{}{
+			// 			"keyA": map[string]interface{}{
+			// 				"keyB": "something",
+			// 			},
+			// 		}},
+			// 		nil,
+			// 	},
+			// },
+			// "2.1": {
+			// 	In: []interface{}{
+			// 		"good",
+			// 		bwval.Holder{Val: []interface{}{
+			// 			"string",
+			// 			273,
+			// 			[]interface{}{"some", "thing"},
+			// 		}},
+			// 		func(testName string) bw.ValPath { return bwval.PathStr{S: testName}.MustPath() },
+			// 	},
+			// 	Out: []interface{}{
+			// 		bwval.Holder{Val: []interface{}{
+			// 			"string",
+			// 			273,
+			// 			[]interface{}{"some", "good"},
+			// 		}},
+			// 		nil,
+			// 	},
+			// },
 			"2.($idx)": {
 				In: []interface{}{
 					"good",
@@ -521,7 +530,7 @@ func TestMustPathVal(t *testing.T) {
 					bwval.PathStr{S: "some.($key)"}.MustPath(),
 					map[string]interface{}{"key": "thing"},
 				},
-				Panic: "Failed to get \x1b[38;5;252;1msome.($key)\x1b[0m of \x1b[96;1m1\x1b[0m with \x1b[38;5;201;1mvars\x1b[0m \x1b[96;1m{\n  \"key\": \"thing\"\n}\x1b[0m: \x1b[38;5;252;1m.\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m is not \x1b[97;1mMap\x1b[0m\x1b[0m",
+				Panic: "Failed to get \x1b[38;5;252;1msome.($key)\x1b[0m of \x1b[96;1m1\x1b[0m with \x1b[38;5;201;1mvars\x1b[0m \x1b[96;1m{\n  \"key\": \"thing\"\n}\x1b[0m: \x1b[38;5;252;1m.\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m neither \x1b[97;1mNil\x1b[0m nor \x1b[97;1mMap\x1b[0m\x1b[0m",
 			},
 			"err: is not Array": {
 				In: []interface{}{
@@ -550,190 +559,190 @@ func TestMustPathVal(t *testing.T) {
 	)
 }
 
-func TestMustMap(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustMap,
-		map[string]bwtesting.Case{
-			"Map": {
-				In: []interface{}{
-					map[string]interface{}{},
-				},
-				Out: []interface{}{
-					map[string]interface{}{},
-				},
-			},
-			"non Map": {
-				In: []interface{}{
-					1,
-				},
-				Panic: "\x1b[96;1m(int)1\x1b[0m is not \x1b[97;1mMap\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustMap(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustMap,
+// 		map[string]bwtesting.Case{
+// 			"Map": {
+// 				In: []interface{}{
+// 					map[string]interface{}{},
+// 				},
+// 				Out: []interface{}{
+// 					map[string]interface{}{},
+// 				},
+// 			},
+// 			"non Map": {
+// 				In: []interface{}{
+// 					1,
+// 				},
+// 				Panic: "\x1b[96;1m(int)1\x1b[0m is not \x1b[97;1mMap\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }
 
-func TestMustArray(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustArray,
-		map[string]bwtesting.Case{
-			"Array": {
-				In: []interface{}{
-					[]interface{}{},
-				},
-				Out: []interface{}{
-					[]interface{}{},
-				},
-			},
-			"non Array": {
-				In: []interface{}{
-					1,
-				},
-				Panic: "\x1b[96;1m(int)1\x1b[0m is not \x1b[97;1mArray\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustArray(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustArray,
+// 		map[string]bwtesting.Case{
+// 			"Array": {
+// 				In: []interface{}{
+// 					[]interface{}{},
+// 				},
+// 				Out: []interface{}{
+// 					[]interface{}{},
+// 				},
+// 			},
+// 			"non Array": {
+// 				In: []interface{}{
+// 					1,
+// 				},
+// 				Panic: "\x1b[96;1m(int)1\x1b[0m is not \x1b[97;1mArray\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }
 
-func TestMustString(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustString,
-		map[string]bwtesting.Case{
-			"String": {
-				In: []interface{}{
-					"some",
-				},
-				Out: []interface{}{
-					"some",
-				},
-			},
-			"non String": {
-				In: []interface{}{
-					1,
-				},
-				Panic: "\x1b[96;1m(int)1\x1b[0m is not \x1b[97;1mString\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustString(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustString,
+// 		map[string]bwtesting.Case{
+// 			"String": {
+// 				In: []interface{}{
+// 					"some",
+// 				},
+// 				Out: []interface{}{
+// 					"some",
+// 				},
+// 			},
+// 			"non String": {
+// 				In: []interface{}{
+// 					1,
+// 				},
+// 				Panic: "\x1b[96;1m(int)1\x1b[0m is not \x1b[97;1mString\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }
 
-func TestMustInt(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustInt,
-		map[string]bwtesting.Case{
-			"273": {
-				In: []interface{}{
-					273,
-				},
-				Out: []interface{}{
-					273,
-				},
-			},
-			"Number(-273)": {
-				In: []interface{}{
-					bwtype.MustNumberFrom(-273),
-				},
-				Out: []interface{}{
-					-273,
-				},
-			},
-			"non Int": {
-				In: []interface{}{
-					"some",
-				},
-				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mInt\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustInt(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustInt,
+// 		map[string]bwtesting.Case{
+// 			"273": {
+// 				In: []interface{}{
+// 					273,
+// 				},
+// 				Out: []interface{}{
+// 					273,
+// 				},
+// 			},
+// 			"Number(-273)": {
+// 				In: []interface{}{
+// 					bwtype.MustNumberFrom(-273),
+// 				},
+// 				Out: []interface{}{
+// 					-273,
+// 				},
+// 			},
+// 			"non Int": {
+// 				In: []interface{}{
+// 					"some",
+// 				},
+// 				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mInt\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }
 
-func TestMustFloat64(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustFloat64,
-		map[string]bwtesting.Case{
-			"Float64(Int)": {
-				In: []interface{}{
-					int(273),
-				},
-				Out: []interface{}{
-					float64(273),
-				},
-			},
-			"Float64(Float64)": {
-				In: []interface{}{
-					float64(273),
-				},
-				Out: []interface{}{
-					float64(273),
-				},
-			},
-			"Float64(Number)": {
-				In: []interface{}{
-					bwtype.MustNumberFrom(273),
-				},
-				Out: []interface{}{
-					float64(273),
-				},
-			},
-			"non Float64": {
-				In: []interface{}{
-					"some",
-				},
-				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mFloat64\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustFloat64(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustFloat64,
+// 		map[string]bwtesting.Case{
+// 			"Float64(Int)": {
+// 				In: []interface{}{
+// 					int(273),
+// 				},
+// 				Out: []interface{}{
+// 					float64(273),
+// 				},
+// 			},
+// 			"Float64(Float64)": {
+// 				In: []interface{}{
+// 					float64(273),
+// 				},
+// 				Out: []interface{}{
+// 					float64(273),
+// 				},
+// 			},
+// 			"Float64(Number)": {
+// 				In: []interface{}{
+// 					bwtype.MustNumberFrom(273),
+// 				},
+// 				Out: []interface{}{
+// 					float64(273),
+// 				},
+// 			},
+// 			"non Float64": {
+// 				In: []interface{}{
+// 					"some",
+// 				},
+// 				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mFloat64\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }
 
-func TestMustNumber(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustNumber,
-		map[string]bwtesting.Case{
-			"Number(int)": {
-				In: []interface{}{
-					int(273),
-				},
-				Out: []interface{}{
-					bwtype.MustNumberFrom(273),
-				},
-			},
-			"Number(float64)": {
-				In: []interface{}{
-					float64(273),
-				},
-				Out: []interface{}{
-					bwtype.MustNumberFrom(float64(273)),
-				},
-			},
-			"Number(Number)": {
-				In: []interface{}{
-					bwtype.MustNumberFrom(273),
-				},
-				Out: []interface{}{
-					bwtype.MustNumberFrom(273),
-				},
-			},
-			"non Number": {
-				In: []interface{}{
-					"some",
-				},
-				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustNumber(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustNumber,
+// 		map[string]bwtesting.Case{
+// 			"Number(int)": {
+// 				In: []interface{}{
+// 					int(273),
+// 				},
+// 				Out: []interface{}{
+// 					bwtype.MustNumberFrom(273),
+// 				},
+// 			},
+// 			"Number(float64)": {
+// 				In: []interface{}{
+// 					float64(273),
+// 				},
+// 				Out: []interface{}{
+// 					bwtype.MustNumberFrom(float64(273)),
+// 				},
+// 			},
+// 			"Number(Number)": {
+// 				In: []interface{}{
+// 					bwtype.MustNumberFrom(273),
+// 				},
+// 				Out: []interface{}{
+// 					bwtype.MustNumberFrom(273),
+// 				},
+// 			},
+// 			"non Number": {
+// 				In: []interface{}{
+// 					"some",
+// 				},
+// 				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }
 
-func TestMustBool(t *testing.T) {
-	bwtesting.BwRunTests(t, bwval.MustBool,
-		map[string]bwtesting.Case{
-			"Bool": {
-				In: []interface{}{
-					false,
-				},
-				Out: []interface{}{
-					false,
-					// nil,
-				},
-			},
-			"non Bool": {
-				In: []interface{}{
-					"some",
-				},
-				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mBool\x1b[0m",
-			},
-		},
-	)
-}
+// func TestMustBool(t *testing.T) {
+// 	bwtesting.BwRunTests(t, bwval.MustBool,
+// 		map[string]bwtesting.Case{
+// 			"Bool": {
+// 				In: []interface{}{
+// 					false,
+// 				},
+// 				Out: []interface{}{
+// 					false,
+// 					// nil,
+// 				},
+// 			},
+// 			"non Bool": {
+// 				In: []interface{}{
+// 					"some",
+// 				},
+// 				Panic: "\x1b[96;1m(string)some\x1b[0m is not \x1b[97;1mBool\x1b[0m",
+// 			},
+// 		},
+// 	)
+// }

@@ -2,13 +2,14 @@ package bwval
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
-	"github.com/baza-winner/bwcore/bwtype"
+	"github.com/baza-winner/bwcore/bwstr"
 )
 
 // ============================================================================
@@ -197,42 +198,79 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 	return
 }
 
-func (v Holder) Bool() (result bool, err error) {
-	var ok bool
-	if result, ok = Bool(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValBool))
+// func (v Holder) Bool() (result bool, err error) {
+func (v Holder) Bool() (result bool) {
+	switch t, kind := Kind(v.Val); kind {
+	case ValNil:
+		result = false
+	case ValInt:
+		i, _ := t.(int)
+		result = i != 0
+	case ValFloat64:
+		f, _ := t.(float64)
+		result = f != 0
+	case ValString:
+		s, _ := t.(string)
+		result = len(s) > 0
+	case ValMap:
+		m, _ := t.(map[string]interface{})
+		result = len(m) > 0
+	case ValArray:
+		vals, _ := t.([]interface{})
+		result = len(vals) > 0
+	case ValArrayOfString:
+		ss, _ := t.([]string)
+		result = len(ss) > 0
+	}
+	// var ok bool
+	// if result, ok = Bool(v.Val); !ok {
+	// 	err = v.notOfValKindError(ValKindSetFrom(ValBool))
+	// }
+	return
+}
+
+// func (v Holder) MustBool() (result bool) {
+// 	var err error
+// 	if result, err = v.Bool(); err != nil {
+// 		bwerr.PanicA(bwerr.Err(err))
+// 	}
+// 	return
+// }
+
+// func (v Holder) String() (result string, err error) {
+func (v Holder) String() (result string) {
+	switch t, kind := Kind(v.Val); kind {
+	case ValNil:
+		result = ""
+	case ValInt:
+		i, _ := t.(int)
+		result = strconv.Itoa(i)
+	case ValString:
+		result, _ = t.(string)
+	default:
+		bytes, _ := json.Marshal(t)
+		result = string(bytes)
 	}
 	return
 }
 
-func (v Holder) MustBool() (result bool) {
-	var err error
-	if result, err = v.Bool(); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-	return
-}
-
-func (v Holder) String() (result string, err error) {
-	var ok bool
-	if result, ok = String(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValString))
-	}
-	return
-}
-
-func (v Holder) MustString() (result string) {
-	var err error
-	if result, err = v.String(); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-	return
-}
+// func (v Holder) MustString() (result string) {
+// 	var err error
+// 	if result, err = v.String(); err != nil {
+// 		bwerr.PanicA(bwerr.Err(err))
+// 	}
+// 	return
+// }
 
 func (v Holder) Int() (result int, err error) {
-	var ok bool
-	if result, ok = Int(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValInt))
+	switch t, kind := Kind(v.Val); kind {
+	case ValInt:
+		result, _ = t.(int)
+	case ValString:
+		s, _ := t.(string)
+		result, err = bwstr.ParseInt(s)
+	default:
+		err = v.notOfValKindError(ValKindSetFrom(ValInt, ValString))
 	}
 	return
 }
@@ -246,9 +284,20 @@ func (v Holder) MustInt() (result int) {
 }
 
 func (v Holder) Float64() (result float64, err error) {
-	var ok bool
-	if result, ok = Float64(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValFloat64))
+	switch t, kind := Kind(v.Val); kind {
+	case ValInt:
+		var i int
+		i, _ = t.(int)
+		result = float64(i)
+	case ValFloat64:
+		result, _ = t.(float64)
+	case ValNil:
+		result = 0
+	case ValString:
+		s, _ := t.(string)
+		result, err = strconv.ParseFloat(s, 64)
+	default:
+		err = v.notOfValKindError(ValKindSetFrom(ValFloat64, ValInt, ValNil))
 	}
 	return
 }
@@ -261,27 +310,41 @@ func (v Holder) MustFloat64() (result float64) {
 	return
 }
 
-func (v Holder) Number() (result bwtype.Number, err error) {
-	var ok bool
-	if result, ok = Number(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValNumber))
-	}
-	return
-}
+// func (v Holder) Number() (result bwtype.Number, err error) {
+// 	var ok bool
+// 	if result, ok = Number(v.Val); !ok {
+// 		err = v.notOfValKindError(ValKindSetFrom(ValNumber))
+// 	}
+// 	return
+// }
 
-func (v Holder) MustNumber() (result bwtype.Number) {
-	var err error
-	if result, err = v.Number(); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-	}
-	return
-}
+// func (v Holder) MustNumber() (result bwtype.Number) {
+// 	var err error
+// 	if result, err = v.Number(); err != nil {
+// 		bwerr.PanicA(bwerr.Err(err))
+// 	}
+// 	return
+// }
 
 func (v Holder) Array() (result []interface{}, err error) {
-	var ok bool
-	if result, ok = Array(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValArray))
+	switch t, kind := Kind(v.Val); kind {
+	case ValArray:
+		result, _ = t.([]interface{})
+	case ValArrayOfString:
+		ss, _ := t.([]string)
+		result = []interface{}{}
+		for _, s := range ss {
+			result = append(result, s)
+		}
+	case ValNil:
+		result = []interface{}{}
+	default:
+		err = v.notOfValKindError(ValKindSetFrom(ValArray, ValArrayOfString, ValNil))
 	}
+	// var ok bool
+	// if result, ok = Array(v.Val); !ok {
+	// 	err = v.notOfValKindError(ValKindSetFrom(ValArray))
+	// }
 	return
 }
 
@@ -309,8 +372,10 @@ func (v Holder) ArrayOfString() (result []string, err error) {
 				return
 			}
 		}
+	case ValNil:
+		result = []string{}
 	default:
-		err = v.notOfValKindError(ValKindSetFrom(ValArray))
+		err = v.notOfValKindError(ValKindSetFrom(ValArray, ValArrayOfString, ValNil))
 	}
 	return
 }
@@ -324,9 +389,13 @@ func (v Holder) MustArrayOfString() (result []string) {
 }
 
 func (v Holder) Map() (result map[string]interface{}, err error) {
-	var ok bool
-	if result, ok = Map(v.Val); !ok {
-		err = v.notOfValKindError(ValKindSetFrom(ValMap))
+	switch t, kind := Kind(v.Val); kind {
+	case ValMap:
+		result, _ = t.(map[string]interface{})
+	case ValNil:
+		result = map[string]interface{}{}
+	default:
+		err = v.notOfValKindError(ValKindSetFrom(ValMap, ValNil))
 	}
 	return
 }

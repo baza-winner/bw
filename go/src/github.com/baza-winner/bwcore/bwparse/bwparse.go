@@ -11,6 +11,7 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwrune"
+	"github.com/baza-winner/bwcore/bwstr"
 )
 
 // ============================================================================
@@ -116,10 +117,34 @@ const (
 
 func (p *P) SkipSpace(tillEOF bool) (err error) {
 	p.Forward(Initial)
+REDO:
 	for !p.Curr.IsEOF && unicode.IsSpace(p.Curr.Rune) {
 		p.Forward(1)
 	}
-	if !tillEOF && p.Curr.IsEOF || tillEOF && !p.Curr.IsEOF {
+	if p.Curr.IsEOF && !tillEOF {
+		err = p.Unexpected(p.Curr)
+		return
+	}
+	if p.canSkipRunes('/', '/') {
+		p.Forward(2)
+		for !p.Curr.IsEOF && p.Curr.Rune != '\n' {
+			p.Forward(1)
+		}
+		if !p.Curr.IsEOF {
+			p.Forward(1)
+		}
+		goto REDO
+	} else if p.canSkipRunes('/', '*') {
+		p.Forward(2)
+		for !p.Curr.IsEOF && !p.canSkipRunes('*', '/') {
+			p.Forward(1)
+		}
+		if !p.Curr.IsEOF {
+			p.Forward(2)
+		}
+		goto REDO
+	}
+	if tillEOF && !p.Curr.IsEOF {
 		err = p.Unexpected(p.Curr)
 	}
 	return
@@ -238,7 +263,7 @@ func (p *P) Int() (result int, start PosInfo, ok bool, err error) {
 		for b {
 			s, b = p.addDigit(p.Curr.Rune, s)
 		}
-		if result, err = parseInt(s); err != nil {
+		if result, err = bwstr.ParseInt(s); err != nil {
 			err = p.Unexpected(start, bwerr.Err(err))
 		}
 	}
@@ -276,7 +301,7 @@ func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
 				s = s[:pos]
 			}
 			var i int
-			if i, err = parseInt(s); err == nil {
+			if i, err = bwstr.ParseInt(s); err == nil {
 				result = i
 			}
 		}
