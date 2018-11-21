@@ -217,11 +217,16 @@ func (v ValPath) AppendHash(name string) ValPath {
 
 type ValPathProvider interface {
 	Path() (ValPath, error)
-	MustPath() ValPath
+	// MustPath() ValPath
 }
 
 func (p ValPath) Path() (ValPath, error) { return p, nil }
-func (p ValPath) MustPath() ValPath      { return p }
+
+// func MustPath(p ValPathProvider) ValPath {
+// 	if ()
+
+// }
+// func (p ValPath) MustPath() ValPath      { return p }
 
 // ============================================================================
 

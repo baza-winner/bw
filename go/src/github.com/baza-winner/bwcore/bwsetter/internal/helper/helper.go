@@ -377,7 +377,7 @@ func (v *Helper) saveHelper(f *File, suffix string) {
 	fileName := name + "_set" + suffix + ".go"
 	fileSpec := filepath.Join(v.packageDir, strings.ToLower(fileName))
 	if err := f.Save(fileSpec); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicErr(err)
 	}
 }
 

@@ -64,8 +64,8 @@ func TestDefFrom(t *testing.T) {
 			Types: bwval.ValKindSetFrom(bwval.ValInt),
 			Range: bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 2}),
 		},
-		`{ type Number min 1 max 2 }`: {
-			Types: bwval.ValKindSetFrom(bwval.ValNumber),
+		`{ type Float64 min 1 max 2 }`: {
+			Types: bwval.ValKindSetFrom(bwval.ValFloat64),
 			Range: bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 2}),
 		},
 		`{ type String default "some" }`: {

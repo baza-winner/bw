@@ -126,7 +126,7 @@ func (v Holder) outOfRangeError(rng bwtype.Range) (err error) {
 
 // ============================================================================
 
-func (v Holder) maxLessThanMinError(max, min bwtype.Number) error {
+func (v Holder) maxLessThanMinError(max, min bwtype.RangeLimit) error {
 	return bwerr.From(v.ansiString()+
 		": <ansiPath>.max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiPath>.min<ansi> (<ansiVal>%s<ansi>)",
 		bwjson.Pretty(max), bwjson.Pretty(min),

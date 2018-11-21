@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/baza-winner/bwcore/bwjson"
+	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/bwval"
 )
@@ -210,7 +211,9 @@ func TestHolderValidVal(t *testing.T) {
 				return bwval.Holder{Val: bwval.HolderFrom(testName).MustKeyVal("val")}
 			},
 			In: []interface{}{
-				func(testName string) bwval.Def { return bwval.DefFrom(bwval.HolderFrom(testName).MustKeyVal("def")) },
+				func(testName string) bwval.Def {
+					return bwval.MustDefFrom(bwrune.FromString(bwval.HolderFrom(testName).MustKeyVal("def")))
+				},
 			},
 		}
 	}

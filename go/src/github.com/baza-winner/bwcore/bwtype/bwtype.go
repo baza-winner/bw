@@ -206,7 +206,7 @@ func RangeFrom(a A) (result Range, err error) {
 func MustRangeFrom(a A) (result Range) {
 	var err error
 	if result, err = RangeFrom(a); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicErr(err)
 	}
 	return
 }

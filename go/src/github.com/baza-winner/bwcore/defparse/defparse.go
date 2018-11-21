@@ -247,7 +247,7 @@ func Parse(source string) (interface{}, error) {
 func MustParse(source string) (result interface{}) {
 	var err error
 	if result, err = Parse(source); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicErr(err)
 	}
 	return result
 }
@@ -269,7 +269,7 @@ func ParseMap(source string) (result map[string]interface{}, err error) {
 func MustParseMap(source string) (result map[string]interface{}) {
 	var err error
 	if result, err = ParseMap(source); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicErr(err)
 	}
 	return result
 }

@@ -26,7 +26,7 @@ package bwval
 // func MustNumberFrom(val interface{}) (result Number) {
 // 	var err error
 // 	if result, err = NumberFrom(val); err != nil {
-// 		bwerr.PanicA(bwerr.Err(err))
+// 		bwerr.PanicErr(err)
 // 	}
 // 	return
 // }
@@ -169,7 +169,7 @@ package bwval
 // // func MustRangeFrom(min, max Number) (result Range) {
 // // 	var err error
 // // 	if result, err = RangeFrom(min, max); err != nil {
-// // 		bwerr.PanicA(bwerr.Err(err))
+// // 		bwerr.PanicErr(err)
 // // 	}
 // // 	return
 // // }

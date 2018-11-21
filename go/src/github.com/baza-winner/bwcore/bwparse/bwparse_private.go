@@ -40,11 +40,10 @@ func init() {
 
 	ansiPos = ansi.String(" at pos <ansiPath>%d<ansi>")
 	ansiLineCol = ansi.String(" at line <ansiPath>%d<ansi>, col <ansiPath>%d<ansi> (pos <ansiPath>%d<ansi>)")
-	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.Pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.Curr.Pos<ansi> (<ansiVal>%d<ansi>)")
+	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.curr.pos<ansi> (<ansiVal>%d<ansi>)")
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>%q<ansi>")
-	ansiOutOfRange = ansi.String("<ansiVal>%d<ansi> is out of range <ansiVal>%d..%d")
 }
 
 func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (result uint, ok bool) {
@@ -69,81 +68,82 @@ func optKeyMap(opt map[string]interface{}, key string, keys *bwset.String) (resu
 	return
 }
 
-var ()
-
-func init() {
+func optKeyOnMapKeyFunc(opt map[string]interface{}, key string, keys *bwset.String) (result map[string]interface{}, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = val.(map[string]interface{}); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "map[string]interface{}")
+		}
+	}
+	return
 }
 
 // ============================================================================
 
 func (p *P) pullRune(ps *PosInfo) {
-	runePtr := bwrune.MustPull(p.Prov)
-	if !ps.IsEOF {
-		if ps.Pos >= 0 {
-			ps.Prefix += string(ps.Rune)
-			// bwdebug.Print("ps.Prefix", ps.Prefix, "ps.Rune:s", ps.Rune)
+	runePtr := bwrune.MustPull(p.prov)
+	if !ps.isEOF {
+		if ps.pos >= 0 {
+			ps.prefix += string(ps.rune)
 		}
 		if runePtr != nil {
-			if ps.Rune != '\n' {
-				ps.Col++
+			if ps.rune != '\n' {
+				ps.col++
 			} else {
-				ps.Line++
-				ps.Col = 1
-				if int(ps.Line) > int(p.preLineCount)+1 {
-					i := strings.Index(ps.Prefix, "\n")
-					// bwdebug.Print("ps.Prefix", ps.Prefix, "i", i)
-					ps.Prefix = ps.Prefix[i+1:]
-					ps.PrefixStart += i + 1
-					// bwdebug.Print("ps.Line", ps.Line, "p.preLineCount", p.preLineCount, "ps.Prefix", ps.Prefix, "ps.PrefixStart", ps.PrefixStart)
+				ps.line++
+				ps.col = 1
+				if int(ps.line) > int(p.preLineCount)+1 {
+					i := strings.Index(ps.prefix, "\n")
+					ps.prefix = ps.prefix[i+1:]
+					ps.prefixStart += i + 1
 				}
 			}
 		}
 		if runePtr == nil {
-			ps.Rune, ps.IsEOF = '\000', true
+			ps.rune, ps.isEOF = '\000', true
 		} else {
-			ps.Rune, ps.IsEOF = *runePtr, false
+			ps.rune, ps.isEOF = *runePtr, false
 		}
-		ps.Pos++
+		ps.pos++
 	}
 }
 
 func (p *P) suffix(ps PosInfo) (suffix string) {
-	if ps.Pos > p.Curr.Pos {
-		bwerr.Panic(ansiGetSuffixAssert, ps.Pos, p.Curr.Pos)
+	if ps.pos > p.curr.pos {
+		bwerr.Panic(ansiGetSuffixAssert, ps.pos, p.curr.pos)
 	}
 
 	preLineCount, postLineCount := int(p.preLineCount), int(p.postLineCount)
-	if p.Curr.IsEOF {
+	if p.curr.isEOF {
 		preLineCount += postLineCount
 	}
 
 	var separator string
-	if p.Curr.Line > 1 {
-		suffix += fmt.Sprintf(ansiLineCol, ps.Line, ps.Col, ps.Pos)
+	if p.curr.line > 1 {
+		suffix += fmt.Sprintf(ansiLineCol, ps.line, ps.col, ps.pos)
 		separator = "\n"
 	} else {
-		suffix += fmt.Sprintf(ansiPos, ps.Pos)
+		suffix += fmt.Sprintf(ansiPos, ps.pos)
 		separator = " "
 	}
-	suffix += ":" + separator + ansiOK + p.Curr.Prefix[0:ps.Pos-p.Curr.PrefixStart]
+	suffix += ":" + separator + ansiOK + p.curr.prefix[0:ps.pos-p.curr.prefixStart]
 
 	var needPostLines, noNeedNewline bool
-	if ps.Pos < p.Curr.Pos {
-		noNeedNewline = p.Curr.Prefix[len(p.Curr.Prefix)-1] == '\n'
-		suffix += ansiErr + p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:] + ansi.Reset()
+	if ps.pos < p.curr.pos {
+		noNeedNewline = p.curr.prefix[len(p.curr.prefix)-1] == '\n'
+		suffix += ansiErr + p.curr.prefix[ps.pos-p.curr.prefixStart:] + ansi.Reset()
 		needPostLines = true
-	} else if !p.Curr.IsEOF {
-		noNeedNewline = p.Curr.Rune == '\n'
-		suffix += ansiErr + string(p.Curr.Rune) + ansi.Reset()
+	} else if !p.curr.isEOF {
+		noNeedNewline = p.curr.rune == '\n'
+		suffix += ansiErr + string(p.curr.rune) + ansi.Reset()
 		p.Forward(1)
 		needPostLines = true
 	}
 
-	// bwdebug.Print("needPostLines", needPostLines, "p.Curr.IsEOF", p.Curr.IsEOF, "postLineCount", postLineCount)
-	for needPostLines && !p.Curr.IsEOF && postLineCount >= 0 {
-		suffix += string(p.Curr.Rune)
-		// bwdebug.Print("p.Curr.Rune:s", p.Curr.Rune, "postLineCount", postLineCount)
-		if noNeedNewline = p.Curr.Rune == '\n'; noNeedNewline {
+	for needPostLines && !p.curr.isEOF && postLineCount >= 0 {
+		suffix += string(p.curr.rune)
+		if noNeedNewline = p.curr.rune == '\n'; noNeedNewline {
 			postLineCount -= 1
 		}
 		p.Forward(1)
@@ -156,11 +156,11 @@ func (p *P) suffix(ps PosInfo) (suffix string) {
 }
 
 func (p *P) forward() {
-	if len(p.Next) == 0 {
-		p.pullRune(&p.Curr)
+	if len(p.next) == 0 {
+		p.pullRune(&p.curr)
 	} else {
-		last := len(p.Next) - 1
-		p.Curr, p.Next = p.Next[last], p.Next[:last]
+		last := len(p.next) - 1
+		p.curr, p.next = p.next[last], p.next[:last]
 	}
 }
 
@@ -294,7 +294,7 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 
 func (p *P) start() PosInfo {
 	p.Forward(Initial)
-	return p.Curr
+	return p.curr
 }
 
 func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter rune, f func() error) (start PosInfo, ok bool, err error) {
@@ -323,7 +323,7 @@ func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter r
 func (p *P) parseVal() (result interface{}, err error) {
 	var ok bool
 	if result, _, ok, err = p.Val(); err == nil && !ok {
-		err = p.Unexpected(p.Curr)
+		err = p.Unexpected(p.curr)
 	}
 	return
 }
@@ -334,7 +334,7 @@ func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
 		r         rune
 		needDigit bool
 	)
-	if r = p.Curr.Rune; r == '-' || r == '+' {
+	if r = p.curr.rune; r == '-' || r == '+' {
 		needDigit = true
 	} else if !isDigit(r) {
 		return
@@ -343,8 +343,8 @@ func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
 	p.Forward(1)
 	s = string(r)
 	if needDigit {
-		if r = p.Curr.Rune; !isDigit(r) {
-			err = p.Unexpected(p.Curr)
+		if r = p.curr.rune; !isDigit(r) {
+			err = p.Unexpected(p.curr)
 		} else {
 			p.Forward(1)
 			s += string(r)
@@ -376,7 +376,7 @@ func (p *P) addDigit(r rune, s string) (string, bool) {
 
 func (p *P) canSkipRunes(rr ...rune) bool {
 	for i, r := range rr {
-		if pi := p.LookAhead(uint(i)); pi.IsEOF || pi.Rune != r {
+		if pi := p.LookAhead(uint(i)); pi.isEOF || pi.rune != r {
 			return false
 		}
 	}
@@ -410,10 +410,10 @@ func (p *P) subPath(a PathA) (result bw.ValPath, start PosInfo, ok bool, err err
 		if err = p.SkipSpace(TillNonEOF); err == nil {
 			if result, err = p.PathContent(PathA{isSubPath: true, Bases: a.Bases}); err == nil {
 				if err = p.SkipSpace(TillNonEOF); err == nil {
-					if p.Curr.Rune == ')' {
+					if p.curr.rune == ')' {
 						p.Forward(1)
 					} else {
-						err = p.Unexpected(p.Curr)
+						err = p.Unexpected(p.curr)
 					}
 				}
 			}

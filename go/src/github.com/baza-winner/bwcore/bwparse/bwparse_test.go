@@ -13,22 +13,25 @@ import (
 
 func TestUnexpected(t *testing.T) {
 	testUnexpectedHelper := func(s string, ofs uint) *bwparse.P {
-		p := bwparse.From(bwrune.ProviderFromString(s))
+		p := bwparse.From(bwrune.FromString(s))
 		p.Forward(ofs)
 		return p
 	}
 	bwtesting.BwRunTests(t,
 		"Unexpected",
 		func() map[string]bwtesting.Case {
+			p := testUnexpectedHelper("some", 2)
+			pi := p.LookAhead(3)
 			tests := map[string]bwtesting.Case{}
 			tests["panic"] = bwtesting.Case{
-				V:     testUnexpectedHelper("some", 2),
-				In:    []interface{}{bwparse.PosInfo{Pos: 4}},
-				Panic: "\x1b[38;5;201;1mps.Pos\x1b[0m (\x1b[96;1m4\x1b[0m) > \x1b[38;5;201;1mp.Curr.Pos\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m",
+				V: p,
+				// In:    []interface{}{bwparse.PosInfo{Pos: 4}},
+				In:    []interface{}{pi},
+				Panic: "\x1b[38;5;201;1mps.pos\x1b[0m (\x1b[96;1m4\x1b[0m) > \x1b[38;5;201;1mp.curr.pos\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m",
 			}
-			p := testUnexpectedHelper("{\n key wrong \n} ", 0)
+			p = testUnexpectedHelper("{\n key wrong \n} ", 0)
 			p.Forward(7)
-			pi := p.Curr
+			pi = p.Curr()
 			p.Forward(5)
 			tests["normal"] = bwtesting.Case{
 				V:   p,
@@ -43,11 +46,11 @@ func TestUnexpected(t *testing.T) {
 func TestLookAhead(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		func(p *bwparse.P, i int) rune {
-			return p.LookAhead(uint(i)).Rune
+			return p.LookAhead(uint(i)).Rune()
 		},
 		func() map[string]bwtesting.Case {
 			s := "s\no\nm\ne\nt\nhing"
-			p := bwparse.From(bwrune.ProviderFromString(s))
+			p := bwparse.From(bwrune.FromString(s))
 			p.Forward(0)
 			tests := map[string]bwtesting.Case{}
 			for i, r := range s {
@@ -75,13 +78,13 @@ func TestPath(t *testing.T) {
 				if len(optBases) > 0 {
 					pco.Bases = optBases[0]
 				}
-				p := bwparse.From(bwrune.ProviderFromString(s))
+				p := bwparse.From(bwrune.FromString(s))
 				if result, err = p.PathContent(pco); err == nil {
 					err = end(p, true)
 				}
 				return
 			}(s, optBases...); err != nil {
-				bwerr.PanicA(bwerr.Err(err))
+				bwerr.PanicErr(err)
 			}
 			return result
 		},
@@ -196,14 +199,14 @@ func TestInt(t *testing.T) {
 						result = 0
 					}
 				}()
-				p := bwparse.From(bwrune.ProviderFromString(s))
+				p := bwparse.From(bwrune.FromString(s))
 				var ok bool
 				if result, _, ok, err = p.Int(); err == nil {
 					err = end(p, ok)
 				}
 				return
 			}(s); err != nil {
-				bwerr.PanicA(bwerr.Err(err))
+				bwerr.PanicErr(err)
 			}
 			return result
 		},
@@ -235,7 +238,7 @@ func TestInt(t *testing.T) {
 
 func end(p *bwparse.P, ok bool) (err error) {
 	if !ok {
-		err = p.Unexpected(p.Curr)
+		err = p.Unexpected(p.Curr())
 	} else {
 		err = p.SkipSpace(bwparse.TillEOF)
 	}
@@ -252,7 +255,7 @@ func TestVal(t *testing.T) {
 						result = nil
 					}
 				}()
-				p := bwparse.From(bwrune.ProviderFromString(s), map[string]interface{}{
+				p := bwparse.From(bwrune.FromString(s), map[string]interface{}{
 					"idVals": map[string]interface{}{
 						"Bool":    "Bool",
 						"String":  "String",
@@ -267,7 +270,7 @@ func TestVal(t *testing.T) {
 				}
 				return
 			}(s); err != nil {
-				bwerr.PanicA(bwerr.Err(err))
+				bwerr.PanicErr(err)
 			}
 			return result
 		},
@@ -365,14 +368,14 @@ func TestVal(t *testing.T) {
 						result = nil
 					}
 				}()
-				p := bwparse.From(bwrune.ProviderFromString(s))
+				p := bwparse.From(bwrune.FromString(s))
 				var ok bool
 				if result, _, ok, err = p.Val(); err == nil {
 					err = end(p, ok)
 				}
 				return
 			}(s); err != nil {
-				bwerr.PanicA(bwerr.Err(err))
+				bwerr.PanicErr(err)
 			}
 			return result
 		},
@@ -388,7 +391,7 @@ func TestVal(t *testing.T) {
 func TestFrom(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		func(s string, opt ...map[string]interface{}) {
-			_ = bwparse.From(bwrune.ProviderFromString(s), opt...)
+			_ = bwparse.From(bwrune.FromString(s), opt...)
 		},
 		map[string]bwtesting.Case{
 			`preLineCount non uint`: {
@@ -419,10 +422,10 @@ func TestLineCount(t *testing.T) {
 				type Float64
 				another "key"
 			}`
-			p := bwparse.From(bwrune.ProviderFromString(s), opt...)
+			p := bwparse.From(bwrune.FromString(s), opt...)
 			var err error
 			if result, _, _, err = p.Val(); err != nil {
-				bwerr.PanicA(bwerr.Err(err))
+				bwerr.PanicErr(err)
 			}
 			return
 		},

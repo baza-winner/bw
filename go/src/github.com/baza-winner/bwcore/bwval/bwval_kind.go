@@ -134,9 +134,9 @@ func Kind(val interface{}) (result interface{}, kind ValKind) {
 		case []string:
 			result = t
 			kind = ValArrayOfString
-		case bwtype.Number:
-			result = t
-			kind = ValNumber
+		// case bwtype.Number:
+		// 	result = t
+		// 	kind = ValNumber
 		case bwtype.Range:
 			result = t
 			kind = ValRange

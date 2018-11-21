@@ -6,6 +6,8 @@ import (
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
+	"github.com/baza-winner/bwcore/bwparse"
+	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwtype"
 )
@@ -48,27 +50,53 @@ func (v Def) MarshalJSON() ([]byte, error) {
 	return json.Marshal(result)
 }
 
-func DefFrom(def interface{}) (result Def) {
-	var err error
-	var compileDefResult *Def
-	if compileDefResult, err = compileDef(Holder{
-		def,
-		bw.ValPath{bw.ValPathItem{
-			Type: bw.ValPathItemVar, Key: "def",
+func DefFrom(src bwrune.Provider, optPathProvider ...bw.ValPathProvider) (result Def, err error) {
+	p := bwparse.From(src, map[string]interface{}{
+		"idVals": map[string]interface{}{
+			"Bool":    "Bool",
+			"String":  "String",
+			"Int":     "Int",
+			"Float64": "Float64",
+			"Array":   "Array",
+			"ArrayOf": "ArrayOf",
 		}},
-	}); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
-		// } else if compileDefResult == nil {
-		//  bwerr.Panic("Unexpected behavior; def: %s", bwjson.Pretty(def))
-	} else {
+	)
+	if err = p.SkipSpace(bwparse.TillNonEOF); err != nil {
+		return
+	}
+	var def interface{}
+	var ok bool
+	if def, _, ok, err = p.Val(); !ok || err != nil {
+		if err == nil {
+			err = p.Unexpected(p.Curr)
+		}
+		return
+	}
+	var compileDefResult *Def
+	h := Holder{Val: def}
+
+	if len(optPathProvider) > 0 {
+		if h.Pth, err = optPathProvider[0].Path(); err != nil {
+			return
+		}
+	}
+	if compileDefResult, err = h.compileDef(); err == nil {
 		result = *compileDefResult
+	}
+	return
+}
+
+func MustDefFrom(src bwrune.Provider, optPathProvider ...bw.ValPathProvider) (result Def) {
+	var err error
+	if result, err = DefFrom(src, optPathProvider...); err != nil {
+		bwerr.PanicErr(err)
 	}
 	return
 }
 
 // ============================================================================
 
-func compileDef(def Holder) (result *Def, err error) {
+func (def Holder) compileDef() (result *Def, err error) {
 	if def.Val == nil {
 		err = def.wrongValError()
 		// err = valAtPathIsNil(def.Path)
@@ -129,7 +157,7 @@ func compileDef(def Holder) (result *Def, err error) {
 					var keyDef *Def
 					for k := range m {
 						vp, _ = keysVp.Key(k)
-						if keyDef, err = compileDef(vp); err != nil {
+						if keyDef, err = vp.compileDef(); err != nil {
 							return
 						} else {
 							result.Keys[k] = *keyDef
@@ -143,7 +171,7 @@ func compileDef(def Holder) (result *Def, err error) {
 			// bwdebug.Print("!HERE")
 			validDefKeys.Add("arrayElem")
 			if vp = def.MustKey("arrayElem", nil); vp.Val != nil {
-				if result.ArrayElem, err = compileDef(vp); err != nil {
+				if result.ArrayElem, err = vp.compileDef(); err != nil {
 					return
 				}
 			}
@@ -151,37 +179,37 @@ func compileDef(def Holder) (result *Def, err error) {
 		if types.Has(ValMap) || types.Has(ValArray) && result.ArrayElem == nil {
 			validDefKeys.Add("elem")
 			if vp = def.MustKey("elem", nil); vp.Val != nil {
-				if result.Elem, err = compileDef(vp); err != nil {
+				if result.Elem, err = vp.compileDef(); err != nil {
 					return
 				}
 			}
 		}
 		hasInt := types.Has(ValInt)
-		if hasInt || types.Has(ValNumber) {
+		if hasInt || types.Has(ValFloat64) {
 			validDefKeys.Add("min", "max")
-			var min, max bwtype.Number
+			var min, max bwtype.RangeLimit
 			var limCount int
-			var getLimit func(key string) (result bwtype.Number, err error)
+			var getLimit func(key string) (result bwtype.RangeLimit, err error)
 
 			if hasInt {
-				getLimit = func(key string) (result bwtype.Number, err error) {
+				getLimit = func(key string) (result bwtype.RangeLimit, err error) {
 					if vp = def.MustKey(key, nil); vp.Val != nil {
 						var i int
 						if i, err = vp.Int(); err != nil {
 							return
 						} else {
-							result = bwtype.MustNumberFrom(i)
+							result = bwtype.MustRangeLimitFrom(i)
 							limCount++
 						}
 					}
 					return
 				}
 			} else {
-				getLimit = func(key string) (result bwtype.Number, err error) {
+				getLimit = func(key string) (result bwtype.RangeLimit, err error) {
 					if vp = def.MustKey(key, nil); vp.Val != nil {
 						var ok bool
-						if result, ok = bwtype.NumberFrom(vp.Val); !ok {
-							err = vp.notOfValKindError(ValKindSetFrom(ValNumber))
+						if result, ok = bwtype.RangeLimitFrom(vp.Val); !ok {
+							err = vp.notOfValKindError(ValKindSetFrom(ValFloat64))
 							return
 						} else {
 							limCount++
@@ -259,7 +287,8 @@ func getDeftype(defType Holder, isSimple bool) (result ValKindSet, err error) {
 	var isString bool
 	switch val, kind := Kind(defType.Val); kind {
 	case ValString:
-		ss = []string{MustString(val)}
+		s, _ := val.(string)
+		ss = []string{s}
 		isString = true
 	case ValArray, ValArrayOfString:
 		if ss, err = defType.ArrayOfString(); err != nil {
@@ -287,8 +316,8 @@ func getDeftype(defType Holder, isSimple bool) (result ValKindSet, err error) {
 			err = defType.valuesAreMutuallyExclusiveError("ArrayOf", "Array")
 		}
 	}
-	if err == nil && result.Has(ValInt) && result.Has(ValNumber) {
-		err = defType.valuesAreMutuallyExclusiveError("Int", "Number")
+	if err == nil && result.Has(ValInt) && result.Has(ValFloat64) {
+		err = defType.valuesAreMutuallyExclusiveError("Int", "Float64")
 	}
 	return
 }
@@ -296,16 +325,15 @@ func getDeftype(defType Holder, isSimple bool) (result ValKindSet, err error) {
 // ============================================================================
 
 func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, err error) {
-	// // bwdebug.Print("v.Val:#v", v.Val)
-	// bwerr.Panic("here")
 	skipArrayOf := optSkipArrayOf != nil && optSkipArrayOf[0]
 	if v.Val == nil {
 		if !skipArrayOf {
 			if def.Default != nil {
-				return def.Default, nil
+				result = def.Default
+				return
 			}
 			if def.IsOptional {
-				return nil, nil
+				return
 			}
 		}
 		if def.Types.Has(ValMap) {
@@ -317,7 +345,8 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 	}
 	var valDeftype ValKind
 	var kind ValKind
-	switch _, kind = Kind(v.Val); kind {
+	var val interface{}
+	switch val, kind = Kind(v.Val); kind {
 	case ValBool:
 		if def.Types.Has(ValBool) {
 			valDeftype = ValBool
@@ -325,23 +354,14 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 	case ValInt:
 		if def.Types.Has(ValInt) {
 			valDeftype = ValInt
-		} else if def.Types.Has(ValNumber) {
-			valDeftype = ValNumber
+		} else if def.Types.Has(ValFloat64) {
+			valDeftype = ValFloat64
 		}
 	case ValFloat64:
-		if def.Types.Has(ValNumber) {
-			valDeftype = ValNumber
+		if def.Types.Has(ValFloat64) {
+			valDeftype = ValFloat64
 		}
-	// case ValNumber:
-	// 	if def.Types.Has(ValNumber) {
-	// 		valDeftype = ValNumber
-	// 	} else if def.Types.Has(ValInt) && v.MustNumber().IsInt() {
 
-	// 		// n, _ := v.Val.(bwtype.Number)
-	// 		// if n.IsInt() {
-	// 		valDeftype = ValInt
-	// 		// }
-	// 	}
 	case ValMap:
 		if def.Types.Has(ValMap) {
 			valDeftype = ValMap
@@ -363,15 +383,13 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 			valDeftype = ValString
 		}
 	}
-	// bwdebug.Print("v.Val:#v", v.Val, "valDeftype", valDeftype, "kind:s", kind, "def:json", def)
-	// // bwdebug.Print()
+
 	if valDeftype == ValUnknown {
 		types := def.Types
 		if skipArrayOf {
 			types = types.Copy()
 			types.Del(ValArrayOf)
 		}
-		// bwdebug.Print("v.Val:#v", v.Val, "kind", kind)
 		err = v.notOfValKindError(types)
 		return
 	}
@@ -380,23 +398,18 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 	case ValBool:
 	case ValString:
 		if def.Enum != nil {
-			if !def.Enum.Has(MustString(v.Val)) {
+			s, _ := val.(string)
+			if !def.Enum.Has(s) {
 				err = v.unexpectedEnumValueError(def.Enum)
 				return
 			}
 		}
-	case ValInt, ValNumber:
-		// bwdebug.Print("!HERE", "def.Range", def.Range, "v.Val:#v", v.Val, "def.Range.Contains(v.Val)", def.Range.Contains(v.Val))
+	case ValInt, ValFloat64:
 		if !def.Range.Contains(v.Val) {
 			err = v.outOfRangeError(def.Range)
 			return
 		}
-		// bwdebug.Print("!THERE")
-		if valDeftype == ValInt && kind == ValNumber {
-			n, _ := v.Val.(bwtype.Number)
-			v.Val = n.MustInt()
-			// v.MustNumber().MustInt()
-		}
+
 	case ValMap:
 		if def.Keys != nil {
 			unexpectedKeys := bwmap.MustUnexpectedKeys(v.Val, def.Keys)
@@ -418,7 +431,8 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 				}
 			}
 		} else if def.Elem != nil {
-			for k := range v.MustMap() {
+			m, _ := val.(map[string]interface{})
+			for k := range m {
 				if err = v.mapHelper(k, *(def.Elem)); err != nil {
 					return
 				}

@@ -20,31 +20,44 @@ import (
 // ============================================================================
 
 type PosInfo struct {
-	IsEOF       bool
-	Rune        rune
-	Pos         int
-	Line        uint
-	Col         uint
-	Prefix      string
-	PrefixStart int
+	isEOF       bool
+	rune        rune
+	pos         int
+	line        uint
+	col         uint
+	prefix      string
+	prefixStart int
+}
+
+func (p PosInfo) IsEOF() bool {
+	return p.isEOF
+}
+
+func (p PosInfo) Rune() rune {
+	return p.rune
 }
 
 // ============================================================================
 
+type OnMapKeyFunc func(p *P, m map[string]interface{}, key string) (ok bool, err error)
+type OnMapEndFunc func(p *P, m map[string]interface{}) (err error)
+
 type P struct {
-	Prov          bwrune.Provider
-	Curr          PosInfo
-	Next          []PosInfo
+	prov          bwrune.Provider
+	curr          PosInfo
+	next          []PosInfo
 	preLineCount  uint
 	postLineCount uint
 	idVals        map[string]interface{}
+	onMapKey      OnMapKeyFunc
+	onMapEnd      OnMapEndFunc
 }
 
 func From(p bwrune.Provider, opt ...map[string]interface{}) (result *P) {
 	result = &P{
-		Prov:          p,
-		Curr:          PosInfo{Pos: -1, Line: 1},
-		Next:          []PosInfo{},
+		prov:          p,
+		curr:          PosInfo{pos: -1, line: 1},
+		next:          []PosInfo{},
 		preLineCount:  3,
 		postLineCount: 3,
 	}
@@ -71,8 +84,12 @@ func From(p bwrune.Provider, opt ...map[string]interface{}) (result *P) {
 
 const Initial uint = 0
 
+func (p *P) Curr() PosInfo {
+	return p.curr
+}
+
 func (p *P) Forward(count uint) {
-	if p.Curr.Pos < 0 || count > 0 && !p.Curr.IsEOF {
+	if p.curr.pos < 0 || count > 0 && !p.curr.isEOF {
 		if count <= 1 {
 			p.forward()
 		} else {
@@ -84,50 +101,85 @@ func (p *P) Forward(count uint) {
 }
 
 func (p *P) CheckNotEOF() (err error) {
-	if p.Curr.IsEOF {
-		err = p.Unexpected(p.Curr)
+	if p.curr.isEOF {
+		err = p.Unexpected(p.curr)
 	}
 	return
 }
 
 func (p *P) LookAhead(ofs uint) (ps PosInfo) {
-	ps = p.Curr
+	ps = p.curr
 	if ofs > 0 {
-		idx := len(p.Next) - int(ofs)
+		idx := len(p.next) - int(ofs)
 		if idx >= 0 {
-			ps = p.Next[idx]
+			ps = p.next[idx]
 		} else {
-			if len(p.Next) > 0 {
-				ps = p.Next[0]
+			if len(p.next) > 0 {
+				ps = p.next[0]
 			}
 			var lookahead, newNext []PosInfo
-			for i := idx; i < 0 && !ps.IsEOF; i++ {
+			for i := idx; i < 0 && !ps.isEOF; i++ {
 				p.pullRune(&ps)
 				lookahead = append(lookahead, ps)
 			}
 			for i := -idx - 1; i >= 0; i-- {
 				newNext = append(newNext, lookahead[i])
 			}
-			p.Next = append(newNext, p.Next...)
+			p.next = append(newNext, p.next...)
 		}
 	}
 	return
 }
 
-func (p *P) Unexpected(ps PosInfo, optFmt ...bw.I) error {
+// func (p *P) Unexpected(ps PosInfo, optFmt ...bw.I) error {
+// 	var msg string
+// 	if ps.pos < p.curr.pos {
+// 		if len(optFmt) > 0 {
+// 			msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)
+// 		} else {
+// 			msg = fmt.Sprintf(ansiUnexpectedWord, p.curr.prefix[ps.pos-p.curr.prefixStart:])
+// 		}
+// 	} else if !p.curr.isEOF {
+// 		msg = fmt.Sprintf(ansiUnexpectedChar, ps.rune, ps.rune)
+// 	} else {
+// 		msg = ansiUnexpectedEOF
+// 	}
+// 	return bwerr.From(msg + p.suffix(ps))
+// }
+type UnexpectedA struct {
+	PosInfo PosInfo
+	Fmt     bw.I
+}
+
+func (p *P) UnexpectedA(a UnexpectedA) error {
+	var ps PosInfo
+	var zeroPosInfo = PosInfo{}
+	if a.PosInfo == zeroPosInfo {
+		ps = p.curr
+	} else {
+		ps = a.PosInfo
+	}
 	var msg string
-	if ps.Pos < p.Curr.Pos {
-		if len(optFmt) > 0 {
-			msg = bw.Spew.Sprintf(optFmt[0].FmtString(), optFmt[0].FmtArgs()...)
+	if ps.pos < p.curr.pos {
+		if a.Fmt != nil {
+			msg = bw.Spew.Sprintf(a.Fmt.FmtString(), a.Fmt.FmtArgs()...)
 		} else {
-			msg = fmt.Sprintf(ansiUnexpectedWord, p.Curr.Prefix[ps.Pos-p.Curr.PrefixStart:])
+			msg = fmt.Sprintf(ansiUnexpectedWord, p.curr.prefix[ps.pos-p.curr.prefixStart:])
 		}
-	} else if !p.Curr.IsEOF {
-		msg = fmt.Sprintf(ansiUnexpectedChar, ps.Rune, ps.Rune)
+	} else if !p.curr.isEOF {
+		msg = fmt.Sprintf(ansiUnexpectedChar, ps.rune, ps.rune)
 	} else {
 		msg = ansiUnexpectedEOF
 	}
 	return bwerr.From(msg + p.suffix(ps))
+}
+
+func (p *P) Unexpected(optPosInfo ...PosInfo) error {
+	var a UnexpectedA
+	if len(optPosInfo) > 0 {
+		a.PosInfo = optPosInfo[0]
+	}
+	return p.UnexpectedA(a)
 }
 
 // ============================================================================
@@ -140,34 +192,34 @@ const (
 func (p *P) SkipSpace(tillEOF bool) (err error) {
 	p.Forward(Initial)
 REDO:
-	for !p.Curr.IsEOF && unicode.IsSpace(p.Curr.Rune) {
+	for !p.curr.isEOF && unicode.IsSpace(p.curr.rune) {
 		p.Forward(1)
 	}
-	if p.Curr.IsEOF && !tillEOF {
-		err = p.Unexpected(p.Curr)
+	if p.curr.isEOF && !tillEOF {
+		err = p.Unexpected(p.curr)
 		return
 	}
 	if p.canSkipRunes('/', '/') {
 		p.Forward(2)
-		for !p.Curr.IsEOF && p.Curr.Rune != '\n' {
+		for !p.curr.isEOF && p.curr.rune != '\n' {
 			p.Forward(1)
 		}
-		if !p.Curr.IsEOF {
+		if !p.curr.isEOF {
 			p.Forward(1)
 		}
 		goto REDO
 	} else if p.canSkipRunes('/', '*') {
 		p.Forward(2)
-		for !p.Curr.IsEOF && !p.canSkipRunes('*', '/') {
+		for !p.curr.isEOF && !p.canSkipRunes('*', '/') {
 			p.Forward(1)
 		}
-		if !p.Curr.IsEOF {
+		if !p.curr.isEOF {
 			p.Forward(2)
 		}
 		goto REDO
 	}
-	if tillEOF && !p.Curr.IsEOF {
-		err = p.Unexpected(p.Curr)
+	if tillEOF && !p.curr.isEOF {
+		err = p.Unexpected(p.curr)
 	}
 	return
 }
@@ -176,13 +228,13 @@ REDO:
 
 func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error) {
 	start = p.start()
-	if ok = p.Curr.Rune == '<'; !ok {
-		if ok = p.canSkipRunes('q', 'w') && isPunctOrSymbol(p.LookAhead(2).Rune); !ok {
+	if ok = p.curr.rune == '<'; !ok {
+		if ok = p.canSkipRunes('q', 'w') && isPunctOrSymbol(p.LookAhead(2).rune); !ok {
 			return
 		}
 		p.Forward(2)
 	}
-	delimiter := p.Curr.Rune
+	delimiter := p.curr.rune
 	if r, b := Braces[delimiter]; b {
 		delimiter = r
 	}
@@ -190,7 +242,7 @@ func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error)
 	result = []string{}
 	for err == nil {
 		if err = p.SkipSpace(TillNonEOF); err == nil {
-			r := p.Curr.Rune
+			r := p.curr.rune
 			if r == delimiter {
 				p.Forward(1)
 				break
@@ -200,7 +252,7 @@ func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error)
 				s += string(r)
 				p.Forward(1)
 				if err = p.CheckNotEOF(); err == nil {
-					r = p.Curr.Rune
+					r = p.curr.rune
 				}
 			}
 			result = append(result, s)
@@ -220,12 +272,12 @@ var Braces = map[rune]rune{
 
 func (p *P) Id() (result string, start PosInfo, ok bool, err error) {
 	start = p.start()
-	r := p.Curr.Rune
+	r := p.curr.rune
 	if ok = isLetter(r); ok {
 		for isLetter(r) || unicode.IsDigit(r) {
 			result += string(r)
 			p.Forward(1)
-			r = p.Curr.Rune
+			r = p.curr.rune
 		}
 	}
 	return
@@ -235,14 +287,14 @@ func (p *P) Id() (result string, start PosInfo, ok bool, err error) {
 
 func (p *P) String() (result string, start PosInfo, ok bool, err error) {
 	start = p.start()
-	delimiter := p.Curr.Rune
+	delimiter := p.curr.rune
 	if ok = p.skipRunes('"') || p.skipRunes('\''); ok {
 		expectEscapedContent := false
 		b := true
 		for err == nil {
-			r := p.Curr.Rune
+			r := p.curr.rune
 			if !expectEscapedContent {
-				if p.Curr.IsEOF {
+				if p.curr.isEOF {
 					b = false
 				} else if p.skipRunes(delimiter) {
 					break
@@ -255,7 +307,7 @@ func (p *P) String() (result string, start PosInfo, ok bool, err error) {
 				b = b && delimiter == '"'
 			}
 			if !b {
-				err = p.Unexpected(p.Curr)
+				err = p.Unexpected(p.curr)
 			} else {
 				result += string(r)
 				p.Forward(1)
@@ -283,10 +335,10 @@ func (p *P) Int() (result int, start PosInfo, ok bool, err error) {
 	if s, start, ok, err = p.looksLikeNumber(); err == nil && ok {
 		b := true
 		for b {
-			s, b = p.addDigit(p.Curr.Rune, s)
+			s, b = p.addDigit(p.curr.rune, s)
 		}
 		if result, err = bwstr.ParseInt(s); err != nil {
-			err = p.Unexpected(start, bwerr.Err(err))
+			err = p.UnexpectedA(UnexpectedA{start, bwerr.Err(err)})
 		}
 	}
 	return
@@ -304,7 +356,7 @@ func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
 	)
 	if s, start, ok, err = p.looksLikeNumber(); err == nil && ok {
 		for {
-			if s, b = p.addDigit(p.Curr.Rune, s); !b {
+			if s, b = p.addDigit(p.curr.rune, s); !b {
 				if hasDot || !p.skipRunes(dotRune) {
 					break
 				} else {
@@ -328,7 +380,7 @@ func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
 			}
 		}
 		if err != nil {
-			err = p.Unexpected(start, bwerr.Err(err))
+			err = p.UnexpectedA(UnexpectedA{start, bwerr.Err(err)})
 		}
 	}
 	return
@@ -369,7 +421,7 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 			onString{f: func(s string, pi PosInfo) (err error) { key = s; return }},
 			onId{f: func(s string, pi PosInfo) (err error) { key = s; return }},
 		); !b {
-			err = p.Unexpected(p.Curr)
+			err = p.Unexpected(p.curr)
 		} else if err == nil {
 			if err = p.SkipSpace(TillNonEOF); err == nil {
 				if p.skipRunes(':') || p.skipRunes('=', '>') {
@@ -379,7 +431,13 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 					if result == nil {
 						result = map[string]interface{}{}
 					}
-					result[key], err = p.parseVal()
+					var b bool
+					if p.onMapKey != nil {
+						b, err = p.onMapKey(p, result, key)
+					}
+					if err == nil && !b {
+						result[key], err = p.parseVal()
+					}
 				}
 			}
 		}
@@ -387,6 +445,9 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 	})
 	if ok && result == nil {
 		result = map[string]interface{}{}
+	}
+	if p.onMapEnd != nil {
+		err = p.onMapEnd(p, result)
 	}
 	return
 }
@@ -412,7 +473,7 @@ func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 				if val, ok := p.idVals[s]; ok {
 					result = val
 				} else {
-					err = p.Unexpected(pi, bw.Fmt(ansiUnexpectedWord, s))
+					err = p.UnexpectedA(UnexpectedA{pi, bw.Fmt(ansiUnexpectedWord, s)})
 				}
 				return
 			}
@@ -426,14 +487,14 @@ func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 
 func (p *P) Path(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error) {
 	start = p.start()
-	if ok = p.Curr.Rune == '$'; ok {
+	if ok = p.curr.rune == '$'; ok {
 		result, err = p.PathContent(a)
 	} else if ok = p.skipRunes('{', '{'); ok {
 		if err = p.SkipSpace(TillNonEOF); err == nil {
 			if result, err = p.PathContent(a); err == nil {
 				if err = p.SkipSpace(TillNonEOF); err == nil {
 					if !p.skipRunes('}', '}') {
-						err = p.Unexpected(p.Curr)
+						err = p.Unexpected(p.curr)
 					}
 				}
 			}
@@ -459,7 +520,7 @@ func (p *P) PathContent(a PathA) (result bw.ValPath, err error) {
 	for err == nil {
 		isEmptyResult = len(result) == 0
 		b = true
-		if isEmptyResult && p.Curr.Rune == '.' {
+		if isEmptyResult && p.curr.rune == '.' {
 			if len(a.Bases) > 0 {
 				result = append(result, a.Bases[0]...)
 			} else {
@@ -491,7 +552,7 @@ func (p *P) PathContent(a PathA) (result bw.ValPath, err error) {
 					if nidx, b := bw.NormalIdx(idx, l); b {
 						result = append(result, a.Bases[nidx]...)
 					} else {
-						err = p.Unexpected(start, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l))
+						err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l)})
 					}
 					return
 				}},
@@ -504,7 +565,7 @@ func (p *P) PathContent(a PathA) (result bw.ValPath, err error) {
 			b = false
 		}
 		if err == nil && !b {
-			err = p.Unexpected(p.Curr)
+			err = p.Unexpected(p.curr)
 		}
 		if err == nil {
 			if !a.isSubPath && p.skipRunes('?') {

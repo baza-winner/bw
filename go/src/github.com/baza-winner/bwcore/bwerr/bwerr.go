@@ -36,6 +36,10 @@ func PanicA(a bw.I) {
 	panic(FromA(IncDepth(a)))
 }
 
+func PanicErr(err error, optDepth ...uint) {
+	panic(FromA(IncDepth(Err(err, optDepth...))))
+}
+
 func Unreachable() {
 	PanicA(A{Depth: 1, Fmt: ansiUnreachable})
 }

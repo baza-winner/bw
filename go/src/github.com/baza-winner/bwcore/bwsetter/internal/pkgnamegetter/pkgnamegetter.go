@@ -42,7 +42,7 @@ type parseState struct {
 
 func GetPackageName(fileSpec string) (packageName string, err error) {
 	var p bwrune.Provider
-	p, err = bwrune.ProviderFromFile(fileSpec)
+	p, err = bwrune.FromFile(fileSpec)
 	if err != nil {
 		err = bwerr.FromA(bwerr.E{Error: err})
 	} else {

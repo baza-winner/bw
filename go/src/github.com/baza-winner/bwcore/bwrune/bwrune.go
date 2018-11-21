@@ -23,12 +23,12 @@ type Provider interface {
 
 // ============================================================================
 
-func ProviderFromString(source string) Provider {
+func FromString(source string) Provider {
 	result := stringProvider{pos: -1, src: []rune(source)}
 	return &result
 }
 
-func ProviderFromFile(fileSpec string) (result Provider, err error) {
+func FromFile(fileSpec string) (result Provider, err error) {
 	p := &fileProvider{fileSpec: fileSpec, pos: -1, bytePos: -1, line: 1}
 	p.data, err = os.Open(fileSpec)
 	if err == nil {
@@ -38,10 +38,18 @@ func ProviderFromFile(fileSpec string) (result Provider, err error) {
 	return
 }
 
+func MustFromFile(fileSpec string) (result Provider) {
+	var err error
+	if result, err = FromFile(fileSpec); err != nil {
+		bwerr.PanicErr(err)
+	}
+	return
+}
+
 func MustPull(p Provider) (result *rune) {
 	var err error
 	if result, err = p.PullRune(); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicErr(err)
 	}
 	return
 }

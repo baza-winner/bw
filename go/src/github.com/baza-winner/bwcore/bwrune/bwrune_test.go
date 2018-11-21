@@ -20,7 +20,7 @@ func prepareTestFile(basename string, content []byte) {
 	fileSpec := getTestFileSpec(basename)
 	err := ioutil.WriteFile(fileSpec, content, 0644)
 	if err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicErr(err)
 	}
 	testFiles = append(testFiles, fileSpec)
 }
@@ -48,7 +48,7 @@ func myTeardownFunction() {
 
 func getFirstLine(fileSpec string) (result string, err error) {
 	var p bwrune.Provider
-	p, err = bwrune.ProviderFromFile(fileSpec)
+	p, err = bwrune.FromFile(fileSpec)
 	if err != nil {
 		err = bwerr.FromA(bwerr.E{Error: err})
 	} else {

@@ -31,7 +31,7 @@ func Parse(source string) ([]interface{}, error) {
 func MustParse(source string) (result []interface{}) {
 	var err error
 	if result, err = Parse(source); err != nil {
-		bwerr.PanicA(bwerr.Err(err))
+		bwerr.PanicErr(err)
 	}
 	return result
 }
