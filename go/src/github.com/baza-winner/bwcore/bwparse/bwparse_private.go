@@ -57,86 +57,86 @@ func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (res
 	return
 }
 
-func optKeyMap(opt map[string]interface{}, key string, keys *bwset.String) (result map[string]interface{}, ok bool) {
-	var val interface{}
-	keys.Add(key)
-	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(map[string]interface{}); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "map[string]interface{}")
-		}
-	}
-	return
-}
+// func optKeyMap(opt map[string]interface{}, key string, keys *bwset.String) (result map[string]interface{}, ok bool) {
+// 	var val interface{}
+// 	keys.Add(key)
+// 	if val, ok = opt[key]; ok && val != nil {
+// 		if result, ok = val.(map[string]interface{}); !ok {
+// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "map[string]interface{}")
+// 		}
+// 	}
+// 	return
+// }
 
-func optKeyValidateMapKeyFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateMapKeyFunc, ok bool) {
-	var val interface{}
-	keys.Add(key)
-	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(ValidateMapKeyFunc); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateMapKeyFunc")
-		}
-	}
-	return
-}
+// func optKeyValidateMapKeyFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateMapKeyFunc, ok bool) {
+// 	var val interface{}
+// 	keys.Add(key)
+// 	if val, ok = opt[key]; ok && val != nil {
+// 		if result, ok = val.(ValidateMapKeyFunc); !ok {
+// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateMapKeyFunc")
+// 		}
+// 	}
+// 	return
+// }
 
-func optKeyParseMapElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseMapElemFunc, ok bool) {
-	var val interface{}
-	keys.Add(key)
-	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(ParseMapElemFunc); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseMapElemFunc")
-		}
-	}
-	return
-}
+// func optKeyParseMapElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseMapElemFunc, ok bool) {
+// 	var val interface{}
+// 	keys.Add(key)
+// 	if val, ok = opt[key]; ok && val != nil {
+// 		if result, ok = val.(ParseMapElemFunc); !ok {
+// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseMapElemFunc")
+// 		}
+// 	}
+// 	return
+// }
 
-func optKeyOnMapBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnMapBeginEndFunc, ok bool) {
-	var val interface{}
-	keys.Add(key)
-	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(OnMapBeginEndFunc); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnMapBeginEndFunc")
-		}
-	}
-	return
-}
+// func optKeyOnMapBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnMapBeginEndFunc, ok bool) {
+// 	var val interface{}
+// 	keys.Add(key)
+// 	if val, ok = opt[key]; ok && val != nil {
+// 		if result, ok = val.(OnMapBeginEndFunc); !ok {
+// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnMapBeginEndFunc")
+// 		}
+// 	}
+// 	return
+// }
 
-func optKeyParseArrayElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseArrayElemFunc, ok bool) {
-	var val interface{}
-	keys.Add(key)
-	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(ParseArrayElemFunc); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseArrayElemFunc")
-		}
-	}
-	return
-}
+// func optKeyParseArrayElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseArrayElemFunc, ok bool) {
+// 	var val interface{}
+// 	keys.Add(key)
+// 	if val, ok = opt[key]; ok && val != nil {
+// 		if result, ok = val.(ParseArrayElemFunc); !ok {
+// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseArrayElemFunc")
+// 		}
+// 	}
+// 	return
+// }
 
-func optKeyOnArrayBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnArrayBeginEndFunc, ok bool) {
-	var val interface{}
-	keys.Add(key)
-	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(OnArrayBeginEndFunc); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnArrayBeginEndFunc")
-		}
-	}
-	return
-}
+// func optKeyOnArrayBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnArrayBeginEndFunc, ok bool) {
+// 	var val interface{}
+// 	keys.Add(key)
+// 	if val, ok = opt[key]; ok && val != nil {
+// 		if result, ok = val.(OnArrayBeginEndFunc); !ok {
+// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnArrayBeginEndFunc")
+// 		}
+// 	}
+// 	return
+// }
 
-func optKeyValidateArrayOfStringElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateArrayOfStringElemFunc, ok bool) {
-	var val interface{}
-	keys.Add(key)
-	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(ValidateArrayOfStringElemFunc); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateArrayOfStringElemFunc")
-		}
-	}
-	return
-}
+// func optKeyValidateArrayOfStringElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateArrayOfStringElemFunc, ok bool) {
+// 	var val interface{}
+// 	keys.Add(key)
+// 	if val, ok = opt[key]; ok && val != nil {
+// 		if result, ok = val.(ValidateArrayOfStringElemFunc); !ok {
+// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateArrayOfStringElemFunc")
+// 		}
+// 	}
+// 	return
+// }
 
 // ============================================================================
 
-func (p *P) pullRune(ps *PosInfo) {
+func (p *P) pullRune(ps PosInfo) PosInfo {
 	runePtr := bwrune.MustPull(p.prov)
 	if !ps.isEOF {
 		if ps.pos >= 0 {
@@ -162,6 +162,7 @@ func (p *P) pullRune(ps *PosInfo) {
 		}
 		ps.pos++
 	}
+	return ps
 }
 
 func (p *P) suffix(ps PosInfo) (suffix string) {
@@ -212,7 +213,10 @@ func (p *P) suffix(ps PosInfo) (suffix string) {
 
 func (p *P) forward() {
 	if len(p.next) == 0 {
-		p.pullRune(&p.curr)
+		// ps := p.curr
+		newCurr := p.pullRune(*p.curr)
+		p.curr = &newCurr
+		// bwdebug.Print("ps:#v", ps, "p.curr:#v", p.curr)
 	} else {
 		last := len(p.next) - 1
 		p.curr, p.next = p.next[last], p.next[:last]
@@ -226,66 +230,84 @@ type on interface {
 }
 
 type onInt struct {
-	f func(idx int, start PosInfo) (err error)
+	f func(idx int, start *PosInfo) (err error)
 }
 
 func (onInt) IsOn() {}
 
+type onRange struct {
+	f func(rng bwtype.Range, start *PosInfo) (err error)
+}
+
+func (onRange) IsOn() {}
+
 type onNumber struct {
-	f func(val interface{}, start PosInfo) (err error)
+	f func(val interface{}, start *PosInfo) (err error)
 }
 
 func (onNumber) IsOn() {}
 
 type onId struct {
-	f func(s string, start PosInfo) (err error)
+	f func(s string, start *PosInfo) (err error)
 }
 
 func (onId) IsOn() {}
 
 type onString struct {
-	f func(s string, start PosInfo) (err error)
+	f func(s string, start *PosInfo) (err error)
 }
 
 func (onString) IsOn() {}
 
 type onSubPath struct {
-	f func(path bw.ValPath, start PosInfo) (err error)
+	f func(path bw.ValPath, start *PosInfo) (err error)
 	a PathA
 }
 
 func (onSubPath) IsOn() {}
 
 type onPath struct {
-	f func(path bw.ValPath, start PosInfo) (err error)
+	f func(path bw.ValPath, start *PosInfo) (err error)
 	a PathA
 }
 
 func (onPath) IsOn() {}
 
 type onArray struct {
-	f func(vals []interface{}, start PosInfo) (err error)
+	f func(vals []interface{}, start *PosInfo) (err error)
 }
 
 func (onArray) IsOn() {}
 
 type onArrayOfString struct {
-	f func(ss []string, start PosInfo) (err error)
+	f func(ss []string, start *PosInfo) (err error)
 }
 
 func (onArrayOfString) IsOn() {}
 
 type onMap struct {
-	f func(m map[string]interface{}, start PosInfo) (err error)
+	f func(m map[string]interface{}, start *PosInfo) (err error)
 }
 
 func (onMap) IsOn() {}
+
+type onNil struct {
+	f func(start *PosInfo) (err error)
+}
+
+func (onNil) IsOn() {}
+
+type onBool struct {
+	f func(b bool, start *PosInfo) (err error)
+}
+
+func (onBool) IsOn() {}
 
 // ============================================================================
 
 func (p *P) processOn(processors ...on) (ok bool, err error) {
 	var (
-		start PosInfo
+		start *PosInfo
 		idx   int
 		s     string
 		path  bw.ValPath
@@ -293,6 +315,8 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 		vals  []interface{}
 		ss    []string
 		m     map[string]interface{}
+		b     bool
+		rng   bwtype.Range
 	)
 	for _, processor := range processors {
 		switch t := processor.(type) {
@@ -300,10 +324,13 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 			idx, start, ok, err = p.Int()
 		case onNumber:
 			val, start, ok, err = p.Number()
+		case onRange:
+			rng, start, ok, err = p.Range()
 		case onString:
 			s, start, ok, err = p.String()
 		case onId:
 			s, start, ok, err = p.Id()
+			// bwdebug.Print("start:#v", start)
 		case onSubPath:
 			path, start, ok, err = p.subPath(t.a)
 		case onPath:
@@ -314,6 +341,10 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 			ss, start, ok, err = p.ArrayOfString()
 		case onMap:
 			m, start, ok, err = p.Map()
+		case onNil:
+			start, ok = p.Nil()
+		case onBool:
+			b, start, ok = p.Bool()
 		}
 		if err != nil {
 			return
@@ -324,6 +355,8 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 				err = t.f(idx, start)
 			case onNumber:
 				err = t.f(val, start)
+			case onRange:
+				err = t.f(rng, start)
 			case onString:
 				err = t.f(s, start)
 			case onId:
@@ -338,6 +371,10 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 				err = t.f(ss, start)
 			case onMap:
 				err = t.f(m, start)
+			case onNil:
+				err = t.f(start)
+			case onBool:
+				err = t.f(b, start)
 			}
 			return
 		}
@@ -347,24 +384,24 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 
 // ============================================================================
 
-func (p *P) start() PosInfo {
+func getStart(p intf) *PosInfo {
 	p.Forward(Initial)
-	return p.curr
+	return p.Curr()
 }
 
-func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter rune, f func() error) (start PosInfo, ok bool, err error) {
-	start = p.start()
-	if ok = p.skipRunes(openDelimiter); ok {
+func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter rune, f func() error) (start *PosInfo, ok bool, err error) {
+	start = getStart(p)
+	if ok = skipRunes(p, openDelimiter); ok {
 	LOOP:
 		for err == nil {
 			if err = p.SkipSpace(TillNonEOF); err == nil {
 			NEXT:
-				if p.skipRunes(closeDelimiter) {
+				if skipRunes(p, closeDelimiter) {
 					break LOOP
 				}
 				if err = f(); err == nil {
 					if err = p.SkipSpace(TillNonEOF); err == nil {
-						if !p.skipRunes(',') {
+						if !skipRunes(p, ',') {
 							goto NEXT
 						}
 					}
@@ -383,13 +420,22 @@ func (p *P) parseVal() (result interface{}, err error) {
 	return
 }
 
-func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
-	start = p.start()
+func unexpected(p intf, optPosInfo ...*PosInfo) error {
+	var a UnexpectedA
+	if len(optPosInfo) > 0 {
+		a.PosInfo = optPosInfo[0]
+	}
+	return p.UnexpectedA(a)
+}
+
+func looksLikeNumber(p intf) (s string, start *PosInfo, ok bool, err error) {
+	start = getStart(p)
 	var (
 		r         rune
 		needDigit bool
 	)
-	if r = p.curr.rune; r == '-' || r == '+' {
+	// bwdebug.Print("!HERE")
+	if r = p.Curr().rune; r == '-' || r == '+' {
 		needDigit = true
 	} else if !isDigit(r) {
 		return
@@ -398,13 +444,14 @@ func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
 	p.Forward(1)
 	s = string(r)
 	if needDigit {
-		if r = p.curr.rune; !isDigit(r) {
-			err = p.Unexpected()
+		if r = p.Curr().rune; !isDigit(r) {
+			err = unexpected(p)
 		} else {
 			p.Forward(1)
 			s += string(r)
 		}
 	}
+	// bwdebug.Print("!HERE")
 	return
 }
 
@@ -419,7 +466,8 @@ func (p *P) looksLikeNumber() (s string, start PosInfo, ok bool, err error) {
 // 	}
 // }
 
-func (p *P) addDigit(r rune, s string) (string, bool) {
+func addDigit(p intf, s string) (string, bool) {
+	r := p.Curr().rune
 	if isDigit(r) {
 		s += string(r)
 	} else if r != '_' {
@@ -429,7 +477,7 @@ func (p *P) addDigit(r rune, s string) (string, bool) {
 	return s, true
 }
 
-func (p *P) canSkipRunes(rr ...rune) bool {
+func canSkipRunes(p intf, rr ...rune) bool {
 	for i, r := range rr {
 		if pi := p.LookAhead(uint(i)); pi.isEOF || pi.rune != r {
 			return false
@@ -438,8 +486,8 @@ func (p *P) canSkipRunes(rr ...rune) bool {
 	return true
 }
 
-func (p *P) skipRunes(rr ...rune) (ok bool) {
-	if ok = p.canSkipRunes(rr...); ok {
+func skipRunes(p intf, rr ...rune) (ok bool) {
+	if ok = canSkipRunes(p, rr...); ok {
 		p.Forward(uint(len(rr)))
 	}
 	return
@@ -459,9 +507,9 @@ func isPunctOrSymbol(r rune) bool {
 
 // ============================================================================
 
-func (p *P) subPath(a PathA) (result bw.ValPath, start PosInfo, ok bool, err error) {
-	start = p.start()
-	if ok = p.skipRunes('('); ok {
+func (p *P) subPath(a PathA) (result bw.ValPath, start *PosInfo, ok bool, err error) {
+	start = getStart(p)
+	if ok = skipRunes(p, '('); ok {
 		if err = p.SkipSpace(TillNonEOF); err == nil {
 			if result, err = p.PathContent(PathA{isSubPath: true, Bases: a.Bases}); err == nil {
 				if err = p.SkipSpace(TillNonEOF); err == nil {

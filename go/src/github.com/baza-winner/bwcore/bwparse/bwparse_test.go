@@ -9,6 +9,7 @@ import (
 	"github.com/baza-winner/bwcore/bwparse"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwtesting"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 func TestUnexpected(t *testing.T) {
@@ -245,9 +246,21 @@ func end(p *bwparse.P, ok bool) (err error) {
 	return
 }
 
+// func TestParseRange(t *testing.T) {
+// 	bwtesting.BwRunTests(t,
+// 		func(s string) (result interface{}) {
+// 		},
+// 		func() map[string]bwtesting.Case {
+
+// 			tests := map[string]bwtesting.Case{}
+// 			return tests
+// 		},
+// 	)
+// }
+
 func TestVal(t *testing.T) {
 	bwtesting.BwRunTests(t,
-		func(s string, optVars ...map[string]interface{}) (result interface{}) {
+		func(s string) (result interface{}) {
 			var err error
 			if result, err = func(s string) (result interface{}, err error) {
 				defer func() {
@@ -255,15 +268,15 @@ func TestVal(t *testing.T) {
 						result = nil
 					}
 				}()
-				p := bwparse.From(bwrune.FromString(s), map[string]interface{}{
-					"idVals": map[string]interface{}{
-						"Bool":    "Bool",
-						"String":  "String",
-						"Int":     "Int",
-						"Float64": "Float64",
-						"Array":   "Array",
-						"ArrayOf": "ArrayOf",
-					}})
+				p := bwparse.From(bwrune.FromString(s))
+				p.IdVals = map[string]interface{}{
+					"Bool":    "Bool",
+					"String":  "String",
+					"Int":     "Int",
+					"Float64": "Float64",
+					"Array":   "Array",
+					"ArrayOf": "ArrayOf",
+				}
 				var ok bool
 				if result, _, ok, err = p.Val(); err == nil {
 					err = end(p, ok)
@@ -277,10 +290,15 @@ func TestVal(t *testing.T) {
 		func() map[string]bwtesting.Case {
 			tests := map[string]bwtesting.Case{}
 			for k, v := range map[string]interface{}{
-				"nil":               nil,
-				"true":              true,
-				"false":             false,
-				"0":                 0,
+				"nil":   nil,
+				"true":  true,
+				"false": false,
+				"0":     0,
+
+				"0..1": bwtype.MustRangeFrom(bwtype.A{Min: 0, Max: 1}),
+				// "0.5..1": bwtype.MustRangeFrom(bwtype.A{Min: 0.5, Max: 1}),
+				// "..3.14": bwtype.MustRangeFrom(bwtype.A{Max: 3.14}),
+
 				"-1_000_000":        -1000000,
 				"+3.14":             3.14,
 				"+2.0":              2,
@@ -357,6 +375,7 @@ func TestVal(t *testing.T) {
 			}
 			return tests
 		}(),
+		// "0..1",
 	)
 
 	bwtesting.BwRunTests(t,
@@ -402,10 +421,10 @@ func TestFrom(t *testing.T) {
 				In:    []interface{}{"", map[string]interface{}{"postLineCount": true}},
 				Panic: "\x1b[38;5;201;1mopt.postLineCount\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) is not \x1b[97;1mUint\x1b[0m",
 			},
-			`idVals non map[string]interface{}`: {
-				In:    []interface{}{"", map[string]interface{}{"idVals": true}},
-				Panic: "\x1b[38;5;201;1mopt.idVals\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) is not \x1b[97;1mmap[string]interface{}\x1b[0m",
-			},
+			// `idVals non map[string]interface{}`: {
+			// 	In:    []interface{}{"", map[string]interface{}{"idVals": true}},
+			// 	Panic: "\x1b[38;5;201;1mopt.idVals\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) is not \x1b[97;1mmap[string]interface{}\x1b[0m",
+			// },
 			`unexpected keys`: {
 				In:    []interface{}{"", map[string]interface{}{"idvals": true}},
 				Panic: "\x1b[38;5;201;1mopt\x1b[0m (\x1b[96;1m{\n  \"idvals\": true\n}\x1b[0m) has unexpected keys \x1b[96;1m[\"idvals\"]\x1b[0m",
