@@ -39,11 +39,13 @@ func (p PosInfo) Rune() rune {
 
 // ============================================================================
 
-type OnMapKeyFunc func(p *P, m map[string]interface{}, key string) (ok bool, err error)
-type OnMapEndFunc func(p *P, m map[string]interface{}) (err error)
+type ValidateMapKeyFunc func(p *P, m map[string]interface{}, key string, start PosInfo) (err error)
+type ParseMapElemFunc func(p *P, m map[string]interface{}, key string) (ok bool, err error)
+type OnMapBeginEndFunc func(p *P, m map[string]interface{}) (err error)
 
-// type OnArrayIdxFunc func(p *P, vals []interface{}, idx int) (ok bool, err error)
-type OnArrayEndFunc func(p *P, arr interface{}) (err error)
+type ParseArrayElemFunc func(p *P, vals []interface{}) (ok bool, err error)
+type OnArrayBeginEndFunc func(p *P, vals []interface{}) (err error)
+type ValidateArrayOfStringElemFunc func(p *P, ss []string, s string, start PosInfo) (err error)
 
 type P struct {
 	prov          bwrune.Provider
@@ -52,10 +54,17 @@ type P struct {
 	preLineCount  uint
 	postLineCount uint
 	idVals        map[string]interface{}
-	onMapKey      OnMapKeyFunc
-	onMapEnd      OnMapEndFunc
-	// onArrayIdx    OnArrayIdxFunc
-	onArrayEnd OnArrayEndFunc
+
+	onMapBegin     OnMapBeginEndFunc
+	validateMapKey ValidateMapKeyFunc
+	parseMapElem   ParseMapElemFunc
+	onMapEnd       OnMapBeginEndFunc
+
+	onArrayBegin   OnArrayBeginEndFunc
+	parseArrayElem ParseArrayElemFunc
+	onArrayEnd     OnArrayBeginEndFunc
+
+	validateArrayOfStringElem ValidateArrayOfStringElemFunc
 }
 
 func From(p bwrune.Provider, opt ...map[string]interface{}) (result *P) {
@@ -216,50 +225,6 @@ REDO:
 
 // ============================================================================
 
-func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error) {
-	start = p.start()
-	if ok = p.curr.rune == '<'; !ok {
-		if ok = p.canSkipRunes('q', 'w') && isPunctOrSymbol(p.LookAhead(2).rune); !ok {
-			return
-		}
-		p.Forward(2)
-	}
-	delimiter := p.curr.rune
-	if r, b := Braces[delimiter]; b {
-		delimiter = r
-	}
-	p.Forward(1)
-	result = []string{}
-	for err == nil {
-		if err = p.SkipSpace(TillNonEOF); err == nil {
-			r := p.curr.rune
-			if r == delimiter {
-				p.Forward(1)
-				break
-			}
-			var s string
-			for err == nil && !(unicode.IsSpace(r) || r == delimiter) {
-				s += string(r)
-				p.Forward(1)
-				if err = p.CheckNotEOF(); err == nil {
-					r = p.curr.rune
-				}
-			}
-			result = append(result, s)
-		}
-	}
-	return
-}
-
-var Braces = map[rune]rune{
-	'(': ')',
-	'{': '}',
-	'<': '>',
-	'[': ']',
-}
-
-// ============================================================================
-
 func (p *P) Id() (result string, start PosInfo, ok bool, err error) {
 	start = p.start()
 	r := p.curr.rune
@@ -380,30 +345,93 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // ============================================================================
 
+func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error) {
+	start = p.start()
+	if ok = p.curr.rune == '<'; !ok {
+		if ok = p.canSkipRunes('q', 'w') && isPunctOrSymbol(p.LookAhead(2).rune); !ok {
+			return
+		}
+		p.Forward(2)
+	}
+	delimiter := p.curr.rune
+	if r, b := Braces[delimiter]; b {
+		delimiter = r
+	}
+	p.Forward(1)
+	result = []string{}
+	for err == nil {
+		if err = p.SkipSpace(TillNonEOF); err == nil {
+			r := p.curr.rune
+			if r == delimiter {
+				p.Forward(1)
+				break
+			}
+			pi := p.curr
+			var s string
+			for err == nil && !(unicode.IsSpace(r) || r == delimiter) {
+				s += string(r)
+				p.Forward(1)
+				if err = p.CheckNotEOF(); err == nil {
+					r = p.curr.rune
+				}
+			}
+			if err == nil {
+				if p.validateArrayOfStringElem != nil {
+					err = p.validateArrayOfStringElem(p, result, s, pi)
+				}
+				if err == nil {
+					result = append(result, s)
+				}
+			}
+		}
+	}
+	return
+}
+
+var Braces = map[rune]rune{
+	'(': ')',
+	'{': '}',
+	'<': '>',
+	'[': ']',
+}
+
+// ============================================================================
+
 func (p *P) Array() (result []interface{}, start PosInfo, ok bool, err error) {
 	start, ok, err = p.parseDelimitedOptionalCommaSeparated('[', ']', func() (err error) {
 		if result == nil {
-			result = map[string]interface{}{}
+			result = []interface{}{}
+			if p.onArrayBegin != nil {
+				err = p.onArrayBegin(p, result)
+			}
 		}
-		p.parentArray = result
-		var val interface{}
-		if val, err = p.parseVal(); err == nil {
-			switch t := val.(type) {
-			case []string:
-				for _, s := range t {
-					result = append(result, s)
+		if err == nil {
+			var b bool
+			if p.parseArrayElem != nil {
+				b, err = p.parseArrayElem(p, result)
+			}
+			if err == nil && !b {
+				var val interface{}
+				if val, err = p.parseVal(); err == nil {
+					switch t := val.(type) {
+					case []string:
+						for _, s := range t {
+							result = append(result, s)
+						}
+					default:
+						result = append(result, val)
+					}
 				}
-			default:
-				result = append(result, val)
 			}
 		}
 		return
 	})
-	if ok && result == nil {
-		result = []interface{}{}
-	}
-	if p.onArrayEnd != nil {
-		err = p.onArrayEnd(p, result)
+	if ok {
+		if result == nil {
+			result = []interface{}{}
+		} else if p.onArrayEnd != nil {
+			err = p.onArrayEnd(p, result)
+		}
 	}
 	return
 }
@@ -414,10 +442,16 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 			key string
 			b   bool
 		)
-		if b, err = p.processOn(
-			onString{f: func(s string, pi PosInfo) (err error) { key = s; return }},
-			onId{f: func(s string, pi PosInfo) (err error) { key = s; return }},
-		); !b {
+		onKey := func(s string, pi PosInfo) (err error) {
+			key = s
+			if p.validateMapKey != nil {
+				if err = p.validateMapKey(p, result, key, pi); err != nil {
+					return
+				}
+			}
+			return
+		}
+		if b, err = p.processOn(onString{f: onKey}, onId{f: onKey}); !b {
 			err = p.Unexpected()
 		} else if err == nil {
 			if err = p.SkipSpace(TillNonEOF); err == nil {
@@ -427,25 +461,30 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 				if err == nil {
 					if result == nil {
 						result = map[string]interface{}{}
+						if p.onMapBegin != nil {
+							err = p.onMapBegin(p, result)
+						}
 					}
-					p.parentArray = nil
-					var b bool
-					if p.onMapKey != nil {
-						b, err = p.onMapKey(p, result, key)
-					}
-					if err == nil && !b {
-						result[key], err = p.parseVal()
+					if err == nil {
+						var b bool
+						if p.parseMapElem != nil {
+							b, err = p.parseMapElem(p, result, key)
+						}
+						if err == nil && !b {
+							result[key], err = p.parseVal()
+						}
 					}
 				}
 			}
 		}
 		return
 	})
-	if ok && result == nil {
-		result = map[string]interface{}{}
-	}
-	if p.onMapEnd != nil {
-		err = p.onMapEnd(p, result)
+	if ok {
+		if result == nil {
+			result = map[string]interface{}{}
+		} else if p.onMapEnd != nil {
+			err = p.onMapEnd(p, result)
+		}
 	}
 	return
 }
