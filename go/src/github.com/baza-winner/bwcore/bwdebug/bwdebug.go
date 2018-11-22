@@ -73,6 +73,7 @@ func stringToPrint(depth uint, args ...interface{}) (result string, err error) {
 	for _, arg := range args {
 		i++
 		if expectsVal == true {
+			// fmt.Printf("vf: %d\n", vf)
 			switch vf {
 			case vfString:
 				fmtString += ansiDebugVarValueAsString
@@ -80,8 +81,11 @@ func stringToPrint(depth uint, args ...interface{}) (result string, err error) {
 				case rune:
 					fmtArgs = append(fmtArgs, string(t))
 				case fmt.Stringer:
+					// fmt.Printf("typeof(arg): %T\n", arg)
+					// fmt.Printf("t.String(): %s\n", t.String())
 					fmtArgs = append(fmtArgs, t.String())
 				default:
+					// fmt.Printf("typeof(arg): %T\n", arg)
 					fmtArgs = append(fmtArgs, arg)
 				}
 			case vfJSON:

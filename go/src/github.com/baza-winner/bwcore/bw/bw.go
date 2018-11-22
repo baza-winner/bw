@@ -147,8 +147,6 @@ type ValPathItem struct {
 	IsOptional bool
 }
 
-// type Path []ValPathItem
-
 type ValPath []ValPathItem
 
 func (v ValPath) MarshalJSON() ([]byte, error) {
@@ -160,6 +158,8 @@ func (v ValPath) MarshalJSON() ([]byte, error) {
 }
 
 func (v ValPath) String() (result string) {
+	// bwerr.Panic("HERE")
+	// panic("HERE")
 	ss := []string{}
 	if len(v) == 0 {
 		result = "."
@@ -187,6 +187,14 @@ func (v ValPath) String() (result string) {
 		}
 		result = strings.Join(ss, ".")
 	}
+	// ww := where.WWFrom(0)
+	// bytes, _ = json.MarshalIndent(ww, "", "  ")
+	// function, file, line, _ := runtime.Caller(1)
+	// fmt.Printf("result: %s, where: %s, %s, %d\n", result,
+	// 	runtime.FuncForPC(function).Name(),
+	// 	file,
+	// 	line,
+	// )
 	return
 }
 
@@ -217,16 +225,9 @@ func (v ValPath) AppendHash(name string) ValPath {
 
 type ValPathProvider interface {
 	Path() (ValPath, error)
-	// MustPath() ValPath
 }
 
 func (p ValPath) Path() (ValPath, error) { return p, nil }
-
-// func MustPath(p ValPathProvider) ValPath {
-// 	if ()
-
-// }
-// func (p ValPath) MustPath() ValPath      { return p }
 
 // ============================================================================
 

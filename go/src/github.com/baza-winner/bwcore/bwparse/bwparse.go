@@ -329,50 +329,6 @@ func (p *P) Int() (result int, start PosInfo, ok bool, err error) {
 
 // ============================================================================
 
-const dotRune = '.'
-
-func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
-	var (
-		s      string
-		hasDot bool
-		b      bool
-	)
-	if s, start, ok, err = p.looksLikeNumber(); err == nil && ok {
-		for {
-			if s, b = p.addDigit(p.curr.rune, s); !b {
-				if hasDot || !p.skipRunes(dotRune) {
-					break
-				} else {
-					s += string(dotRune)
-					hasDot = true
-				}
-			}
-		}
-		if hasDot && !zeroAfterDotRegexp.MatchString(s) {
-			var f float64
-			if f, err = strconv.ParseFloat(s, 64); err == nil {
-				result = f
-			}
-		} else {
-			if pos := strings.LastIndex(s, string(dotRune)); pos >= 0 {
-				s = s[:pos]
-			}
-			var i int
-			if i, err = bwstr.ParseInt(s); err == nil {
-				result = i
-			}
-		}
-		if err != nil {
-			err = p.UnexpectedA(UnexpectedA{start, bwerr.Err(err)})
-		}
-	}
-	return
-}
-
-var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
-
-// ============================================================================
-
 func (p *P) ArrayOfString() (result []string, start PosInfo, ok bool, err error) {
 	start = p.start()
 	if ok = p.curr.rune == '<'; !ok {
@@ -517,6 +473,29 @@ func (p *P) Map() (result map[string]interface{}, start PosInfo, ok bool, err er
 	return
 }
 
+func (p *P) Nil() (start PosInfo, ok bool) {
+	start = p.start()
+	p.Forward(Initial)
+	if ok = p.canSkipRunes('n', 'i', 'l'); ok {
+		p.Forward(3)
+	} else if ok = p.canSkipRunes('n', 'u', 'l', 'l'); ok {
+		p.Forward(4)
+	}
+	return
+}
+
+func (p *P) Bool() (result bool, start PosInfo, ok bool) {
+	start = p.start()
+	p.Forward(Initial)
+	if ok = p.canSkipRunes('t', 'r', 'u', 'e'); ok {
+		result = true
+		p.Forward(4)
+	} else if ok = p.canSkipRunes('f', 'a', 'l', 's', 'e'); ok {
+		p.Forward(5)
+	}
+	return
+}
+
 func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 	start = p.start()
 	ok, err = p.processOn(
@@ -526,27 +505,84 @@ func (p *P) Val() (result interface{}, start PosInfo, ok bool, err error) {
 		onPath{f: func(path bw.ValPath, pi PosInfo) (err error) { result = path; return }},
 		onMap{f: func(m map[string]interface{}, pi PosInfo) (err error) { result = m; return }},
 		onArrayOfString{f: func(ss []string, pi PosInfo) (err error) { result = ss; return }},
+		onNil{f: func(pi PosInfo) (err error) { return }},
+		onBool{f: func(b bool, pi PosInfo) (err error) { result = b; return }},
 		onId{f: func(s string, pi PosInfo) (err error) {
-			switch s {
-			case "true":
-				result = true
-			case "false":
-				result = false
-			case "nil", "null":
-				result = nil
-			default:
-				if val, ok := p.idVals[s]; ok {
-					result = val
-				} else {
-					err = p.UnexpectedA(UnexpectedA{pi, bw.Fmt(ansiUnexpectedWord, s)})
-				}
-				return
+			// switch s {
+			// case "true":
+			// 	result = true
+			// case "false":
+			// 	result = false
+			// case "nil", "null":
+			// 	result = nil
+			// default:
+			if val, ok := p.idVals[s]; ok {
+				result = val
+			} else {
+				err = p.UnexpectedA(UnexpectedA{pi, bw.Fmt(ansiUnexpectedWord, s)})
 			}
 			return
+			// }
+			// return
 		}},
 	)
 	return
 }
+
+// ============================================================================
+
+const dotRune = '.'
+
+func (p *P) Number() (result interface{}, start PosInfo, ok bool, err error) {
+	var (
+		s      string
+		hasDot bool
+		b      bool
+	)
+	if s, start, ok, err = p.looksLikeNumber(); err == nil && ok {
+		for {
+			if s, b = p.addDigit(p.curr.rune, s); !b {
+				if hasDot || !p.skipRunes(dotRune) {
+					break
+				} else {
+					s += string(dotRune)
+					hasDot = true
+				}
+			}
+		}
+		if hasDot && !zeroAfterDotRegexp.MatchString(s) {
+			var f float64
+			if f, err = strconv.ParseFloat(s, 64); err == nil {
+				result = f
+			}
+		} else {
+			if pos := strings.LastIndex(s, string(dotRune)); pos >= 0 {
+				s = s[:pos]
+			}
+			var i int
+			if i, err = bwstr.ParseInt(s); err == nil {
+				result = i
+			}
+		}
+		if err != nil {
+			err = p.UnexpectedA(UnexpectedA{start, bwerr.Err(err)})
+		}
+	}
+	return
+}
+
+var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
+
+// ============================================================================
+
+// type RangeA struct {
+
+// }
+
+// func (p *P) Range(optRangeLimitSet ...bwtype.RangeLimitSet) (result bw.ValPath, start PosInfo, ok bool, err error) {
+// 	p.Forward(Initial)
+
+// }
 
 // ============================================================================
 
