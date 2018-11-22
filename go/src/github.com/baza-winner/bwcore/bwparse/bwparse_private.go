@@ -68,12 +68,67 @@ func optKeyMap(opt map[string]interface{}, key string, keys *bwset.String) (resu
 	return
 }
 
-func optKeyOnMapKeyFunc(opt map[string]interface{}, key string, keys *bwset.String) (result map[string]interface{}, ok bool) {
+func optKeyValidateMapKeyFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateMapKeyFunc, ok bool) {
 	var val interface{}
 	keys.Add(key)
 	if val, ok = opt[key]; ok && val != nil {
-		if result, ok = val.(map[string]interface{}); !ok {
-			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "map[string]interface{}")
+		if result, ok = val.(ValidateMapKeyFunc); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateMapKeyFunc")
+		}
+	}
+	return
+}
+
+func optKeyParseMapElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseMapElemFunc, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = val.(ParseMapElemFunc); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseMapElemFunc")
+		}
+	}
+	return
+}
+
+func optKeyOnMapBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnMapBeginEndFunc, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = val.(OnMapBeginEndFunc); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnMapBeginEndFunc")
+		}
+	}
+	return
+}
+
+func optKeyParseArrayElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseArrayElemFunc, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = val.(ParseArrayElemFunc); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseArrayElemFunc")
+		}
+	}
+	return
+}
+
+func optKeyOnArrayBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnArrayBeginEndFunc, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = val.(OnArrayBeginEndFunc); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnArrayBeginEndFunc")
+		}
+	}
+	return
+}
+
+func optKeyValidateArrayOfStringElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateArrayOfStringElemFunc, ok bool) {
+	var val interface{}
+	keys.Add(key)
+	if val, ok = opt[key]; ok && val != nil {
+		if result, ok = val.(ValidateArrayOfStringElemFunc); !ok {
+			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateArrayOfStringElemFunc")
 		}
 	}
 	return

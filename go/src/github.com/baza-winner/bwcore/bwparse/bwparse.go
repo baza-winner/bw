@@ -88,6 +88,34 @@ func From(p bwrune.Provider, opt ...map[string]interface{}) (result *P) {
 			if m, ok := optKeyMap(m, "idVals", &keys); ok {
 				result.idVals = m
 			}
+
+			if f, ok := optKeyOnMapBeginEndFunc(m, "onMapBegin", &keys); ok {
+				result.onMapBegin = f
+			}
+			if f, ok := optKeyValidateMapKeyFunc(m, "validateMapKey", &keys); ok {
+				result.validateMapKey = f
+			}
+			if f, ok := optKeyParseMapElemFunc(m, "parseMapElem", &keys); ok {
+				result.parseMapElem = f
+			}
+			if f, ok := optKeyOnMapBeginEndFunc(m, "onMapEnd", &keys); ok {
+				result.onMapEnd = f
+			}
+
+			if f, ok := optKeyOnArrayBeginEndFunc(m, "onArrayBegin", &keys); ok {
+				result.onArrayBegin = f
+			}
+			if f, ok := optKeyParseArrayElemFunc(m, "parseArrayElem", &keys); ok {
+				result.parseArrayElem = f
+			}
+			if f, ok := optKeyOnArrayBeginEndFunc(m, "onArrayEnd", &keys); ok {
+				result.onArrayEnd = f
+			}
+
+			if f, ok := optKeyValidateArrayOfStringElemFunc(m, "validateArrayOfStringElem", &keys); ok {
+				result.validateArrayOfStringElem = f
+			}
+
 			if unexpectedKeys := bwmap.MustUnexpectedKeys(m, keys); len(unexpectedKeys) > 0 {
 				bwerr.Panic(ansiOptHasUnexpectedKeys, bwjson.Pretty(m), unexpectedKeys)
 			}
