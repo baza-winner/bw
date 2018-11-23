@@ -12,27 +12,6 @@ import (
 
 // ============================================================================
 
-type RangeLimitKind uint8
-
-const (
-	RangeLimitNil RangeLimitKind = iota
-	RangeLimitInt
-	RangeLimitFloat64
-	RangeLimitPath
-)
-
-type RangeLimit struct {
-	val interface{}
-}
-
-const (
-	_RangeLimitKindSetTestItemA = RangeLimitInt
-	_RangeLimitKindSetTestItemB = RangeLimitFloat64
-)
-
-//go:generate bwsetter -type RangeLimitKind -test
-//go:generate stringer -type RangeLimitKind -trimprefix RangeLimit
-
 func Int(val interface{}) (result int, ok bool) {
 	ok = true
 	switch t := val.(type) {
@@ -152,11 +131,82 @@ func Float64(val interface{}) (result float64, ok bool) {
 	return
 }
 
+// ============================================================================
+
+type Number struct {
+	val interface{}
+}
+
+func NumberFrom(val interface{}) (result Number, err error) {
+	var (
+		i  int
+		u  uint
+		f  float64
+		ok bool
+	)
+	if i, ok = Int(val); ok {
+		result = Number{i}
+	} else if u, ok = Uint(val); ok {
+		result = Number{u}
+	} else if f, ok = Float64(val); ok {
+		result = Number{f}
+	} else if result, ok = val.(Number); !ok {
+		err = bwerr.From(ansi.String("<ansiVal>%#v<ansi> can not be a <ansiType>Number"))
+	}
+	return
+}
+
+func MustNumberFrom(val interface{}) (result Number) {
+	var err error
+	if result, err = NumberFrom(val); err != nil {
+		bwerr.PanicErr(err)
+	}
+	return
+}
+
+func (n Number) Int() (result int, ok bool) {
+	return Int(n.val)
+}
+
+func (n Number) Float64() (result float64, ok bool) {
+	return Float64(n.val)
+}
+
+func (n Number) Uint() (result uint, ok bool) {
+	return Uint(n.val)
+}
+
+// ============================================================================
+
+type RangeLimitKind uint8
+
+const (
+	RangeLimitNil RangeLimitKind = iota
+	RangeLimitInt
+	RangeLimitFloat64
+	RangeLimitPath
+)
+
+//go:generate bwsetter -type RangeLimitKind -test
+//go:generate stringer -type RangeLimitKind -trimprefix RangeLimit
+
+const (
+	_RangeLimitKindSetTestItemA = RangeLimitInt
+	_RangeLimitKindSetTestItemB = RangeLimitFloat64
+)
+
+// ============================================================================
+
+type RangeLimit struct {
+	val interface{}
+}
+
 func RangeLimitFrom(val interface{}) (result RangeLimit, ok bool) {
 	var (
 		i    int
 		f    float64
 		path bw.ValPath
+		n    Number
 	)
 	if val == nil {
 		result = RangeLimit{}
@@ -165,6 +215,8 @@ func RangeLimitFrom(val interface{}) (result RangeLimit, ok bool) {
 		result = RangeLimit{val: i}
 	} else if f, ok = Float64(val); ok {
 		result = RangeLimit{val: f}
+	} else if n, ok = val.(Number); ok {
+		result = RangeLimit{val: n.val}
 	} else if path, ok = val.(bw.ValPath); ok {
 		result = RangeLimit{val: path}
 	} else {

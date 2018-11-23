@@ -8,6 +8,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwparse"
 	"github.com/baza-winner/bwcore/bwrune"
+	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwtesting"
 	"github.com/baza-winner/bwcore/bwtype"
 )
@@ -19,7 +20,7 @@ func TestUnexpected(t *testing.T) {
 		return p
 	}
 	bwtesting.BwRunTests(t,
-		"Unexpected",
+		"UnexpectedA",
 		func() map[string]bwtesting.Case {
 			p := testUnexpectedHelper("some", 2)
 			pi := p.LookAhead(3)
@@ -27,7 +28,7 @@ func TestUnexpected(t *testing.T) {
 			tests["panic"] = bwtesting.Case{
 				V: p,
 				// In:    []interface{}{bwparse.PosInfo{Pos: 4}},
-				In:    []interface{}{pi},
+				In:    []interface{}{bwparse.UnexpectedA{PosInfo: pi}},
 				Panic: "\x1b[38;5;201;1mps.pos\x1b[0m (\x1b[96;1m4\x1b[0m) > \x1b[38;5;201;1mp.curr.pos\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m",
 			}
 			p = testUnexpectedHelper("{\n key wrong \n} ", 0)
@@ -35,8 +36,9 @@ func TestUnexpected(t *testing.T) {
 			pi = p.Curr()
 			p.Forward(5)
 			tests["normal"] = bwtesting.Case{
-				V:   p,
-				In:  []interface{}{pi},
+				V: p,
+				// In:  []interface{}{pi},
+				In:  []interface{}{bwparse.UnexpectedA{PosInfo: pi}},
 				Out: []interface{}{"unexpected \x1b[91;1m\"wrong\"\x1b[0m at line \x1b[38;5;252;1m2\x1b[0m, col \x1b[38;5;252;1m6\x1b[0m (pos \x1b[38;5;252;1m7\x1b[0m)\x1b[0m:\n\x1b[32m{\n key \x1b[91mwrong\x1b[0m \n} \n"},
 			}
 			return tests
@@ -80,7 +82,7 @@ func TestPath(t *testing.T) {
 					pco.Bases = optBases[0]
 				}
 				p := bwparse.From(bwrune.FromString(s))
-				if result, err = p.PathContent(pco); err == nil {
+				if result, err = bwparse.PathContent(p, pco); err == nil {
 					err = end(p, true)
 				}
 				return
@@ -202,7 +204,7 @@ func TestInt(t *testing.T) {
 				}()
 				p := bwparse.From(bwrune.FromString(s))
 				var ok bool
-				if result, _, ok, err = p.Int(); err == nil {
+				if result, _, ok, err = bwparse.Int(p); err == nil {
 					err = end(p, ok)
 				}
 				return
@@ -225,7 +227,7 @@ func TestInt(t *testing.T) {
 				}
 			}
 			for k, v := range map[string]string{
-				"+1_000_000_000_000_000_000_000_000": "strconv.ParseInt: parsing \"+1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m+1_000_000_000_000_000_000_000_000\x1b[0m\n",
+				"+1_000_000_000_000_000_000_000_000": "strconv.ParseInt: parsing \"1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m+1_000_000_000_000_000_000_000_000\x1b[0m\n",
 			} {
 				tests[k] = bwtesting.Case{
 					In:    []interface{}{func(testName string) string { return testName }},
@@ -239,9 +241,9 @@ func TestInt(t *testing.T) {
 
 func end(p *bwparse.P, ok bool) (err error) {
 	if !ok {
-		err = p.Unexpected(p.Curr())
+		err = bwparse.Unexpected(p)
 	} else {
-		err = p.SkipSpace(bwparse.TillEOF)
+		err = bwparse.SkipSpace(p, bwparse.TillEOF)
 	}
 	return
 }
@@ -269,16 +271,17 @@ func TestVal(t *testing.T) {
 					}
 				}()
 				p := bwparse.From(bwrune.FromString(s))
-				p.IdVals = map[string]interface{}{
-					"Bool":    "Bool",
-					"String":  "String",
-					"Int":     "Int",
-					"Float64": "Float64",
-					"Array":   "Array",
-					"ArrayOf": "ArrayOf",
-				}
+
+				defIds := bwset.StringFrom("Bool", "String", "Int", "Number", "Array", "ArrayOf")
 				var ok bool
-				if result, _, ok, err = p.Val(); err == nil {
+				if result, _, ok, err = bwparse.Val(p, bwparse.Opt{
+					OnId: func(p bwparse.I, s string, start *bwparse.PosInfo) (result interface{}, ok bool, err error) {
+						if ok = defIds.Has(s); ok {
+							result = s
+						}
+						return
+					},
+				}); err == nil {
 					err = end(p, ok)
 				}
 				return
@@ -390,7 +393,7 @@ func TestVal(t *testing.T) {
 				}()
 				p := bwparse.From(bwrune.FromString(s))
 				var ok bool
-				if result, _, ok, err = p.Val(); err == nil {
+				if result, _, ok, err = bwparse.Val(p, bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int"}}); err == nil {
 					err = end(p, ok)
 				}
 				return
@@ -440,7 +443,7 @@ func TestLineCount(t *testing.T) {
 			}`
 			p := bwparse.From(bwrune.FromString(s), opt...)
 			var err error
-			if result, _, _, err = p.Val(); err != nil {
+			if result, _, _, err = bwparse.Val(p, bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int"}}); err != nil {
 				bwerr.PanicErr(err)
 			}
 			return

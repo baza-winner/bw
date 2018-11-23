@@ -3,7 +3,6 @@ package bwparse
 import (
 	"fmt"
 	"strings"
-	"unicode"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
@@ -136,6 +135,30 @@ func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (res
 
 // ============================================================================
 
+func getOpt(optOpt []Opt) Opt {
+	opt := Opt{}
+	if len(optOpt) > 0 {
+		opt = optOpt[0]
+	}
+	return opt
+}
+
+func isOneOfId(p I, ss []string) (ok bool) {
+	for _, s := range ss {
+		if ok = CanSkipRunes(p, []rune(s)...); ok {
+			u := uint(len(s))
+			r := p.LookAhead(u).rune
+			if ok = !(IsLetter(r) || IsDigit(r)); ok {
+				p.Forward(u)
+				return
+			}
+		}
+	}
+	return
+}
+
+// ============================================================================
+
 func (p *P) pullRune(ps PosInfo) PosInfo {
 	runePtr := bwrune.MustPull(p.prov)
 	if !ps.isEOF {
@@ -230,22 +253,28 @@ type on interface {
 }
 
 type onInt struct {
-	f func(idx int, start *PosInfo) (err error)
+	f func(i int, start *PosInfo) (err error)
 }
 
 func (onInt) IsOn() {}
+
+type onUint struct {
+	f func(u uint, start *PosInfo) (err error)
+}
+
+func (onUint) IsOn() {}
+
+type onNumber struct {
+	f func(n bwtype.Number, start *PosInfo) (err error)
+}
+
+func (onNumber) IsOn() {}
 
 type onRange struct {
 	f func(rng bwtype.Range, start *PosInfo) (err error)
 }
 
 func (onRange) IsOn() {}
-
-type onNumber struct {
-	f func(val interface{}, start *PosInfo) (err error)
-}
-
-func (onNumber) IsOn() {}
 
 type onId struct {
 	f func(s string, start *PosInfo) (err error)
@@ -305,46 +334,49 @@ func (onBool) IsOn() {}
 
 // ============================================================================
 
-func processOn(p intf, processors ...on) (ok bool, err error) {
+func processOn(p I, opt Opt, processors ...on) (ok bool, err error) {
 	var (
 		start *PosInfo
-		idx   int
+		i     int
+		u     uint
+		n     bwtype.Number
 		s     string
 		path  bw.ValPath
-		val   interface{}
-		vals  []interface{}
-		ss    []string
-		m     map[string]interface{}
-		b     bool
-		rng   bwtype.Range
+		// val   interface{}
+		vals []interface{}
+		ss   []string
+		m    map[string]interface{}
+		b    bool
+		rng  bwtype.Range
 	)
 	for _, processor := range processors {
 		switch t := processor.(type) {
 		case onInt:
-			idx, start, ok, err = parseInt(p)
+			i, start, ok, err = Int(p, opt)
+		case onUint:
+			u, start, ok, err = Uint(p, opt)
 		case onNumber:
-			val, start, ok, err = parseNumber(p)
+			n, start, ok, err = Number(p, opt)
 		case onRange:
-			rng, start, ok, err = parseRange(p)
+			rng, start, ok, err = Range(p, opt)
 		case onString:
-			s, start, ok, err = parseString(p)
+			s, start, ok, err = String(p, opt)
 		case onId:
-			s, start, ok, err = parseId()
-			// bwdebug.Print("start:#v", start)
+			s, start, ok, err = Id(p, opt)
 		case onSubPath:
-			path, start, ok, err = parseSubPath(p, t.a)
+			path, start, ok, err = subPath(p, t.a, opt)
 		case onPath:
-			path, start, ok, err = parsePath(p, t.a)
+			path, start, ok, err = Path(p, t.a, opt)
 		case onArray:
-			vals, start, ok, err = parseArray(p)
+			vals, start, ok, err = Array(p, opt)
 		case onArrayOfString:
-			ss, start, ok, err = parseArrayOfString(p)
+			ss, start, ok, err = ArrayOfString(p, opt)
 		case onMap:
-			m, start, ok, err = parseMap(p)
+			m, start, ok, err = Map(p, opt)
 		case onNil:
-			start, ok = parseNil(p)
+			start, ok = Nil(p, opt)
 		case onBool:
-			b, start, ok = parseBool(p)
+			b, start, ok = Bool(p, opt)
 		}
 		if err != nil {
 			return
@@ -352,9 +384,11 @@ func processOn(p intf, processors ...on) (ok bool, err error) {
 		if ok {
 			switch t := processor.(type) {
 			case onInt:
-				err = t.f(idx, start)
+				err = t.f(i, start)
+			case onUint:
+				err = t.f(u, start)
 			case onNumber:
-				err = t.f(val, start)
+				err = t.f(n, start)
 			case onRange:
 				err = t.f(rng, start)
 			case onString:
@@ -461,24 +495,83 @@ func processOn(p intf, processors ...on) (ok bool, err error) {
 
 // ============================================================================
 
-func getStart(p intf) *PosInfo {
+// ============================================================================
+
+// func (p *P) mapBegin(m map[string]interface{}) (err error) {
+// 	if p.OnMapBegin != nil {
+// 		err = p.OnMapBegin(p, m)
+// 	}
+// 	return
+// }
+// func (p *P) validateMapKey(m map[string]interface{}, key string, start *PosInfo) (err error) {
+// 	if p.OnValidateMapKey != nil {
+// 		ok, err = p.OnValidateMapKey(p, m, key, start)
+// 	}
+// 	return
+// }
+
+// func (p *P) parseMapElem(m map[string]interface{}, key string) (ok bool, err error) {
+// 	if p.OnParseMapElem != nil {
+// 		ok, err = p.OnParseMapElem(p, m, key)
+// 	}
+// 	return
+// }
+
+// func (p *P) mapEnd(m map[string]interface{}) (err error) {
+// 	if p.OnMapEnd != nil {
+// 		err = p.OnMapEnd(p, m)
+// 	}
+// 	return
+// }
+
+// func (p *P) arrayBegin(vals []interface{}) (err error) {
+// 	if p.OnArrayBegin != nil {
+// 		err = p.OnArrayBegin(p, vals)
+// 	}
+// 	return
+// }
+
+// func (p *P) parseArrayElem(vals []interface{}) (ok bool, err error) {
+// 	if p.OnParseArrayElem != nil {
+// 		ok, err = p.OnParseArrayElem(p, vals)
+// 	}
+// 	return
+// }
+
+// func (p *P) arrayEnd(vals []interface{}) (err error) {
+// 	if p.OnArrayBegin != nil {
+// 		err = p.OnArrayBegin(p, vals)
+// 	}
+// 	return
+// }
+
+// func (p *P) validateArrayOfStringElem(ss []string, s string, start *PosInfo) (err error) {
+// 	if p.OnValidateArrayOfStringElem != nil {
+// 		err = p.OnValidateArrayOfStringElem(p, ss, s, start)
+// 	}
+// 	return
+// }
+
+// ============================================================================
+
+func getStart(p I) *PosInfo {
 	p.Forward(Initial)
 	return p.Curr()
 }
 
-func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter rune, f func() error) (start *PosInfo, ok bool, err error) {
+func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter rune, f func() error) (start *PosInfo, ok bool, err error) {
 	start = getStart(p)
-	if ok = skipRunes(p, openDelimiter); ok {
+	if ok = SkipRunes(p, openDelimiter); ok {
 	LOOP:
 		for err == nil {
-			if err = p.SkipSpace(TillNonEOF); err == nil {
+			if err = SkipSpace(p, TillNonEOF); err == nil {
 			NEXT:
-				if skipRunes(p, closeDelimiter) {
+				if SkipRunes(p, closeDelimiter) {
 					break LOOP
 				}
 				if err = f(); err == nil {
-					if err = p.SkipSpace(TillNonEOF); err == nil {
-						if !skipRunes(p, ',') {
+					if err = SkipSpace(p, TillNonEOF); err == nil {
+						if !SkipRunes(p, ',') {
 							goto NEXT
 						}
 					}
@@ -489,63 +582,40 @@ func (p *P) parseDelimitedOptionalCommaSeparated(openDelimiter, closeDelimiter r
 	return
 }
 
-func (p *P) parseVal() (result interface{}, err error) {
-	var ok bool
-	if result, _, ok, err = p.Val(); err == nil && !ok {
-		err = p.Unexpected()
-	}
-	return
-}
-
-func unexpected(p intf, optPosInfo ...*PosInfo) error {
-	var a UnexpectedA
-	if len(optPosInfo) > 0 {
-		a.PosInfo = optPosInfo[0]
-	}
-	return p.UnexpectedA(a)
-}
-
-func looksLikeNumber(p intf) (s string, start *PosInfo, ok bool, err error) {
+func looksLikeNumber(p I, nonNegative bool) (s string, start *PosInfo, isNegative bool, ok bool, err error) {
 	start = getStart(p)
 	var (
 		r         rune
 		needDigit bool
 	)
 	// bwdebug.Print("!HERE")
-	if r = p.Curr().rune; r == '-' || r == '+' {
+	r = p.Curr().rune
+	if ok = r == '+'; ok {
 		needDigit = true
-	} else if !isDigit(r) {
+	} else if ok = !nonNegative && r == '-'; ok {
+		s = string(r)
+		needDigit = true
+		isNegative = true
+	} else if ok = IsDigit(r); ok {
+		s = string(r)
+	} else {
 		return
 	}
-	ok = true
 	p.Forward(1)
-	s = string(r)
 	if needDigit {
-		if r = p.Curr().rune; !isDigit(r) {
-			err = unexpected(p)
+		if r = p.Curr().rune; !IsDigit(r) {
+			err = Unexpected(p)
 		} else {
 			p.Forward(1)
 			s += string(r)
 		}
 	}
-	// bwdebug.Print("!HERE")
 	return
 }
 
-// func parseInt(s string) (result int, err error) {
-// 	if _int64, err := strconv.ParseInt(s, 10, 64); err != nil {
-// 		return 0, err
-// 	} else {
-// 		// } else if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
-// 		return int(_int64), nil
-// 		// } else {
-// 		// 	return 0, bwerr.From(ansiOutOfRange, _int64, bw.MinInt, bw.MaxInt)
-// 	}
-// }
-
-func addDigit(p intf, s string) (string, bool) {
+func addDigit(p I, s string) (string, bool) {
 	r := p.Curr().rune
-	if isDigit(r) {
+	if IsDigit(r) {
 		s += string(r)
 	} else if r != '_' {
 		return s, false
@@ -554,46 +624,18 @@ func addDigit(p intf, s string) (string, bool) {
 	return s, true
 }
 
-func canSkipRunes(p intf, rr ...rune) bool {
-	for i, r := range rr {
-		if pi := p.LookAhead(uint(i)); pi.isEOF || pi.rune != r {
-			return false
-		}
-	}
-	return true
-}
-
-func skipRunes(p intf, rr ...rune) (ok bool) {
-	if ok = canSkipRunes(p, rr...); ok {
-		p.Forward(uint(len(rr)))
-	}
-	return
-}
-
-func isDigit(r rune) bool {
-	return '0' <= r && r <= '9'
-}
-
-func isLetter(r rune) bool {
-	return unicode.IsLetter(r) || r == '_'
-}
-
-func isPunctOrSymbol(r rune) bool {
-	return unicode.IsPunct(r) || unicode.IsSymbol(r)
-}
-
 // ============================================================================
 
-func parseSubPath(p intf, a PathA) (result bw.ValPath, start *PosInfo, ok bool, err error) {
+func subPath(p I, a PathA, opt Opt) (result bw.ValPath, start *PosInfo, ok bool, err error) {
 	start = getStart(p)
-	if ok = skipRunes(p, '('); ok {
-		if err = skipSpace(p, TillNonEOF); err == nil {
-			if result, err = parsePathContent(p, PathA{isSubPath: true, Bases: a.Bases}); err == nil {
-				if err = skipSpace(p, TillNonEOF); err == nil {
-					if p.curr.rune == ')' {
+	if ok = SkipRunes(p, '('); ok {
+		if err = SkipSpace(p, TillNonEOF); err == nil {
+			if result, err = PathContent(p, PathA{isSubPath: true, Bases: a.Bases}, opt); err == nil {
+				if err = SkipSpace(p, TillNonEOF); err == nil {
+					if p.Curr().rune == ')' {
 						p.Forward(1)
 					} else {
-						err = p.Unexpected()
+						err = Unexpected(p)
 					}
 				}
 			}
