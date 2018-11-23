@@ -297,7 +297,7 @@ func TestVal(t *testing.T) {
 
 				"0..1": bwtype.MustRangeFrom(bwtype.A{Min: 0, Max: 1}),
 				// "0.5..1": bwtype.MustRangeFrom(bwtype.A{Min: 0.5, Max: 1}),
-				// "..3.14": bwtype.MustRangeFrom(bwtype.A{Max: 3.14}),
+				"..3.14": bwtype.MustRangeFrom(bwtype.A{Max: 3.14}),
 
 				"-1_000_000":        -1000000,
 				"+3.14":             3.14,
@@ -375,6 +375,7 @@ func TestVal(t *testing.T) {
 			}
 			return tests
 		}(),
+		"..3.14",
 		// "0..1",
 	)
 
@@ -421,10 +422,6 @@ func TestFrom(t *testing.T) {
 				In:    []interface{}{"", map[string]interface{}{"postLineCount": true}},
 				Panic: "\x1b[38;5;201;1mopt.postLineCount\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) is not \x1b[97;1mUint\x1b[0m",
 			},
-			// `idVals non map[string]interface{}`: {
-			// 	In:    []interface{}{"", map[string]interface{}{"idVals": true}},
-			// 	Panic: "\x1b[38;5;201;1mopt.idVals\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) is not \x1b[97;1mmap[string]interface{}\x1b[0m",
-			// },
 			`unexpected keys`: {
 				In:    []interface{}{"", map[string]interface{}{"idvals": true}},
 				Panic: "\x1b[38;5;201;1mopt\x1b[0m (\x1b[96;1m{\n  \"idvals\": true\n}\x1b[0m) has unexpected keys \x1b[96;1m[\"idvals\"]\x1b[0m",

@@ -305,7 +305,7 @@ func (onBool) IsOn() {}
 
 // ============================================================================
 
-func (p *P) processOn(processors ...on) (ok bool, err error) {
+func processOn(p intf, processors ...on) (ok bool, err error) {
 	var (
 		start *PosInfo
 		idx   int
@@ -321,30 +321,30 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 	for _, processor := range processors {
 		switch t := processor.(type) {
 		case onInt:
-			idx, start, ok, err = p.Int()
+			idx, start, ok, err = parseInt(p)
 		case onNumber:
-			val, start, ok, err = p.Number()
+			val, start, ok, err = parseNumber(p)
 		case onRange:
-			rng, start, ok, err = p.Range()
+			rng, start, ok, err = parseRange(p)
 		case onString:
-			s, start, ok, err = p.String()
+			s, start, ok, err = parseString(p)
 		case onId:
-			s, start, ok, err = p.Id()
+			s, start, ok, err = parseId()
 			// bwdebug.Print("start:#v", start)
 		case onSubPath:
-			path, start, ok, err = p.subPath(t.a)
+			path, start, ok, err = parseSubPath(p, t.a)
 		case onPath:
-			path, start, ok, err = p.Path(t.a)
+			path, start, ok, err = parsePath(p, t.a)
 		case onArray:
-			vals, start, ok, err = p.Array()
+			vals, start, ok, err = parseArray(p)
 		case onArrayOfString:
-			ss, start, ok, err = p.ArrayOfString()
+			ss, start, ok, err = parseArrayOfString(p)
 		case onMap:
-			m, start, ok, err = p.Map()
+			m, start, ok, err = parseMap(p)
 		case onNil:
-			start, ok = p.Nil()
+			start, ok = parseNil(p)
 		case onBool:
-			b, start, ok = p.Bool()
+			b, start, ok = parseBool(p)
 		}
 		if err != nil {
 			return
@@ -381,6 +381,83 @@ func (p *P) processOn(processors ...on) (ok bool, err error) {
 	}
 	return
 }
+
+// func (p *P) processOn(processors ...on) (ok bool, err error) {
+// 	var (
+// 		start *PosInfo
+// 		idx   int
+// 		s     string
+// 		path  bw.ValPath
+// 		val   interface{}
+// 		vals  []interface{}
+// 		ss    []string
+// 		m     map[string]interface{}
+// 		b     bool
+// 		rng   bwtype.Range
+// 	)
+// 	for _, processor := range processors {
+// 		switch t := processor.(type) {
+// 		case onInt:
+// 			idx, start, ok, err = p.Int()
+// 		case onNumber:
+// 			val, start, ok, err = p.Number()
+// 		case onRange:
+// 			rng, start, ok, err = p.Range()
+// 		case onString:
+// 			s, start, ok, err = p.String()
+// 		case onId:
+// 			s, start, ok, err = p.Id()
+// 			// bwdebug.Print("start:#v", start)
+// 		case onSubPath:
+// 			path, start, ok, err = p.subPath(t.a)
+// 		case onPath:
+// 			path, start, ok, err = p.Path(t.a)
+// 		case onArray:
+// 			vals, start, ok, err = p.Array()
+// 		case onArrayOfString:
+// 			ss, start, ok, err = p.ArrayOfString()
+// 		case onMap:
+// 			m, start, ok, err = p.Map()
+// 		case onNil:
+// 			start, ok = p.Nil()
+// 		case onBool:
+// 			b, start, ok = p.Bool()
+// 		}
+// 		if err != nil {
+// 			return
+// 		}
+// 		if ok {
+// 			switch t := processor.(type) {
+// 			case onInt:
+// 				err = t.f(idx, start)
+// 			case onNumber:
+// 				err = t.f(val, start)
+// 			case onRange:
+// 				err = t.f(rng, start)
+// 			case onString:
+// 				err = t.f(s, start)
+// 			case onId:
+// 				err = t.f(s, start)
+// 			case onSubPath:
+// 				err = t.f(path, start)
+// 			case onPath:
+// 				err = t.f(path, start)
+// 			case onArray:
+// 				err = t.f(vals, start)
+// 			case onArrayOfString:
+// 				err = t.f(ss, start)
+// 			case onMap:
+// 				err = t.f(m, start)
+// 			case onNil:
+// 				err = t.f(start)
+// 			case onBool:
+// 				err = t.f(b, start)
+// 			}
+// 			return
+// 		}
+// 	}
+// 	return
+// }
 
 // ============================================================================
 
@@ -507,12 +584,12 @@ func isPunctOrSymbol(r rune) bool {
 
 // ============================================================================
 
-func (p *P) subPath(a PathA) (result bw.ValPath, start *PosInfo, ok bool, err error) {
+func parseSubPath(p intf, a PathA) (result bw.ValPath, start *PosInfo, ok bool, err error) {
 	start = getStart(p)
 	if ok = skipRunes(p, '('); ok {
-		if err = p.SkipSpace(TillNonEOF); err == nil {
-			if result, err = p.PathContent(PathA{isSubPath: true, Bases: a.Bases}); err == nil {
-				if err = p.SkipSpace(TillNonEOF); err == nil {
+		if err = skipSpace(p, TillNonEOF); err == nil {
+			if result, err = parsePathContent(p, PathA{isSubPath: true, Bases: a.Bases}); err == nil {
+				if err = skipSpace(p, TillNonEOF); err == nil {
 					if p.curr.rune == ')' {
 						p.Forward(1)
 					} else {
