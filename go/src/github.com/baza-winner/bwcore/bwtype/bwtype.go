@@ -6,8 +6,8 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwjson"
 )
 
 // ============================================================================
@@ -28,16 +28,12 @@ func Int(val interface{}) (result int, ok bool) {
 	case uint16:
 		result = int(t)
 	case uint64:
-		if t <= uint64(bw.MaxInt) {
+		if ok = t <= uint64(bw.MaxInt); ok {
 			result = int(t)
-		} else {
-			ok = false
 		}
 	case uint:
-		if t <= uint(bw.MaxInt) {
+		if ok = t <= uint(bw.MaxInt); ok {
 			result = int(t)
-		} else {
-			ok = false
 		}
 	case float32:
 		result = int(t)
@@ -133,16 +129,42 @@ func Float64(val interface{}) (result float64, ok bool) {
 
 // ============================================================================
 
+func MustInt(val interface{}) (result int) {
+	var ok bool
+	if result, ok = Int(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Int")
+	}
+	return
+}
+
+func MustUint(val interface{}) (result uint) {
+	var ok bool
+	if result, ok = Uint(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Uint")
+	}
+	return
+}
+
+func MustFloat64(val interface{}) (result float64) {
+	var ok bool
+	if result, ok = Float64(val); !ok {
+		bwerr.Panic(ansiIsNotOfType, val, "Float64")
+	}
+	return
+}
+
+// ============================================================================
+
 type Number struct {
 	val interface{}
 }
 
-func NumberFrom(val interface{}) (result Number, err error) {
+func NumberFrom(val interface{}) (result Number, ok bool) {
 	var (
 		i  int
 		u  uint
 		f  float64
-		ok bool
+		rl RangeLimit
 	)
 	if i, ok = Int(val); ok {
 		result = Number{i}
@@ -150,50 +172,103 @@ func NumberFrom(val interface{}) (result Number, err error) {
 		result = Number{u}
 	} else if f, ok = Float64(val); ok {
 		result = Number{f}
-	} else if result, ok = val.(Number); !ok {
-		err = bwerr.From(ansi.String("<ansiVal>%#v<ansi> can not be a <ansiType>Number"))
+	} else if rl, ok = val.(RangeLimit); ok {
+		result, ok = NumberFrom(rl.val)
+	} else {
+		result, ok = val.(Number)
 	}
 	return
 }
 
 func MustNumberFrom(val interface{}) (result Number) {
-	var err error
-	if result, err = NumberFrom(val); err != nil {
-		bwerr.PanicErr(err)
+	var ok bool
+	if result, ok = NumberFrom(val); !ok {
+		bwerr.Panic(ansi.String("<ansiVal>%#v<ansi> can not be a <ansiType>Number"), val)
 	}
 	return
 }
 
-func (n Number) Int() (result int, ok bool) {
-	return Int(n.val)
+func (n Number) Val() interface{} {
+	return n.val
 }
 
-func (n Number) Float64() (result float64, ok bool) {
-	return Float64(n.val)
+func (n Number) IsEqualTo(a Number) (result bool) {
+	return n.compareTo(a, func(kind compareKind, u, v uint, i, j int, f, g float64) (result bool) {
+		switch kind {
+		case compareUintUint:
+			result = u == v
+		case compareIntInt:
+			result = i == j
+		case compareFloat64Float64:
+			result = f == g
+		}
+		return
+	})
 }
 
-func (n Number) Uint() (result uint, ok bool) {
-	return Uint(n.val)
+func (n Number) IsLessThan(a Number) (result bool) {
+	result = n.compareTo(a, func(kind compareKind, u, v uint, i, j int, f, g float64) (result bool) {
+		switch kind {
+		case compareUintUint:
+			result = u < v
+		case compareIntUint:
+			result = true
+		case compareIntInt:
+			result = i < j
+		case compareFloat64Float64:
+			result = f < g
+		}
+		return
+	})
+	return
 }
 
-// ============================================================================
-
-type RangeLimitKind uint8
+type compareKind uint8
 
 const (
-	RangeLimitNil RangeLimitKind = iota
-	RangeLimitInt
-	RangeLimitFloat64
-	RangeLimitPath
+	compareUintUint compareKind = iota
+	compareUintInt
+	compareIntUint
+	compareIntInt
+	compareFloat64Float64
 )
 
-//go:generate bwsetter -type RangeLimitKind -test
-//go:generate stringer -type RangeLimitKind -trimprefix RangeLimit
+type compareFunc func(kind compareKind, u, v uint, i, j int, f, g float64) (result bool)
 
-const (
-	_RangeLimitKindSetTestItemA = RangeLimitInt
-	_RangeLimitKindSetTestItemB = RangeLimitFloat64
-)
+func (n Number) compareTo(a Number, fn compareFunc) (result bool) {
+	if u, ok := Uint(n.val); ok {
+		if v, ok := Uint(a.val); ok {
+			result = fn(compareUintUint, u, v, 0, 0, 0, 0)
+			bwdebug.Print("u", u, "v", v, "result", result)
+		} else if j, ok := Int(a.val); ok {
+			result = fn(compareUintInt, u, 0, 0, j, 0, 0)
+		} else if g, ok := Float64(a.val); ok {
+			result = fn(compareFloat64Float64, 0, 0, 0, 0, float64(u), g)
+		}
+	} else if i, ok := Int(n.val); ok {
+		if v, ok := Uint(a.val); ok {
+			result = fn(compareIntUint, 0, v, i, 0, 0, 0)
+		} else if j, ok := Int(a.val); ok {
+			result = fn(compareIntInt, 0, 0, i, j, 0, 0)
+		} else if g, ok := Float64(a.val); ok {
+			result = fn(compareFloat64Float64, 0, 0, 0, 0, float64(i), g)
+		}
+	} else if f, ok := Float64(n.val); ok {
+		if g, ok := Float64(a.val); ok {
+			result = fn(compareFloat64Float64, 0, 0, 0, 0, f, g)
+		}
+	}
+	return
+}
+
+func (n Number) String() string {
+	bytes, _ := json.Marshal(n.val)
+	return string(bytes)
+}
+
+func (n Number) MarshalJSON() ([]byte, error) {
+	return json.Marshal(n.val)
+}
 
 // ============================================================================
 
@@ -203,20 +278,14 @@ type RangeLimit struct {
 
 func RangeLimitFrom(val interface{}) (result RangeLimit, ok bool) {
 	var (
-		i    int
-		f    float64
 		path bw.ValPath
 		n    Number
 	)
 	if val == nil {
 		result = RangeLimit{}
 		ok = true
-	} else if i, ok = Int(val); ok {
-		result = RangeLimit{val: i}
-	} else if f, ok = Float64(val); ok {
-		result = RangeLimit{val: f}
-	} else if n, ok = val.(Number); ok {
-		result = RangeLimit{val: n.val}
+	} else if n, ok = NumberFrom(val); ok {
+		result = RangeLimit{val: n}
 	} else if path, ok = val.(bw.ValPath); ok {
 		result = RangeLimit{val: path}
 	} else {
@@ -233,20 +302,13 @@ func MustRangeLimitFrom(val interface{}) (result RangeLimit) {
 	return
 }
 
-func (n RangeLimit) Int() (result int, ok bool) {
-	result, ok = n.val.(int)
+func (n RangeLimit) Nil() (ok bool) {
+	ok = n.val == nil
 	return
 }
 
-func (n RangeLimit) Float64() (result float64, ok bool) {
-	switch t := n.val.(type) {
-	case int:
-		ok = true
-		result = float64(t)
-	case float64:
-		ok = true
-		result = t
-	}
+func (n RangeLimit) Number() (result Number, ok bool) {
+	result, ok = n.val.(Number)
 	return
 }
 
@@ -255,18 +317,10 @@ func (n RangeLimit) Path() (result bw.ValPath, ok bool) {
 	return
 }
 
-func (n RangeLimit) MustInt() (result int) {
+func (n RangeLimit) MustNumber() (result Number) {
 	var ok bool
-	if result, ok = n.Int(); !ok {
-		bwerr.Panic(ansiIsNotOfType, n.val, "Int")
-	}
-	return
-}
-
-func (n RangeLimit) MustFloat64() (result float64) {
-	var ok bool
-	if result, ok = n.Float64(); !ok {
-		bwerr.Panic(ansiIsNotOfType, n.val, "Float64")
+	if result, ok = n.Number(); !ok {
+		bwerr.Panic(ansiIsNotOfType, n.val, "Number")
 	}
 	return
 }
@@ -279,76 +333,15 @@ func (n RangeLimit) MustPath() (result bw.ValPath) {
 	return
 }
 
-func (n RangeLimit) Kind() (result RangeLimitKind) {
-	// if n.val == nil {
-	// 	result = RangeLimitNil
-	// } else {
-	switch n.val.(type) {
-	case int:
-		result = RangeLimitInt
-	case float64:
-		result = RangeLimitFloat64
-	case bw.ValPath:
-		result = RangeLimitPath
-	default:
-		result = RangeLimitNil
-	}
-	// }
-	return
-}
-
-// func (n RangeLimit) IsNaN() bool {
-// 	return n.val == nil
-// }
-
-// func (n RangeLimit) IsInt() (result bool) {
-// 	_, result = n.val.(int)
-// 	return
-// }
-
-func (n RangeLimit) IsEqualTo(a RangeLimit) (result bool) {
-	return n.compareTo(a, func(isInt bool, i, j int, f, g float64) bool {
-		if isInt {
-			return i == j
-		} else {
-			return f == g
-		}
-	})
-}
-
-func (n RangeLimit) IsLessThan(a RangeLimit) bool {
-	return n.compareTo(a, func(isInt bool, i, j int, f, g float64) bool {
-		if isInt {
-			return i < j
-		} else {
-			return f < g
-		}
-	})
-}
-
-type compareFunc func(isInt bool, i, j int, f, g float64) (result bool)
-
-func (n RangeLimit) compareTo(a RangeLimit, f compareFunc) (result bool) {
-	if i, ok := n.Int(); ok {
-		if j, ok := a.Int(); ok {
-			result = f(true, i, j, 0, 0)
-		} else if g, ok := a.Float64(); ok {
-			result = f(false, 0, 0, float64(i), g)
-		}
-	} else if g, ok := n.Float64(); ok {
-		if h, ok := a.Float64(); ok {
-			result = f(false, 0, 0, g, h)
-		}
-	}
-	return
-}
-
-func (n RangeLimit) String() (result string) {
-	if n.Kind() != RangeLimitPath {
-		bytes, _ := json.Marshal(n.val)
-		result = string(bytes)
-	} else {
-		path := n.MustPath()
+func (rl RangeLimit) String() (result string) {
+	var (
+		n    Number
+		path bw.ValPath
+		ok   bool
+	)
+	if n, ok = rl.Number(); ok {
+		result = n.String()
+	} else if path, ok = rl.Path(); ok {
 		result = path.String()
 		if !(len(path) > 0 && path[0].Type == bw.ValPathItemVar) {
 			result = "{{" + result + "}}"
@@ -358,8 +351,6 @@ func (n RangeLimit) String() (result string) {
 }
 
 // ============================================================================
-
-//go:generate stringer -type=RangeKindValue
 
 type RangeKindValue uint8
 
@@ -399,8 +390,12 @@ func RangeFrom(a A) (result Range, err error) {
 	}
 	result = Range{min: min, max: max}
 	if result.Kind() == RangeMinMax {
-		if max.IsLessThan(min) {
-			err = bwerr.From(ansiMaxMustNotBeLessThanMin, bwjson.Pretty(a.Max), bwjson.Pretty(a.Min))
+		if min, ok := NumberFrom(a.Min); ok {
+			if max, ok := NumberFrom(a.Max); ok {
+				if max.IsLessThan(min) {
+					err = bwerr.From(ansiMaxMustNotBeLessThanMin, max, min)
+				}
+			}
 		}
 	}
 	return
@@ -415,46 +410,50 @@ func MustRangeFrom(a A) (result Range) {
 }
 
 func (r Range) Kind() (result RangeKindValue) {
-	if r.min.Kind() != RangeLimitNil {
-		if r.max.Kind() != RangeLimitNil {
+	if r.min.val != nil {
+		if r.max.val != nil {
 			result = RangeMinMax
 		} else {
 			result = RangeMin
 		}
-	} else if r.max.Kind() != RangeLimitNil {
+	} else if r.max.val != nil {
 		result = RangeMax
 	}
 	return
 }
 
 func (v Range) String() (result string) {
-	switch v.Kind() {
-	case RangeMinMax:
-		result = fmt.Sprintf("%s..%s", v.min, v.max)
-	case RangeMin:
-		result = fmt.Sprintf("%s..", v.min)
-	case RangeMax:
-		result = fmt.Sprintf("..%s", v.max)
-	default:
-		result = ".."
-	}
+	result = fmt.Sprintf("%s..%s", v.min, v.max)
 	return
 }
 
 func (r Range) Contains(val interface{}) (result bool) {
-	n := MustRangeLimitFrom(val)
-	if kind := n.Kind(); !(kind == RangeLimitInt || kind == RangeLimitFloat64) {
+	var n Number
+	var ok bool
+	if n, ok = NumberFrom(val); !ok {
 		return false
 	}
 	var minResult, maxResult bool
 	rangeKind := r.Kind()
 	switch rangeKind {
 	case RangeMin, RangeMinMax:
-		minResult = !n.IsLessThan(r.min)
+		if min, ok := NumberFrom(r.min.val); ok {
+			if n.IsEqualTo(min) {
+				return true
+			} else {
+				minResult = !n.IsLessThan(min)
+			}
+		}
 	}
 	switch rangeKind {
 	case RangeMax, RangeMinMax:
-		maxResult = !r.max.IsLessThan(n)
+		if max, ok := NumberFrom(r.max.val); ok {
+			if n.IsEqualTo(max) {
+				return true
+			} else {
+				maxResult = !max.IsLessThan(n)
+			}
+		}
 	}
 	switch rangeKind {
 	case RangeMinMax:
@@ -468,8 +467,6 @@ func (r Range) Contains(val interface{}) (result bool) {
 	}
 	return
 }
-
-// func (r Range) Instantiate()
 
 func (r Range) MarshalJSON() ([]byte, error) {
 	return json.Marshal(r.String())

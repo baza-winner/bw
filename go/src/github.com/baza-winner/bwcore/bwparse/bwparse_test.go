@@ -77,12 +77,12 @@ func TestPath(t *testing.T) {
 						result = nil
 					}
 				}()
-				pco := bwparse.PathA{}
+				opt := bwparse.PathOpt{}
 				if len(optBases) > 0 {
-					pco.Bases = optBases[0]
+					opt.Bases = optBases[0]
 				}
 				p := bwparse.From(bwrune.FromString(s))
-				if result, err = bwparse.PathContent(p, pco); err == nil {
+				if result, err = bwparse.PathContent(p, opt); err == nil {
 					err = end(p, true)
 				}
 				return
@@ -279,6 +279,7 @@ func TestVal(t *testing.T) {
 						if ok = defIds.Has(s); ok {
 							result = s
 						}
+						// bwdebug.Print("s", s, "result", result, "ok", ok)
 						return
 					},
 				}); err == nil {
@@ -296,16 +297,27 @@ func TestVal(t *testing.T) {
 				"nil":   nil,
 				"true":  true,
 				"false": false,
-				"0":     0,
+				"0":     bwtype.MustNumberFrom(0),
 
-				"0..1": bwtype.MustRangeFrom(bwtype.A{Min: 0, Max: 1}),
-				// "0.5..1": bwtype.MustRangeFrom(bwtype.A{Min: 0.5, Max: 1}),
+				"0..1":   bwtype.MustRangeFrom(bwtype.A{Min: 0, Max: 1}),
+				"0.5..1": bwtype.MustRangeFrom(bwtype.A{Min: 0.5, Max: 1}),
 				"..3.14": bwtype.MustRangeFrom(bwtype.A{Max: 3.14}),
+				"..":     bwtype.MustRangeFrom(bwtype.A{}),
+				"$idx.3..{{some.thing}}": bwtype.MustRangeFrom(bwtype.A{
+					Min: bw.ValPath{
+						bw.ValPathItem{Type: bw.ValPathItemVar, Key: "idx"},
+						bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: 3},
+					},
+					Max: bw.ValPath{
+						bw.ValPathItem{Type: bw.ValPathItemKey, Key: "some"},
+						bw.ValPathItem{Type: bw.ValPathItemKey, Key: "thing"},
+					},
+				}),
 
-				"-1_000_000":        -1000000,
-				"+3.14":             3.14,
-				"+2.0":              2,
-				"[0, 1]":            []interface{}{0, 1},
+				"-1_000_000":        bwtype.MustNumberFrom(-1000000),
+				"+3.14":             bwtype.MustNumberFrom(3.14),
+				"+2.0":              bwtype.MustNumberFrom(2),
+				"[0, 1]":            []interface{}{bwtype.MustNumberFrom(0), bwtype.MustNumberFrom(1)},
 				`"a"`:               "a",
 				`<a b c>`:           []string{"a", "b", "c"},
 				`[<a b c>]`:         []interface{}{"a", "b", "c"},
@@ -354,19 +366,19 @@ func TestVal(t *testing.T) {
 				}
 			}
 			for k, v := range map[string]string{
-				"":                     "unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
-				`"some" "thing"`:       "unexpected char \x1b[96;1m'\"'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m34\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m\"some\" \x1b[91m\"\x1b[0mthing\"\n",
-				`{ some = > "thing" }`: "unexpected char \x1b[96;1m'='\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m61\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ some \x1b[91m=\x1b[0m > \"thing\" }\n",
-				`qw/ one two three`:    "unexpected end of string at pos \x1b[38;5;252;1m17\x1b[0m: \x1b[32mqw/ one two three\n",
-				`qw/ one two three `:   "unexpected end of string at pos \x1b[38;5;252;1m18\x1b[0m: \x1b[32mqw/ one two three \n",
-				`"one two three `:      "unexpected end of string at pos \x1b[38;5;252;1m15\x1b[0m: \x1b[32m\"one two three \n",
-				`-`:                    "unexpected end of string at pos \x1b[38;5;252;1m1\x1b[0m: \x1b[32m-\n",
-				`"\z"`:                 "unexpected char \x1b[96;1m'z'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m122\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m\"\\\x1b[91mz\x1b[0m\"\n",
-				`{key:`:                "unexpected end of string at pos \x1b[38;5;252;1m5\x1b[0m: \x1b[32m{key:\n",
-				`}`:                    "unexpected char \x1b[96;1m'}'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m125\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m}\x1b[0m\n",
-				`qw `:                  "unexpected \x1b[91;1m\"qw\"\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mqw\x1b[0m \n",
-				`{ key: 1_000_000_000_000_000_000_000_000 }`: "strconv.ParseInt: parsing \"1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ key: \x1b[91m1_000_000_000_000_000_000_000_000\x1b[0m }\n",
-				`{ type Float64 keyA valA keyB valB }`:       "unexpected \x1b[91;1m\"valA\"\x1b[0m at pos \x1b[38;5;252;1m20\x1b[0m: \x1b[32m{ type Float64 keyA \x1b[91mvalA\x1b[0m keyB valB }\n",
+				// "":               "unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
+				`"some" "thing"`: "unexpected char \x1b[96;1m'\"'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m34\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m\"some\" \x1b[91m\"\x1b[0mthing\"\n",
+				// `{ some = > "thing" }`: "expects \x1b[97;1mArray\x1b[0m or \x1b[97;1mString\x1b[0m or \x1b[97;1mRange\x1b[0m or \x1b[97;1mNumber\x1b[0m or \x1b[97;1mPath\x1b[0m or \x1b[97;1mMap\x1b[0m or \x1b[97;1mArrayOfString\x1b[0m or \x1b[97;1mNil\x1b[0m or \x1b[97;1mBool\x1b[0m or \x1b[97;1mId\x1b[0m instead of unexpected char \x1b[96;1m'='\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m61\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ some \x1b[91m=\x1b[0m > \"thing\" }\n",
+				`qw/ one two three`:  "unexpected end of string at pos \x1b[38;5;252;1m17\x1b[0m: \x1b[32mqw/ one two three\n",
+				`qw/ one two three `: "unexpected end of string at pos \x1b[38;5;252;1m18\x1b[0m: \x1b[32mqw/ one two three \n",
+				`"one two three `:    "unexpected end of string at pos \x1b[38;5;252;1m15\x1b[0m: \x1b[32m\"one two three \n",
+				`-`:                  "unexpected end of string at pos \x1b[38;5;252;1m1\x1b[0m: \x1b[32m-\n",
+				`"\z"`:               "unexpected char \x1b[96;1m'z'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m122\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m\"\\\x1b[91mz\x1b[0m\"\n",
+				`{key:`:              "unexpected end of string at pos \x1b[38;5;252;1m5\x1b[0m: \x1b[32m{key:\n",
+				// `}`:                  "unexpected char \x1b[96;1m'}'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m125\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m}\x1b[0m\n",
+				`qw `: "unexpected \x1b[91;1m\"qw\"\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mqw\x1b[0m \n",
+				`{ key: 1_000_000_000_000_000_000_000_000 }`: "strconv.ParseUint: parsing \"1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ key: \x1b[91m1_000_000_000_000_000_000_000_000\x1b[0m }\n",
+				`{ type Number keyA valA keyB valB }`:        "unexpected \x1b[91;1m\"valA\"\x1b[0m at pos \x1b[38;5;252;1m19\x1b[0m: \x1b[32m{ type Number keyA \x1b[91mvalA\x1b[0m keyB valB }\n",
 				"{ val: nil def: Array":                      "unexpected end of string at pos \x1b[38;5;252;1m21\x1b[0m: \x1b[32m{ val: nil def: Array\n",
 				`{ some { { $a }} }`:                         "unexpected char \x1b[96;1m'{'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m123\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m9\x1b[0m: \x1b[32m{ some { \x1b[91m{\x1b[0m $a }} }\n",
 				`{ some {{ $a } } }`:                         "unexpected char \x1b[96;1m'}'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m125\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m13\x1b[0m: \x1b[32m{ some {{ $a \x1b[91m}\x1b[0m } }\n",
@@ -378,10 +390,20 @@ func TestVal(t *testing.T) {
 			}
 			return tests
 		}(),
-		"..3.14",
+		"+2.0",
+		// "$idx.3..{{some.thing}}",
+		// "..",
+		// `{ key => "\"value\n", 'bool': true keyword Bool}`,
+		// "0..1",
+		// "0.5..1",
+		// "..3.14",
+		// "..",
+		// "..3.14",
 		// "0..1",
 	)
+}
 
+func TestFrom2(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		func(s string) (result interface{}) {
 			var err error

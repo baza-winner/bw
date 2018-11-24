@@ -4,9 +4,9 @@ package bwparse
 
 import "strconv"
 
-const _ParseValKind_name = "NilBoolIntFloat64RangeStringIdMapArrayArrayOfStringPath"
+const _ParseValKind_name = "NilBoolNumberIntUintRangeStringIdMapArrayArrayOfStringPath"
 
-var _ParseValKind_index = [...]uint8{0, 3, 7, 10, 17, 22, 28, 30, 33, 38, 51, 55}
+var _ParseValKind_index = [...]uint8{0, 3, 7, 13, 16, 20, 25, 31, 33, 36, 41, 54, 58}
 
 func (i ParseValKind) String() string {
 	if i >= ParseValKind(len(_ParseValKind_index)-1) {

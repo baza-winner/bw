@@ -2,13 +2,17 @@ package bwparse
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwset"
+	"github.com/baza-winner/bwcore/bwstr"
 	"github.com/baza-winner/bwcore/bwtype"
 )
 
@@ -135,12 +139,18 @@ func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (res
 
 // ============================================================================
 
-func getOpt(optOpt []Opt) Opt {
-	opt := Opt{}
+func getOpt(optOpt []Opt) (result Opt) {
 	if len(optOpt) > 0 {
-		opt = optOpt[0]
+		result = optOpt[0]
 	}
-	return opt
+	return
+}
+
+func getPathOpt(optOpt []PathOpt) (result PathOpt) {
+	if len(optOpt) > 0 {
+		result = optOpt[0]
+	}
+	return
 }
 
 func isOneOfId(p I, ss []string) (ok bool) {
@@ -236,10 +246,8 @@ func (p *P) suffix(ps PosInfo) (suffix string) {
 
 func (p *P) forward() {
 	if len(p.next) == 0 {
-		// ps := p.curr
 		newCurr := p.pullRune(*p.curr)
 		p.curr = &newCurr
-		// bwdebug.Print("ps:#v", ps, "p.curr:#v", p.curr)
 	} else {
 		last := len(p.next) - 1
 		p.curr, p.next = p.next[last], p.next[:last]
@@ -253,88 +261,99 @@ type on interface {
 }
 
 type onInt struct {
-	f func(i int, start *PosInfo) (err error)
+	f   func(i int, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onInt) IsOn() {}
 
 type onUint struct {
-	f func(u uint, start *PosInfo) (err error)
+	f   func(u uint, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onUint) IsOn() {}
 
 type onNumber struct {
-	f func(n bwtype.Number, start *PosInfo) (err error)
+	f   func(n bwtype.Number, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onNumber) IsOn() {}
 
 type onRange struct {
-	f func(rng bwtype.Range, start *PosInfo) (err error)
+	f   func(rng bwtype.Range, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onRange) IsOn() {}
 
 type onId struct {
-	f func(s string, start *PosInfo) (err error)
+	f   func(s string, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onId) IsOn() {}
 
 type onString struct {
-	f func(s string, start *PosInfo) (err error)
+	f   func(s string, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onString) IsOn() {}
 
 type onSubPath struct {
-	f func(path bw.ValPath, start *PosInfo) (err error)
-	a PathA
+	f   func(path bw.ValPath, start *PosInfo) (err error)
+	opt PathOpt
 }
 
 func (onSubPath) IsOn() {}
 
 type onPath struct {
-	f func(path bw.ValPath, start *PosInfo) (err error)
-	a PathA
+	f   func(path bw.ValPath, start *PosInfo) (err error)
+	opt PathOpt
 }
 
 func (onPath) IsOn() {}
 
 type onArray struct {
-	f func(vals []interface{}, start *PosInfo) (err error)
+	f   func(vals []interface{}, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onArray) IsOn() {}
 
 type onArrayOfString struct {
-	f func(ss []string, start *PosInfo) (err error)
+	f   func(ss []string, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onArrayOfString) IsOn() {}
 
 type onMap struct {
-	f func(m map[string]interface{}, start *PosInfo) (err error)
+	f   func(m map[string]interface{}, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onMap) IsOn() {}
 
 type onNil struct {
-	f func(start *PosInfo) (err error)
+	f   func(start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onNil) IsOn() {}
 
 type onBool struct {
-	f func(b bool, start *PosInfo) (err error)
+	f   func(b bool, start *PosInfo) (err error)
+	opt Opt
 }
 
 func (onBool) IsOn() {}
 
 // ============================================================================
 
-func processOn(p I, opt Opt, processors ...on) (ok bool, err error) {
+func processOn(p I, processors ...on) (ok bool, err error) {
 	var (
 		start *PosInfo
 		i     int
@@ -352,31 +371,31 @@ func processOn(p I, opt Opt, processors ...on) (ok bool, err error) {
 	for _, processor := range processors {
 		switch t := processor.(type) {
 		case onInt:
-			i, start, ok, err = Int(p, opt)
+			i, start, ok, err = Int(p, t.opt)
 		case onUint:
-			u, start, ok, err = Uint(p, opt)
+			u, start, ok, err = Uint(p, t.opt)
 		case onNumber:
-			n, start, ok, err = Number(p, opt)
+			n, start, ok, err = Number(p, t.opt)
 		case onRange:
-			rng, start, ok, err = Range(p, opt)
+			rng, start, ok, err = Range(p, t.opt)
 		case onString:
-			s, start, ok, err = String(p, opt)
+			s, start, ok, err = String(p, t.opt)
 		case onId:
-			s, start, ok, err = Id(p, opt)
+			s, start, ok, err = Id(p, t.opt)
 		case onSubPath:
-			path, start, ok, err = subPath(p, t.a, opt)
+			path, start, ok, err = subPath(p, t.opt)
 		case onPath:
-			path, start, ok, err = Path(p, t.a, opt)
+			path, start, ok, err = Path(p, t.opt)
 		case onArray:
-			vals, start, ok, err = Array(p, opt)
+			vals, start, ok, err = Array(p, t.opt)
 		case onArrayOfString:
-			ss, start, ok, err = ArrayOfString(p, opt)
+			ss, start, ok, err = ArrayOfString(p, t.opt)
 		case onMap:
-			m, start, ok, err = Map(p, opt)
+			m, start, ok, err = Map(p, t.opt)
 		case onNil:
-			start, ok = Nil(p, opt)
+			start, ok = Nil(p, t.opt)
 		case onBool:
-			b, start, ok = Bool(p, opt)
+			b, start, ok = Bool(p, t.opt)
 		}
 		if err != nil {
 			return
@@ -416,141 +435,69 @@ func processOn(p I, opt Opt, processors ...on) (ok bool, err error) {
 	return
 }
 
-// func (p *P) processOn(processors ...on) (ok bool, err error) {
-// 	var (
-// 		start *PosInfo
-// 		idx   int
-// 		s     string
-// 		path  bw.ValPath
-// 		val   interface{}
-// 		vals  []interface{}
-// 		ss    []string
-// 		m     map[string]interface{}
-// 		b     bool
-// 		rng   bwtype.Range
-// 	)
-// 	for _, processor := range processors {
-// 		switch t := processor.(type) {
-// 		case onInt:
-// 			idx, start, ok, err = p.Int()
-// 		case onNumber:
-// 			val, start, ok, err = p.Number()
-// 		case onRange:
-// 			rng, start, ok, err = p.Range()
-// 		case onString:
-// 			s, start, ok, err = p.String()
-// 		case onId:
-// 			s, start, ok, err = p.Id()
-// 			// bwdebug.Print("start:#v", start)
-// 		case onSubPath:
-// 			path, start, ok, err = p.subPath(t.a)
-// 		case onPath:
-// 			path, start, ok, err = p.Path(t.a)
-// 		case onArray:
-// 			vals, start, ok, err = p.Array()
-// 		case onArrayOfString:
-// 			ss, start, ok, err = p.ArrayOfString()
-// 		case onMap:
-// 			m, start, ok, err = p.Map()
-// 		case onNil:
-// 			start, ok = p.Nil()
-// 		case onBool:
-// 			b, start, ok = p.Bool()
-// 		}
-// 		if err != nil {
-// 			return
-// 		}
-// 		if ok {
-// 			switch t := processor.(type) {
-// 			case onInt:
-// 				err = t.f(idx, start)
-// 			case onNumber:
-// 				err = t.f(val, start)
-// 			case onRange:
-// 				err = t.f(rng, start)
-// 			case onString:
-// 				err = t.f(s, start)
-// 			case onId:
-// 				err = t.f(s, start)
-// 			case onSubPath:
-// 				err = t.f(path, start)
-// 			case onPath:
-// 				err = t.f(path, start)
-// 			case onArray:
-// 				err = t.f(vals, start)
-// 			case onArrayOfString:
-// 				err = t.f(ss, start)
-// 			case onMap:
-// 				err = t.f(m, start)
-// 			case onNil:
-// 				err = t.f(start)
-// 			case onBool:
-// 				err = t.f(b, start)
-// 			}
-// 			return
-// 		}
-// 	}
-// 	return
-// }
-
 // ============================================================================
 
-// ============================================================================
+func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Number, start *PosInfo, ok bool, err error) {
+	bwdebug.Print("!HERE")
+	opt := getOpt(optOpt)
+	var (
+		s          string
+		hasDot     bool
+		b          bool
+		isNegative bool
+	)
+	nonNegativeNumber := false
+	if opt.NonNegativeNumber != nil {
+		nonNegativeNumber = opt.NonNegativeNumber(rangeLimitKind)
+	}
+	if s, start, isNegative, ok, err = looksLikeNumber(p, nonNegativeNumber); err == nil && ok {
+		for {
+			if s, b = addDigit(p, s); !b {
+				if !hasDot && CanSkipRunes(p, dotRune) {
+					pi := p.LookAhead(1)
+					if IsDigit(pi.rune) {
+						p.Forward(1)
+						s += string(dotRune)
+						hasDot = true
+					} else {
+						break
+					}
+				} else {
+					break
+				}
+			}
+		}
+		if hasDot && !zeroAfterDotRegexp.MatchString(s) {
+			var f float64
+			if f, err = strconv.ParseFloat(s, 64); err == nil {
+				result = bwtype.MustNumberFrom(f)
+			}
+		} else {
+			if pos := strings.LastIndex(s, string(dotRune)); pos >= 0 {
+				s = s[:pos]
+			}
+			if isNegative {
+				var i int
+				if i, err = bwstr.ParseInt(s); err == nil {
+					result = bwtype.MustNumberFrom(i)
+				}
+			} else {
+				var u uint
+				if u, err = bwstr.ParseUint(s); err == nil {
+					result = bwtype.MustNumberFrom(u)
+				}
+			}
+		}
+		if err != nil {
+			err = p.UnexpectedA(UnexpectedA{start, bwerr.Err(err)})
+		}
+	}
+	return
+}
 
-// func (p *P) mapBegin(m map[string]interface{}) (err error) {
-// 	if p.OnMapBegin != nil {
-// 		err = p.OnMapBegin(p, m)
-// 	}
-// 	return
-// }
-// func (p *P) validateMapKey(m map[string]interface{}, key string, start *PosInfo) (err error) {
-// 	if p.OnValidateMapKey != nil {
-// 		ok, err = p.OnValidateMapKey(p, m, key, start)
-// 	}
-// 	return
-// }
+const dotRune = '.'
 
-// func (p *P) parseMapElem(m map[string]interface{}, key string) (ok bool, err error) {
-// 	if p.OnParseMapElem != nil {
-// 		ok, err = p.OnParseMapElem(p, m, key)
-// 	}
-// 	return
-// }
-
-// func (p *P) mapEnd(m map[string]interface{}) (err error) {
-// 	if p.OnMapEnd != nil {
-// 		err = p.OnMapEnd(p, m)
-// 	}
-// 	return
-// }
-
-// func (p *P) arrayBegin(vals []interface{}) (err error) {
-// 	if p.OnArrayBegin != nil {
-// 		err = p.OnArrayBegin(p, vals)
-// 	}
-// 	return
-// }
-
-// func (p *P) parseArrayElem(vals []interface{}) (ok bool, err error) {
-// 	if p.OnParseArrayElem != nil {
-// 		ok, err = p.OnParseArrayElem(p, vals)
-// 	}
-// 	return
-// }
-
-// func (p *P) arrayEnd(vals []interface{}) (err error) {
-// 	if p.OnArrayBegin != nil {
-// 		err = p.OnArrayBegin(p, vals)
-// 	}
-// 	return
-// }
-
-// func (p *P) validateArrayOfStringElem(ss []string, s string, start *PosInfo) (err error) {
-// 	if p.OnValidateArrayOfStringElem != nil {
-// 		err = p.OnValidateArrayOfStringElem(p, ss, s, start)
-// 	}
-// 	return
-// }
+var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // ============================================================================
 
@@ -626,11 +573,14 @@ func addDigit(p I, s string) (string, bool) {
 
 // ============================================================================
 
-func subPath(p I, a PathA, opt Opt) (result bw.ValPath, start *PosInfo, ok bool, err error) {
+func subPath(p I, opt PathOpt) (result bw.ValPath, start *PosInfo, ok bool, err error) {
 	start = getStart(p)
 	if ok = SkipRunes(p, '('); ok {
 		if err = SkipSpace(p, TillNonEOF); err == nil {
-			if result, err = PathContent(p, PathA{isSubPath: true, Bases: a.Bases}, opt); err == nil {
+			subOpt := opt
+			subOpt.isSubPath = true
+			subOpt.Bases = opt.Bases
+			if result, err = PathContent(p, subOpt); err == nil {
 				if err = SkipSpace(p, TillNonEOF); err == nil {
 					if p.Curr().rune == ')' {
 						p.Forward(1)
