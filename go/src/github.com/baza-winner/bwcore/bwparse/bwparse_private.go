@@ -8,7 +8,6 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwset"
@@ -438,17 +437,22 @@ func processOn(p I, processors ...on) (ok bool, err error) {
 // ============================================================================
 
 func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Number, start *PosInfo, ok bool, err error) {
-	bwdebug.Print("!HERE")
-	opt := getOpt(optOpt)
 	var (
 		s          string
 		hasDot     bool
 		b          bool
 		isNegative bool
+		justParsed numberResult
 	)
 	nonNegativeNumber := false
 	if opt.NonNegativeNumber != nil {
 		nonNegativeNumber = opt.NonNegativeNumber(rangeLimitKind)
+	}
+	start = getStart(p)
+	if justParsed, ok = start.justParsed.(numberResult); ok {
+		result = justParsed.n
+		p.Forward(start.justForward)
+		return
 	}
 	if s, start, isNegative, ok, err = looksLikeNumber(p, nonNegativeNumber); err == nil && ok {
 		for {

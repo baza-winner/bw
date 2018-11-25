@@ -6,7 +6,6 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 )
 
@@ -239,7 +238,6 @@ func (n Number) compareTo(a Number, fn compareFunc) (result bool) {
 	if u, ok := Uint(n.val); ok {
 		if v, ok := Uint(a.val); ok {
 			result = fn(compareUintUint, u, v, 0, 0, 0, 0)
-			bwdebug.Print("u", u, "v", v, "result", result)
 		} else if j, ok := Int(a.val); ok {
 			result = fn(compareUintInt, u, 0, 0, j, 0, 0)
 		} else if g, ok := Float64(a.val); ok {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
@@ -940,7 +941,7 @@ func (p *proxy) UnexpectedA(a UnexpectedA) error {
 // ============================================================================
 
 type numberResult struct {
-	n Number
+	n bwtype.Number
 }
 
 type pathResult struct {
@@ -955,29 +956,29 @@ func Range(p I, optOpt ...Opt) (result bwtype.Range, start *PosInfo, ok bool, er
 	pp := &proxy{p: p}
 	var (
 		min, max interface{}
+		n        bwtype.Number
 		isNumber bool
+		path     bw.ValPath
 	)
 
-	if min, _, ok, err = Number(pp, opt); err != nil {
+	if n, _, ok, err = Number(pp, opt); err != nil {
 		return
 	} else if ok {
+		min = n
 		isNumber = true
-	} else if min, _, ok, err = Path(pp, PathOpt{Opt: opt}); err != nil {
+		bwdebug.Print("n", n, "pp.ofs", pp.ofs)
+	} else if path, _, ok, err = Path(pp, PathOpt{Opt: opt}); err != nil {
 		return
-	} else if !ok {
-		min = nil
-	}
-	if ok {
-		start.justParsed = min
-		start.justForward = pp.ofs
+	} else if ok {
+		min = path
 	}
 	if ok = SkipRunes(pp, '.', '.'); !ok {
 		if isNumber {
-			start.justParsed = numberResult{min}
+			start.justParsed = numberResult{n}
 		} else {
-			start.justParsed = pathResult{min}
+			start.justParsed = pathResult{path}
 		}
-		start.justForward = pp.ofs - 2
+		start.justForward = pp.ofs
 		return
 	}
 	p.Forward(pp.ofs)
