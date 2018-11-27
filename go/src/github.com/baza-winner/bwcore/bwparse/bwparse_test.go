@@ -283,9 +283,11 @@ func TestInt(t *testing.T) {
 				}()
 				p := bwparse.From(bwrune.FromString(s))
 				var ok bool
-				if result, _, ok, err = bwparse.Int(p); err == nil {
-					err = end(p, ok)
+				var status bwparse.Status
+				if result, status = bwparse.Int(p); status.Err == nil {
+					status.Err = end(p, ok)
 				}
+				err = status.Err
 				return
 			}(s); err != nil {
 				bwerr.PanicErr(err)
@@ -322,7 +324,7 @@ func end(p *bwparse.P, ok bool) (err error) {
 	if !ok {
 		err = bwparse.Unexpected(p)
 	} else {
-		err = bwparse.SkipSpace(p, bwparse.TillEOF)
+		_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
 	}
 	return
 }
@@ -331,11 +333,12 @@ type eventLogItem struct {
 	pathStr     string
 	val         interface{}
 	handlerName string
+	s           string
 }
 
 func (v eventLogItem) MarshalJSON() ([]byte, error) {
 	var result = map[string]interface{}{}
-	result[v.pathStr+"@"+v.handlerName] = v.val
+	result[v.pathStr+"@"+v.handlerName] = map[string]interface{}{"val": v.val, "s": v.s}
 	return json.Marshal(result)
 }
 
@@ -343,80 +346,74 @@ func TestOptEvents(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		func(s string, base bw.ValPath) (result []eventLogItem) {
 			var err error
-			if err = func(s string) (err error) {
-				defer func() {
-					if err != nil {
-						result = nil
-					}
-				}()
+			if err = func(s string) error {
+				var st bwparse.Status
 				p := bwparse.From(bwrune.FromString(s))
-
 				result = []eventLogItem{}
 				var val interface{}
-				if val, _, err = bwparse.Val(p, bwparse.Opt{
+				// var start *bwparse.Start
+				if val, st = bwparse.Val(p, bwparse.Opt{
 					Base: base,
 					OnValidateMapKey: func(on bwparse.On, m map[string]interface{}, key string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), key, "OnValidateMapKey"})
-						// bwdebug.Print("!OnValidateMapKey", "key", key)
+						result = append(result, eventLogItem{on.Opt.Path().String(), key, "OnValidateMapKey", on.Start.Suffix()})
 						return
 					},
-					OnParseMapElem: func(on bwparse.On, m map[string]interface{}, key string) (ok bool, err error) {
-						ok = true
+					OnParseMapElem: func(on bwparse.On, m map[string]interface{}, key string) (status bwparse.Status) {
 						var val interface{}
-						if val, _, err = bwparse.Val(on.P, *on.Opt); err == nil {
-							result = append(result, eventLogItem{on.Opt.Path().String(), val, "OnParseMapElem"})
+						if val, status = bwparse.Val(on.P, *on.Opt); status.IsOK() {
+							// bwdebug.Print("on.Start:json", on.Start)
+							result = append(result, eventLogItem{on.Opt.Path().String(), val, "OnParseMapElem", on.Start.Suffix()})
 							m[key] = val
 						}
 						return
 					},
-					OnMapEnd: func(on bwparse.On, m map[string]interface{}) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), m, "OnMapEnd"})
+					OnValidateMap: func(on bwparse.On, m map[string]interface{}) (err error) {
+						result = append(result, eventLogItem{on.Opt.Path().String(), m, "OnValidateMap", on.Start.Suffix()})
 						return
 					},
-					OnParseArrayElem: func(on bwparse.On, vals []interface{}) (outVals []interface{}, ok bool, err error) {
-						ok = true
+					OnParseArrayElem: func(on bwparse.On, vals []interface{}) (outVals []interface{}, status bwparse.Status) {
 						var val interface{}
-						if val, _, err = bwparse.Val(p, *on.Opt); err == nil {
-							result = append(result, eventLogItem{on.Opt.Path().String(), val, "OnParseArrayElem"})
+						if val, status = bwparse.Val(p, *on.Opt); status.IsOK() {
+							result = append(result, eventLogItem{on.Opt.Path().String(), val, "OnParseArrayElem", on.Start.Suffix()})
 							outVals = append(vals, val)
 						}
 						return
 					},
-					OnArrayEnd: func(on bwparse.On, vals []interface{}) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), vals, "OnArrayEnd"})
+					OnValidateArray: func(on bwparse.On, vals []interface{}) (err error) {
+						result = append(result, eventLogItem{on.Opt.Path().String(), vals, "OnValidateArray", on.Start.Suffix()})
 						return
 					},
 					OnValidateNumber: func(on bwparse.On, n bwtype.Number) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), n, "OnValidateNumber"})
+						result = append(result, eventLogItem{on.Opt.Path().String(), n, "OnValidateNumber", on.Start.Suffix()})
 						return
 					},
 					OnValidateRange: func(on bwparse.On, rng bwtype.Range) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), rng, "OnValidateRange"})
+						result = append(result, eventLogItem{on.Opt.Path().String(), rng, "OnValidateRange", on.Start.Suffix()})
 						return
 					},
 					OnValidateString: func(on bwparse.On, s string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnValidateString"})
+						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnValidateString", on.Start.Suffix()})
 						return
 					},
 					OnValidateArrayOfStringElem: func(on bwparse.On, ss []string, s string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnValidateArrayOfStringElem"})
+						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnValidateArrayOfStringElem", on.Start.Suffix()})
 						return
 					},
-					OnArrayOfStringEnd: func(on bwparse.On, ss []string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), ss, "OnArrayOfStringEnd"})
+					OnValidateArrayOfString: func(on bwparse.On, ss []string) (err error) {
+						result = append(result, eventLogItem{on.Opt.Path().String(), ss, "OnValidateArrayOfString", on.Start.Suffix()})
 						return
 					},
 					OnId: func(on bwparse.On, s string) (val interface{}, ok bool, err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnId"})
+						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnId", on.Start.Suffix()})
 						val = s
 						ok = true
 						return
 					},
-				}); err == nil {
-					result = append(result, eventLogItem{base.String(), val, "Val"})
-					err = end(p, true)
+				}); st.IsOK() {
+					result = append(result, eventLogItem{base.String(), val, "Val", st.Start.Suffix()})
+					st.Err = end(p, true)
 				}
-				return
+				return st.Err
 			}(s); err != nil {
 				bwerr.PanicErr(err)
 			}
@@ -439,34 +436,34 @@ func TestOptEvents(t *testing.T) {
 						range 1..1000
 					}`,
 					out: []eventLogItem{
-						{".", "some", "OnValidateMapKey"},
-						{"some", "thing", "OnValidateString"},
-						{"some", "thing", "OnParseMapElem"},
+						{".", "some", "OnValidateMapKey", `some`},
+						{"some", "thing", "OnValidateString", `"thing"`},
+						{"some", "thing", "OnParseMapElem", `"thing"`},
 
-						{".", "not", "OnValidateMapKey"},
-						{"not", "bad", "OnValidateString"},
-						{"not", "bad", "OnParseMapElem"},
+						{".", "not", "OnValidateMapKey", ``},
+						{"not", "bad", "OnValidateString", ``},
+						{"not", "bad", "OnParseMapElem", ``},
 
-						{".", "type", "OnValidateMapKey"},
-						{"type.0", "Bool", "OnValidateArrayOfStringElem"},
-						{"type.1", "Int", "OnValidateArrayOfStringElem"},
-						{"type", []string{"Bool", "Int"}, "OnArrayOfStringEnd"},
-						{"type", []string{"Bool", "Int"}, "OnParseMapElem"},
+						{".", "type", "OnValidateMapKey", ``},
+						{"type.0", "Bool", "OnValidateArrayOfStringElem", ``},
+						{"type.1", "Int", "OnValidateArrayOfStringElem", ``},
+						{"type", []string{"Bool", "Int"}, "OnValidateArrayOfString", ``},
+						{"type", []string{"Bool", "Int"}, "OnParseMapElem", ``},
 
-						{".", "enum", "OnValidateMapKey"},
-						{"enum.0", "some", "OnId"},
-						{"enum.0", "some", "OnParseArrayElem"},
-						{"enum.1", "thing", "OnValidateString"},
-						{"enum.2", "good", "OnValidateString"},
-						{"enum", []interface{}{"some", "thing", "good"}, "OnArrayEnd"},
-						{"enum", []interface{}{"some", "thing", "good"}, "OnParseMapElem"},
+						{".", "enum", "OnValidateMapKey", ``},
+						{"enum.0", "some", "OnId", ``},
+						{"enum.0", "some", "OnParseArrayElem", ``},
+						{"enum.1", "thing", "OnValidateString", ``},
+						{"enum.2", "good", "OnValidateString", ``},
+						{"enum", []interface{}{"some", "thing", "good"}, "OnValidateArray", ``},
+						{"enum", []interface{}{"some", "thing", "good"}, "OnParseMapElem", ``},
 
-						{".", "number", "OnValidateMapKey"},
-						{"number", bwtype.MustNumberFrom(273), "OnValidateNumber"},
-						{"number", bwtype.MustNumberFrom(273), "OnParseArrayElem"},
+						{".", "number", "OnValidateMapKey", ``},
+						{"number", bwtype.MustNumberFrom(273), "OnValidateNumber", ``},
+						{"number", bwtype.MustNumberFrom(273), "OnParseMapElem", ``},
 
-						{".", map[string]interface{}{"some": "thing", "not": "bad", "type": []string{"Bool", "Int"}, "enum": []interface{}{"some", "thing", "good"}}, "OnMapEnd"},
-						{".", map[string]interface{}{"some": "thing", "not": "bad", "type": []string{"Bool", "Int"}, "enum": []interface{}{"some", "thing", "good"}}, "Val"},
+						{".", map[string]interface{}{"some": "thing", "not": "bad", "type": []string{"Bool", "Int"}, "enum": []interface{}{"some", "thing", "good"}}, "OnMapEnd", ``},
+						{".", map[string]interface{}{"some": "thing", "not": "bad", "type": []string{"Bool", "Int"}, "enum": []interface{}{"some", "thing", "good"}}, "Val", ``},
 					},
 				},
 			} {
@@ -484,18 +481,19 @@ func TestVal(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		func(s string, opt bwparse.Opt) (result interface{}) {
 			var err error
-			if result, err = func(s string) (result interface{}, err error) {
+			if result, err = func(s string) (interface{}, error) {
+				var st bwparse.Status
+				var result interface{}
 				defer func() {
-					if err != nil {
+					if st.Err != nil {
 						result = nil
 					}
 				}()
 				p := bwparse.From(bwrune.FromString(s))
-
-				if result, _, err = bwparse.Val(p, opt); err == nil {
-					err = end(p, true)
+				if result, st = bwparse.Val(p, opt); st.IsOK() {
+					err = end(p, st.OK)
 				}
-				return
+				return result, st.Err
 			}(s); err != nil {
 				bwerr.PanicErr(err)
 			}
@@ -665,7 +663,19 @@ func TestVal(t *testing.T) {
 					out: "unexpected end of string at pos \x1b[38;5;252;1m5\x1b[0m: \x1b[32m{key:\n",
 				},
 				{in: `qw `,
-					out: "expects one of [\n  \x1b[97;1mArray\x1b[0m\n  \x1b[97;1mString\x1b[0m\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mNumber\x1b[0m\n  \x1b[97;1mPath\x1b[0m\n  \x1b[97;1mMap\x1b[0m\n  \x1b[97;1mArrayOfString\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n  \x1b[97;1mBool\x1b[0m\n] instead of unexpected char \x1b[96;1m'q'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m113\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mq\x1b[0mw \n",
+					opt: bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int", "Number": "Number"}},
+					out: "expects \x1b[96;1mInt\x1b[0m or \x1b[96;1mNumber\x1b[0m instead of unexpected \x1b[91;1m`qw`\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mqw\x1b[0m \n",
+				},
+				{in: `!`,
+					opt: bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int", "Number": "Number"}},
+					out: "expects one of [\n  \x1b[97;1mArray\x1b[0m\n  \x1b[97;1mString\x1b[0m\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mPath\x1b[0m\n  \x1b[97;1mMap\x1b[0m\n  \x1b[97;1mNumber\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n  \x1b[97;1mBool\x1b[0m\n  \x1b[97;1mId\x1b[0m\n  \x1b[97;1mId\x1b[0m(\x1b[96;1mInt\x1b[0m or \x1b[96;1mNumber\x1b[0m)\n] instead of unexpected char \x1b[96;1m'!'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m33\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m!\x1b[0m\n",
+				},
+				{in: `! `,
+					opt: bwparse.Opt{
+						IdVals: map[string]interface{}{"Int": "Int", "Number": "Number", "String": "String"},
+						OnId:   func(on bwparse.On, s string) (val interface{}, ok bool, err error) { return },
+					},
+					out: "expects one of [\n  \x1b[97;1mArray\x1b[0m\n  \x1b[97;1mString\x1b[0m\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mPath\x1b[0m\n  \x1b[97;1mMap\x1b[0m\n  \x1b[97;1mNumber\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n  \x1b[97;1mBool\x1b[0m\n  \x1b[97;1mId\x1b[0m\n  \x1b[97;1mId\x1b[0m(one of [\x1b[96;1mInt\x1b[0m, \x1b[96;1mNumber\x1b[0m, \x1b[96;1mString\x1b[0m] or \x1b[38;5;201;1mcustom\x1b[0m)\n] instead of unexpected char \x1b[96;1m'!'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m33\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m!\x1b[0m \n",
 				},
 				{in: `{ key: 1_000_000_000_000_000_000_000_000 }`,
 					out: "strconv.ParseUint: parsing \"1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ key: \x1b[91m1_000_000_000_000_000_000_000_000\x1b[0m }\n",
@@ -678,7 +688,7 @@ func TestVal(t *testing.T) {
 				},
 				{in: `{ type Number keyA valA keyB valB }`,
 					opt: bwparse.Opt{IdVals: map[string]interface{}{"Number": "Number"}},
-					out: "unexpected \x1b[91;1m`valA`\x1b[0m at pos \x1b[38;5;252;1m19\x1b[0m: \x1b[32m{ type Number keyA \x1b[91mvalA\x1b[0m keyB valB }\n"},
+					out: "expects \x1b[96;1mNumber\x1b[0m instead of unexpected \x1b[91;1m`valA`\x1b[0m at pos \x1b[38;5;252;1m19\x1b[0m: \x1b[32m{ type Number keyA \x1b[91mvalA\x1b[0m keyB valB }\n"},
 				{in: "{ val: nil def: Array",
 					opt: bwparse.Opt{IdVals: map[string]interface{}{"Array": "Array"}},
 					out: "unexpected end of string at pos \x1b[38;5;252;1m21\x1b[0m: \x1b[32m{ val: nil def: Array\n"},
@@ -705,7 +715,7 @@ func TestVal(t *testing.T) {
 					opt: bwparse.Opt{
 						KindSet: bwparse.ValKindSetFrom(bwparse.ValRange, bwparse.ValUint, bwparse.ValNil),
 					},
-					out: "expects one of [\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mUint\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n] instead of unexpected char \x1b[96;1m'-'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m45\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m-\x1b[0m123 as uint\n",
+					out: "expects one of [\x1b[97;1mRange\x1b[0m, \x1b[97;1mUint\x1b[0m, \x1b[97;1mNil\x1b[0m] instead of unexpected char \x1b[96;1m'-'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m45\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m-\x1b[0m123 as uint\n",
 				},
 				{in: `<Bool Int Some>`,
 					opt: bwparse.Opt{
@@ -735,7 +745,7 @@ func TestVal(t *testing.T) {
 				},
 				{in: `{ type <Array ArrayOf> }`,
 					opt: bwparse.Opt{
-						OnArrayOfStringEnd: func(on bwparse.On, ss []string) (err error) {
+						OnValidateArrayOfString: func(on bwparse.On, ss []string) (err error) {
 							sset := bwset.StringFrom(ss...)
 							if sset.Has("Array") && sset.Has("ArrayOf") {
 								err = on.P.UnexpectedA(bwparse.UnexpectedA{on.Start, bw.Fmt("array <ansiVal>%s<ansi> contains <ansiErr>both<ansi> <ansiVal>Array<ansi> and <ansiVal>ArrayOf<ansi>", on.Start.Suffix())})
@@ -753,6 +763,7 @@ func TestVal(t *testing.T) {
 			}
 			return tests
 		}(),
+		// "<Bool Int Some>",
 		// `{ key: 1_000_000_000_000_000_000_000_000 }`,
 		// "$idx.3",
 		// "{{some.thing}}",
@@ -761,7 +772,9 @@ func TestVal(t *testing.T) {
 		// "$idx.3..{{some.thing}}",
 		// "..",
 		// `{ key => "\"value\n", 'bool': true keyword Bool}`,
-		// "0..1",
+		// "qw ",
+		// "!",
+		// "! ",
 		// "0.5..1",
 		// "..3.14",
 		// "..",
@@ -770,35 +783,35 @@ func TestVal(t *testing.T) {
 	)
 }
 
-func TestFrom2(t *testing.T) {
-	bwtesting.BwRunTests(t,
-		func(s string) (result interface{}) {
-			var err error
-			if result, err = func(s string) (result interface{}, err error) {
-				defer func() {
-					if err != nil {
-						result = nil
-					}
-				}()
-				p := bwparse.From(bwrune.FromString(s))
-				// var ok bool
-				if result, _, err = bwparse.Val(p, bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int"}}); err == nil {
-					err = end(p, true)
-				}
-				return
-			}(s); err != nil {
-				bwerr.PanicErr(err)
-			}
-			return result
-		},
-		map[string]bwtesting.Case{
-			`{ type Float64 }`: {
-				In:    []interface{}{func(testName string) string { return testName }},
-				Panic: "unexpected \x1b[91;1m`Float64`\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ type \x1b[91mFloat64\x1b[0m }\n",
-			},
-		},
-	)
-}
+// func TestFrom2(t *testing.T) {
+// 	bwtesting.BwRunTests(t,
+// 		func(s string) (result interface{}) {
+// 			var err error
+// 			if result, err = func(s string) (result interface{}, err error) {
+// 				defer func() {
+// 					if err != nil {
+// 						result = nil
+// 					}
+// 				}()
+// 				p := bwparse.From(bwrune.FromString(s))
+// 				// var ok bool
+// 				if result, _, err = bwparse.Val(p, bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int"}}); err == nil {
+// 					err = end(p, true)
+// 				}
+// 				return
+// 			}(s); err != nil {
+// 				bwerr.PanicErr(err)
+// 			}
+// 			return result
+// 		},
+// 		map[string]bwtesting.Case{
+// 			`{ type Float64 }`: {
+// 				In:    []interface{}{func(testName string) string { return testName }},
+// 				Panic: "unexpected \x1b[91;1m`Float64`\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ type \x1b[91mFloat64\x1b[0m }\n",
+// 			},
+// 		},
+// 	)
+// }
 
 func TestLineCount(t *testing.T) {
 	bwtesting.BwRunTests(t,
@@ -809,9 +822,9 @@ func TestLineCount(t *testing.T) {
 				another "key"
 			}`
 			p := bwparse.From(bwrune.FromString(s), opt...)
-			var err error
-			if result, _, err = bwparse.Val(p, bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int"}}); err != nil {
-				bwerr.PanicErr(err)
+			var st bwparse.Status
+			if result, st = bwparse.Val(p, bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int"}}); st.IsOK() {
+				bwerr.PanicErr(st.Err)
 			}
 			return
 		},
@@ -823,52 +836,52 @@ func TestLineCount(t *testing.T) {
 				s             string
 			}{
 				{0, 0,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
 				},
 				{0, 1,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
 				},
 				{0, 2,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 				{0, 3,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 				{1, 0,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
 				},
 				{1, 1,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
 				},
 				{1, 2,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 				{1, 3,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 				{2, 0,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
 				},
 				{2, 1,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
 				},
 				{2, 2,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 				{2, 3,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 				{3, 0,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n",
 				},
 				{3, 1,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n",
 				},
 				{3, 2,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 				{3, 3,
-					"unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
+					"expects \x1b[96;1mInt\x1b[0m instead of unexpected \x1b[91;1m`Float64`\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m28\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\tsome \"thing\"\n\t\t\t\ttype \x1b[91mFloat64\x1b[0m\n\t\t\t\tanother \"key\"\n\t\t\t}\n",
 				},
 			} {
 				tests[fmt.Sprintf(`"preLineCount": %d, "postLineCount": %d`, v.preLineCount, v.postLineCount)] = bwtesting.Case{

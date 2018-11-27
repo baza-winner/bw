@@ -2,8 +2,13 @@
 package bwstr
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode"
+
+	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bw"
 )
 
 // ============================================================================
@@ -23,49 +28,151 @@ func SmartQuote(ss ...string) (result string) {
 	return
 }
 
+type MultiLineMode uint8
+
+const (
+	Auto MultiLineMode = iota
+	SingleLine
+	MultiLine
+)
+
+type I interface {
+	Strings() []string
+}
+
+type SS struct {
+	SS        []string
+	Preformat func(s string) string
+}
+
+func (v SS) Strings() (result []string) {
+	if v.Preformat == nil {
+		result = v.SS
+	} else {
+		for _, s := range v.SS {
+			result = append(result, v.Preformat(s))
+		}
+	}
+	return
+}
+
+type Vals struct {
+	Vals      []interface{}
+	Preformat func(val interface{}) string
+}
+
+func (v Vals) Strings() (result []string) {
+	if v.Preformat == nil {
+		v.Preformat = func(val interface{}) (result string) {
+			if s, ok := val.(fmt.Stringer); ok {
+				result = s.String()
+			} else {
+				if bytes, err := json.Marshal(val); err == nil {
+					result = string(bytes)
+				} else {
+					result = err.Error()
+				}
+			}
+			return
+		}
+	}
+	for _, val := range v.Vals {
+		result = append(result, v.Preformat(val))
+	}
+	return
+}
+
+type A struct {
+	Source              I
+	SingleJoiner        string
+	MultiJoiner         string
+	NoJoinerOnMutliline bool
+	MultiPrefix         string
+	MultiSuffix         string
+	MaxLen              uint
+	InitialIndent       string
+	AdditionalIndent    string
+	Mode                MultiLineMode
+}
+
+func SmartJoin(a A) (result string) {
+	if a.Source == nil {
+		return
+	}
+	source := a.Source.Strings()
+	if len(source) == 0 {
+		return
+	}
+	if len(a.MultiPrefix) == 0 {
+		a.MultiPrefix = "one of ["
+	}
+	if len(a.MultiSuffix) == 0 {
+		r := []rune(a.MultiPrefix[len(a.MultiPrefix)-1:])[0]
+		if r2, ok := bw.Braces()[r]; ok {
+			r = r2
+		}
+		a.MultiSuffix = string(r)
+	}
+	if len(a.MultiJoiner) == 0 {
+		a.MultiJoiner = ", "
+	}
+	if len(a.SingleJoiner) == 0 {
+		a.SingleJoiner = " or "
+	}
+	if len(a.AdditionalIndent) == 0 {
+		a.AdditionalIndent = "  "
+	}
+	var (
+		isMultiline bool
+		joinerLen   int
+		sumLen      int
+		ss          []string
+	)
+	if a.Mode == MultiLine {
+		isMultiline = true
+	} else if a.Mode == Auto && a.MaxLen > 0 {
+		joinerLen = ansi.Len(a.MultiJoiner)
+		sumLen = ansi.Len(a.MultiPrefix) + ansi.Len(a.MultiSuffix) - joinerLen
+		// bwdebug.Print("sumLen", sumLen, "a.MaxLen", a.MaxLen)
+	}
+	for _, s := range source {
+		if !isMultiline && a.Mode == Auto && strings.IndexRune(s, '\n') >= 0 {
+			isMultiline = true
+		}
+		if !isMultiline && a.Mode == Auto && a.MaxLen > 0 {
+			sumLen += ansi.Len(s) + joinerLen
+			// bwdebug.Print("sumLen", sumLen, "ansi.Len(s)", ansi.Len(s), "s", s, "a.MaxLen", a.MaxLen)
+			if sumLen > int(a.MaxLen) {
+				isMultiline = true
+			}
+		}
+		ss = append(ss, s)
+	}
+	if len(ss) <= 2 {
+		result = strings.Join(ss, a.SingleJoiner)
+	} else {
+		if isMultiline && !a.NoJoinerOnMutliline {
+			a.MultiJoiner = strings.TrimRightFunc(a.MultiJoiner, func(r rune) bool { return unicode.IsSpace(r) })
+		}
+		result = a.MultiPrefix
+		for i, s := range ss {
+			if isMultiline {
+				result += "\n"
+				result += a.InitialIndent + a.AdditionalIndent
+			} else if i > 0 {
+				result += a.MultiJoiner
+			}
+			result += s
+			if isMultiline && !a.NoJoinerOnMutliline {
+				result += a.MultiJoiner
+			}
+		}
+		if isMultiline {
+			result += "\n" + a.InitialIndent
+		}
+		result += a.MultiSuffix
+	}
+	return
+}
+
 // ============================================================================
-
-// var underscoreRegexp = regexp.MustCompile("[_]+")
-
-// func ParseInt(s string) (result int, err error) {
-// 	var _int64 int64
-// 	if _int64, err = strconv.ParseInt(underscoreRegexp.ReplaceAllLiteralString(s, ""), 10, 64); err == nil {
-// 		if int64(bw.MinInt) <= _int64 && _int64 <= int64(bw.MaxInt) {
-// 			result = int(_int64)
-// 		} else {
-// 			err = fmt.Errorf("%d is out of range [%d, %d]", _int64, bw.MinInt, bw.MaxInt)
-// 		}
-// 	}
-// 	return
-// }
-
-// var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
-
-// func ParseNumber(s string) (value interface{}, err error) {
-// 	s = underscoreRegexp.ReplaceAllLiteralString(s, "")
-// 	if strings.Contains(s, ".") && !zeroAfterDotRegexp.MatchString(s) {
-// 		var _float64 float64
-// 		if _float64, err = strconv.ParseFloat(s, 64); err == nil {
-// 			value = _float64
-// 		}
-// 	} else {
-// 		if pos := strings.LastIndex(s, "."); pos >= 0 {
-// 			s = s[:pos]
-// 		}
-// 		var _int64 int64
-// 		if _int64, err = strconv.ParseInt(s, 10, 64); err == nil {
-// 			if int64(bw.MinInt8) <= _int64 && _int64 <= int64(bw.MaxInt8) {
-// 				value = int8(_int64)
-// 			} else if int64(bw.MinInt16) <= _int64 && _int64 <= int64(bw.MaxInt16) {
-// 				value = int16(_int64)
-// 			} else if int64(bw.MinInt32) <= _int64 && _int64 <= int64(bw.MaxInt32) {
-// 				value = int32(_int64)
-// 			} else {
-// 				value = _int64
-// 			}
-// 		}
-// 	}
-// 	return
-// }
-
-// // ============================================================================

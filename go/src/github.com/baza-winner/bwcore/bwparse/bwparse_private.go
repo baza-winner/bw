@@ -9,6 +9,7 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwset"
@@ -60,83 +61,6 @@ func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (res
 	return
 }
 
-// func optKeyMap(opt map[string]interface{}, key string, keys *bwset.String) (result map[string]interface{}, ok bool) {
-// 	var val interface{}
-// 	keys.Add(key)
-// 	if val, ok = opt[key]; ok && val != nil {
-// 		if result, ok = val.(map[string]interface{}); !ok {
-// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "map[string]interface{}")
-// 		}
-// 	}
-// 	return
-// }
-
-// func optKeyValidateMapKeyFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateMapKeyFunc, ok bool) {
-// 	var val interface{}
-// 	keys.Add(key)
-// 	if val, ok = opt[key]; ok && val != nil {
-// 		if result, ok = val.(ValidateMapKeyFunc); !ok {
-// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateMapKeyFunc")
-// 		}
-// 	}
-// 	return
-// }
-
-// func optKeyParseMapElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseMapElemFunc, ok bool) {
-// 	var val interface{}
-// 	keys.Add(key)
-// 	if val, ok = opt[key]; ok && val != nil {
-// 		if result, ok = val.(ParseMapElemFunc); !ok {
-// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseMapElemFunc")
-// 		}
-// 	}
-// 	return
-// }
-
-// func optKeyOnMapBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnMapBeginEndFunc, ok bool) {
-// 	var val interface{}
-// 	keys.Add(key)
-// 	if val, ok = opt[key]; ok && val != nil {
-// 		if result, ok = val.(OnMapBeginEndFunc); !ok {
-// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnMapBeginEndFunc")
-// 		}
-// 	}
-// 	return
-// }
-
-// func optKeyParseArrayElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ParseArrayElemFunc, ok bool) {
-// 	var val interface{}
-// 	keys.Add(key)
-// 	if val, ok = opt[key]; ok && val != nil {
-// 		if result, ok = val.(ParseArrayElemFunc); !ok {
-// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ParseArrayElemFunc")
-// 		}
-// 	}
-// 	return
-// }
-
-// func optKeyOnArrayBeginEndFunc(opt map[string]interface{}, key string, keys *bwset.String) (result OnArrayBeginEndFunc, ok bool) {
-// 	var val interface{}
-// 	keys.Add(key)
-// 	if val, ok = opt[key]; ok && val != nil {
-// 		if result, ok = val.(OnArrayBeginEndFunc); !ok {
-// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "OnArrayBeginEndFunc")
-// 		}
-// 	}
-// 	return
-// }
-
-// func optKeyValidateArrayOfStringElemFunc(opt map[string]interface{}, key string, keys *bwset.String) (result ValidateArrayOfStringElemFunc, ok bool) {
-// 	var val interface{}
-// 	keys.Add(key)
-// 	if val, ok = opt[key]; ok && val != nil {
-// 		if result, ok = val.(ValidateArrayOfStringElemFunc); !ok {
-// 			bwerr.Panic(ansiOptKeyIsNotOfType, key, val, "ValidateArrayOfStringElemFunc")
-// 		}
-// 	}
-// 	return
-// }
-
 // ============================================================================
 
 func getOpt(optOpt []Opt) (result Opt) {
@@ -153,13 +77,15 @@ func getPathOpt(optOpt []PathOpt) (result PathOpt) {
 	return
 }
 
-func isOneOfId(p I, ss []string) (ok bool) {
+func isOneOfId(p I, ss []string) (needForward uint, ok bool) {
+	p.Forward(Initial)
 	for _, s := range ss {
 		if ok = CanSkipRunes(p, []rune(s)...); ok {
 			u := uint(len(s))
 			r := p.LookAhead(u).rune
 			if ok = !(IsLetter(r) || IsDigit(r)); ok {
-				p.Forward(u)
+				needForward = u
+				// p.Forward(u)
 				return
 			}
 		}
@@ -203,11 +129,7 @@ func (p *P) suffix(start Start) (suffix string) {
 		bwerr.Panic(ansiGetSuffixAssert, start.ps.pos, p.curr.pos)
 	}
 
-	// preLineCount, postLineCount := int(p.preLineCount), int(p.postLineCount)
 	postLineCount := int(p.postLineCount)
-	// if p.curr.isEOF {
-	// 	preLineCount += postLineCount
-	// }
 
 	var separator string
 	if p.curr.line > 1 {
@@ -217,17 +139,13 @@ func (p *P) suffix(start Start) (suffix string) {
 		suffix += fmt.Sprintf(ansiPos, start.ps.pos)
 		separator = " "
 	}
-	// suffix += ":" + separator + ansiOK + p.curr.prefix[0:ps.pos-p.curr.prefixStart]
 	suffix += ":" + separator + ansiOK + start.ps.prefix
 
 	var needPostLines, noNeedNewline bool
 	if start.ps.pos < p.curr.pos {
-		// noNeedNewline = p.curr.prefix[len(p.curr.prefix)-1] == '\n'
-		// suffix += ansiErr + p.curr.prefix[ps.pos-p.curr.prefixStart:] + ansi.Reset()
 		suffix += ansiErr + start.suffix + ansi.Reset()
 		needPostLines = true
 	} else if !p.curr.isEOF {
-		// noNeedNewline = p.curr.rune == '\n'
 		suffix += ansiErr + string(p.curr.rune) + ansi.Reset()
 		p.Forward(1)
 		needPostLines = true
@@ -362,15 +280,13 @@ func (onBool) IsOn() {}
 
 // ============================================================================
 
-func processOn(p I, processors ...on) (ok bool, err error) {
+func processOn(p I, processors ...on) (status Status) {
 	var (
-		start *Start
-		i     int
-		u     uint
-		n     bwtype.Number
-		s     string
-		path  bw.ValPath
-		// val   interface{}
+		i    int
+		u    uint
+		n    bwtype.Number
+		s    string
+		path bw.ValPath
 		vals []interface{}
 		ss   []string
 		m    map[string]interface{}
@@ -380,63 +296,63 @@ func processOn(p I, processors ...on) (ok bool, err error) {
 	for _, processor := range processors {
 		switch t := processor.(type) {
 		case onInt:
-			i, start, ok, err = Int(p, t.opt)
+			i, status = Int(p, t.opt)
 		case onUint:
-			u, start, ok, err = Uint(p, t.opt)
+			u, status = Uint(p, t.opt)
 		case onNumber:
-			n, start, ok, err = Number(p, t.opt)
+			n, status = Number(p, t.opt)
 		case onRange:
-			rng, start, ok, err = Range(p, t.opt)
+			rng, status = Range(p, t.opt)
 		case onString:
-			s, start, ok, err = String(p, t.opt)
+			s, status = String(p, t.opt)
 		case onId:
-			s, start, ok, err = Id(p, t.opt)
+			s, status = Id(p, t.opt)
 		case onSubPath:
-			path, start, ok, err = subPath(p, t.opt)
+			path, status = subPath(p, t.opt)
 		case onPath:
-			path, start, ok, err = Path(p, t.opt)
+			path, status = Path(p, t.opt)
 		case onArray:
-			vals, start, ok, err = Array(p, t.opt)
+			vals, status = Array(p, t.opt)
 		case onArrayOfString:
-			ss, start, ok, err = ArrayOfString(p, t.opt)
+			ss, status = ArrayOfString(p, t.opt)
 		case onMap:
-			m, start, ok, err = Map(p, t.opt)
+			m, status = Map(p, t.opt)
 		case onNil:
-			start, ok = Nil(p, t.opt)
+			status = Nil(p, t.opt)
 		case onBool:
-			b, start, ok = Bool(p, t.opt)
+			b, status = Bool(p, t.opt)
 		}
-		if err != nil {
+		if status.Err != nil {
 			return
 		}
-		if ok {
+		if status.OK {
 			switch t := processor.(type) {
 			case onInt:
-				err = t.f(i, start)
+				status.Err = t.f(i, status.Start)
 			case onUint:
-				err = t.f(u, start)
+				status.Err = t.f(u, status.Start)
 			case onNumber:
-				err = t.f(n, start)
+				status.Err = t.f(n, status.Start)
 			case onRange:
-				err = t.f(rng, start)
+				status.Err = t.f(rng, status.Start)
 			case onString:
-				err = t.f(s, start)
+				status.Err = t.f(s, status.Start)
 			case onId:
-				err = t.f(s, start)
+				status.Err = t.f(s, status.Start)
 			case onSubPath:
-				err = t.f(path, start)
+				status.Err = t.f(path, status.Start)
 			case onPath:
-				err = t.f(path, start)
+				status.Err = t.f(path, status.Start)
 			case onArray:
-				err = t.f(vals, start)
+				status.Err = t.f(vals, status.Start)
 			case onArrayOfString:
-				err = t.f(ss, start)
+				status.Err = t.f(ss, status.Start)
 			case onMap:
-				err = t.f(m, start)
+				status.Err = t.f(m, status.Start)
 			case onNil:
-				err = t.f(start)
+				status.Err = t.f(status.Start)
 			case onBool:
-				err = t.f(b, start)
+				status.Err = t.f(b, status.Start)
 			}
 			return
 		}
@@ -446,73 +362,111 @@ func processOn(p I, processors ...on) (ok bool, err error) {
 
 // ============================================================================
 
-func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, start *Start, ok bool, err error) {
-	start = p.Start()
-	defer func() { p.Stop(start) }()
-	if ok = p.Curr().rune == '<'; !ok {
-		if ok = CanSkipRunes(p, 'q', 'w') && IsPunctOrSymbol(p.LookAhead(2).rune); !ok {
+func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, status Status) {
+	var needForward uint
+	if status.OK = p.Curr().rune == '<'; !status.OK {
+		if status.OK = CanSkipRunes(p, 'q', 'w') && IsPunctOrSymbol(p.LookAhead(2).rune); !status.OK {
 			return
 		}
-		p.Forward(2)
+		needForward = 2
 	}
+	status.Start = p.Start()
+	defer func() { p.Stop(status.Start) }()
+	p.Forward(needForward)
+
 	delimiter := p.Curr().rune
-	if r, b := Braces[delimiter]; b {
+	if r, b := bw.Braces()[delimiter]; b {
 		delimiter = r
 	}
 	p.Forward(1)
 	result = []string{}
-	on := On{p, start, &opt}
-	base := opt.path
+	on := On{p, status.Start, &opt}
 	if !isEmbeded {
+		base := opt.path
 		on.Opt.path = append(base, bw.ValPathItem{Type: bw.ValPathItemIdx})
+		defer func() { on.Opt.path = base }()
 	}
-	for err == nil {
-		if err = SkipSpace(p, TillNonEOF); err == nil {
+	parseItem := func(r rune) {
+		on.Start = p.Start()
+		defer func() { p.Stop(on.Start) }()
+		var s string
+		for status.Err == nil && !(unicode.IsSpace(r) || r == delimiter) {
+			s += string(r)
+			p.Forward(1)
+			if status.Err = CheckNotEOF(p); status.Err == nil {
+				r = p.Curr().rune
+			}
+		}
+		if status.Err == nil {
+			if !isEmbeded && opt.OnValidateArrayOfStringElem != nil {
+				status.Err = opt.OnValidateArrayOfStringElem(on, result, s)
+			} else if opt.OnValidateString != nil {
+				status.Err = opt.OnValidateString(on, s)
+			}
+			if status.Err == nil {
+				result = append(result, s)
+			}
+		}
+		on.Opt.path[len(on.Opt.path)-1].Idx++
+	}
+	for status.Err == nil {
+		if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
 			r := p.Curr().rune
 			if r == delimiter {
 				p.Forward(1)
 				break
 			}
-			start := p.Start()
-			var s string
-			for err == nil && !(unicode.IsSpace(r) || r == delimiter) {
-				s += string(r)
-				p.Forward(1)
-				if err = CheckNotEOF(p); err == nil {
-					r = p.Curr().rune
-				}
-			}
-			if err == nil {
-				if !isEmbeded && opt.OnValidateArrayOfStringElem != nil {
-					err = opt.OnValidateArrayOfStringElem(on, result, s)
-				} else if opt.OnValidateString != nil {
-					err = opt.OnValidateString(on, s)
-				}
-				if err == nil {
-					result = append(result, s)
-				}
-			}
-			p.Stop(start)
-			on.Opt.path[len(on.Opt.path)-1].Idx++
+			parseItem(r)
 		}
-	}
-	on.Opt.path = base
-	if !isEmbeded && opt.OnArrayOfStringEnd != nil {
-		err = opt.OnArrayOfStringEnd(on, result)
 	}
 	return
 }
 
-var Braces = map[rune]rune{
-	'(': ')',
-	'{': '}',
-	'<': '>',
-	'[': ']',
+// ============================================================================
+
+func parsePath(p I, opt PathOpt) (result bw.ValPath, status Status) {
+	var justParsed pathResult
+	curr := p.Curr()
+	if justParsed, status.OK = curr.justParsed.(pathResult); status.OK {
+		result = justParsed.path
+		status.Start = justParsed.start
+		// p.Forward(curr.justForward)
+		p.Forward(uint(len(justParsed.start.suffix)))
+		return
+	} else if status.OK = curr.rune == '$'; status.OK {
+		status.Start = p.Start()
+		result, status.Err = PathContent(p, opt)
+	} else if status.OK = CanSkipRunes(p, '{', '{'); status.OK {
+		status.Start = p.Start()
+		p.Forward(2)
+		if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
+			if result, status.Err = PathContent(p, opt); status.Err == nil {
+				if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
+					if !SkipRunes(p, '}', '}') {
+						status.Err = Unexpected(p)
+					}
+				}
+			}
+		}
+	}
+	return
 }
 
 // ============================================================================
 
-func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Number, start *Start, ok bool, err error) {
+type numberResult struct {
+	n     bwtype.Number
+	start *Start
+}
+
+type pathResult struct {
+	path  bw.ValPath
+	start *Start
+}
+
+// ============================================================================
+
+func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Number, status Status) {
 	var (
 		s          string
 		hasDot     bool
@@ -524,18 +478,20 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 	if opt.NonNegativeNumber != nil {
 		nonNegativeNumber = opt.NonNegativeNumber(rangeLimitKind)
 	}
-	start = p.Start()
-	defer func() { p.Stop(start) }()
-	if justParsed, ok = start.ps.justParsed.(numberResult); ok {
+	curr := p.Curr()
+	if justParsed, status.OK = p.Curr().justParsed.(numberResult); status.OK {
 		if nonNegativeNumber {
-			if _, ok = bwtype.Uint(justParsed.n.Val()); !ok {
-				err = Unexpected(p)
+			if _, status.OK = bwtype.Uint(justParsed.n.Val()); !status.OK {
+				status.Err = Unexpected(p)
 				return
 			}
 		}
+		status.Start = justParsed.start
 		result = justParsed.n
-		p.Forward(start.ps.justForward)
-	} else if s, isNegative, ok, err = looksLikeNumber(p, nonNegativeNumber); err == nil && ok {
+		// p.Forward(curr.justForward)
+		p.Forward(uint(len(justParsed.start.suffix)))
+		bwdebug.Print("justParsed.start:json", justParsed.start)
+	} else if s, isNegative, status = looksLikeNumber(p, nonNegativeNumber); status.IsOK() {
 		for {
 			if s, b = addDigit(p, s); !b {
 				if !hasDot && CanSkipRunes(p, dotRune) {
@@ -552,9 +508,11 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 				}
 			}
 		}
+		// p.Stop(status.Start)
+
 		if hasDot && !zeroAfterDotRegexp.MatchString(s) {
 			var f float64
-			if f, err = strconv.ParseFloat(s, 64); err == nil {
+			if f, status.Err = strconv.ParseFloat(s, 64); status.Err == nil {
 				result = bwtype.MustNumberFrom(f)
 			}
 		} else {
@@ -563,19 +521,17 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 			}
 			if isNegative {
 				var i int
-				if i, err = bwstr.ParseInt(s); err == nil {
+				if i, status.Err = bwstr.ParseInt(s); status.Err == nil {
 					result = bwtype.MustNumberFrom(i)
 				}
 			} else {
 				var u uint
-				if u, err = bwstr.ParseUint(s); err == nil {
+				if u, status.Err = bwstr.ParseUint(s); status.Err == nil {
 					result = bwtype.MustNumberFrom(u)
 				}
 			}
 		}
-		if err != nil {
-			err = p.UnexpectedA(UnexpectedA{start, bwerr.Err(err)})
-		}
+		status.UnexpectedIfErr(p)
 	}
 	return
 }
@@ -586,54 +542,92 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // ============================================================================
 
-// func getStart(p I) *PosInfo {
-// 	p.Forward(Initial)
-// 	return p.Curr()
-// }
+func getIdExpects(opt Opt, indent string) (expects string) {
+	if len(opt.IdVals) > 0 {
+		sset := bwset.String{}
+		for s := range opt.IdVals {
+			sset.Add(s)
+		}
+		var suffix string
+		if opt.OnId != nil {
+			suffix = ansi.String(" or <ansiVar>custom<ansi>")
+		}
+		expects = bwstr.SmartJoin(bwstr.A{
+			Source: bwstr.SS{
+				SS: sset.ToSliceOfStrings(),
+				Preformat: func(s string) string {
+					return fmt.Sprintf(ansi.String("<ansiVal>%s"), s)
+				},
+			},
+			MaxLen:              uint(80 - len(suffix)),
+			NoJoinerOnMutliline: true,
+			InitialIndent:       indent,
+		}) + suffix
+	}
+	return
+}
 
-func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter rune, f func() error) (ok bool, err error) {
-	if ok = SkipRunes(p, openDelimiter); ok {
+// one of [Int, Number, String] or custom
+// ============================================================================
+
+func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter rune, opt Opt, fn func(on On, base bw.ValPath) error) (status Status) {
+	p.Forward(Initial)
+	if status.OK = CanSkipRunes(p, openDelimiter); status.OK {
+		status.Start = p.Start()
+		defer func() { p.Stop(status.Start) }()
+		p.Forward(1)
+		base := opt.path
+		on := On{p, status.Start, &opt}
+		defer func() { on.Opt.path = base }()
 	LOOP:
-		for err == nil {
-			if err = SkipSpace(p, TillNonEOF); err == nil {
+		for status.Err == nil {
+			if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
 			NEXT:
 				if SkipRunes(p, closeDelimiter) {
 					break LOOP
 				}
-				if err = f(); err == nil {
-					if err = SkipSpace(p, TillNonEOF); err == nil {
+				if status.Err = fn(on, base); status.Err == nil {
+					var isSpaceSkipped bool
+					if isSpaceSkipped, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
 						if !SkipRunes(p, ',') {
-							goto NEXT
+							if !isSpaceSkipped {
+								status.Err = Unexpected(p)
+							} else {
+								goto NEXT
+							}
 						}
 					}
 				}
 			}
 		}
 	}
+	bwdebug.Print("!parseDelimitedOptionalCommaSeparated", "status", status)
 	return
 }
 
-func looksLikeNumber(p I, nonNegative bool) (s string, isNegative bool, ok bool, err error) {
+func looksLikeNumber(p I, nonNegative bool) (s string, isNegative bool, status Status) {
 	var (
 		r         rune
 		needDigit bool
 	)
+	p.Forward(Initial)
 	r = p.Curr().rune
-	if ok = r == '+'; ok {
+	if status.OK = r == '+'; status.OK {
 		needDigit = true
-	} else if ok = !nonNegative && r == '-'; ok {
+	} else if status.OK = !nonNegative && r == '-'; status.OK {
 		s = string(r)
 		needDigit = true
 		isNegative = true
-	} else if ok = IsDigit(r); ok {
+	} else if status.OK = IsDigit(r); status.OK {
 		s = string(r)
 	} else {
 		return
 	}
+	status.Start = p.Start()
 	p.Forward(1)
 	if needDigit {
 		if r = p.Curr().rune; !IsDigit(r) {
-			err = Unexpected(p)
+			status.Err = Unexpected(p)
 		} else {
 			p.Forward(1)
 			s += string(r)
@@ -655,20 +649,21 @@ func addDigit(p I, s string) (string, bool) {
 
 // ============================================================================
 
-func subPath(p I, opt PathOpt) (result bw.ValPath, start *Start, ok bool, err error) {
-	start = p.Start()
-	defer func() { p.Stop(start) }()
-	if ok = SkipRunes(p, '('); ok {
-		if err = SkipSpace(p, TillNonEOF); err == nil {
+func subPath(p I, opt PathOpt) (result bw.ValPath, status Status) {
+	if status.OK = CanSkipRunes(p, '('); status.OK {
+		status.Start = p.Start()
+		defer func() { p.Stop(status.Start) }()
+		p.Forward(1)
+		if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
 			subOpt := opt
 			subOpt.isSubPath = true
 			subOpt.Bases = opt.Bases
-			if result, err = PathContent(p, subOpt); err == nil {
-				if err = SkipSpace(p, TillNonEOF); err == nil {
+			if result, status.Err = PathContent(p, subOpt); status.Err == nil {
+				if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
 					if p.Curr().rune == ')' {
 						p.Forward(1)
 					} else {
-						err = Unexpected(p)
+						status.Err = Unexpected(p)
 					}
 				}
 			}

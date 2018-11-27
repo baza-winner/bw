@@ -12,6 +12,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwerr/where"
 	"github.com/baza-winner/bwcore/bwjson"
+	"github.com/baza-winner/bwcore/bwstr"
 	"github.com/kylelemons/godebug/pretty"
 	// "log"
 )
@@ -63,7 +64,6 @@ func init() {
 	ansiExpectsParamType = ansi.String(testPrefixFmt + ".%s.%d<ansi>: ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi> (<ansiVal>%#v<ansi>)")
 	ansiExpectsOneReturnValue = ansi.String(testPrefixFmt + ".%s<ansi>: ожидается <ansiVal>1<ansi> возвращаемое значение вместо <ansiVal>%d")
 	ansiExpectsTypeOfReturnValue = ansi.String(testPrefixFmt + ".%s<ansi>: в качестве возвращаемого значения ожидается <ansiType>%s<ansi> вместо <ansiType>%s<ansi>")
-	// ansiSeparator = ":\n"
 	ansiPath = ansi.String("<ansiPath>.%d<ansi>")
 	ansiTestTitleFunc = ansi.String("<ansiFunc>%s")
 	ansiTestTitleOpenBrace = ansi.String("(")
@@ -109,17 +109,16 @@ func BwRunTests(
 			}
 		}
 		tests = croppedTests
-		var s string
-		if len(cropTestNames) == 1 {
-			s = fmt.Sprintf(ansi.String("<ansiVal>`%s`"), cropTestNames[0])
-		} else {
-			s = "["
-			for _, s := range cropTestNames {
-				s += fmt.Sprintf(ansi.String("\n  <ansiVal>`%s`<ansi>,"), s)
-			}
-			s += "\n]"
-		}
-		t.Logf(ansi.String("<ansiWarn>Tests cropped to <ansiVal>%s"), s)
+		t.Logf(ansi.String("<ansiWarn>Tests cropped<ansi> to ") + bwstr.SmartJoin(bwstr.A{
+			Source: bwstr.SS{
+				SS: cropTestNames,
+				Preformat: func(s string) string {
+					return fmt.Sprintf(ansi.String("<ansiVal>`%s`"), s)
+				},
+			},
+			MaxLen:       80,
+			SingleJoiner: " and ",
+		}))
 	}
 
 	if len(tests) == 0 {

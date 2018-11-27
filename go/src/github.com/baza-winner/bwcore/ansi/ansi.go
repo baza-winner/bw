@@ -26,6 +26,58 @@ type CSI struct {
 	finalByte         byte   // in the range 0x40–0x7E
 }
 
+func Len(s string) (result int) {
+	type State uint8
+	const (
+		seekEsc State = iota
+		seekOpenBracket
+		seekParameterBytes
+		seekIntermeidateBytes
+		seekFinalByte
+	)
+	var state State
+	for i, b := range []byte(s) {
+		switch state {
+		case seekEsc:
+			switch b {
+			case byte('\x1b'):
+				state = seekOpenBracket
+			default:
+				result++
+			}
+		case seekOpenBracket:
+			switch b {
+			case byte('['):
+				state = seekParameterBytes
+			default:
+				result++
+			}
+		case seekParameterBytes:
+			switch {
+			case byte(0x30) <= b && b <= byte(0x3F):
+				state = seekParameterBytes
+				continue
+			}
+			fallthrough
+		case seekIntermeidateBytes:
+			switch {
+			case byte(0x20) <= b && b <= byte(0x2F):
+				state = seekIntermeidateBytes
+				continue
+			}
+			fallthrough
+		case seekFinalByte:
+			switch {
+			case byte(0x40) <= b && b <= byte(0x7E):
+				state = seekEsc
+			default:
+				panic(fmt.Errorf("s: %s, i: %i, b: %i", s, i, b))
+			}
+		}
+	}
+	return
+}
+
 func CSIFrom(parameterBytes []byte, intermeidateBytes []byte, finalByte byte) (result CSI, err error) {
 	min := byte(0x30)
 	max := byte(0x3F)
