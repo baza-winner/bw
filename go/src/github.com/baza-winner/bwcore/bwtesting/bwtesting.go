@@ -54,7 +54,7 @@ func init() {
 			ansi.SGRCodeOfColor256(ansi.Color256{Code: 248}),
 			ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
 		},
-		S: "Running test case <ansiVal>%s",
+		S: "Running test case <ansiVal>`%s`",
 	})
 	testPrefixFmt := "<ansiFunc>%s<ansiVar>.tests<ansiPath>.%q"
 	ansiExpectsCountParams = ansi.String(testPrefixFmt + ".%s<ansi>: ожидается <ansiVal>%d<ansi> %s вместо <ansiVal>%d")
@@ -97,34 +97,29 @@ func BwRunTests(
 	t *testing.T,
 	testee interface{},
 	tests map[string]Case,
-	cropTestNames ...interface{},
+	cropTestNames ...string,
 ) {
 	if len(cropTestNames) > 0 {
-		var ss []string
-		for _, val := range cropTestNames {
-			if s, ok := val.(string); ok {
-				ss = append(ss, s)
-			}
-		}
-		if len(ss) > 0 {
-			croppedTests := map[string]Case{}
-			for _, s := range ss {
-				if test, ok := tests[s]; ok {
-					croppedTests[s] = test
-				} else {
-					bwerr.Panic(ansi.String("can not crop to non existent test %q"), s)
-				}
-			}
-			tests = croppedTests
-			// bwmap.CropMap(tests, vals...)
-			var s string
-			if len(ss) == 1 {
-				s = bwjson.Pretty(ss[0])
+		croppedTests := map[string]Case{}
+		for _, s := range cropTestNames {
+			if test, ok := tests[s]; ok {
+				croppedTests[s] = test
 			} else {
-				s = bwjson.Pretty(ss)
+				bwerr.Panic(ansi.String("can not crop to non existent test <ansiVal>`%s`"), s)
 			}
-			t.Logf(ansi.String("<ansiWarn>Tests cropped to <ansiVal>%s"), s)
 		}
+		tests = croppedTests
+		var s string
+		if len(cropTestNames) == 1 {
+			s = fmt.Sprintf(ansi.String("<ansiVal>`%s`"), cropTestNames[0])
+		} else {
+			s = "["
+			for _, s := range cropTestNames {
+				s += fmt.Sprintf(ansi.String("\n  <ansiVal>`%s`<ansi>,"), s)
+			}
+			s += "\n]"
+		}
+		t.Logf(ansi.String("<ansiWarn>Tests cropped to <ansiVal>%s"), s)
 	}
 
 	if len(tests) == 0 {

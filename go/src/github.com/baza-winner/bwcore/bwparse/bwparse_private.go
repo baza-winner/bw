@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
@@ -45,7 +46,7 @@ func init() {
 	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.curr.pos<ansi> (<ansiVal>%d<ansi>)")
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
-	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>%q<ansi>")
+	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>`%s`<ansi>")
 }
 
 func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (result uint, ok bool) {
@@ -197,37 +198,41 @@ func (p *P) pullRune(ps PosInfo) PosInfo {
 	return ps
 }
 
-func (p *P) suffix(ps PosInfo) (suffix string) {
-	if ps.pos > p.curr.pos {
-		bwerr.Panic(ansiGetSuffixAssert, ps.pos, p.curr.pos)
+func (p *P) suffix(start Start) (suffix string) {
+	if start.ps.pos > p.curr.pos {
+		bwerr.Panic(ansiGetSuffixAssert, start.ps.pos, p.curr.pos)
 	}
 
-	preLineCount, postLineCount := int(p.preLineCount), int(p.postLineCount)
-	if p.curr.isEOF {
-		preLineCount += postLineCount
-	}
+	// preLineCount, postLineCount := int(p.preLineCount), int(p.postLineCount)
+	postLineCount := int(p.postLineCount)
+	// if p.curr.isEOF {
+	// 	preLineCount += postLineCount
+	// }
 
 	var separator string
 	if p.curr.line > 1 {
-		suffix += fmt.Sprintf(ansiLineCol, ps.line, ps.col, ps.pos)
+		suffix += fmt.Sprintf(ansiLineCol, start.ps.line, start.ps.col, start.ps.pos)
 		separator = "\n"
 	} else {
-		suffix += fmt.Sprintf(ansiPos, ps.pos)
+		suffix += fmt.Sprintf(ansiPos, start.ps.pos)
 		separator = " "
 	}
-	suffix += ":" + separator + ansiOK + p.curr.prefix[0:ps.pos-p.curr.prefixStart]
+	// suffix += ":" + separator + ansiOK + p.curr.prefix[0:ps.pos-p.curr.prefixStart]
+	suffix += ":" + separator + ansiOK + start.ps.prefix
 
 	var needPostLines, noNeedNewline bool
-	if ps.pos < p.curr.pos {
-		noNeedNewline = p.curr.prefix[len(p.curr.prefix)-1] == '\n'
-		suffix += ansiErr + p.curr.prefix[ps.pos-p.curr.prefixStart:] + ansi.Reset()
+	if start.ps.pos < p.curr.pos {
+		// noNeedNewline = p.curr.prefix[len(p.curr.prefix)-1] == '\n'
+		// suffix += ansiErr + p.curr.prefix[ps.pos-p.curr.prefixStart:] + ansi.Reset()
+		suffix += ansiErr + start.suffix + ansi.Reset()
 		needPostLines = true
 	} else if !p.curr.isEOF {
-		noNeedNewline = p.curr.rune == '\n'
+		// noNeedNewline = p.curr.rune == '\n'
 		suffix += ansiErr + string(p.curr.rune) + ansi.Reset()
 		p.Forward(1)
 		needPostLines = true
 	}
+	noNeedNewline = p.curr.rune == '\n'
 
 	for needPostLines && !p.curr.isEOF && postLineCount >= 0 {
 		suffix += string(p.curr.rune)
@@ -244,6 +249,11 @@ func (p *P) suffix(ps PosInfo) (suffix string) {
 }
 
 func (p *P) forward() {
+	if !p.curr.isEOF {
+		for _, start := range p.starts {
+			start.suffix += string(p.curr.rune)
+		}
+	}
 	if len(p.next) == 0 {
 		newCurr := p.pullRune(*p.curr)
 		p.curr = &newCurr
@@ -260,91 +270,91 @@ type on interface {
 }
 
 type onInt struct {
-	f   func(i int, start *PosInfo) (err error)
+	f   func(i int, start *Start) (err error)
 	opt Opt
 }
 
 func (onInt) IsOn() {}
 
 type onUint struct {
-	f   func(u uint, start *PosInfo) (err error)
+	f   func(u uint, start *Start) (err error)
 	opt Opt
 }
 
 func (onUint) IsOn() {}
 
 type onNumber struct {
-	f   func(n bwtype.Number, start *PosInfo) (err error)
+	f   func(n bwtype.Number, start *Start) (err error)
 	opt Opt
 }
 
 func (onNumber) IsOn() {}
 
 type onRange struct {
-	f   func(rng bwtype.Range, start *PosInfo) (err error)
+	f   func(rng bwtype.Range, start *Start) (err error)
 	opt Opt
 }
 
 func (onRange) IsOn() {}
 
 type onId struct {
-	f   func(s string, start *PosInfo) (err error)
+	f   func(s string, start *Start) (err error)
 	opt Opt
 }
 
 func (onId) IsOn() {}
 
 type onString struct {
-	f   func(s string, start *PosInfo) (err error)
+	f   func(s string, start *Start) (err error)
 	opt Opt
 }
 
 func (onString) IsOn() {}
 
 type onSubPath struct {
-	f   func(path bw.ValPath, start *PosInfo) (err error)
+	f   func(path bw.ValPath, start *Start) (err error)
 	opt PathOpt
 }
 
 func (onSubPath) IsOn() {}
 
 type onPath struct {
-	f   func(path bw.ValPath, start *PosInfo) (err error)
+	f   func(path bw.ValPath, start *Start) (err error)
 	opt PathOpt
 }
 
 func (onPath) IsOn() {}
 
 type onArray struct {
-	f   func(vals []interface{}, start *PosInfo) (err error)
+	f   func(vals []interface{}, start *Start) (err error)
 	opt Opt
 }
 
 func (onArray) IsOn() {}
 
 type onArrayOfString struct {
-	f   func(ss []string, start *PosInfo) (err error)
+	f   func(ss []string, start *Start) (err error)
 	opt Opt
 }
 
 func (onArrayOfString) IsOn() {}
 
 type onMap struct {
-	f   func(m map[string]interface{}, start *PosInfo) (err error)
+	f   func(m map[string]interface{}, start *Start) (err error)
 	opt Opt
 }
 
 func (onMap) IsOn() {}
 
 type onNil struct {
-	f   func(start *PosInfo) (err error)
+	f   func(start *Start) (err error)
 	opt Opt
 }
 
 func (onNil) IsOn() {}
 
 type onBool struct {
-	f   func(b bool, start *PosInfo) (err error)
+	f   func(b bool, start *Start) (err error)
 	opt Opt
 }
 
@@ -354,7 +364,7 @@ func (onBool) IsOn() {}
 
 func processOn(p I, processors ...on) (ok bool, err error) {
 	var (
-		start *PosInfo
+		start *Start
 		i     int
 		u     uint
 		n     bwtype.Number
@@ -436,7 +446,73 @@ func processOn(p I, processors ...on) (ok bool, err error) {
 
 // ============================================================================
 
-func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Number, start *PosInfo, ok bool, err error) {
+func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, start *Start, ok bool, err error) {
+	start = p.Start()
+	defer func() { p.Stop(start) }()
+	if ok = p.Curr().rune == '<'; !ok {
+		if ok = CanSkipRunes(p, 'q', 'w') && IsPunctOrSymbol(p.LookAhead(2).rune); !ok {
+			return
+		}
+		p.Forward(2)
+	}
+	delimiter := p.Curr().rune
+	if r, b := Braces[delimiter]; b {
+		delimiter = r
+	}
+	p.Forward(1)
+	result = []string{}
+	on := On{p, start, &opt}
+	base := opt.path
+	if !isEmbeded {
+		on.Opt.path = append(base, bw.ValPathItem{Type: bw.ValPathItemIdx})
+	}
+	for err == nil {
+		if err = SkipSpace(p, TillNonEOF); err == nil {
+			r := p.Curr().rune
+			if r == delimiter {
+				p.Forward(1)
+				break
+			}
+			start := p.Start()
+			var s string
+			for err == nil && !(unicode.IsSpace(r) || r == delimiter) {
+				s += string(r)
+				p.Forward(1)
+				if err = CheckNotEOF(p); err == nil {
+					r = p.Curr().rune
+				}
+			}
+			if err == nil {
+				if !isEmbeded && opt.OnValidateArrayOfStringElem != nil {
+					err = opt.OnValidateArrayOfStringElem(on, result, s)
+				} else if opt.OnValidateString != nil {
+					err = opt.OnValidateString(on, s)
+				}
+				if err == nil {
+					result = append(result, s)
+				}
+			}
+			p.Stop(start)
+			on.Opt.path[len(on.Opt.path)-1].Idx++
+		}
+	}
+	on.Opt.path = base
+	if !isEmbeded && opt.OnArrayOfStringEnd != nil {
+		err = opt.OnArrayOfStringEnd(on, result)
+	}
+	return
+}
+
+var Braces = map[rune]rune{
+	'(': ')',
+	'{': '}',
+	'<': '>',
+	'[': ']',
+}
+
+// ============================================================================
+
+func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Number, start *Start, ok bool, err error) {
 	var (
 		s          string
 		hasDot     bool
@@ -448,13 +524,18 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 	if opt.NonNegativeNumber != nil {
 		nonNegativeNumber = opt.NonNegativeNumber(rangeLimitKind)
 	}
-	start = getStart(p)
-	if justParsed, ok = start.justParsed.(numberResult); ok {
+	start = p.Start()
+	defer func() { p.Stop(start) }()
+	if justParsed, ok = start.ps.justParsed.(numberResult); ok {
+		if nonNegativeNumber {
+			if _, ok = bwtype.Uint(justParsed.n.Val()); !ok {
+				err = Unexpected(p)
+				return
+			}
+		}
 		result = justParsed.n
-		p.Forward(start.justForward)
-		return
-	}
-	if s, start, isNegative, ok, err = looksLikeNumber(p, nonNegativeNumber); err == nil && ok {
+		p.Forward(start.ps.justForward)
+	} else if s, isNegative, ok, err = looksLikeNumber(p, nonNegativeNumber); err == nil && ok {
 		for {
 			if s, b = addDigit(p, s); !b {
 				if !hasDot && CanSkipRunes(p, dotRune) {
@@ -505,13 +586,12 @@ var zeroAfterDotRegexp = regexp.MustCompile(`\.0+$`)
 
 // ============================================================================
 
-func getStart(p I) *PosInfo {
-	p.Forward(Initial)
-	return p.Curr()
-}
+// func getStart(p I) *PosInfo {
+// 	p.Forward(Initial)
+// 	return p.Curr()
+// }
 
-func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter rune, f func() error) (start *PosInfo, ok bool, err error) {
-	start = getStart(p)
+func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter rune, f func() error) (ok bool, err error) {
 	if ok = SkipRunes(p, openDelimiter); ok {
 	LOOP:
 		for err == nil {
@@ -533,13 +613,11 @@ func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter run
 	return
 }
 
-func looksLikeNumber(p I, nonNegative bool) (s string, start *PosInfo, isNegative bool, ok bool, err error) {
-	start = getStart(p)
+func looksLikeNumber(p I, nonNegative bool) (s string, isNegative bool, ok bool, err error) {
 	var (
 		r         rune
 		needDigit bool
 	)
-	// bwdebug.Print("!HERE")
 	r = p.Curr().rune
 	if ok = r == '+'; ok {
 		needDigit = true
@@ -577,8 +655,9 @@ func addDigit(p I, s string) (string, bool) {
 
 // ============================================================================
 
-func subPath(p I, opt PathOpt) (result bw.ValPath, start *PosInfo, ok bool, err error) {
-	start = getStart(p)
+func subPath(p I, opt PathOpt) (result bw.ValPath, start *Start, ok bool, err error) {
+	start = p.Start()
+	defer func() { p.Stop(start) }()
 	if ok = SkipRunes(p, '('); ok {
 		if err = SkipSpace(p, TillNonEOF); err == nil {
 			subOpt := opt
