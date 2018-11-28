@@ -26,7 +26,6 @@ type PosInfo struct {
 	prefix      string
 	prefixStart int
 	justParsed  interface{}
-	// justForward uint
 }
 
 func (p PosInfo) IsEOF() bool {
@@ -88,6 +87,7 @@ type On struct {
 	Opt   *Opt
 }
 
+type NonNegativeNumberFunc func(rangeLimitKind RangeLimitKind) bool
 type IdFunc func(on On, s string) (val interface{}, ok bool, err error)
 
 type ValidateMapKeyFunc func(on On, m map[string]interface{}, key string) (err error)
@@ -126,7 +126,7 @@ type Opt struct {
 
 	IdVals            map[string]interface{}
 	OnId              IdFunc
-	NonNegativeNumber func(rangeLimitKind RangeLimitKind) bool
+	NonNegativeNumber NonNegativeNumberFunc
 
 	IdNil   bwset.String
 	IdFalse bwset.String
@@ -151,18 +151,6 @@ type Opt struct {
 func (opt Opt) Path() bw.ValPath {
 	return opt.path
 }
-
-// func (v Opt) MarshalJSON() ([]byte, error) {
-// 	result := map[string]interface{}
-// 	if v.ExcludeKinds {
-// 		result["ExcludeKinds"] = v.ExcludeKinds
-// 	}
-// 	if len(v.KindSet) > 0 {
-// 		result = v.KindSet.String()
-// 	}
-// 	if ()
-// 	return json.Marshal(result)
-// }
 
 // ============================================================================
 
@@ -287,7 +275,7 @@ func (p *P) UnexpectedA(a UnexpectedA) error {
 	} else {
 		msg = ansiUnexpectedEOF
 	}
-	return bwerr.From(msg + p.suffix(start))
+	return bwerr.From(msg + suffix(&proxy{p: p}, start, p.postLineCount))
 }
 
 // ============================================================================
@@ -298,6 +286,17 @@ func Unexpected(p I, optStart ...*Start) error {
 		a.Start = optStart[0]
 	}
 	return p.UnexpectedA(a)
+}
+
+func Expects(p I, err error, what string) error {
+	if err == nil {
+		err = Unexpected(p)
+	}
+	return bwerr.Refine(err, "expects %s instead of {Error}", what)
+}
+
+func ExpectsSpace(p I) error {
+	return Expects(p, nil, ansi.String(ansiVarSpace))
 }
 
 // ============================================================================
@@ -468,7 +467,6 @@ func Id(p I, optOpt ...Opt) (result string, status Status) {
 			r = p.Curr().rune
 		}
 	}
-	// bwdebug.Print("status:json", status)
 	return
 }
 
@@ -534,7 +532,6 @@ func Int(p I, optOpt ...Opt) (result int, status Status) {
 		if result, status.OK = bwtype.Int(justParsed.n.Val()); status.OK {
 			if status.OK = !nonNegativeNumber || result >= 0; status.OK {
 				status.Start = justParsed.start
-				// p.Forward(curr.justForward)
 				p.Forward(uint(len(justParsed.start.suffix)))
 			}
 			return
@@ -560,9 +557,7 @@ func Uint(p I, optOpt ...Opt) (result uint, status Status) {
 	curr := p.Curr()
 	if justParsed, status.OK = curr.justParsed.(numberResult); status.OK {
 		if result, status.OK = bwtype.Uint(justParsed.n.Val()); status.OK {
-			// p.Forward(curr.justForward)
 			status.Start = justParsed.start
-			// p.Forward(curr.justForward)
 			p.Forward(uint(len(justParsed.start.suffix)))
 			return
 		}
@@ -671,23 +666,37 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 		); st.IsOK() {
 			var isSpaceSkipped bool
 			if isSpaceSkipped, st.Err = SkipSpace(p, TillNonEOF); st.Err == nil {
-				if SkipRunes(p, ':') || SkipRunes(p, '=', '>') {
-					isSpaceSkipped = true
-					_, st.Err = SkipSpace(p, TillNonEOF)
-				}
-				// bwdebug.Print("isSpaceSkipped", isSpaceSkipped, "st:json", st)
-				if isSpaceSkipped && st.Err == nil {
-					path[len(path)-1].Key = key
-					on.Opt.path = path
-					on.Start = p.Start()
-					defer func() { p.Stop(on.Start) }()
 
-					st.OK = false
-					if opt.OnParseArrayElem != nil {
-						st = opt.OnParseMapElem(on, result, key)
+				var isSeparatorSkipped bool
+				if SkipRunes(p, ':') {
+					isSeparatorSkipped = true
+				} else if SkipRunes(p, '=') {
+					if SkipRunes(p, '>') {
+						isSeparatorSkipped = true
+					} else {
+						return Expects(p, nil, fmt.Sprintf(ansiVal, string('>')))
 					}
-					if st.Err == nil && !st.OK {
-						result[key], st = Val(p, opt)
+				}
+
+				if st.Err == nil {
+					if isSeparatorSkipped {
+						_, st.Err = SkipSpace(p, TillNonEOF)
+					}
+					if !(isSpaceSkipped || isSeparatorSkipped) {
+						st.Err = ExpectsSpace(p)
+					} else {
+						path[len(path)-1].Key = key
+						on.Opt.path = path
+						on.Start = p.Start()
+						defer func() { p.Stop(on.Start) }()
+
+						st.OK = false
+						if opt.OnParseArrayElem != nil {
+							st = opt.OnParseMapElem(on, result, key)
+						}
+						if st.Err == nil && !st.OK {
+							result[key], st = Val(p, opt)
+						}
 					}
 				}
 			}
@@ -722,6 +731,18 @@ func Path(p I, optOpt ...PathOpt) (result bw.ValPath, status Status) {
 	result, status = parsePath(p, opt)
 	if status.OK {
 		p.Stop(status.Start)
+	}
+	return
+}
+
+func MustPathFrom(s string, bases ...bw.ValPath) (result bw.ValPath) {
+	var err error
+	p := From(bwrune.FromString(s))
+	if result, err = PathContent(p, PathOpt{Bases: bases}); err == nil {
+		_, err = SkipSpace(p, TillEOF)
+	}
+	if err != nil {
+		bwerr.PanicErr(err)
 	}
 	return
 }
@@ -770,7 +791,7 @@ func PathContent(p I, optOpt ...PathOpt) (bw.ValPath, error) {
 						if nidx, b := bw.NormalIdx(idx, l); b {
 							result = append(result, opt.Bases[nidx]...)
 						} else {
-							err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l)})
+							err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansiUnexpectedBasePathIdx, idx, l)})
 						}
 						return
 					}},
@@ -983,10 +1004,9 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 	if hasKind(ValBool) {
 		onArgs = append(onArgs, onBool{opt: opt, f: func(b bool, start *Start) (err error) { result = b; return }})
 	}
-	if len(opt.IdVals) > 0 || opt.OnId != nil {
+	if (len(opt.IdVals) > 0 || opt.OnId != nil) && hasKind(ValId) {
 		onArgs = append(onArgs,
 			onId{opt: opt, f: func(s string, start *Start) (err error) {
-				// bwdebug.Print("s", s, "start:json", start)
 				var b bool
 				if result, b = opt.IdVals[s]; !b {
 					if opt.OnId != nil {
@@ -996,16 +1016,16 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 				if !b && err == nil {
 					err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansiUnexpectedWord, s)})
 					if expects := getIdExpects(opt, ""); len(expects) > 0 {
-						err = bwerr.Refine(err, "expects %s instead of {Error}", expects)
+						err = Expects(p, err, expects)
 					}
 				}
 				return
 			}},
 		)
 	}
-	if status = processOn(p, onArgs...); !status.IsOK() && (!p.Curr().isEOF || status.Err == nil) {
+	if status = processOn(p, onArgs...); !status.OK {
 		var expects []string
-		asType := func(kind ValKind) string {
+		asType := func(kind ValKind) (result string) {
 			s := kind.String()
 			switch kind {
 			case ValNumber, ValInt:
@@ -1017,7 +1037,13 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 					s = s + "(Min: NonNegative)"
 				}
 			}
-			return ansi.String("<ansiType>" + s)
+			result = fmt.Sprintf(ansiType, s)
+			if kind == ValId {
+				if expects := getIdExpects(opt, "  "); len(expects) > 0 {
+					result += "(" + expects + ")"
+				}
+			}
+			return
 		}
 		addExpects := func(kind ValKind) {
 			expects = append(expects, asType(kind))
@@ -1025,28 +1051,16 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 		for _, kind := range kinds {
 			addExpects(kind)
 		}
-		if len(opt.IdVals) > 0 || opt.OnId != nil {
-			addExpects(ValId)
-			s := asType(ValId)
-			if expects := getIdExpects(opt, "  "); len(expects) > 0 {
-				s += "(" + expects + ")"
-			}
-			expects = append(expects, s)
-		}
-		if status.Err == nil {
-			status.Err = Unexpected(p)
-		}
-		status.Err = bwerr.Refine(status.Err, "expects %s instead of {Error}", bwstr.SmartJoin(bwstr.A{
-			Source: bwstr.SS{
-				SS: expects,
-			},
-			MaxLen:              80,
-			NoJoinerOnMutliline: true,
-		}))
+		status.Err = Expects(p, status.Err,
+			bwstr.SmartJoin(bwstr.A{
+				Source: bwstr.SS{
+					SS: expects,
+				},
+				MaxLen:              60,
+				NoJoinerOnMutliline: true,
+			}),
+		)
 	}
-	// if status.OK {
-	// 	bwdebug.Print("result", result, "status:json", status)
-	// }
 	return
 }
 

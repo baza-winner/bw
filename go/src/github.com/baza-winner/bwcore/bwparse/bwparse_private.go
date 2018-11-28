@@ -25,13 +25,17 @@ var (
 	ansiOK  string
 	ansiErr string
 
-	ansiPos             string
-	ansiLineCol         string
-	ansiGetSuffixAssert string
-	ansiUnexpectedEOF   string
-	ansiUnexpectedChar  string
-	ansiUnexpectedWord  string
-	ansiOutOfRange      string
+	ansiPos                   string
+	ansiLineCol               string
+	ansiGetSuffixAssert       string
+	ansiUnexpectedEOF         string
+	ansiUnexpectedChar        string
+	ansiUnexpectedWord        string
+	ansiOutOfRange            string
+	ansiUnexpectedBasePathIdx string
+	ansiType                  string
+	ansiVal                   string
+	ansiVarSpace              string
 )
 
 func init() {
@@ -47,6 +51,10 @@ func init() {
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
 	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>`%s`<ansi>")
+	ansiUnexpectedBasePathIdx = ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)")
+	ansiType = ansi.String("<ansiType>%s")
+	ansiVal = ansi.String("<ansiVal>%s")
+	ansiVarSpace = ansi.String("<ansiVar>Space")
 }
 
 func optKeyUint(opt map[string]interface{}, key string, keys *bwset.String) (result uint, ok bool) {
@@ -84,7 +92,6 @@ func isOneOfId(p I, ss []string) (needForward uint, ok bool) {
 			r := p.LookAhead(u).rune
 			if ok = !(IsLetter(r) || IsDigit(r)); ok {
 				needForward = u
-				// p.Forward(u)
 				return
 			}
 		}
@@ -123,15 +130,13 @@ func (p *P) pullRune(ps PosInfo) PosInfo {
 	return ps
 }
 
-func (p *P) suffix(start Start) (suffix string) {
-	if start.ps.pos > p.curr.pos {
-		bwerr.Panic(ansiGetSuffixAssert, start.ps.pos, p.curr.pos)
+func suffix(p I, start Start, postLineCount uint) (suffix string) {
+	if start.ps.pos > p.Curr().pos {
+		bwerr.Panic(ansiGetSuffixAssert, start.ps.pos, p.Curr().pos)
 	}
 
-	postLineCount := int(p.postLineCount)
-
 	var separator string
-	if p.curr.line > 1 {
+	if p.Curr().line > 1 {
 		suffix += fmt.Sprintf(ansiLineCol, start.ps.line, start.ps.col, start.ps.pos)
 		separator = "\n"
 	} else {
@@ -141,20 +146,21 @@ func (p *P) suffix(start Start) (suffix string) {
 	suffix += ":" + separator + ansiOK + start.ps.prefix
 
 	var needPostLines, noNeedNewline bool
-	if start.ps.pos < p.curr.pos {
+	if start.ps.pos < p.Curr().pos {
 		suffix += ansiErr + start.suffix + ansi.Reset()
 		needPostLines = true
-	} else if !p.curr.isEOF {
-		suffix += ansiErr + string(p.curr.rune) + ansi.Reset()
+	} else if !p.Curr().isEOF {
+		suffix += ansiErr + string(p.Curr().rune) + ansi.Reset()
 		p.Forward(1)
 		needPostLines = true
 	}
-	noNeedNewline = p.curr.rune == '\n'
+	noNeedNewline = p.Curr().rune == '\n'
 
-	for needPostLines && !p.curr.isEOF && postLineCount >= 0 {
-		suffix += string(p.curr.rune)
-		if noNeedNewline = p.curr.rune == '\n'; noNeedNewline {
-			postLineCount -= 1
+	i := int(postLineCount)
+	for needPostLines && !p.Curr().isEOF && i >= 0 {
+		suffix += string(p.Curr().rune)
+		if noNeedNewline = p.Curr().rune == '\n'; noNeedNewline {
+			i -= 1
 		}
 		p.Forward(1)
 	}
@@ -481,7 +487,6 @@ func parsePath(p I, opt PathOpt) (result bw.ValPath, status Status) {
 	if justParsed, status.OK = curr.justParsed.(pathResult); status.OK {
 		result = justParsed.path
 		status.Start = justParsed.start
-		// p.Forward(curr.justForward)
 		p.Forward(uint(len(justParsed.start.suffix)))
 		return
 	} else if status.OK = curr.rune == '$'; status.OK {
@@ -579,9 +584,7 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 				}
 			}
 		}
-		// bwdebug.Print("status.Err", status.Err)
 		status.UnexpectedIfErr(p)
-		// bwdebug.Print("status.Err", status.Err)
 	}
 	return
 }
@@ -609,7 +612,7 @@ func getIdExpects(opt Opt, indent string) (expects string) {
 					return fmt.Sprintf(ansi.String("<ansiVal>%s"), s)
 				},
 			},
-			MaxLen:              uint(80 - len(suffix)),
+			MaxLen:              uint(60 - len(suffix)),
 			NoJoinerOnMutliline: true,
 			InitialIndent:       indent,
 		}) + suffix
@@ -617,7 +620,6 @@ func getIdExpects(opt Opt, indent string) (expects string) {
 	return
 }
 
-// one of [Int, Number, String] or custom
 // ============================================================================
 
 func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter rune, opt Opt, fn func(on On, base bw.ValPath) error) (status Status) {
@@ -646,7 +648,7 @@ func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter run
 							if isSpaceSkipped {
 								goto NEXT
 							} else {
-								status.Err = Unexpected(p)
+								status.Err = ExpectsSpace(p)
 							}
 						}
 					}
@@ -654,9 +656,10 @@ func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter run
 			}
 		}
 	}
-	// bwdebug.Print("!parseDelimitedOptionalCommaSeparated", "status", status)
 	return
 }
+
+// ============================================================================
 
 func looksLikeNumber(p I, nonNegative bool) (s string, isNegative bool, status Status) {
 	var (
@@ -688,6 +691,8 @@ func looksLikeNumber(p I, nonNegative bool) (s string, isNegative bool, status S
 	}
 	return
 }
+
+// ============================================================================
 
 func addDigit(p I, s string) (string, bool) {
 	r := p.Curr().rune

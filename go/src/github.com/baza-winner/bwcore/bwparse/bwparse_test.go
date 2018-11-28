@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwparse"
@@ -148,30 +147,31 @@ func TestUnexpected(t *testing.T) {
 	)
 }
 
-func TestPath(t *testing.T) {
+func TestMustPath(t *testing.T) {
 	bwtesting.BwRunTests(t,
-		func(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
-			var err error
-			if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
-				defer func() {
-					if err != nil {
-						result = nil
-					}
-				}()
-				opt := bwparse.PathOpt{}
-				if len(optBases) > 0 {
-					opt.Bases = optBases[0]
-				}
-				p := bwparse.From(bwrune.FromString(s))
-				if result, err = bwparse.PathContent(p, opt); err == nil {
-					err = end(p, true)
-				}
-				return
-			}(s, optBases...); err != nil {
-				bwerr.PanicErr(err)
-			}
-			return result
-		},
+		bwparse.MustPathFrom,
+		// func(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
+		// 	var err error
+		// 	if result, err = func(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
+		// 		defer func() {
+		// 			if err != nil {
+		// 				result = nil
+		// 			}
+		// 		}()
+		// 		opt := bwparse.PathOpt{}
+		// 		if len(optBases) > 0 {
+		// 			opt.Bases = optBases[0]
+		// 		}
+		// 		p := bwparse.From(bwrune.FromString(s))
+		// 		if result, err = bwparse.PathContent(p, opt); err == nil {
+		// 			err = end(p, true)
+		// 		}
+		// 		return
+		// 	}(s, optBases...); err != nil {
+		// 		bwerr.PanicErr(err)
+		// 	}
+		// 	return result
+		// },
 		func() map[string]bwtesting.Case {
 			tests := map[string]bwtesting.Case{}
 			for k, v := range map[string]bw.ValPath{
@@ -247,7 +247,7 @@ func TestPath(t *testing.T) {
 			tests["$0.some"] = bwtesting.Case{
 				In: []interface{}{
 					func(testName string) string { return testName },
-					[]bw.ValPath{{bw.ValPathItem{Type: bw.ValPathItemKey, Key: "thing"}}},
+					bw.ValPath{bw.ValPathItem{Type: bw.ValPathItemKey, Key: "thing"}},
 				},
 				Out: []interface{}{
 					bw.ValPath{
@@ -259,7 +259,7 @@ func TestPath(t *testing.T) {
 			tests[".some"] = bwtesting.Case{
 				In: []interface{}{
 					func(testName string) string { return testName },
-					[]bw.ValPath{{bw.ValPathItem{Type: bw.ValPathItemKey, Key: "thing"}}},
+					bw.ValPath{bw.ValPathItem{Type: bw.ValPathItemKey, Key: "thing"}},
 				},
 				Out: []interface{}{
 					bw.ValPath{
@@ -271,6 +271,35 @@ func TestPath(t *testing.T) {
 			return tests
 		}(),
 		// `.some`,
+	)
+}
+
+func TestValKindString(t *testing.T) {
+	bwtesting.BwRunTests(t,
+		"String",
+		func() map[string]bwtesting.Case {
+			tests := map[string]bwtesting.Case{}
+			for k, v := range map[bwparse.ValKind]string{
+				bwparse.ValNil:      "Nil",
+				bwparse.ValBool:     "Bool",
+				bwparse.ValNumber:   "Number",
+				bwparse.ValInt:      "Int",
+				bwparse.ValUint:     "Uint",
+				bwparse.ValRange:    "Range",
+				bwparse.ValString:   "String",
+				bwparse.ValId:       "Id",
+				bwparse.ValMap:      "Map",
+				bwparse.ValArray:    "Array",
+				bwparse.ValPath:     "Path",
+				bwparse.ValPath + 1: "ValKind(11)",
+			} {
+				tests[v] = bwtesting.Case{
+					V:   k,
+					Out: []interface{}{v},
+				}
+			}
+			return tests
+		}(),
 	)
 }
 
@@ -354,7 +383,6 @@ func TestOptEvents(t *testing.T) {
 				p := bwparse.From(bwrune.FromString(s))
 				result = []eventLogItem{}
 				var val interface{}
-				// var start *bwparse.Start
 				if val, st = bwparse.Val(p, bwparse.Opt{
 					Base: base,
 					OnValidateMapKey: func(on bwparse.On, m map[string]interface{}, key string) (err error) {
@@ -363,9 +391,21 @@ func TestOptEvents(t *testing.T) {
 					},
 					OnParseMapElem: func(on bwparse.On, m map[string]interface{}, key string) (status bwparse.Status) {
 						var val interface{}
+						var kindSet bwparse.ValKindSet
+						var pathStr string
+						switch pathStr = on.Opt.Path().String(); pathStr {
+						case "enum.0.keys.int":
+							kindSet = bwparse.ValKindSetFrom(bwparse.ValInt)
+						case "enum.0.keys.uint":
+							kindSet = bwparse.ValKindSetFrom(bwparse.ValUint)
+						}
+						origKindSet := on.Opt.KindSet
+						on.Opt.KindSet = kindSet
+						// bwdebug.Print("pathStr", pathStr, "on.Opt.KindSet:s", on.Opt.KindSet)
+						defer func() { on.Opt.KindSet = origKindSet }()
 						if val, status = bwparse.Val(on.P, *on.Opt); status.IsOK() {
 							// bwdebug.Print("on.Start:json", on.Start)
-							result = append(result, eventLogItem{on.Opt.Path().String(), val, "OnParseMapElem", status.Start.Suffix()})
+							result = append(result, eventLogItem{pathStr, val, "OnParseMapElem", status.Start.Suffix()})
 							m[key] = val
 						}
 						return
@@ -413,6 +453,10 @@ func TestOptEvents(t *testing.T) {
 						ok = true
 						return
 					},
+					OnValidatePath: func(on bwparse.On, path bw.ValPath) (err error) {
+						result = append(result, eventLogItem{on.Opt.Path().String(), path, "OnValidatePath", on.Start.Suffix()})
+						return
+					},
 				}); st.IsOK() {
 					result = append(result, eventLogItem{base.String(), val, "Val", st.Start.Suffix()})
 					st.Err = end(p, true)
@@ -435,9 +479,18 @@ func TestOptEvents(t *testing.T) {
 						some "thing"
 						not "bad"
 						type <Bool Int>
-						enum [ some <thing good> ]
-						number 273
-						range 1..1000
+						enum [
+							{
+								keys {
+									number 273
+									range 1..1000
+									int -100
+									uint 100
+									path {{some}}
+								}
+							}
+							<thing good>
+						]
 					}`,
 					out: []eventLogItem{
 						{".", "some", "OnValidateMapKey", `some`},
@@ -455,44 +508,152 @@ func TestOptEvents(t *testing.T) {
 						{"type", []string{"Bool", "Int"}, "OnParseMapElem", `<Bool Int>`},
 
 						{".", "enum", "OnValidateMapKey", `enum`},
-						{"enum.0", "some", "OnId", `some`},
-						{"enum.0", "some", "OnParseArrayElem", `some`},
+
+						{"enum.0", "keys", "OnValidateMapKey", `keys`},
+
+						{"enum.0.keys", "number", "OnValidateMapKey", `number`},
+						{"enum.0.keys.number", bwtype.MustNumberFrom(273), "OnValidateNumber", `273`},
+						{"enum.0.keys.number", bwtype.MustNumberFrom(273), "OnParseMapElem", `273`},
+
+						{"enum.0.keys", "range", "OnValidateMapKey", `range`},
+						{"enum.0.keys.range", bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}), "OnValidateRange", `1..1000`},
+						{"enum.0.keys.range", bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}), "OnParseMapElem", `1..1000`},
+
+						{"enum.0.keys", "int", "OnValidateMapKey", `int`},
+						{"enum.0.keys.int", bwtype.MustNumberFrom(-100), "OnValidateNumber", `-100`},
+						{"enum.0.keys.int", -100, "OnParseMapElem", `-100`},
+
+						{"enum.0.keys", "uint", "OnValidateMapKey", `uint`},
+						{"enum.0.keys.uint", bwtype.MustNumberFrom(100), "OnValidateNumber", `100`},
+						{"enum.0.keys.uint", uint(100), "OnParseMapElem", `100`},
+
+						{"enum.0.keys", "path", "OnValidateMapKey", `path`},
+						{"enum.0.keys.path", bwparse.MustPathFrom("some"), "OnValidatePath", `{{some}}`},
+						{"enum.0.keys.path", bwparse.MustPathFrom("some"), "OnParseMapElem", `{{some}}`},
+
+						{"enum.0.keys",
+							map[string]interface{}{
+								"number": bwtype.MustNumberFrom(273),
+								"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+								"int":    -100,
+								"uint":   uint(100),
+								"path":   bwparse.MustPathFrom("some"),
+							},
+							"OnValidateMap",
+							"{\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}",
+						},
+						{"enum.0.keys",
+							map[string]interface{}{
+								"number": bwtype.MustNumberFrom(273),
+								"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+								"int":    -100,
+								"uint":   uint(100),
+								"path":   bwparse.MustPathFrom("some"),
+							},
+							"OnParseMapElem",
+							"{\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}",
+						},
+
+						{"enum.0",
+							map[string]interface{}{
+								"keys": map[string]interface{}{
+									"number": bwtype.MustNumberFrom(273),
+									"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+									"int":    -100,
+									"uint":   uint(100),
+									"path":   bwparse.MustPathFrom("some"),
+								},
+							},
+							"OnValidateMap",
+							"{\n\t\t\t\t\t\t\t\tkeys {\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}",
+						},
+						{"enum.0",
+							map[string]interface{}{
+								"keys": map[string]interface{}{
+									"number": bwtype.MustNumberFrom(273),
+									"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+									"int":    -100,
+									"uint":   uint(100),
+									"path":   bwparse.MustPathFrom("some"),
+								},
+							},
+							"OnParseArrayElem",
+							"{\n\t\t\t\t\t\t\t\tkeys {\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}",
+						},
+
 						{"enum.1", "thing", "OnValidateString", `thing`},
 						{"enum.2", "good", "OnValidateString", `good`},
-						{"enum", []interface{}{"some", "thing", "good"}, "OnValidateArray", `[ some <thing good> ]`},
-						{"enum", []interface{}{"some", "thing", "good"}, "OnParseMapElem", `[ some <thing good> ]`},
 
-						{".", "number", "OnValidateMapKey", `number`},
-						{"number", bwtype.MustNumberFrom(273), "OnValidateNumber", `273`},
-						{"number", bwtype.MustNumberFrom(273), "OnParseMapElem", `273`},
-
-						{".", "range", "OnValidateMapKey", `range`},
-						{"range", bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}), "OnValidateRange", `1..1000`},
-						{"range", bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}), "OnParseMapElem", `1..1000`},
+						{"enum", []interface{}{
+							map[string]interface{}{
+								"keys": map[string]interface{}{
+									"number": bwtype.MustNumberFrom(273),
+									"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+									"int":    -100,
+									"uint":   uint(100),
+									"path":   bwparse.MustPathFrom("some"),
+								},
+							},
+							"thing", "good"},
+							"OnValidateArray",
+							"[\n\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\tkeys {\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t<thing good>\n\t\t\t\t\t\t]",
+						},
+						{"enum", []interface{}{
+							map[string]interface{}{
+								"keys": map[string]interface{}{
+									"number": bwtype.MustNumberFrom(273),
+									"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+									"int":    -100,
+									"uint":   uint(100),
+									"path":   bwparse.MustPathFrom("some"),
+								},
+							},
+							"thing", "good"},
+							"OnParseMapElem",
+							"[\n\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\tkeys {\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t<thing good>\n\t\t\t\t\t\t]",
+						},
 
 						{".",
 							map[string]interface{}{
-								"some":   "thing",
-								"not":    "bad",
-								"type":   []string{"Bool", "Int"},
-								"enum":   []interface{}{"some", "thing", "good"},
-								"number": bwtype.MustNumberFrom(273),
-								"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+								"some": "thing",
+								"not":  "bad",
+								"type": []string{"Bool", "Int"},
+								"enum": []interface{}{
+									map[string]interface{}{
+										"keys": map[string]interface{}{
+											"number": bwtype.MustNumberFrom(273),
+											"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+											"int":    -100,
+											"uint":   uint(100),
+											"path":   bwparse.MustPathFrom("some"),
+										},
+									},
+									"thing", "good",
+								},
 							},
 							"OnValidateMap",
-							"{\n\t\t\t\t\t\tsome \"thing\"\n\t\t\t\t\t\tnot \"bad\"\n\t\t\t\t\t\ttype <Bool Int>\n\t\t\t\t\t\tenum [ some <thing good> ]\n\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t}",
+							"{\n\t\t\t\t\t\tsome \"thing\"\n\t\t\t\t\t\tnot \"bad\"\n\t\t\t\t\t\ttype <Bool Int>\n\t\t\t\t\t\tenum [\n\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\tkeys {\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t<thing good>\n\t\t\t\t\t\t]\n\t\t\t\t\t}",
 						},
 						{".",
 							map[string]interface{}{
-								"some":   "thing",
-								"not":    "bad",
-								"type":   []string{"Bool", "Int"},
-								"enum":   []interface{}{"some", "thing", "good"},
-								"number": bwtype.MustNumberFrom(273),
-								"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+								"some": "thing",
+								"not":  "bad",
+								"type": []string{"Bool", "Int"},
+								"enum": []interface{}{
+									map[string]interface{}{
+										"keys": map[string]interface{}{
+											"number": bwtype.MustNumberFrom(273),
+											"range":  bwtype.MustRangeFrom(bwtype.A{Min: 1, Max: 1000}),
+											"int":    -100,
+											"uint":   uint(100),
+											"path":   bwparse.MustPathFrom("some"),
+										},
+									},
+									"thing", "good",
+								},
 							},
 							"Val",
-							"{\n\t\t\t\t\t\tsome \"thing\"\n\t\t\t\t\t\tnot \"bad\"\n\t\t\t\t\t\ttype <Bool Int>\n\t\t\t\t\t\tenum [ some <thing good> ]\n\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t}",
+							"{\n\t\t\t\t\t\tsome \"thing\"\n\t\t\t\t\t\tnot \"bad\"\n\t\t\t\t\t\ttype <Bool Int>\n\t\t\t\t\t\tenum [\n\t\t\t\t\t\t\t{\n\t\t\t\t\t\t\t\tkeys {\n\t\t\t\t\t\t\t\t\tnumber 273\n\t\t\t\t\t\t\t\t\trange 1..1000\n\t\t\t\t\t\t\t\t\tint -100\n\t\t\t\t\t\t\t\t\tuint 100\n\t\t\t\t\t\t\t\t\tpath {{some}}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t<thing good>\n\t\t\t\t\t\t]\n\t\t\t\t\t}",
 						},
 					},
 				},
@@ -640,25 +801,7 @@ func TestVal(t *testing.T) {
 					bw.ValPathItem{Type: bw.ValPathItemKey, Key: "some"},
 					bw.ValPathItem{Type: bw.ValPathItemKey, Key: "thing"},
 				}},
-				// {in: `{ val nil def { type [Array ArrayOf] } }`,
-				// 	opt: bwparse.Opt{
-				// 		KindSet: bwparse.ValKindSetFrom(bwparse.ValMap),
-				// 		OnValidateMapKey: func(p bwparse.I, m map[string]interface{}, s string, start *bwparse.Start, opt bwparse.Opt) (err error) {
-
-				// 		},
-				// 		// OnParseMapElem: func(p bwparse.I, ),
-				// 		OnParseArrayElem: func(p bwparse.I, ss []string, start *bwparse.Start) (err error) {
-				// 			sset := bwset.StringFrom(ss...)
-				// 			if sset.Has("Array") && sset.Has("ArrayOf") {
-				// 				err = p.UnexpectedA(bwparse.UnexpectedA{start, bw.Fmt("array <ansiVal>%s<ansi> contains <ansiErr>both<ansi> <ansiVal>Array<ansi> and <ansiVal>ArrayOf<ansi>", start.Suffix())})
-				// 			}
-				// 			return
-				// 		},
-				// 	},
-				// 	out: "array \x1b[96;1m<Array ArrayOf>\x1b[0m contains \x1b[91;1mboth\x1b[0m \x1b[96;1mArray\x1b[0m and \x1b[96;1mArrayOf\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ type \x1b[91m<Array ArrayOf>\x1b[0m }\n\x1b[0m",
-				// },
 			} {
-				// bwdebug.Print("v.in", v.in)
 				tests[v.in] = bwtesting.Case{
 					In:  []interface{}{v.in, v.opt},
 					Out: []interface{}{v.out},
@@ -669,11 +812,15 @@ func TestVal(t *testing.T) {
 				opt bwparse.Opt
 				out string
 			}{
-				// "":               "unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
+				{in: "",
+					out: "expects one of [\x1b[97;1mArray\x1b[0m, \x1b[97;1mString\x1b[0m, \x1b[97;1mRange\x1b[0m, \x1b[97;1mPath\x1b[0m, \x1b[97;1mMap\x1b[0m, \x1b[97;1mNumber\x1b[0m, \x1b[97;1mNil\x1b[0m, \x1b[97;1mBool\x1b[0m] instead of unexpected end of string at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\n",
+				},
 				{in: `"some" "thing"`,
 					out: "unexpected char \x1b[96;1m'\"'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m34\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m\"some\" \x1b[91m\"\x1b[0mthing\"\n",
 				},
-				// `{ some = > "thing" }`: "expects \x1b[97;1mArray\x1b[0m or \x1b[97;1mString\x1b[0m or \x1b[97;1mRange\x1b[0m or \x1b[97;1mNumber\x1b[0m or \x1b[97;1mPath\x1b[0m or \x1b[97;1mMap\x1b[0m or \x1b[97;1mArrayOfString\x1b[0m or \x1b[97;1mNil\x1b[0m or \x1b[97;1mBool\x1b[0m or \x1b[97;1mId\x1b[0m instead of unexpected char \x1b[96;1m'='\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m61\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ some \x1b[91m=\x1b[0m > \"thing\" }\n",
+				{in: `{ some = > "thing" }`,
+					out: "expects \x1b[96;1m>\x1b[0m instead of unexpected char \x1b[96;1m' '\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m32\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m8\x1b[0m: \x1b[32m{ some =\x1b[91m \x1b[0m> \"thing\" }\n",
+				},
 				{in: `qw/ one two three`,
 					out: "unexpected end of string at pos \x1b[38;5;252;1m17\x1b[0m: \x1b[32mqw/ one two three\n",
 				},
@@ -698,14 +845,14 @@ func TestVal(t *testing.T) {
 				},
 				{in: `!`,
 					opt: bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int", "Number": "Number"}},
-					out: "expects one of [\n  \x1b[97;1mArray\x1b[0m\n  \x1b[97;1mString\x1b[0m\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mPath\x1b[0m\n  \x1b[97;1mMap\x1b[0m\n  \x1b[97;1mNumber\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n  \x1b[97;1mBool\x1b[0m\n  \x1b[97;1mId\x1b[0m\n  \x1b[97;1mId\x1b[0m(\x1b[96;1mInt\x1b[0m or \x1b[96;1mNumber\x1b[0m)\n] instead of unexpected char \x1b[96;1m'!'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m33\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m!\x1b[0m\n",
+					out: "expects one of [\n  \x1b[97;1mArray\x1b[0m\n  \x1b[97;1mString\x1b[0m\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mPath\x1b[0m\n  \x1b[97;1mMap\x1b[0m\n  \x1b[97;1mNumber\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n  \x1b[97;1mBool\x1b[0m\n  \x1b[97;1mId\x1b[0m(\x1b[96;1mInt\x1b[0m or \x1b[96;1mNumber\x1b[0m)\n] instead of unexpected char \x1b[96;1m'!'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m33\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m!\x1b[0m\n",
 				},
 				{in: `! `,
 					opt: bwparse.Opt{
 						IdVals: map[string]interface{}{"Int": "Int", "Number": "Number", "String": "String"},
 						OnId:   func(on bwparse.On, s string) (val interface{}, ok bool, err error) { return },
 					},
-					out: "expects one of [\n  \x1b[97;1mArray\x1b[0m\n  \x1b[97;1mString\x1b[0m\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mPath\x1b[0m\n  \x1b[97;1mMap\x1b[0m\n  \x1b[97;1mNumber\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n  \x1b[97;1mBool\x1b[0m\n  \x1b[97;1mId\x1b[0m\n  \x1b[97;1mId\x1b[0m(one of [\x1b[96;1mInt\x1b[0m, \x1b[96;1mNumber\x1b[0m, \x1b[96;1mString\x1b[0m] or \x1b[38;5;201;1mcustom\x1b[0m)\n] instead of unexpected char \x1b[96;1m'!'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m33\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m!\x1b[0m \n",
+					out: "expects one of [\n  \x1b[97;1mArray\x1b[0m\n  \x1b[97;1mString\x1b[0m\n  \x1b[97;1mRange\x1b[0m\n  \x1b[97;1mPath\x1b[0m\n  \x1b[97;1mMap\x1b[0m\n  \x1b[97;1mNumber\x1b[0m\n  \x1b[97;1mNil\x1b[0m\n  \x1b[97;1mBool\x1b[0m\n  \x1b[97;1mId\x1b[0m(one of [\x1b[96;1mInt\x1b[0m, \x1b[96;1mNumber\x1b[0m, \x1b[96;1mString\x1b[0m] or \x1b[38;5;201;1mcustom\x1b[0m)\n] instead of unexpected char \x1b[96;1m'!'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m33\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m!\x1b[0m \n",
 				},
 				{in: `{ key: 1_000_000_000_000_000_000_000_000 }`,
 					out: "strconv.ParseUint: parsing \"1000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ key: \x1b[91m1_000_000_000_000_000_000_000_000\x1b[0m }\n",
@@ -786,7 +933,10 @@ func TestVal(t *testing.T) {
 					out: "array \x1b[96;1m<Array ArrayOf>\x1b[0m contains \x1b[91;1mboth\x1b[0m \x1b[96;1mArray\x1b[0m and \x1b[96;1mArrayOf\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ type \x1b[91m<Array ArrayOf>\x1b[0m }\n\x1b[0m",
 				},
 				{in: `[1"a"]`,
-					out: "unexpected char \x1b[96;1m'\"'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m34\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m[1\x1b[91m\"\x1b[0ma\"]\n",
+					out: "expects \x1b[38;5;201;1mSpace\x1b[0m instead of unexpected char \x1b[96;1m'\"'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m34\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m[1\x1b[91m\"\x1b[0ma\"]\n",
+				},
+				{in: `{some"a"}`,
+					out: "expects \x1b[38;5;201;1mSpace\x1b[0m instead of unexpected char \x1b[96;1m'\"'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m34\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m5\x1b[0m: \x1b[32m{some\x1b[91m\"\x1b[0ma\"}\n",
 				},
 				{in: `-1`,
 					opt: bwparse.Opt{
@@ -809,17 +959,39 @@ func TestVal(t *testing.T) {
 							if rlk == bwparse.RangeLimitMin {
 								result = true
 							}
-							bwdebug.Print("rlk", rlk, "result", result)
+							// bwdebug.Print("rlk", rlk, "result", result)
 							return
 						},
 					},
-					out: "expects one of [\x1b[97;1mString\x1b[0m, \x1b[97;1mRange(Min: NonNegative)\x1b[0m, \x1b[97;1mPath\x1b[0m, \x1b[97;1mMap\x1b[0m, \x1b[97;1mNumber\x1b[0m, \x1b[97;1mNil\x1b[0m, \x1b[97;1mBool\x1b[0m] instead of unexpected char \x1b[96;1m'.'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m46\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m10\x1b[0m: \x1b[32m{ range -1\x1b[91m.\x1b[0m.3 }\n",
+					out: "expects \x1b[38;5;201;1mSpace\x1b[0m instead of unexpected char \x1b[96;1m'.'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m46\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m10\x1b[0m: \x1b[32m{ range -1\x1b[91m.\x1b[0m.3 }\n",
 				},
 				{in: `-2..1_000_000_000_000_000_000_000_000_000`,
 					out: "strconv.ParseUint: parsing \"1000000000000000000000000000\": value out of range at pos \x1b[38;5;252;1m4\x1b[0m: \x1b[32m-2..\x1b[91m1_000_000_000_000_000_000_000_000_000\x1b[0m\n",
 				},
 				{in: `-2..$some.$thing`,
 					out: "unexpected char \x1b[96;1m'$'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m36\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m10\x1b[0m: \x1b[32m-2..$some.\x1b[91m$\x1b[0mthing\n",
+				},
+				{in: `Bool`,
+					opt: bwparse.Opt{
+						IdVals: map[string]interface{}{"Int": "Int"},
+						OnId: func(on bwparse.On, s string) (val interface{}, ok bool, err error) {
+							return
+						},
+					},
+					out: "expects \x1b[96;1mInt\x1b[0m or \x1b[38;5;201;1mcustom\x1b[0m instead of unexpected \x1b[91;1m`Bool`\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mBool\x1b[0m\n",
+				},
+				{in: `-1..100`,
+					opt: bwparse.Opt{
+						KindSet:           bwparse.ValKindSetFrom(bwparse.ValRange),
+						NonNegativeNumber: func(rangeLimitKind bwparse.RangeLimitKind) bool { return true },
+					},
+					out: "expects \x1b[97;1mRange(Min: NonNegative)\x1b[0m instead of unexpected char \x1b[96;1m'-'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m45\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m-\x1b[0m1..100\n",
+				},
+				{in: `1_000_000_000_000_000_000_000..`,
+					opt: bwparse.Opt{
+						KindSet: bwparse.ValKindSetFrom(bwparse.ValRange),
+					},
+					out: "strconv.ParseUint: parsing \"1000000000000000000000\": value out of range at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m1_000_000_000_000_000_000_000\x1b[0m..\n",
 				},
 			} {
 				tests[v.in] = bwtesting.Case{
@@ -829,7 +1001,6 @@ func TestVal(t *testing.T) {
 			}
 			return tests
 		}(),
-		// `{ range -1..3 }`,
 	)
 }
 
