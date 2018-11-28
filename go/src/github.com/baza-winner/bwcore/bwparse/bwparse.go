@@ -298,7 +298,6 @@ type UnexpectedA struct {
 }
 
 func (p *P) UnexpectedA(a UnexpectedA) error {
-	// var ps PosInfo
 	var start Start
 	if a.Start == nil {
 		start = Start{ps: p.curr}
@@ -931,6 +930,14 @@ func (p *proxy) Forward(count uint) {
 	if count == 0 {
 		p.p.Forward(0)
 	} else {
+		ps = p.Curr()
+		for !ps.isEOF && count > 0 {
+			for _, start := range p.starts {
+				start.suffix += string(ps.rune)
+			}
+			ps = p.p.LookAhead(p.ofs + ofs)
+		}
+		ps = p.p.LookAhead(p.ofs + ofs)
 		p.ofs += count
 	}
 }
@@ -944,12 +951,25 @@ func (p *proxy) UnexpectedA(a UnexpectedA) error {
 	return p.p.UnexpectedA(a)
 }
 
-func (p *proxy) Start() *Start {
-	return p.p.Start()
+func (p *proxy) Start() (result *Start) {
+	p.p.Forward(Initial)
+	curr := p.Curr()
+	if result, ok = p.starts[curr.pos]; !ok {
+		result = &Start{ps: curr}
+		if p.starts == nil {
+			p.starts = map[int]*Start{}
+		}
+		p.starts[curr.pos] = result
+	}
+	return
 }
 
 func (p *proxy) Stop(start *Start) {
-	p.p.Stop(start)
+	if len(start.stopped) > 0 {
+		return
+	}
+	start.stopped = where.WWFrom(1)
+	delete(p.starts, start.ps.pos)
 }
 
 // ============================================================================

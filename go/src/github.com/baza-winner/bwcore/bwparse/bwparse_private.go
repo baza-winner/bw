@@ -479,7 +479,7 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 		nonNegativeNumber = opt.NonNegativeNumber(rangeLimitKind)
 	}
 	curr := p.Curr()
-	if justParsed, status.OK = p.Curr().justParsed.(numberResult); status.OK {
+	if justParsed, status.OK = curr.justParsed.(numberResult); status.OK {
 		if nonNegativeNumber {
 			if _, status.OK = bwtype.Uint(justParsed.n.Val()); !status.OK {
 				status.Err = Unexpected(p)
