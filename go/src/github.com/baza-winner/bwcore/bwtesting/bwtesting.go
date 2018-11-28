@@ -68,6 +68,7 @@ func init() {
 	ansiTestTitleFunc = ansi.String("<ansiFunc>%s")
 	ansiTestTitleOpenBrace = ansi.String("(")
 	ansiTestTitleSep = ansi.String(",")
+	// ansiTestTitleVal = ansi.String("<ansiVal>%#v")
 	ansiTestTitleVal = ansi.String("<ansiVal>%#v")
 	ansiTestTitleCloseBrace = ansi.String(")")
 	ansiErr = ansi.String(

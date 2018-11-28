@@ -137,7 +137,6 @@ func FromA(a bw.I) Error {
 	var depth uint
 	var fmtString string
 	var fmtArgs []interface{}
-	// var noNeedErrPrefix bool
 	switch t := a.(type) {
 	case E:
 		if e, ok := t.Error.(Error); ok {

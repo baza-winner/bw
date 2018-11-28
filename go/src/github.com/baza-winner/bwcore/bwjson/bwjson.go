@@ -15,3 +15,12 @@ func Pretty(v interface{}) (result string) {
 	}
 	return
 }
+
+func S(v interface{}) (result string) {
+	if bytes, err := json.Marshal(v); err != nil {
+		panic(fmt.Sprintf("S: failed to encode to json value %#v", v))
+	} else {
+		result = string(bytes[:])
+	}
+	return
+}

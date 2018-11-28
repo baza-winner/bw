@@ -9,7 +9,6 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwset"
@@ -179,6 +178,58 @@ func (p *P) forward() {
 		last := len(p.next) - 1
 		p.curr, p.next = p.next[last], p.next[:last]
 	}
+}
+
+// ============================================================================
+
+type proxy struct {
+	p      I
+	ofs    uint
+	starts map[int]*Start
+}
+
+func (p *proxy) Curr() *PosInfo {
+	result := p.p.LookAhead(p.ofs)
+	return result
+}
+
+func (p *proxy) Forward(count uint) {
+	if count == 0 {
+		p.p.Forward(0)
+	} else {
+		ps := p.Curr()
+		for !ps.isEOF && count > 0 {
+			for _, start := range p.starts {
+				start.suffix += string(ps.rune)
+			}
+			count--
+			p.ofs++
+			ps = p.Curr()
+		}
+	}
+}
+
+func (p *proxy) LookAhead(ofs uint) *PosInfo {
+	return p.p.LookAhead(p.ofs + ofs)
+}
+
+func (p *proxy) UnexpectedA(a UnexpectedA) error {
+	p.p.Forward(p.ofs)
+	return p.p.UnexpectedA(a)
+}
+
+func (p *proxy) Start() (result *Start) {
+	p.p.Forward(Initial)
+	curr := p.Curr()
+	var ok bool
+	if result, ok = p.starts[curr.pos]; !ok {
+		result = &Start{ps: curr}
+		if p.starts == nil {
+			p.starts = map[int]*Start{}
+		}
+		p.starts[curr.pos] = result
+	}
+	return
 }
 
 // ============================================================================
@@ -488,9 +539,7 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 		}
 		status.Start = justParsed.start
 		result = justParsed.n
-		// p.Forward(curr.justForward)
 		p.Forward(uint(len(justParsed.start.suffix)))
-		bwdebug.Print("justParsed.start:json", justParsed.start)
 	} else if s, isNegative, status = looksLikeNumber(p, nonNegativeNumber); status.IsOK() {
 		for {
 			if s, b = addDigit(p, s); !b {
@@ -508,7 +557,6 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 				}
 			}
 		}
-		// p.Stop(status.Start)
 
 		if hasDot && !zeroAfterDotRegexp.MatchString(s) {
 			var f float64
@@ -531,7 +579,9 @@ func parseNumber(p I, opt Opt, rangeLimitKind RangeLimitKind) (result bwtype.Num
 				}
 			}
 		}
+		// bwdebug.Print("status.Err", status.Err)
 		status.UnexpectedIfErr(p)
+		// bwdebug.Print("status.Err", status.Err)
 	}
 	return
 }
@@ -589,11 +639,14 @@ func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter run
 				if status.Err = fn(on, base); status.Err == nil {
 					var isSpaceSkipped bool
 					if isSpaceSkipped, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
+						if SkipRunes(p, closeDelimiter) {
+							break LOOP
+						}
 						if !SkipRunes(p, ',') {
-							if !isSpaceSkipped {
-								status.Err = Unexpected(p)
-							} else {
+							if isSpaceSkipped {
 								goto NEXT
+							} else {
+								status.Err = Unexpected(p)
 							}
 						}
 					}
@@ -601,7 +654,7 @@ func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter run
 			}
 		}
 	}
-	bwdebug.Print("!parseDelimitedOptionalCommaSeparated", "status", status)
+	// bwdebug.Print("!parseDelimitedOptionalCommaSeparated", "status", status)
 	return
 }
 

@@ -1,15 +1,12 @@
 package bwparse
 
 import (
-	"encoding/json"
 	"fmt"
 	"unicode"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
-	"github.com/baza-winner/bwcore/bwerr/where"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwrune"
@@ -40,40 +37,10 @@ func (p PosInfo) Rune() rune {
 	return p.rune
 }
 
-type Start struct {
-	ps      *PosInfo
-	suffix  string
-	stopped where.WW
-}
+// ============================================================================
 
 func (start Start) Suffix() string {
 	return start.suffix
-}
-
-func (p PosInfo) MarshalJSON() ([]byte, error) {
-	result := map[string]interface{}{}
-	result["isEOF"] = p.isEOF
-	result["rune"] = string(p.rune)
-	result["pos"] = p.pos
-	result["line"] = p.line
-	result["col"] = p.col
-	result["prefix"] = p.prefix
-	result["prefixStart"] = p.prefixStart
-	if p.justParsed != nil {
-		result["justParsed"] = p.justParsed
-		// result["justForward"] = p.justForward
-	}
-	return json.Marshal(result)
-}
-
-func (start Start) MarshalJSON() ([]byte, error) {
-	result := map[string]interface{}{}
-	result["ps"] = *start.ps
-	result["suffix"] = start.suffix
-	if len(start.stopped) > 0 {
-		result["stopped"] = start.stopped
-	}
-	return json.Marshal(result)
 }
 
 // ============================================================================
@@ -185,6 +152,18 @@ func (opt Opt) Path() bw.ValPath {
 	return opt.path
 }
 
+// func (v Opt) MarshalJSON() ([]byte, error) {
+// 	result := map[string]interface{}
+// 	if v.ExcludeKinds {
+// 		result["ExcludeKinds"] = v.ExcludeKinds
+// 	}
+// 	if len(v.KindSet) > 0 {
+// 		result = v.KindSet.String()
+// 	}
+// 	if ()
+// 	return json.Marshal(result)
+// }
+
 // ============================================================================
 
 type P struct {
@@ -282,14 +261,6 @@ func (p *P) Start() (result *Start) {
 		p.starts[p.curr.pos] = result
 	}
 	return
-}
-
-func (p *P) Stop(start *Start) {
-	if len(start.stopped) > 0 {
-		return
-	}
-	start.stopped = where.WWFrom(1)
-	delete(p.starts, start.ps.pos)
 }
 
 type UnexpectedA struct {
@@ -431,10 +402,57 @@ func (v Status) NoErr() bool {
 	return v.Err == nil
 }
 
-func (v Status) UnexpectedIfErr(p I) {
+func (v *Status) UnexpectedIfErr(p I) {
 	if v.Err != nil {
 		v.Err = p.UnexpectedA(UnexpectedA{v.Start, bwerr.Err(v.Err)})
 	}
+}
+
+// ============================================================================
+
+func Nil(p I, optOpt ...Opt) (status Status) {
+	opt := getOpt(optOpt)
+
+	ss := []string{"nil"}
+	if len(opt.IdNil) > 0 {
+		ss = append(ss, opt.IdNil.ToSliceOfStrings()...)
+	}
+
+	var needForward uint
+	if needForward, status.OK = isOneOfId(p, ss); status.OK {
+		status.Start = p.Start()
+		defer func() { p.Stop(status.Start) }()
+		p.Forward(needForward)
+	}
+	return
+}
+
+// ============================================================================
+
+func Bool(p I, optOpt ...Opt) (result bool, status Status) {
+	opt := getOpt(optOpt)
+
+	ss := []string{"true"}
+	if len(opt.IdTrue) > 0 {
+		ss = append(ss, opt.IdTrue.ToSliceOfStrings()...)
+	}
+
+	var needForward uint
+	if needForward, status.OK = isOneOfId(p, ss); status.OK {
+		result = true
+	} else {
+		ss = []string{"false"}
+		if len(opt.IdFalse) > 0 {
+			ss = append(ss, opt.IdFalse.ToSliceOfStrings()...)
+		}
+		needForward, status.OK = isOneOfId(p, ss)
+	}
+	if status.OK {
+		status.Start = p.Start()
+		defer func() { p.Stop(status.Start) }()
+		p.Forward(needForward)
+	}
+	return
 }
 
 // ============================================================================
@@ -450,6 +468,7 @@ func Id(p I, optOpt ...Opt) (result string, status Status) {
 			r = p.Curr().rune
 		}
 	}
+	// bwdebug.Print("status:json", status)
 	return
 }
 
@@ -589,10 +608,9 @@ func Array(p I, optOpt ...Opt) (result []interface{}, status Status) {
 			on.Opt.path = append(base, bw.ValPathItem{Type: bw.ValPathItemIdx})
 		}
 		if err == nil {
-			// var b bool
 			var ss []string
 			var st Status
-			if ss, st = parseArrayOfString(p, opt, true); st.Err == nil {
+			if ss, st = parseArrayOfString(p, *on.Opt, true); st.Err == nil {
 				if st.OK {
 					for _, s := range ss {
 						result = append(result, s)
@@ -624,17 +642,18 @@ func Array(p I, optOpt ...Opt) (result []interface{}, status Status) {
 	return
 }
 
+// ============================================================================
+
 func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 	opt := getOpt(optOpt)
 	var path bw.ValPath
-	if status = parseDelimitedOptionalCommaSeparated(p, '{', '}', opt, func(on On, base bw.ValPath) (err error) {
+	if status = parseDelimitedOptionalCommaSeparated(p, '{', '}', opt, func(on On, base bw.ValPath) error {
 		if result == nil {
 			result = map[string]interface{}{}
 			path = append(base, bw.ValPathItem{Type: bw.ValPathItemKey})
 		}
 		var (
 			key string
-			// b   bool
 		)
 		onKey := func(s string, start *Start) (err error) {
 			key = s
@@ -649,38 +668,34 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 		if st = processOn(p,
 			onString{opt: opt, f: onKey},
 			onId{opt: opt, f: onKey},
-		); !st.OK {
-			err = Unexpected(p)
-		} else if err != nil {
-			err = st.Err
-		} else {
+		); st.IsOK() {
 			var isSpaceSkipped bool
-			if isSpaceSkipped, err = SkipSpace(p, TillNonEOF); err == nil {
+			if isSpaceSkipped, st.Err = SkipSpace(p, TillNonEOF); st.Err == nil {
 				if SkipRunes(p, ':') || SkipRunes(p, '=', '>') {
 					isSpaceSkipped = true
-					_, err = SkipSpace(p, TillNonEOF)
+					_, st.Err = SkipSpace(p, TillNonEOF)
 				}
-				if err == nil && !isSpaceSkipped {
-					err = Unexpected(p)
-				}
-				if err == nil {
+				// bwdebug.Print("isSpaceSkipped", isSpaceSkipped, "st:json", st)
+				if isSpaceSkipped && st.Err == nil {
 					path[len(path)-1].Key = key
 					on.Opt.path = path
 					on.Start = p.Start()
 					defer func() { p.Stop(on.Start) }()
-					var st Status
+
+					st.OK = false
 					if opt.OnParseArrayElem != nil {
 						st = opt.OnParseMapElem(on, result, key)
 					}
 					if st.Err == nil && !st.OK {
 						result[key], st = Val(p, opt)
 					}
-					bwdebug.Print("key", key, "result", result)
-					err = st.Err
 				}
 			}
 		}
-		return
+		if !st.OK && st.Err == nil {
+			st.Err = Unexpected(p)
+		}
+		return st.Err
 	}); status.IsOK() {
 		if result == nil {
 			result = map[string]interface{}{}
@@ -689,53 +704,168 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 	return
 }
 
-func Nil(p I, optOpt ...Opt) (status Status) {
-	opt := getOpt(optOpt)
+// ============================================================================
 
-	ss := []string{"nil"}
-	if len(opt.IdNil) > 0 {
-		ss = append(ss, opt.IdNil.ToSliceOfStrings()...)
-	}
-
-	var needForward uint
-	if needForward, status.OK = isOneOfId(p, ss); status.OK {
-		status.Start = p.Start()
-		defer func() { p.Stop(status.Start) }()
-		p.Forward(needForward)
-	}
-	return
+type PathA struct {
+	Bases     []bw.ValPath
+	isSubPath bool
 }
 
-func Bool(p I, optOpt ...Opt) (result bool, status Status) {
-	opt := getOpt(optOpt)
+type PathOpt struct {
+	Opt
+	Bases     []bw.ValPath
+	isSubPath bool
+}
 
-	ss := []string{"true"}
-	if len(opt.IdTrue) > 0 {
-		ss = append(ss, opt.IdTrue.ToSliceOfStrings()...)
-	}
-
-	var needForward uint
-	if needForward, status.OK = isOneOfId(p, ss); status.OK {
-		result = true
-	} else {
-		ss = []string{"false"}
-		if len(opt.IdFalse) > 0 {
-			ss = append(ss, opt.IdFalse.ToSliceOfStrings()...)
-		}
-		needForward, status.OK = isOneOfId(p, ss)
-	}
+func Path(p I, optOpt ...PathOpt) (result bw.ValPath, status Status) {
+	opt := getPathOpt(optOpt)
+	result, status = parsePath(p, opt)
 	if status.OK {
-		status.Start = p.Start()
-		defer func() { p.Stop(status.Start) }()
-		p.Forward(needForward)
+		p.Stop(status.Start)
 	}
 	return
 }
+
+func PathContent(p I, optOpt ...PathOpt) (bw.ValPath, error) {
+	opt := getPathOpt(optOpt)
+	p.Forward(Initial)
+	var (
+		vpi           bw.ValPathItem
+		isEmptyResult bool
+		st            Status
+	)
+	result := bw.ValPath{}
+	for st.Err == nil {
+		isEmptyResult = len(result) == 0
+		if isEmptyResult && p.Curr().rune == '.' {
+			p.Forward(1)
+			if len(opt.Bases) > 0 {
+				result = append(result, opt.Bases[0]...)
+			} else {
+				break
+			}
+		} else if st = processOn(p,
+			onInt{opt: opt.Opt, f: func(idx int, start *Start) (err error) {
+				vpi = bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: idx}
+				return
+			}},
+			onId{opt: opt.Opt, f: func(s string, start *Start) (err error) {
+				vpi = bw.ValPathItem{Type: bw.ValPathItemKey, Key: s}
+				return
+			}},
+			onSubPath{opt: opt, f: func(path bw.ValPath, start *Start) (err error) {
+				vpi = bw.ValPathItem{Type: bw.ValPathItemPath, Path: path}
+				return
+			}},
+		); st.Err == nil {
+			if st.OK {
+				result = append(result, vpi)
+			} else if SkipRunes(p, '#') {
+				result = append(result, bw.ValPathItem{Type: bw.ValPathItemHash})
+				break
+			} else if isEmptyResult && SkipRunes(p, '$') {
+				st = processOn(p,
+					onInt{opt: opt.Opt, f: func(idx int, start *Start) (err error) {
+						l := len(opt.Bases)
+						if nidx, b := bw.NormalIdx(idx, l); b {
+							result = append(result, opt.Bases[nidx]...)
+						} else {
+							err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l)})
+						}
+						return
+					}},
+					onId{opt: opt.Opt, f: func(s string, start *Start) (err error) {
+						result = append(result, bw.ValPathItem{Type: bw.ValPathItemVar, Key: s})
+						return
+					}},
+				)
+			}
+			if st.Err == nil {
+				if !st.OK {
+					st.Err = Unexpected(p)
+				} else {
+					if !opt.isSubPath && SkipRunes(p, '?') {
+						result[len(result)-1].IsOptional = true
+					}
+					if CanSkipRunes(p, '.', '.') || !SkipRunes(p, '.') {
+						break
+					}
+				}
+			}
+		}
+	}
+	return result, st.Err
+}
+
+// ============================================================================
+
+func Range(p I, optOpt ...Opt) (result bwtype.Range, status Status) {
+	opt := getOpt(optOpt)
+
+	var (
+		min, max interface{}
+		n        bwtype.Number
+		isNumber bool
+		isPath   bool
+		path     bw.ValPath
+	)
+
+	pp := &proxy{p: p}
+	{
+		if n, status = parseNumber(pp, opt, RangeLimitMin); status.Err != nil {
+			return
+		} else if status.OK {
+			min = n
+			isNumber = true
+		} else if path, status = Path(pp, PathOpt{Opt: opt}); status.Err != nil {
+			return
+		} else if status.OK {
+			min = path
+			isPath = true
+		}
+		if status.OK = CanSkipRunes(pp, '.', '.'); !status.OK {
+			if isNumber || isPath {
+				p.Stop(status.Start)
+				ps := status.Start.ps
+				if isNumber {
+					ps.justParsed = numberResult{n, status.Start}
+				} else if isPath {
+					ps.justParsed = pathResult{path, status.Start}
+				}
+			}
+			status = Status{}
+			return
+		}
+	}
+	status.Start = p.Start()
+	defer func() { p.Stop(status.Start) }()
+	p.Forward(pp.ofs + 2)
+	pp = nil
+
+	var st Status
+	if max, st = parseNumber(p, opt, RangeLimitMax); st.Err != nil {
+		status.Err = st.Err
+		return
+	} else if st.OK {
+		p.Stop(st.Start)
+	} else if max, st = parsePath(p, PathOpt{Opt: opt}); st.Err != nil {
+		status.Err = st.Err
+		return
+	} else if st.OK {
+		p.Stop(st.Start)
+	} else {
+		max = nil
+	}
+
+	result, status.Err = bwtype.RangeFrom(bwtype.A{Min: min, Max: max})
+
+	return
+}
+
+// ============================================================================
 
 func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 	opt := getOpt(optOpt)
-	// start = p.Start()
-	// defer func() { p.Stop(start) }()
 	var onArgs []on
 	kinds := []ValKind{}
 	kindSetIsEmpty := len(opt.KindSet) == 0
@@ -755,95 +885,95 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 	if hasKind(ValArray) {
 		onArgs = append(onArgs, onArray{opt: opt, f: func(vals []interface{}, start *Start) (err error) {
 			if opt.OnValidateArray != nil {
-				if err = opt.OnValidateArray(On{p, start, &opt}, vals); err != nil {
-					return
-				}
+				err = opt.OnValidateArray(On{p, start, &opt}, vals)
 			}
-			result = vals
+			if err == nil {
+				result = vals
+			}
 			return
 		}})
 		onArgs = append(onArgs, onArrayOfString{opt: opt, f: func(ss []string, start *Start) (err error) {
 			if opt.OnValidateArrayOfString != nil {
-				if err = opt.OnValidateArrayOfString(On{p, start, &opt}, ss); err != nil {
-					return
-				}
+				err = opt.OnValidateArrayOfString(On{p, start, &opt}, ss)
 			}
-			result = ss
+			if err == nil {
+				result = ss
+			}
 			return
 		}})
 	}
 	if hasKind(ValString) {
 		onArgs = append(onArgs, onString{opt: opt, f: func(s string, start *Start) (err error) {
 			if opt.OnValidateString != nil {
-				if err = opt.OnValidateString(On{p, start, &opt}, s); err != nil {
-					return
-				}
+				err = opt.OnValidateString(On{p, start, &opt}, s)
 			}
-			result = s
+			if err == nil {
+				result = s
+			}
 			return
 		}})
 	}
 	if hasKind(ValRange) {
 		onArgs = append(onArgs, onRange{opt: opt, f: func(rng bwtype.Range, start *Start) (err error) {
 			if opt.OnValidateRange != nil {
-				if err = opt.OnValidateRange(On{p, start, &opt}, rng); err != nil {
-					return
-				}
+				err = opt.OnValidateRange(On{p, start, &opt}, rng)
 			}
-			result = rng
+			if err == nil {
+				result = rng
+			}
 			return
 		}})
 	}
 	if hasKind(ValPath) {
 		onArgs = append(onArgs, onPath{opt: PathOpt{Opt: opt}, f: func(path bw.ValPath, start *Start) (err error) {
 			if opt.OnValidatePath != nil {
-				if err = opt.OnValidatePath(On{p, start, &opt}, path); err != nil {
-					return
-				}
+				err = opt.OnValidatePath(On{p, start, &opt}, path)
 			}
-			result = path
+			if err == nil {
+				result = path
+			}
 			return
 		}})
 	}
 	if hasKind(ValMap) {
 		onArgs = append(onArgs, onMap{opt: opt, f: func(m map[string]interface{}, start *Start) (err error) {
 			if opt.OnValidateMap != nil {
-				if err = opt.OnValidateMap(On{p, start, &opt}, m); err != nil {
-					return
-				}
+				err = opt.OnValidateMap(On{p, start, &opt}, m)
 			}
-			result = m
+			if err == nil {
+				result = m
+			}
 			return
 		}})
 	}
 	if hasKind(ValNumber) {
 		onArgs = append(onArgs, onNumber{opt: opt, f: func(n bwtype.Number, start *Start) (err error) {
 			if opt.OnValidateNumber != nil {
-				if err = opt.OnValidateNumber(On{p, start, &opt}, n); err != nil {
-					return
-				}
+				err = opt.OnValidateNumber(On{p, start, &opt}, n)
 			}
-			result = n
+			if err == nil {
+				result = n
+			}
 			return
 		}})
 	} else if hasKind(ValInt) {
 		onArgs = append(onArgs, onInt{opt: opt, f: func(i int, start *Start) (err error) {
 			if opt.OnValidateNumber != nil {
-				if err = opt.OnValidateNumber(On{p, start, &opt}, bwtype.MustNumberFrom(i)); err != nil {
-					return
-				}
+				err = opt.OnValidateNumber(On{p, start, &opt}, bwtype.MustNumberFrom(i))
 			}
-			result = i
+			if err == nil {
+				result = i
+			}
 			return
 		}})
 	} else if hasKind(ValUint) {
 		onArgs = append(onArgs, onUint{opt: opt, f: func(u uint, start *Start) (err error) {
 			if opt.OnValidateNumber != nil {
-				if err = opt.OnValidateNumber(On{p, start, &opt}, bwtype.MustNumberFrom(u)); err != nil {
-					return
-				}
+				err = opt.OnValidateNumber(On{p, start, &opt}, bwtype.MustNumberFrom(u))
 			}
-			result = u
+			if err == nil {
+				result = u
+			}
 			return
 		}})
 	}
@@ -856,6 +986,7 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 	if len(opt.IdVals) > 0 || opt.OnId != nil {
 		onArgs = append(onArgs,
 			onId{opt: opt, f: func(s string, start *Start) (err error) {
+				// bwdebug.Print("s", s, "start:json", start)
 				var b bool
 				if result, b = opt.IdVals[s]; !b {
 					if opt.OnId != nil {
@@ -872,7 +1003,7 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 			}},
 		)
 	}
-	if status = processOn(p, onArgs...); !status.OK {
+	if status = processOn(p, onArgs...); !status.IsOK() && (!p.Curr().isEOF || status.Err == nil) {
 		var expects []string
 		asType := func(kind ValKind) string {
 			s := kind.String()
@@ -902,7 +1033,10 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 			}
 			expects = append(expects, s)
 		}
-		status.Err = bwerr.Refine(Unexpected(p), "expects %s instead of {Error}", bwstr.SmartJoin(bwstr.A{
+		if status.Err == nil {
+			status.Err = Unexpected(p)
+		}
+		status.Err = bwerr.Refine(status.Err, "expects %s instead of {Error}", bwstr.SmartJoin(bwstr.A{
 			Source: bwstr.SS{
 				SS: expects,
 			},
@@ -910,225 +1044,9 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 			NoJoinerOnMutliline: true,
 		}))
 	}
-	return
-}
-
-// ============================================================================
-
-type proxy struct {
-	p      I
-	ofs    uint
-	starts map[int]*Start
-}
-
-func (p *proxy) Curr() *PosInfo {
-	result := p.p.LookAhead(p.ofs)
-	return result
-}
-
-func (p *proxy) Forward(count uint) {
-	if count == 0 {
-		p.p.Forward(0)
-	} else {
-		ps = p.Curr()
-		for !ps.isEOF && count > 0 {
-			for _, start := range p.starts {
-				start.suffix += string(ps.rune)
-			}
-			ps = p.p.LookAhead(p.ofs + ofs)
-		}
-		ps = p.p.LookAhead(p.ofs + ofs)
-		p.ofs += count
-	}
-}
-
-func (p *proxy) LookAhead(ofs uint) *PosInfo {
-	return p.p.LookAhead(p.ofs + ofs)
-}
-
-func (p *proxy) UnexpectedA(a UnexpectedA) error {
-	p.p.Forward(p.ofs)
-	return p.p.UnexpectedA(a)
-}
-
-func (p *proxy) Start() (result *Start) {
-	p.p.Forward(Initial)
-	curr := p.Curr()
-	if result, ok = p.starts[curr.pos]; !ok {
-		result = &Start{ps: curr}
-		if p.starts == nil {
-			p.starts = map[int]*Start{}
-		}
-		p.starts[curr.pos] = result
-	}
-	return
-}
-
-func (p *proxy) Stop(start *Start) {
-	if len(start.stopped) > 0 {
-		return
-	}
-	start.stopped = where.WWFrom(1)
-	delete(p.starts, start.ps.pos)
-}
-
-// ============================================================================
-
-func Range(p I, optOpt ...Opt) (result bwtype.Range, status Status) {
-	opt := getOpt(optOpt)
-
-	var (
-		min, max interface{}
-		n        bwtype.Number
-		isNumber bool
-		isPath   bool
-		path     bw.ValPath
-	)
-
-	pp := &proxy{p: p}
-	if n, status = parseNumber(pp, opt, RangeLimitMin); status.Err != nil {
-		return
-	} else if status.OK {
-		min = n
-		isNumber = true
-	} else if path, status = Path(pp, PathOpt{Opt: opt}); status.Err != nil {
-		return
-	} else if status.OK {
-		min = path
-		isPath = true
-	}
-	if status.OK = CanSkipRunes(pp, '.', '.'); !status.OK {
-		if isNumber || isPath {
-			p.Stop(status.Start)
-			ps := status.Start.ps
-			if isNumber {
-				ps.justParsed = numberResult{n, status.Start}
-				// ps.justForward = pp.ofs
-			} else if isPath {
-				ps.justParsed = pathResult{path, status.Start}
-				// ps.justForward = pp.ofs
-			}
-		}
-		status = Status{}
-		return
-	} else if status.Start == nil {
-		status.Start = p.Start()
-	}
-	defer func() { p.Stop(status.Start) }()
-
-	p.Forward(pp.ofs)
-	var st Status
-	if max, st = parseNumber(p, opt, RangeLimitMax); st.Err != nil {
-		status.Err = st.Err
-		return
-	} else if st.OK {
-		p.Stop(st.Start)
-	} else if max, st = parsePath(p, PathOpt{Opt: opt}); st.Err != nil {
-		status.Err = st.Err
-		return
-	} else if st.OK {
-		p.Stop(st.Start)
-	} else {
-		max = nil
-	}
-
-	result, status.Err = bwtype.RangeFrom(bwtype.A{Min: min, Max: max})
-
-	return
-}
-
-// ============================================================================
-
-type PathA struct {
-	Bases     []bw.ValPath
-	isSubPath bool
-}
-
-type PathOpt struct {
-	Opt
-	Bases     []bw.ValPath
-	isSubPath bool
-}
-
-func Path(p I, optOpt ...PathOpt) (result bw.ValPath, status Status) {
-	opt := getPathOpt(optOpt)
-	result, status = parsePath(p, opt)
-	if status.OK {
-		p.Stop(status.Start)
-	}
-	return
-}
-
-func PathContent(p I, optOpt ...PathOpt) (result bw.ValPath, err error) {
-	opt := getPathOpt(optOpt)
-	p.Forward(Initial)
-	var (
-		vpi bw.ValPathItem
-		// b             bool
-		isEmptyResult bool
-	)
-	result = bw.ValPath{}
-	var st Status
-	for st.Err == nil {
-		isEmptyResult = len(result) == 0
-		if isEmptyResult && p.Curr().rune == '.' {
-			if len(opt.Bases) > 0 {
-				result = append(result, opt.Bases[0]...)
-			} else {
-				p.Forward(1)
-				break
-			}
-		} else if st = processOn(p,
-			onInt{opt: opt.Opt, f: func(idx int, start *Start) (err error) {
-				vpi = bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: idx}
-				return
-			}},
-			onId{opt: opt.Opt, f: func(s string, start *Start) (err error) {
-				vpi = bw.ValPathItem{Type: bw.ValPathItemKey, Key: s}
-				return
-			}},
-			onSubPath{opt: opt, f: func(path bw.ValPath, start *Start) (err error) {
-				vpi = bw.ValPathItem{Type: bw.ValPathItemPath, Path: path}
-				return
-			}},
-		); st.Err != nil {
-			err = st.Err
-		} else if st.OK {
-			result = append(result, vpi)
-		} else if SkipRunes(p, '#') {
-			result = append(result, bw.ValPathItem{Type: bw.ValPathItemHash})
-			break
-		} else if isEmptyResult && SkipRunes(p, '$') {
-			st = processOn(p,
-				onInt{opt: opt.Opt, f: func(idx int, start *Start) (err error) {
-					l := len(opt.Bases)
-					if nidx, b := bw.NormalIdx(idx, l); b {
-						result = append(result, opt.Bases[nidx]...)
-					} else {
-						err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)"), idx, l)})
-					}
-					return
-				}},
-				onId{opt: opt.Opt, f: func(s string, start *Start) (err error) {
-					result = append(result, bw.ValPathItem{Type: bw.ValPathItemVar, Key: s})
-					return
-				}},
-			)
-		} else {
-			st.OK = false
-		}
-		if st.Err == nil && !st.OK {
-			st.Err = Unexpected(p)
-		}
-		if st.Err == nil {
-			if !opt.isSubPath && SkipRunes(p, '?') {
-				result[len(result)-1].IsOptional = true
-			}
-			if CanSkipRunes(p, '.', '.') || !SkipRunes(p, '.') {
-				break
-			}
-		}
-	}
+	// if status.OK {
+	// 	bwdebug.Print("result", result, "status:json", status)
+	// }
 	return
 }
 
