@@ -71,7 +71,7 @@ func Len(s string) (result int) {
 			case byte(0x40) <= b && b <= byte(0x7E):
 				state = seekEsc
 			default:
-				panic(fmt.Errorf("s: %s, i: %i, b: %i", s, i, b))
+				panic(fmt.Errorf("s: %s, i: %d, b: %d", s, i, b))
 			}
 		}
 	}
