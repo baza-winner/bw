@@ -439,9 +439,9 @@ func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, status S
 	result = []string{}
 	on := On{p, status.Start, &opt}
 	if !isEmbeded {
-		base := opt.path
-		on.Opt.path = append(base, bw.ValPathItem{Type: bw.ValPathItemIdx})
-		defer func() { on.Opt.path = base }()
+		base := opt.Path
+		on.Opt.Path = append(base, bw.ValPathItem{Type: bw.ValPathItemIdx})
+		defer func() { on.Opt.Path = base }()
 	}
 	parseItem := func(r rune) {
 		on.Start = p.Start()
@@ -464,7 +464,7 @@ func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, status S
 				result = append(result, s)
 			}
 		}
-		on.Opt.path[len(on.Opt.path)-1].Idx++
+		on.Opt.Path[len(on.Opt.Path)-1].Idx++
 	}
 	for status.Err == nil {
 		if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {
@@ -628,9 +628,9 @@ func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter run
 		status.Start = p.Start()
 		defer func() { p.Stop(status.Start) }()
 		p.Forward(1)
-		base := opt.path
+		base := opt.Path
 		on := On{p, status.Start, &opt}
-		defer func() { on.Opt.path = base }()
+		defer func() { on.Opt.Path = base }()
 	LOOP:
 		for status.Err == nil {
 			if _, status.Err = SkipSpace(p, TillNonEOF); status.Err == nil {

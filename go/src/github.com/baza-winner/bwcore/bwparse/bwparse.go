@@ -120,9 +120,7 @@ type Opt struct {
 	ExcludeKinds bool
 	KindSet      ValKindSet
 
-	Base bw.ValPath
-
-	path bw.ValPath
+	Path bw.ValPath
 
 	IdVals            map[string]interface{}
 	OnId              IdFunc
@@ -146,10 +144,6 @@ type Opt struct {
 	OnValidateNumber ValidateNumberFunc
 	OnValidateRange  ValidateRangeFunc
 	OnValidatePath   ValidatePathFunc
-}
-
-func (opt Opt) Path() bw.ValPath {
-	return opt.path
 }
 
 // ============================================================================
@@ -600,7 +594,7 @@ func Array(p I, optOpt ...Opt) (result []interface{}, status Status) {
 	if status = parseDelimitedOptionalCommaSeparated(p, '[', ']', opt, func(on On, base bw.ValPath) (err error) {
 		if result == nil {
 			result = []interface{}{}
-			on.Opt.path = append(base, bw.ValPathItem{Type: bw.ValPathItemIdx})
+			on.Opt.Path = append(base, bw.ValPathItem{Type: bw.ValPathItemIdx})
 		}
 		if err == nil {
 			var ss []string
@@ -624,7 +618,7 @@ func Array(p I, optOpt ...Opt) (result []interface{}, status Status) {
 						}
 					}
 				}
-				on.Opt.path[len(on.Opt.path)-1].Idx = len(result)
+				on.Opt.Path[len(on.Opt.Path)-1].Idx = len(result)
 			}
 			err = st.Err
 		}
@@ -653,7 +647,7 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 		onKey := func(s string, start *Start) (err error) {
 			key = s
 			if opt.OnValidateMapKey != nil {
-				on.Opt.path = base
+				on.Opt.Path = base
 				on.Start = start
 				err = opt.OnValidateMapKey(on, result, key)
 			}
@@ -686,7 +680,7 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 						st.Err = ExpectsSpace(p)
 					} else {
 						path[len(path)-1].Key = key
-						on.Opt.path = path
+						on.Opt.Path = path
 						on.Start = p.Start()
 						defer func() { p.Stop(on.Start) }()
 

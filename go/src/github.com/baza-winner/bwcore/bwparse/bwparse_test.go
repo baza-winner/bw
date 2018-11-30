@@ -384,16 +384,16 @@ func TestOptEvents(t *testing.T) {
 				result = []eventLogItem{}
 				var val interface{}
 				if val, st = bwparse.Val(p, bwparse.Opt{
-					Base: base,
+					Path: base,
 					OnValidateMapKey: func(on bwparse.On, m map[string]interface{}, key string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), key, "OnValidateMapKey", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), key, "OnValidateMapKey", on.Start.Suffix()})
 						return
 					},
 					OnParseMapElem: func(on bwparse.On, m map[string]interface{}, key string) (status bwparse.Status) {
 						var val interface{}
 						var kindSet bwparse.ValKindSet
 						var pathStr string
-						switch pathStr = on.Opt.Path().String(); pathStr {
+						switch pathStr = on.Opt.Path.String(); pathStr {
 						case "enum.0.keys.int":
 							kindSet = bwparse.ValKindSetFrom(bwparse.ValInt)
 						case "enum.0.keys.uint":
@@ -411,50 +411,50 @@ func TestOptEvents(t *testing.T) {
 						return
 					},
 					OnValidateMap: func(on bwparse.On, m map[string]interface{}) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), m, "OnValidateMap", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), m, "OnValidateMap", on.Start.Suffix()})
 						return
 					},
 					OnParseArrayElem: func(on bwparse.On, vals []interface{}) (outVals []interface{}, status bwparse.Status) {
 						var val interface{}
 						if val, status = bwparse.Val(p, *on.Opt); status.IsOK() {
 							// bwdebug.Print("val", val, "status:json", status, "")
-							result = append(result, eventLogItem{on.Opt.Path().String(), val, "OnParseArrayElem", status.Start.Suffix()})
+							result = append(result, eventLogItem{on.Opt.Path.String(), val, "OnParseArrayElem", status.Start.Suffix()})
 							outVals = append(vals, val)
 						}
 						return
 					},
 					OnValidateArray: func(on bwparse.On, vals []interface{}) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), vals, "OnValidateArray", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), vals, "OnValidateArray", on.Start.Suffix()})
 						return
 					},
 					OnValidateNumber: func(on bwparse.On, n bwtype.Number) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), n, "OnValidateNumber", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), n, "OnValidateNumber", on.Start.Suffix()})
 						return
 					},
 					OnValidateRange: func(on bwparse.On, rng bwtype.Range) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), rng, "OnValidateRange", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), rng, "OnValidateRange", on.Start.Suffix()})
 						return
 					},
 					OnValidateString: func(on bwparse.On, s string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnValidateString", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), s, "OnValidateString", on.Start.Suffix()})
 						return
 					},
 					OnValidateArrayOfStringElem: func(on bwparse.On, ss []string, s string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnValidateArrayOfStringElem", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), s, "OnValidateArrayOfStringElem", on.Start.Suffix()})
 						return
 					},
 					OnValidateArrayOfString: func(on bwparse.On, ss []string) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), ss, "OnValidateArrayOfString", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), ss, "OnValidateArrayOfString", on.Start.Suffix()})
 						return
 					},
 					OnId: func(on bwparse.On, s string) (val interface{}, ok bool, err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), s, "OnId", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), s, "OnId", on.Start.Suffix()})
 						val = s
 						ok = true
 						return
 					},
 					OnValidatePath: func(on bwparse.On, path bw.ValPath) (err error) {
-						result = append(result, eventLogItem{on.Opt.Path().String(), path, "OnValidatePath", on.Start.Suffix()})
+						result = append(result, eventLogItem{on.Opt.Path.String(), path, "OnValidatePath", on.Start.Suffix()})
 						return
 					},
 				}); st.IsOK() {
