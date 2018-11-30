@@ -989,9 +989,17 @@ func TestVal(t *testing.T) {
 				},
 				{in: `1_000_000_000_000_000_000_000..`,
 					opt: bwparse.Opt{
-						KindSet: bwparse.ValKindSetFrom(bwparse.ValRange),
+						KindSet:                 bwparse.ValKindSetFrom(bwparse.ValRange),
+						RangeLimitMinOwnKindSet: bwparse.ValKindSetFrom(bwparse.ValUint),
 					},
 					out: "strconv.ParseUint: parsing \"1000000000000000000000\": value out of range at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m1_000_000_000_000_000_000_000\x1b[0m..\n",
+				},
+				{in: `..1_000_000_000_000_000_000_000`,
+					opt: bwparse.Opt{
+						KindSet:                 bwparse.ValKindSetFrom(bwparse.ValRange),
+						RangeLimitMaxOwnKindSet: bwparse.ValKindSetFrom(bwparse.ValUint),
+					},
+					out: "strconv.ParseUint: parsing \"1000000000000000000000\": value out of range at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m..\x1b[91m1_000_000_000_000_000_000_000\x1b[0m\n",
 				},
 			} {
 				tests[v.in] = bwtesting.Case{
@@ -1001,6 +1009,7 @@ func TestVal(t *testing.T) {
 			}
 			return tests
 		}(),
+		// `..1_000_000_000_000_000_000_000`,
 	)
 }
 
@@ -1093,6 +1102,55 @@ func TestBool(t *testing.T) {
 					Panic: v.out,
 				}
 			}
+			return tests
+		}(),
+	)
+}
+
+func TestNumber(t *testing.T) {
+	bwtesting.BwRunTests(t,
+		func(s string, opt bwparse.Opt) (result bwtype.Number) {
+			p := bwparse.From(bwrune.FromString(s))
+			var st bwparse.Status
+			if result, st = bwparse.Number(p, opt); st.Err == nil {
+				st.Err = end(p, true)
+			}
+			if st.Err != nil {
+				bwerr.PanicErr(st.Err)
+			}
+			return
+		},
+		func() map[string]bwtesting.Case {
+			tests := map[string]bwtesting.Case{}
+			for _, v := range []struct {
+				in  string
+				opt bwparse.Opt
+				out bwtype.Number
+			}{
+				{in: "3.14", out: bwtype.MustNumberFrom(3.14)},
+				{in: "300", out: bwtype.MustNumberFrom(300)},
+				{in: "-100", out: bwtype.MustNumberFrom(-100)},
+				// {in: "off", out: false},
+			} {
+				tests[bw.Spew.Sprintf("parse(%q) => %v", v.in, v.out)] = bwtesting.Case{
+					In:  []interface{}{v.in, v.opt},
+					Out: []interface{}{v.out},
+				}
+			}
+			// for _, v := range []struct {
+			// 	in         string
+			// 	optIdTrue  bwset.String
+			// 	optIdFalse bwset.String
+			// 	out        string
+			// }{
+			// 	{in: "on", out: "unexpected char \x1b[96;1m'o'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m111\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mo\x1b[0mn\n"},
+			// 	{in: "off", optIdTrue: bwset.StringFrom("on"), out: "unexpected char \x1b[96;1m'o'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m111\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mo\x1b[0mff\n"},
+			// } {
+			// 	tests[bw.Spew.Sprintf("parse(%q, opt.IdTrue: %s, opt.IdFalse: %s) => %v", v.in, bwjson.S(v.optIdTrue), bwjson.S(v.optIdFalse), v.out)] = bwtesting.Case{
+			// 		In:    []interface{}{v.in, v.optIdTrue, v.optIdFalse},
+			// 		Panic: v.out,
+			// 	}
+			// }
 			return tests
 		}(),
 	)

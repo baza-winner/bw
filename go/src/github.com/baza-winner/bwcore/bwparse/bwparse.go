@@ -120,6 +120,9 @@ type Opt struct {
 	ExcludeKinds bool
 	KindSet      ValKindSet
 
+	RangeLimitMinOwnKindSet ValKindSet // empty means 'inherits'
+	RangeLimitMaxOwnKindSet ValKindSet // empty means 'inherits'
+
 	Path bw.ValPath
 
 	IdVals            map[string]interface{}
@@ -516,30 +519,9 @@ var EscapeRunes = map[rune]rune{
 
 func Int(p I, optOpt ...Opt) (result int, status Status) {
 	opt := getOpt(optOpt)
-	nonNegativeNumber := false
-	if opt.NonNegativeNumber != nil {
-		nonNegativeNumber = opt.NonNegativeNumber(RangeLimitNone)
-	}
-	var justParsed numberResult
-	curr := p.Curr()
-	if justParsed, status.OK = curr.justParsed.(numberResult); status.OK {
-		if result, status.OK = bwtype.Int(justParsed.n.Val()); status.OK {
-			if status.OK = !nonNegativeNumber || result >= 0; status.OK {
-				status.Start = justParsed.start
-				p.Forward(uint(len(justParsed.start.suffix)))
-			}
-			return
-		}
-	}
-	var s string
-	if s, _, status = looksLikeNumber(p, nonNegativeNumber); status.IsOK() {
-		defer func() { p.Stop(status.Start) }()
-		b := true
-		for b {
-			s, b = addDigit(p, s)
-		}
-		result, status.Err = bwstr.ParseInt(s)
-		status.UnexpectedIfErr(p)
+	result, status = parseInt(p, opt, RangeLimitNone)
+	if status.OK {
+		p.Stop(status.Start)
 	}
 	return
 }
@@ -818,34 +800,81 @@ func Range(p I, optOpt ...Opt) (result bwtype.Range, status Status) {
 	opt := getOpt(optOpt)
 
 	var (
-		min, max interface{}
-		n        bwtype.Number
-		isNumber bool
-		isPath   bool
-		path     bw.ValPath
+		min, rangeLimitVal interface{}
+		isNumber           bool
+		isPath             bool
+		justParsedPath     bw.ValPath
 	)
+
+	hasKind := func(kind ValKind, rlk RangeLimitKind) (result bool) {
+		var ks ValKindSet
+		if rlk == RangeLimitMin {
+			ks = opt.RangeLimitMinOwnKindSet
+		} else {
+			ks = opt.RangeLimitMaxOwnKindSet
+		}
+		if len(ks) != 0 {
+			result = ks.Has(kind)
+		} else if len(opt.KindSet) == 0 {
+			result = true
+		} else if !opt.ExcludeKinds {
+			result = opt.KindSet.Has(kind)
+		} else if opt.ExcludeKinds {
+			result = !opt.KindSet.Has(kind)
+		}
+		return
+	}
+
+	onArgs := func(rlk RangeLimitKind) (onArgs []on) {
+		if hasKind(ValPath, rlk) {
+			onArgs = append(onArgs, onPath{opt: PathOpt{Opt: opt}, f: func(path bw.ValPath, start *Start) (err error) {
+				justParsedPath = path
+				rangeLimitVal = path
+				isPath = true
+				return
+			}})
+		}
+
+		if hasKind(ValNumber, rlk) {
+			onArgs = append(onArgs, onNumber{opt: opt, rlk: rlk, f: func(n bwtype.Number, start *Start) (err error) {
+				rangeLimitVal = n
+				isNumber = true
+				return
+			}})
+		} else if hasKind(ValInt, rlk) {
+			onArgs = append(onArgs, onInt{opt: opt, rlk: rlk, f: func(i int, start *Start) (err error) {
+				rangeLimitVal = i
+				isNumber = true
+				return
+			}})
+		} else if hasKind(ValUint, rlk) {
+			onArgs = append(onArgs, onUint{opt: opt, f: func(u uint, start *Start) (err error) {
+				rangeLimitVal = u
+				isNumber = true
+				return
+			}})
+		}
+		return
+	}
 
 	pp := &proxy{p: p}
 	{
-		if n, status = parseNumber(pp, opt, RangeLimitMin); status.Err != nil {
+		if status = processOn(pp, onArgs(RangeLimitMin)...); status.Err != nil {
+			if status.OK {
+				pp.Stop(status.Start)
+			}
 			return
-		} else if status.OK {
-			min = n
-			isNumber = true
-		} else if path, status = Path(pp, PathOpt{Opt: opt}); status.Err != nil {
-			return
-		} else if status.OK {
-			min = path
-			isPath = true
 		}
+		min = rangeLimitVal
+
 		if status.OK = CanSkipRunes(pp, '.', '.'); !status.OK {
 			if isNumber || isPath {
-				p.Stop(status.Start)
+				pp.Stop(status.Start)
 				ps := status.Start.ps
 				if isNumber {
-					ps.justParsed = numberResult{n, status.Start}
+					ps.justParsed = numberResult{bwtype.MustNumberFrom(min), status.Start}
 				} else if isPath {
-					ps.justParsed = pathResult{path, status.Start}
+					ps.justParsed = pathResult{justParsedPath, status.Start}
 				}
 			}
 			status = Status{}
@@ -857,22 +886,16 @@ func Range(p I, optOpt ...Opt) (result bwtype.Range, status Status) {
 	p.Forward(pp.ofs + 2)
 	pp = nil
 
+	rangeLimitVal = nil
 	var st Status
-	if max, st = parseNumber(p, opt, RangeLimitMax); st.Err != nil {
-		status.Err = st.Err
-		return
-	} else if st.OK {
+	if st = processOn(p, onArgs(RangeLimitMax)...); st.OK {
 		p.Stop(st.Start)
-	} else if max, st = parsePath(p, PathOpt{Opt: opt}); st.Err != nil {
-		status.Err = st.Err
-		return
-	} else if st.OK {
-		p.Stop(st.Start)
-	} else {
-		max = nil
 	}
-
-	result, status.Err = bwtype.RangeFrom(bwtype.A{Min: min, Max: max})
+	if st.Err != nil {
+		status.Err = st.Err
+	} else {
+		result, status.Err = bwtype.RangeFrom(bwtype.A{Min: min, Max: rangeLimitVal})
+	}
 
 	return
 }

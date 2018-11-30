@@ -247,6 +247,7 @@ type on interface {
 type onInt struct {
 	f   func(i int, start *Start) (err error)
 	opt Opt
+	rlk RangeLimitKind
 }
 
 func (onInt) IsOn() {}
@@ -261,6 +262,7 @@ func (onUint) IsOn() {}
 type onNumber struct {
 	f   func(n bwtype.Number, start *Start) (err error)
 	opt Opt
+	rlk RangeLimitKind
 }
 
 func (onNumber) IsOn() {}
@@ -350,14 +352,15 @@ func processOn(p I, processors ...on) (status Status) {
 		b    bool
 		rng  bwtype.Range
 	)
+	p.Forward(Initial)
 	for _, processor := range processors {
 		switch t := processor.(type) {
 		case onInt:
-			i, status = Int(p, t.opt)
+			i, status = parseInt(p, t.opt, t.rlk)
 		case onUint:
 			u, status = Uint(p, t.opt)
 		case onNumber:
-			n, status = Number(p, t.opt)
+			n, status = parseNumber(p, t.opt, t.rlk)
 		case onRange:
 			rng, status = Range(p, t.opt)
 		case onString:
@@ -510,6 +513,39 @@ func parsePath(p I, opt PathOpt) (result bw.ValPath, status Status) {
 
 // ============================================================================
 
+func looksLikeNumber(p I, nonNegative bool) (s string, isNegative bool, status Status) {
+	var (
+		r         rune
+		needDigit bool
+	)
+	p.Forward(Initial)
+	r = p.Curr().rune
+	if status.OK = r == '+'; status.OK {
+		needDigit = true
+	} else if status.OK = !nonNegative && r == '-'; status.OK {
+		s = string(r)
+		needDigit = true
+		isNegative = true
+	} else if status.OK = IsDigit(r); status.OK {
+		s = string(r)
+	} else {
+		return
+	}
+	status.Start = p.Start()
+	p.Forward(1)
+	if needDigit {
+		if r = p.Curr().rune; !IsDigit(r) {
+			status.Err = Unexpected(p)
+		} else {
+			p.Forward(1)
+			s += string(r)
+		}
+	}
+	return
+}
+
+// ============================================================================
+
 type numberResult struct {
 	n     bwtype.Number
 	start *Start
@@ -518,6 +554,36 @@ type numberResult struct {
 type pathResult struct {
 	path  bw.ValPath
 	start *Start
+}
+
+// ============================================================================
+
+func parseInt(p I, opt Opt, rangeLimitKind RangeLimitKind) (result int, status Status) {
+	nonNegativeNumber := false
+	if opt.NonNegativeNumber != nil {
+		nonNegativeNumber = opt.NonNegativeNumber(rangeLimitKind)
+	}
+	var justParsed numberResult
+	curr := p.Curr()
+	if justParsed, status.OK = curr.justParsed.(numberResult); status.OK {
+		if result, status.OK = bwtype.Int(justParsed.n.Val()); status.OK {
+			if status.OK = !nonNegativeNumber || result >= 0; status.OK {
+				status.Start = justParsed.start
+				p.Forward(uint(len(justParsed.start.suffix)))
+			}
+			return
+		}
+	}
+	var s string
+	if s, _, status = looksLikeNumber(p, nonNegativeNumber); status.IsOK() {
+		b := true
+		for b {
+			s, b = addDigit(p, s)
+		}
+		result, status.Err = bwstr.ParseInt(s)
+		status.UnexpectedIfErr(p)
+	}
+	return
 }
 
 // ============================================================================
@@ -654,39 +720,6 @@ func parseDelimitedOptionalCommaSeparated(p I, openDelimiter, closeDelimiter run
 					}
 				}
 			}
-		}
-	}
-	return
-}
-
-// ============================================================================
-
-func looksLikeNumber(p I, nonNegative bool) (s string, isNegative bool, status Status) {
-	var (
-		r         rune
-		needDigit bool
-	)
-	p.Forward(Initial)
-	r = p.Curr().rune
-	if status.OK = r == '+'; status.OK {
-		needDigit = true
-	} else if status.OK = !nonNegative && r == '-'; status.OK {
-		s = string(r)
-		needDigit = true
-		isNegative = true
-	} else if status.OK = IsDigit(r); status.OK {
-		s = string(r)
-	} else {
-		return
-	}
-	status.Start = p.Start()
-	p.Forward(1)
-	if needDigit {
-		if r = p.Curr().rune; !IsDigit(r) {
-			status.Err = Unexpected(p)
-		} else {
-			p.Forward(1)
-			s += string(r)
 		}
 	}
 	return
