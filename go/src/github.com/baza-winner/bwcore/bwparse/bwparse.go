@@ -73,7 +73,7 @@ const (
 type I interface {
 	Curr() *PosInfo
 	Forward(count uint)
-	UnexpectedA(a UnexpectedA) error
+	Error(a A) error
 	LookAhead(ofs uint) *PosInfo
 	Start() *Start
 	Stop(start *Start)
@@ -248,12 +248,12 @@ func (p *P) Start() (result *Start) {
 	return
 }
 
-type UnexpectedA struct {
+type A struct {
 	Start *Start
 	Fmt   bw.I
 }
 
-func (p *P) UnexpectedA(a UnexpectedA) error {
+func (p *P) Error(a A) error {
 	var start Start
 	if a.Start == nil {
 		start = Start{ps: p.curr}
@@ -278,11 +278,11 @@ func (p *P) UnexpectedA(a UnexpectedA) error {
 // ============================================================================
 
 func Unexpected(p I, optStart ...*Start) error {
-	var a UnexpectedA
+	var a A
 	if len(optStart) > 0 {
 		a.Start = optStart[0]
 	}
-	return p.UnexpectedA(a)
+	return p.Error(a)
 }
 
 func Expects(p I, err error, what string) error {
@@ -400,7 +400,7 @@ func (v Status) NoErr() bool {
 
 func (v *Status) UnexpectedIfErr(p I) {
 	if v.Err != nil {
-		v.Err = p.UnexpectedA(UnexpectedA{v.Start, bwerr.Err(v.Err)})
+		v.Err = p.Error(A{v.Start, bwerr.Err(v.Err)})
 	}
 }
 
@@ -631,7 +631,14 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 			if opt.OnValidateMapKey != nil {
 				on.Opt.Path = base
 				on.Start = start
-				err = opt.OnValidateMapKey(on, result, key)
+				if _, b := result[key]; b {
+					err = p.Error(A{
+						Start: start,
+						Fmt:   bw.Fmt(ansi.String("duplicate key <ansiErr>%s<ansi>"), start.Suffix()),
+					})
+				} else {
+					err = opt.OnValidateMapKey(on, result, key)
+				}
 			}
 			return
 		}
@@ -667,7 +674,7 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 						defer func() { p.Stop(on.Start) }()
 
 						st.OK = false
-						if opt.OnParseArrayElem != nil {
+						if opt.OnParseMapElem != nil {
 							st = opt.OnParseMapElem(on, result, key)
 						}
 						if st.Err == nil && !st.OK {
@@ -767,7 +774,7 @@ func PathContent(p I, optOpt ...PathOpt) (bw.ValPath, error) {
 						if nidx, b := bw.NormalIdx(idx, l); b {
 							result = append(result, opt.Bases[nidx]...)
 						} else {
-							err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansiUnexpectedBasePathIdx, idx, l)})
+							err = p.Error(A{start, bw.Fmt(ansiUnexpectedBasePathIdx, idx, l)})
 						}
 						return
 					}},
@@ -906,7 +913,7 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 	opt := getOpt(optOpt)
 	var onArgs []on
 	kinds := []ValKind{}
-	kindSetIsEmpty := len(opt.KindSet) == 0
+	kindSetIsEmpty := len(opt.KindSet) == 0 //|| len(opt.KindSet) == 1 && opt.KindSet.has(ValUn)
 	hasKind := func(kind ValKind) (result bool) {
 		if kindSetIsEmpty {
 			result = true
@@ -1031,7 +1038,7 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 					}
 				}
 				if !b && err == nil {
-					err = p.UnexpectedA(UnexpectedA{start, bw.Fmt(ansiUnexpectedWord, s)})
+					err = p.Error(A{start, bw.Fmt(ansiUnexpectedWord, s)})
 					if expects := getIdExpects(opt, ""); len(expects) > 0 {
 						err = Expects(p, err, expects)
 					}
@@ -1077,6 +1084,206 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 				NoJoinerOnMutliline: true,
 			}),
 		)
+	}
+	return
+}
+
+// ============================================================================
+
+func ValDef(p I) (result bwtype.Def, status Status) {
+	expectedTypes := bwtype.ValKindSetFrom(
+		bwtype.ValString,
+		bwtype.ValBool,
+		bwtype.ValInt,
+		bwtype.ValNumber,
+		bwtype.ValMap,
+		bwtype.ValArray,
+		bwtype.ValArrayOf,
+	)
+	string2type := map[string]bwtype.ValKind{}
+	for _, t := range expectedTypes.ToSlice() {
+		s := t.String()
+		string2type[s] = t
+	}
+	var (
+		tp bwtype.ValKind
+		ok bool
+	)
+	result.Types = bwtype.ValKindSet{}
+	addType := func(on On, tp bwtype.ValKind) (err error) {
+		var dontMix bwtype.ValKindSet
+		switch tp {
+		case bwtype.ValNumber, bwtype.ValInt:
+			dontMix = bwtype.ValKindSetFrom(bwtype.ValInt, bwtype.ValNumber)
+		case bwtype.ValArray, bwtype.ValArrayOf:
+			dontMix = bwtype.ValKindSetFrom(bwtype.ValArray, bwtype.ValArrayOf)
+		}
+		if len(dontMix) > 0 {
+			for _, vk := range dontMix.ToSlice() {
+				if result.Types.Has(vk) {
+					err = p.Error(A{Start: on.Start, Fmt: bw.Fmt(ansi.String("<ansiErr>%s<ansi> can not be mixed with <ansiVal>%s"), tp, vk)})
+					return
+				}
+			}
+		}
+		result.Types.Add(tp)
+		return
+	}
+	validKeys := bwset.StringFrom("type", "range", "enum", "keys", "elem", "arrayElem", "default", "isOptional")
+	setForType := func(opt Opt) Opt {
+		opt.KindSet.Add(ValId, ValString, ValArray)
+		opt.OnId = func(on On, s string) (val interface{}, ok bool, err error) {
+			if tp, ok = string2type[s]; ok {
+				err = addType(on, tp)
+			}
+			return
+		}
+		opt.OnValidateString = func(on On, s string) (err error) {
+			if tp, ok = string2type[s]; ok {
+				err = addType(on, tp)
+			} else {
+				err = Unexpected(p, on.Start)
+			}
+			return
+		}
+		opt.OnParseArrayElem = func(on On, vals []interface{}) (outVals []interface{}, status Status) {
+			var val interface{}
+			kindSet := on.Opt.KindSet
+			defer func() { on.Opt.KindSet = kindSet }()
+			on.Opt.KindSet = ValKindSetFrom(ValId, ValString)
+			if val, status = Val(p, *on.Opt); status.IsOK() {
+				outVals = append(vals, val)
+			}
+			return
+		}
+		return opt
+	}
+	checkArrayOf := func(start *Start) (err error) {
+		if result.Types.Has(bwtype.ValArrayOf) && len(result.Types) == 1 {
+			err = p.Error(A{
+				Start: start,
+				Fmt:   bw.A{Fmt: "<ansiType>ArrayOf<ansi> must be followed by another <ansiVar>Type<ansi>"},
+			})
+		}
+		return err
+	}
+	var val interface{}
+	if val, status = Val(p, setForType(Opt{
+		KindSet: ValKindSetFrom(ValMap),
+		OnValidateMapKey: func(on On, m map[string]interface{}, key string) (err error) {
+			if !validKeys.Has(key) {
+				err = p.Error(A{
+					Start: on.Start,
+					Fmt:   bw.Fmt(ansi.String("unexpected key `<ansiErr>%s<ansi>`"), on.Start.Suffix()),
+				})
+			}
+			return
+		},
+		OnParseMapElem: func(on On, m map[string]interface{}, key string) (status Status) {
+			switch key {
+			case "type":
+				if _, status = Val(p, setForType(Opt{KindSet: ValKindSet{}})); status.IsOK() {
+					validKeys = bwset.StringFrom("isOptional", "default")
+					for _, vk := range result.Types.ToSlice() {
+						switch vk {
+						case bwtype.ValString:
+							validKeys.Add("enum")
+						case bwtype.ValInt, bwtype.ValNumber:
+							validKeys.Add("range")
+						case bwtype.ValMap:
+							validKeys.Add("keys")
+							validKeys.Add("elem")
+						case bwtype.ValArray:
+							validKeys.Add("arrayElem")
+							validKeys.Add("elem")
+						}
+					}
+					if status.Err = checkArrayOf(status.Start); status.Err == nil {
+						if result.Enum != nil && !result.Types.Has(bwtype.ValString) {
+							status.Err = p.Error(A{
+								Start: status.Start,
+								Fmt:   bw.A{Fmt: "key <ansiVar>enum<ansi> is specified, so value of key <ansiVar>type<ansi> expects to have <ansiVal>String<ansi>"},
+							})
+						} else if result.Range.Kind() != bwtype.RangeNo && !(result.Types.Has(bwtype.ValInt) || result.Types.Has(bwtype.ValNumber)) {
+							status.Err = p.Error(A{
+								Start: status.Start,
+								Fmt:   bw.A{Fmt: "key <ansiVar>range<ansi> is specified, so value of key <ansiVar>type<ansi> expects to have <ansiVal>Int<ansi> or <ansiVal>Number<ansi>"},
+							})
+						}
+					}
+				}
+			case "enum":
+				_, status = Val(p, Opt{
+					KindSet: ValKindSetFrom(ValString, ValArray),
+					OnValidateString: func(on On, s string) (err error) {
+						if result.Enum == nil {
+							result.Enum = bwset.String{}
+						}
+						result.Enum.Add(s)
+						return
+					},
+					OnParseArrayElem: func(on On, vals []interface{}) (outVals []interface{}, status Status) {
+						var s string
+						if s, status = String(p, *on.Opt); status.IsOK() {
+							if result.Enum == nil {
+								result.Enum = bwset.String{}
+							}
+							result.Enum.Add(s)
+							outVals = append(vals, s)
+						} else if status.Err == nil {
+							status.Err = Expects(p, nil, "<ansiType>String<ansi>")
+						}
+						return
+					},
+				})
+			case "range":
+				if result.Range, status = Range(p, Opt{KindSet: ValKindSetFrom(ValNumber)}); !status.OK && status.Err == nil {
+					status.Err = Expects(p, nil, "<ansiType>Range<ansi>")
+				}
+			case "keys":
+				if _, status = Map(p, Opt{
+					OnParseMapElem: func(on On, m map[string]interface{}, key string) (status Status) {
+						if result.Keys == nil {
+							result.Keys = map[string]bwtype.Def{}
+						}
+						result.Keys[key], status = ValDef(p)
+						m[key] = nil
+						return
+					},
+				}); !status.OK && status.Err == nil {
+					status.Err = Expects(p, nil, "<ansiType>Map<ansi>")
+				}
+			case "elem", "arrayElem":
+				var def bwtype.Def
+				if def, status = ValDef(p); status.IsOK() {
+					if key == "elem" {
+						result.Elem = &def
+					} else {
+						result.ArrayElem = &def
+					}
+				} else if status.Err == nil {
+					status.Err = Expects(p, nil, "<ansiType>Def<ansi>")
+				}
+			case "isOptional":
+				if result.IsOptional, status = Bool(p); status.IsOK() {
+					if !result.IsOptional && result.Default != nil {
+						status.Err = p.Error(A{
+							Start: status.Start,
+							Fmt:   bw.A{Fmt: "<ansiVar>default<ansi> value is specified, so value of key <ansiVar>isOptional<ansi> must not be <ansiVal>false<ansi>"},
+						})
+					}
+				}
+				// case "default":
+				// 	if _, status = Val(p, setForType(Opt{KindSet: ValKindSet{}})); status.IsOK() {
+				// 	}
+			}
+			m[key] = nil
+			return
+		},
+	})); status.IsOK() {
+		if _, ok := val.(map[string]interface{}); !ok {
+			status.Err = checkArrayOf(status.Start)
+		}
 	}
 	return
 }

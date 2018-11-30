@@ -42,9 +42,9 @@ type PathStr struct {
 
 func (v PathStr) Path() (result bw.ValPath, err error) {
 	p := bwparse.From(bwrune.FromString(v.S))
-	a := bwparse.PathA{Bases: v.Bases}
-	if result, err = p.PathContent(a); err == nil {
-		err = p.SkipSpace(bwparse.TillEOF)
+	opt := bwparse.PathOpt{Bases: v.Bases}
+	if result, err = bwparse.PathContent(p, opt); err == nil {
+		_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
 	}
 	return
 }
@@ -185,11 +185,13 @@ func TemplateFrom(s string) (result Template) {
 			}
 		}()
 		p := bwparse.From(bwrune.FromString(s))
-		var ok bool
-		if result, _, ok, err = p.Val(); err == nil && ok {
-			err = p.SkipSpace(bwparse.TillEOF)
-		} else if err == nil {
-			err = p.Unexpected()
+		var st bwparse.Status
+		if result, st = bwparse.Val(p); st.IsOK() {
+			_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
+		} else if st.Err != nil {
+			err = st.Err
+		} else {
+			err = bwparse.Unexpected(p)
 		}
 		return
 	}(s); err != nil {

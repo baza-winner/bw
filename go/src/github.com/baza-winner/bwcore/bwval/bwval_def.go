@@ -61,14 +61,16 @@ func DefFrom(src bwrune.Provider, optPathProvider ...bw.ValPathProvider) (result
 			"ArrayOf": "ArrayOf",
 		}},
 	)
-	if err = p.SkipSpace(bwparse.TillNonEOF); err != nil {
+	if _, err = bwparse.SkipSpace(p, bwparse.TillNonEOF); err != nil {
 		return
 	}
 	var def interface{}
-	var ok bool
-	if def, _, ok, err = p.Val(); !ok || err != nil {
-		if err == nil {
-			err = p.Unexpected()
+	var st bwparse.Status
+	if def, st = bwparse.Val(p); !st.IsOK() {
+		if st.Err != nil {
+			err = st.Err
+		} else {
+			err = bwparse.Unexpected(p)
 		}
 		return
 	}
@@ -225,7 +227,7 @@ func (def Holder) compileDef() (result *Def, err error) {
 			if max, err = getLimit("max"); err != nil {
 				return
 			}
-			if limCount == 2 && max.IsLessThan(min) {
+			if limCount == 2 && max.MustNumber().IsLessThan(min.MustNumber()) {
 				err = def.maxLessThanMinError(max, min)
 				return
 			}

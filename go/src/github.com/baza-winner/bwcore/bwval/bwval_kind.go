@@ -20,15 +20,16 @@ const (
 	ValNil
 	ValBool
 	ValInt
+	ValUint
 	ValFloat64
 	ValString
 	ValArray
 	ValArrayOfString
 	ValArrayOf
 	ValMap
-	// ValNumber
+	ValNumber
 	ValRange
-	ValKindAbove
+	// ValKindAbove
 )
 
 // ============================================================================

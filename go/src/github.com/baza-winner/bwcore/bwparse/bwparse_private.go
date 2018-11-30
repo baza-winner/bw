@@ -50,7 +50,7 @@ func init() {
 	ansiGetSuffixAssert = ansi.String("<ansiVar>ps.pos<ansi> (<ansiVal>%d<ansi>) > <ansiVar>p.curr.pos<ansi> (<ansiVal>%d<ansi>)")
 	ansiUnexpectedEOF = ansi.String("unexpected end of string")
 	ansiUnexpectedChar = ansi.String("unexpected char <ansiVal>%q<ansiReset> (<ansiVar>charCode<ansi>: <ansiVal>%d<ansi>)")
-	ansiUnexpectedWord = ansi.String("unexpected <ansiErr>`%s`<ansi>")
+	ansiUnexpectedWord = ansi.String("unexpected `<ansiErr>%s<ansi>`")
 	ansiUnexpectedBasePathIdx = ansi.String("unexpected base path idx <ansiVal>%d<ansi> (len(bases): <ansiVal>%d)")
 	ansiType = ansi.String("<ansiType>%s")
 	ansiVal = ansi.String("<ansiVal>%s")
@@ -219,9 +219,9 @@ func (p *proxy) LookAhead(ofs uint) *PosInfo {
 	return p.p.LookAhead(p.ofs + ofs)
 }
 
-func (p *proxy) UnexpectedA(a UnexpectedA) error {
+func (p *proxy) Error(a A) error {
 	p.p.Forward(p.ofs)
-	return p.p.UnexpectedA(a)
+	return p.p.Error(a)
 }
 
 func (p *proxy) Start() (result *Start) {

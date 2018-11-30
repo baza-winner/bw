@@ -7,6 +7,7 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwset"
 )
 
 // ============================================================================
@@ -472,7 +473,148 @@ func (r Range) MarshalJSON() ([]byte, error) {
 
 // ============================================================================
 
+// ValKind - разновидность interface{}-значения
+type ValKind uint8
+
+// разновидности interface{}-значения
+const (
+	ValUnknown ValKind = iota
+	ValNil
+	ValString
+	ValBool
+	ValInt
+	ValUint
+	ValFloat64
+	ValNumber
+	ValPath
+	ValRange
+	ValMap
+	ValArray
+	ValArrayOfString
+	ValArrayOf
+	// ValKindAbove
+)
+
+// MarshalJSON encoding/json support
+func (v ValKind) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v.String())
+}
+
+// ============================================================================
+
+//go:generate bwsetter -type=ValKind -test
+
+//go:generate stringer -type ValKind -trimprefix Val
+
+const (
+	_ValKindSetTestItemA ValKind = ValNil
+	_ValKindSetTestItemB ValKind = ValBool
+)
+
+// ============================================================================
+
+func ValKindFromString(s string) (result ValKind, err error) {
+	var ok bool
+	if result, ok = mapValKindFromString[s]; !ok {
+		err = bwerr.From(ansiUknownValKind, result)
+	}
+	return
+}
+
+// ============================================================================
+
+// Kind - определяет разновидность  interface{}-значения
+func Kind(val interface{}) (result interface{}, kind ValKind) {
+	if val == nil {
+		kind = ValNil
+	} else {
+		caseNumber := func(val interface{}) {
+			if i, ok := Int(val); ok {
+				result = i
+				kind = ValInt
+			} else if u, ok := Uint(val); ok {
+				result = u
+				kind = ValUint
+			} else if f, ok := Float64(val); ok {
+				result = f
+				kind = ValFloat64
+			}
+		}
+		switch t := val.(type) {
+		case bool:
+			result = t
+			kind = ValBool
+		case string:
+			result = t
+			kind = ValString
+		case map[string]interface{}:
+			result = t
+			kind = ValMap
+		case []interface{}:
+			result = t
+			kind = ValArray
+		case []string:
+			result = t
+			kind = ValArrayOfString
+		case bw.ValPath:
+			result = t
+			kind = ValPath
+		case Range:
+			result = t
+			kind = ValRange
+		case Number:
+			caseNumber(t.Val)
+		default:
+			caseNumber(val)
+		}
+	}
+	return
+}
+
+// ============================================================================
+
+type Def struct {
+	Types      ValKindSet
+	IsOptional bool
+	Enum       bwset.String
+	Range      Range
+	Keys       map[string]Def
+	Elem       *Def
+	ArrayElem  *Def
+	Default    interface{}
+}
+
+func (v Def) MarshalJSON() ([]byte, error) {
+	result := map[string]interface{}{}
+	result["Types"] = v.Types
+	result["IsOptional"] = v.IsOptional
+	if v.Enum != nil {
+		result["Enum"] = v.Enum
+	}
+	if v.Range.Kind() != RangeNo {
+		result["Range"] = v.Range
+	}
+	if v.Keys != nil {
+		result["keys"] = v.Keys
+	}
+	if v.Elem != nil {
+		result["Elem"] = *(v.Elem)
+	}
+	if v.ArrayElem != nil {
+		result["ArrayElem"] = *(v.ArrayElem)
+	}
+	if v.Default != nil {
+		result["Default"] = v.Default
+	}
+	return json.Marshal(result)
+}
+
+// ============================================================================
+
 var (
+	mapValKindFromString = map[string]ValKind{}
+
+	ansiUknownValKind            string
 	ansiVarValCanNotBeRangeLimit string
 	ansiValCanNotBeRangeLimit    string
 	ansiIsNotOfType              string
@@ -480,6 +622,10 @@ var (
 )
 
 func init() {
+	for i := ValUnknown; i <= ValArrayOf; i++ {
+		mapValKindFromString[i.String()] = i
+	}
+	ansiUknownValKind = ansi.String("<ansiPath>ValKindFromString<ansi>: uknown <ansiVal>%s")
 	ansiVarValCanNotBeRangeLimit = ansi.String("<ansiVar>%s<ansi> (<ansiVal>%#v<ansi>) can not be a <ansiType>RangeLimit")
 	ansiValCanNotBeRangeLimit = ansi.String("<ansiVal>%#v<ansi> can not be a <ansiType>RangeLimit")
 	ansiIsNotOfType = ansi.String("<ansiVal>%#v<ansi> is not <ansiType>%s")

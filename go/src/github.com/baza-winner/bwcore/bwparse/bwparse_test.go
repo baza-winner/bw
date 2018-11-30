@@ -67,7 +67,7 @@ func TestLookAhead(t *testing.T) {
 
 func TestUnexpectedA(t *testing.T) {
 	bwtesting.BwRunTests(t,
-		"UnexpectedA",
+		"A",
 		func() map[string]bwtesting.Case {
 			tests := map[string]bwtesting.Case{}
 			testUnexpectedHelper := func(s string, ofs uint) bwparse.I {
@@ -86,7 +86,7 @@ func TestUnexpectedA(t *testing.T) {
 			p = testUnexpectedHelper("some", 2)
 			tests["panic"] = bwtesting.Case{
 				V:     p,
-				In:    []interface{}{bwparse.UnexpectedA{Start: start}},
+				In:    []interface{}{bwparse.A{Start: start}},
 				Panic: "\x1b[38;5;201;1mps.pos\x1b[0m (\x1b[96;1m4\x1b[0m) > \x1b[38;5;201;1mp.curr.pos\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m",
 			}
 
@@ -104,7 +104,7 @@ func TestUnexpectedA(t *testing.T) {
 			p.Stop(start)
 			tests["normal"] = bwtesting.Case{
 				V:   p,
-				In:  []interface{}{bwparse.UnexpectedA{Start: start, Fmt: bw.Fmt("map <ansiErr>%s<ansi> has no key <ansiVal>%s<ansi>", start.Suffix(), "absent")}},
+				In:  []interface{}{bwparse.A{Start: start, Fmt: bw.Fmt("map <ansiErr>%s<ansi> has no key <ansiVal>%s<ansi>", start.Suffix(), "absent")}},
 				Out: []interface{}{"map \x1b[91;1m{\n\t\t\t\t\tsome Bool\n\t\t\t\t\tthing Int\n\t\t\t\t}\x1b[0m has no key \x1b[96;1mabsent\x1b[0m at line \x1b[38;5;252;1m3\x1b[0m, col \x1b[38;5;252;1m10\x1b[0m (pos \x1b[38;5;252;1m24\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\ttype Map\n\t\t\t\tkeys \x1b[91m{\n\t\t\t\t\tsome Bool\n\t\t\t\t\tthing Int\n\t\t\t\t}\x1b[0m\n\t\t\t\trange 0..\n\t\t\t}\n\x1b[0m"},
 			}
 			return tests
@@ -900,7 +900,7 @@ func TestVal(t *testing.T) {
 							switch s {
 							case "Bool", "Int":
 							default:
-								err = on.P.UnexpectedA(bwparse.UnexpectedA{on.Start, bw.Fmt("non supported <ansiErr>%s<ansi> found", on.Start.Suffix())})
+								err = on.P.Error(bwparse.A{on.Start, bw.Fmt("non supported <ansiErr>%s<ansi> found", on.Start.Suffix())})
 							}
 							return
 						},
@@ -913,7 +913,7 @@ func TestVal(t *testing.T) {
 							switch s {
 							case "Bool", "Int":
 							default:
-								err = on.P.UnexpectedA(bwparse.UnexpectedA{on.Start, bw.Fmt("non supported <ansiErr>%s<ansi> found", on.Start.Suffix())})
+								err = on.P.Error(bwparse.A{on.Start, bw.Fmt("non supported <ansiErr>%s<ansi> found", on.Start.Suffix())})
 							}
 							return
 						},
@@ -925,7 +925,7 @@ func TestVal(t *testing.T) {
 						OnValidateArrayOfString: func(on bwparse.On, ss []string) (err error) {
 							sset := bwset.StringFrom(ss...)
 							if sset.Has("Array") && sset.Has("ArrayOf") {
-								err = on.P.UnexpectedA(bwparse.UnexpectedA{on.Start, bw.Fmt("array <ansiVal>%s<ansi> contains <ansiErr>both<ansi> <ansiVal>Array<ansi> and <ansiVal>ArrayOf<ansi>", on.Start.Suffix())})
+								err = on.P.Error(bwparse.A{on.Start, bw.Fmt("array <ansiVal>%s<ansi> contains <ansiErr>both<ansi> <ansiVal>Array<ansi> and <ansiVal>ArrayOf<ansi>", on.Start.Suffix())})
 							}
 							return
 						},
@@ -1156,36 +1156,6 @@ func TestNumber(t *testing.T) {
 	)
 }
 
-// func TestFrom2(t *testing.T) {
-// 	bwtesting.BwRunTests(t,
-// 		func(s string) (result interface{}) {
-// 			var err error
-// 			if result, err = func(s string) (result interface{}, err error) {
-// 				defer func() {
-// 					if err != nil {
-// 						result = nil
-// 					}
-// 				}()
-// 				p := bwparse.From(bwrune.FromString(s))
-// 				// var ok bool
-// 				if result, _, err = bwparse.Val(p, bwparse.Opt{IdVals: map[string]interface{}{"Int": "Int"}}); err == nil {
-// 					err = end(p, true)
-// 				}
-// 				return
-// 			}(s); err != nil {
-// 				bwerr.PanicErr(err)
-// 			}
-// 			return result
-// 		},
-// 		map[string]bwtesting.Case{
-// 			`{ type Float64 }`: {
-// 				In:    []interface{}{func(testName string) string { return testName }},
-// 				Panic: "unexpected \x1b[91;1m`Float64`\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ type \x1b[91mFloat64\x1b[0m }\n",
-// 			},
-// 		},
-// 	)
-// }
-
 func TestLineCount(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		func(opt ...map[string]interface{}) (result interface{}) {
@@ -1266,5 +1236,184 @@ func TestLineCount(t *testing.T) {
 			}
 			return tests
 		}(),
+	)
+}
+
+func TestValDef(t *testing.T) {
+	bwtesting.BwRunTests(t,
+		func(s string) (result bwtype.Def) {
+			p := bwparse.From(bwrune.FromString(s))
+			var st bwparse.Status
+			if result, st = bwparse.ValDef(p); st.Err == nil {
+				st.Err = end(p, true)
+			}
+			if st.Err != nil {
+				bwerr.PanicErr(st.Err)
+			}
+			return
+		},
+		func() map[string]bwtesting.Case {
+			tests := map[string]bwtesting.Case{}
+			for _, v := range []struct {
+				in  string
+				out bwtype.Def
+			}{
+				{in: "Int", out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValInt)}},
+				{in: `"String"`, out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValString)}},
+				{in: `[ Int "String"]`, out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValString, bwtype.ValInt)}},
+				{in: `<Int String >`, out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValString, bwtype.ValInt)}},
+				{in: "{ type Int }", out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValInt)}},
+				{in: `{ type "String" }`, out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValString)}},
+				{in: `{ type [ Int "String"] }`, out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValString, bwtype.ValInt)}},
+				{in: `{ type <Int String > }`, out: bwtype.Def{Types: bwtype.ValKindSetFrom(bwtype.ValString, bwtype.ValInt)}},
+				{in: `{ type String enum <some thing> }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValString),
+						Enum:  bwset.StringFrom("some", "thing"),
+					},
+				},
+				{in: `{ type String enum ["some" <thing>] }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValString),
+						Enum:  bwset.StringFrom("some", "thing"),
+					},
+				},
+				{in: `{ type String enum "some" }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValString),
+						Enum:  bwset.StringFrom("some"),
+					},
+				},
+				{in: `{ type Int range 0.. }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValInt),
+						Range: bwtype.MustRangeFrom(bwtype.A{Min: 0}),
+					},
+				},
+				{in: `{ type Number range 2.71..3.14 }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValNumber),
+						Range: bwtype.MustRangeFrom(bwtype.A{Min: 2.71, Max: 3.14}),
+					},
+				},
+				{in: `<ArrayOf String>`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValString, bwtype.ValArrayOf),
+					},
+				},
+				{in: `{ type Map keys { some Bool thing Int } }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValMap),
+						Keys: map[string]bwtype.Def{
+							"some": {
+								Types: bwtype.ValKindSetFrom(bwtype.ValBool),
+							},
+							"thing": {
+								Types: bwtype.ValKindSetFrom(bwtype.ValInt),
+							},
+						},
+					},
+				},
+				{in: `{ type Map elem Int }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValMap),
+						Elem: &bwtype.Def{
+							Types: bwtype.ValKindSetFrom(bwtype.ValInt),
+						},
+					},
+				},
+				{in: `{ type Array arrayElem Int }`,
+					out: bwtype.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValArray),
+						ArrayElem: &bwtype.Def{
+							Types: bwtype.ValKindSetFrom(bwtype.ValInt),
+						},
+					},
+				},
+				{in: `{ type Int isOptional true  }`,
+					out: bwtype.Def{
+						Types:      bwtype.ValKindSetFrom(bwtype.ValInt),
+						IsOptional: true,
+					},
+				},
+			} {
+				tests[v.in] = bwtesting.Case{
+					In:  []interface{}{v.in},
+					Out: []interface{}{v.out},
+				}
+			}
+			for _, v := range []struct {
+				in  string
+				out string
+			}{
+				{in: "Uknown",
+					out: "unexpected `\x1b[91;1mUknown\x1b[0m`\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mUknown\x1b[0m\n",
+				},
+				{in: "<Int Number>",
+					out: "\x1b[91;1mNumber\x1b[0m can not be mixed with \x1b[96;1mInt\x1b[0m at pos \x1b[38;5;252;1m5\x1b[0m: \x1b[32m<Int \x1b[91mNumber\x1b[0m>\n",
+				},
+				{in: "<Number Int >",
+					out: "\x1b[91;1mInt\x1b[0m can not be mixed with \x1b[96;1mNumber\x1b[0m at pos \x1b[38;5;252;1m8\x1b[0m: \x1b[32m<Number \x1b[91mInt\x1b[0m >\n",
+				},
+				{in: "{ Type <Number Int > }",
+					out: "unexpected key `\x1b[91;1mType\x1b[0m`\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m{ \x1b[91mType\x1b[0m <Number Int > }\n",
+				},
+				{in: `{ "Type" <Number Int > }`,
+					out: "unexpected key `\x1b[91;1m\"Type\"\x1b[0m`\x1b[0m at pos \x1b[38;5;252;1m2\x1b[0m: \x1b[32m{ \x1b[91m\"Type\"\x1b[0m <Number Int > }\n",
+				},
+				{in: `{ "type" Int type Bool }`,
+					out: "duplicate key \x1b[91;1mtype\x1b[0m at pos \x1b[38;5;252;1m13\x1b[0m: \x1b[32m{ \"type\" Int \x1b[91mtype\x1b[0m Bool }\n",
+				},
+				{in: `{ "type" Int enum <some thing> }`,
+					out: "unexpected key `\x1b[91;1menum\x1b[0m`\x1b[0m at pos \x1b[38;5;252;1m13\x1b[0m: \x1b[32m{ \"type\" Int \x1b[91menum\x1b[0m <some thing> }\n",
+				},
+				{in: `{ enum "some" type Int }`,
+					out: "key \x1b[38;5;201;1menum\x1b[0m is specified, so value of key \x1b[38;5;201;1mtype\x1b[0m expects to have \x1b[96;1mString\x1b[0m at pos \x1b[38;5;252;1m19\x1b[0m: \x1b[32m{ enum \"some\" type \x1b[91mInt\x1b[0m }\n\x1b[0m",
+				},
+				{in: `{ type Int range 15 }`,
+					out: "expects \x1b[97;1mRange\x1b[0m instead of unexpected char \x1b[96;1m'1'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m49\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m17\x1b[0m: \x1b[32m{ type Int range \x1b[91m1\x1b[0m5 }\n\x1b[0m",
+				},
+				{in: `{ type String enum [ 1 ] }`,
+					out: "expects \x1b[97;1mString\x1b[0m instead of unexpected char \x1b[96;1m'1'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m49\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m21\x1b[0m: \x1b[32m{ type String enum [ \x1b[91m1\x1b[0m ] }\n\x1b[0m",
+				},
+				{in: `{ range 0.. type <String Array> }`,
+					out: "key \x1b[38;5;201;1mrange\x1b[0m is specified, so value of key \x1b[38;5;201;1mtype\x1b[0m expects to have \x1b[96;1mInt\x1b[0m or \x1b[96;1mNumber\x1b[0m at pos \x1b[38;5;252;1m17\x1b[0m: \x1b[32m{ range 0.. type \x1b[91m<String Array>\x1b[0m }\n\x1b[0m",
+				},
+				{in: `ArrayOf`,
+					out: "\x1b[97;1mArrayOf\x1b[0m must be followed by another \x1b[38;5;201;1mType\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mArrayOf\x1b[0m\n\x1b[0m",
+				},
+				{in: `<ArrayOf>`,
+					out: "\x1b[97;1mArrayOf\x1b[0m must be followed by another \x1b[38;5;201;1mType\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91m<ArrayOf>\x1b[0m\n\x1b[0m",
+				},
+				{in: `{ type <ArrayOf> }`,
+					out: "\x1b[97;1mArrayOf\x1b[0m must be followed by another \x1b[38;5;201;1mType\x1b[0m at pos \x1b[38;5;252;1m7\x1b[0m: \x1b[32m{ type \x1b[91m<ArrayOf>\x1b[0m }\n\x1b[0m",
+				},
+				{in: `<ArrayOf Array>`,
+					out: "\x1b[91;1mArray\x1b[0m can not be mixed with \x1b[96;1mArrayOf\x1b[0m at pos \x1b[38;5;252;1m9\x1b[0m: \x1b[32m<ArrayOf \x1b[91mArray\x1b[0m>\n",
+				},
+				{in: `[ Array <ArrayOf>]`,
+					out: "\x1b[91;1mArrayOf\x1b[0m can not be mixed with \x1b[96;1mArray\x1b[0m at pos \x1b[38;5;252;1m9\x1b[0m: \x1b[32m[ Array <\x1b[91mArrayOf\x1b[0m>]\n",
+				},
+				{in: `{ type <ArrayOf Array> }`,
+					out: "\x1b[91;1mArray\x1b[0m can not be mixed with \x1b[96;1mArrayOf\x1b[0m at pos \x1b[38;5;252;1m16\x1b[0m: \x1b[32m{ type <ArrayOf \x1b[91mArray\x1b[0m> }\n",
+				},
+				{in: `{ type Map keys { some Bool thing 1 } }`,
+					out: "expects one of [\x1b[97;1mArray\x1b[0m, \x1b[97;1mString\x1b[0m, \x1b[97;1mMap\x1b[0m, \x1b[97;1mId\x1b[0m] instead of unexpected char \x1b[96;1m'1'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m49\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m34\x1b[0m: \x1b[32m{ type Map keys { some Bool thing \x1b[91m1\x1b[0m } }\n",
+				},
+				{in: `{ type Map keys Int }`,
+					out: "expects \x1b[97;1mMap\x1b[0m instead of unexpected char \x1b[96;1m'I'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m73\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m16\x1b[0m: \x1b[32m{ type Map keys \x1b[91mI\x1b[0mnt }\n\x1b[0m",
+				},
+				{in: `{ type Int default 1 isOptional false  }`,
+					out: " ",
+				},
+			} {
+				tests[v.in] = bwtesting.Case{
+					In:    []interface{}{v.in},
+					Panic: v.out,
+				}
+			}
+			return tests
+		}(),
+		// `{ "type" Int enum <some thing> }`,
 	)
 }

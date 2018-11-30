@@ -1,0 +1,3 @@
+// +build debug
+
+package bwtype
