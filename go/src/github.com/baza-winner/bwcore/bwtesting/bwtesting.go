@@ -284,15 +284,16 @@ func BwRunTests(
 				result = fmt.Sprintf(ansi.String(" should <ansiErr>Panic<ansi> as:\n<ansiVar>q<ansi>: %#v\n<ansiVar>json<ansi>: %s"), test.Panic, test.Panic)
 				if numOut > 0 {
 					prefix := "\n<ansiErr>but returned"
-					s := ansi.String(":\n  <ansiVar>q<ansi>: %#v\n  <ansiVar>s<ansi>: %s")
+					// s := ansi.String(":\n  <ansiVar>q<ansi>: %#v\n  <ansiVar>s<ansi>: %s")
+					s := ansi.String(":\n  <ansiVar>q<ansi>: %#v\n  <ansiVar>s<ansi>: %s\n  <ansiVar>json<ansi>: %s")
 					if numOut == 1 {
 						val := outValues[0].Interface()
-						result += fmt.Sprintf(ansi.String(prefix)+s, val, val)
+						result += fmt.Sprintf(ansi.String(prefix)+s, val, val, bwjson.Pretty(val))
 					} else {
 						result += fmt.Sprintf(ansi.String(prefix+" %d values:"), numOut)
 						for i := 0; i < numOut; i++ {
 							val := outValues[i].Interface()
-							result += fmt.Sprintf(ansi.String("\n<ansiPath>%d<ansi>"+s), i, val, val)
+							result += fmt.Sprintf(ansi.String("\n<ansiPath>%d<ansi>"+s), i, val, val, bwjson.Pretty(val))
 						}
 					}
 				}

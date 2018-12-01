@@ -67,7 +67,7 @@ func (v Holder) hasNoKeyError(key string) error {
 
 // ============================================================================
 
-func (v Holder) notOfValKindError(vk ValKindSet) (result error) {
+func (v Holder) notOfValKindError(vk bwtype.ValKindSet) (result error) {
 	vks := vk.ToSlice()
 	expectedTypes := ""
 	for i, elem := range vks {
@@ -109,18 +109,7 @@ func (v Holder) nonSupportedValueError() error {
 // ============================================================================
 
 func (v Holder) outOfRangeError(rng bwtype.Range) (err error) {
-	var s string
-	switch rng.Kind() {
-	case bwtype.RangeMinMax:
-		s = ansi.String(" is <ansiErr>out of range<ansi> <ansiVal>%s")
-	case bwtype.RangeMin:
-		s = ansi.String(" is <ansiErr>less<ansi> than<ansiVal>%s")
-	case bwtype.RangeMax:
-		s = ansi.String(" is <ansiErr>more<ansi> than<ansiVal>%s")
-	}
-	if len(s) > 0 {
-		err = bwerr.From(v.ansiString()+s, rng.String())
-	}
+	err = bwerr.From(v.ansiString()+ansi.String(" is <ansiErr>out of range<ansi> <ansiVal>%s"), rng.String())
 	return
 }
 

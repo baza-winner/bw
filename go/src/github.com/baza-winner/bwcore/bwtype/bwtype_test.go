@@ -474,7 +474,8 @@ func TestMustRangeFrom(t *testing.T) {
 					out: "\x1b[38;5;201;1ma.Min\x1b[0m (\x1b[96;1m(bool)true\x1b[0m) can not be a \x1b[97;1mRangeLimit\x1b[0m",
 				},
 			} {
-				tests[bw.Spew.Sprintf(ansi.String("<ansi>MustRangeFrom(Min: <ansiVal>%#v<ansi>, Max: <ansiVal>%#v<ansi>) => <ansiVal>%s"), v.in.Min, v.in.Max, v.out)] = bwtesting.Case{
+				// tests[bw.Spew.Sprintf(ansi.String("<ansi>MustRangeFrom(Min: <ansiVal>%#v<ansi>, Max: <ansiVal>%#v<ansi>) => <ansiVal>%s"), v.in.Min, v.in.Max, v.out)] = bwtesting.Case{
+				tests[bw.Spew.Sprintf(ansi.String("<ansi>MustRangeFrom(Min: <ansiVal>%#v<ansi>, Max: <ansiVal>%#v<ansi>)"), v.in.Min, v.in.Max)] = bwtesting.Case{
 					In:    []interface{}{v.in},
 					Panic: v.out,
 				}
@@ -548,5 +549,35 @@ func TestRangeMarshalJSON(t *testing.T) {
 			return tests
 		}(),
 	)
+}
 
+func TestValKindString(t *testing.T) {
+	bwtesting.BwRunTests(t,
+		"String",
+		func() map[string]bwtesting.Case {
+			tests := map[string]bwtesting.Case{}
+			for k, v := range map[bwtype.ValKind]string{
+				bwtype.ValUnknown: "Unknown",
+				bwtype.ValString:  "String",
+				bwtype.ValId:      "Id",
+				bwtype.ValBool:    "Bool",
+				bwtype.ValInt:     "Int",
+				bwtype.ValUint:    "Uint",
+				bwtype.ValFloat64: "Float64",
+				bwtype.ValNumber:  "Number",
+				bwtype.ValPath:    "Path",
+				bwtype.ValRange:   "Range",
+				bwtype.ValMap:     "Map",
+				bwtype.ValArray:   "Array",
+				bwtype.ValNil:     "Nil",
+				bwtype.ValNil + 1: "ValKind(13)",
+			} {
+				tests[v] = bwtesting.Case{
+					V:   k,
+					Out: []interface{}{v},
+				}
+			}
+			return tests
+		}(),
+	)
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwstr"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -93,7 +94,7 @@ func (v *Holder) PathVal(path bw.ValPath, optVars ...map[string]interface{}) (re
 					result = len(t)
 				default:
 					// err = Holder{result, path[:i]}.notOfValKindError("Map", "Array")
-					err = Holder{result, path[:i]}.notOfValKindError(ValKindSetFrom(ValMap, ValArray))
+					err = Holder{result, path[:i]}.notOfValKindError(bwtype.ValKindSetFrom(bwtype.ValMap, bwtype.ValArray))
 				}
 			}
 		}
@@ -201,24 +202,24 @@ func (v *Holder) SetPathVal(val interface{}, path bw.ValPath, optVars ...map[str
 // func (v Holder) Bool() (result bool, err error) {
 func (v Holder) Bool() (result bool) {
 	switch t, kind := Kind(v.Val); kind {
-	case ValInt:
+	case bwtype.ValInt:
 		i, _ := t.(int)
 		result = i != 0
-	case ValFloat64:
+	case bwtype.ValFloat64:
 		f, _ := t.(float64)
 		result = f != 0
-	case ValString:
+	case bwtype.ValString:
 		s, _ := t.(string)
 		result = len(s) > 0
-	case ValMap:
+	case bwtype.ValMap:
 		m, _ := t.(map[string]interface{})
 		result = len(m) > 0
-	case ValArray:
+	case bwtype.ValArray:
 		vals, _ := t.([]interface{})
 		result = len(vals) > 0
-	case ValArrayOfString:
-		ss, _ := t.([]string)
-		result = len(ss) > 0
+		// case ValArrayOfString:
+		// 	ss, _ := t.([]string)
+		// 	result = len(ss) > 0
 	}
 	return
 }
@@ -234,12 +235,12 @@ func (v Holder) Bool() (result bool) {
 // func (v Holder) String() (result string, err error) {
 func (v Holder) String() (result string) {
 	switch t, kind := Kind(v.Val); kind {
-	case ValNil:
+	case bwtype.ValNil:
 		result = ""
-	case ValInt:
+	case bwtype.ValInt:
 		i, _ := t.(int)
 		result = strconv.Itoa(i)
-	case ValString:
+	case bwtype.ValString:
 		result, _ = t.(string)
 	default:
 		bytes, _ := json.Marshal(t)
@@ -258,13 +259,13 @@ func (v Holder) String() (result string) {
 
 func (v Holder) Int() (result int, err error) {
 	switch t, kind := Kind(v.Val); kind {
-	case ValInt:
+	case bwtype.ValInt:
 		result, _ = t.(int)
-	case ValString:
+	case bwtype.ValString:
 		s, _ := t.(string)
 		result, err = bwstr.ParseInt(s)
 	default:
-		err = v.notOfValKindError(ValKindSetFrom(ValInt, ValString))
+		err = v.notOfValKindError(bwtype.ValKindSetFrom(bwtype.ValInt, bwtype.ValString))
 	}
 	return
 }
@@ -279,19 +280,19 @@ func (v Holder) MustInt() (result int) {
 
 func (v Holder) Float64() (result float64, err error) {
 	switch t, kind := Kind(v.Val); kind {
-	case ValInt:
+	case bwtype.ValInt:
 		var i int
 		i, _ = t.(int)
 		result = float64(i)
-	case ValFloat64:
+	case bwtype.ValFloat64:
 		result, _ = t.(float64)
-	case ValNil:
+	case bwtype.ValNil:
 		result = 0
-	case ValString:
+	case bwtype.ValString:
 		s, _ := t.(string)
 		result, err = strconv.ParseFloat(s, 64)
 	default:
-		err = v.notOfValKindError(ValKindSetFrom(ValFloat64, ValInt, ValNil))
+		err = v.notOfValKindError(bwtype.ValKindSetFrom(bwtype.ValFloat64, bwtype.ValInt, bwtype.ValNil))
 	}
 	return
 }
@@ -322,18 +323,18 @@ func (v Holder) MustFloat64() (result float64) {
 
 func (v Holder) Array() (result []interface{}, err error) {
 	switch t, kind := Kind(v.Val); kind {
-	case ValArray:
+	case bwtype.ValArray:
 		result, _ = t.([]interface{})
-	case ValArrayOfString:
-		ss, _ := t.([]string)
-		result = []interface{}{}
-		for _, s := range ss {
-			result = append(result, s)
-		}
-	case ValNil:
+	// case ValArrayOfString:
+	// 	ss, _ := t.([]string)
+	// 	result = []interface{}{}
+	// 	for _, s := range ss {
+	// 		result = append(result, s)
+	// 	}
+	case bwtype.ValNil:
 		result = []interface{}{}
 	default:
-		err = v.notOfValKindError(ValKindSetFrom(ValArray, ValArrayOfString, ValNil))
+		err = v.notOfValKindError(bwtype.ValKindSetFrom(bwtype.ValArray, bwtype.ValNil))
 	}
 	// var ok bool
 	// if result, ok = Array(v.Val); !ok {
@@ -350,46 +351,46 @@ func (v Holder) MustArray() (result []interface{}) {
 	return
 }
 
-func (v Holder) ArrayOfString() (result []string, err error) {
-	switch t, kind := Kind(v.Val); kind {
-	case ValArrayOfString:
-		result, _ = t.([]string)
-	case ValArray:
-		vals, _ := t.([]interface{})
-		result = []string{}
-		for i, val := range vals {
-			if s, ok := val.(string); ok {
-				result = append(result, s)
-			} else {
-				h := Holder{val, v.Pth.AppendIdx(i)}
-				err = h.notOfValKindError(ValKindSetFrom(ValString))
-				return
-			}
-		}
-	case ValNil:
-		result = []string{}
-	default:
-		err = v.notOfValKindError(ValKindSetFrom(ValArray, ValArrayOfString, ValNil))
-	}
-	return
-}
+// func (v Holder) ArrayOfString() (result []string, err error) {
+// 	switch t, kind := Kind(v.Val); kind {
+// 	case ValArrayOfString:
+// 		result, _ = t.([]string)
+// 	case ValArray:
+// 		vals, _ := t.([]interface{})
+// 		result = []string{}
+// 		for i, val := range vals {
+// 			if s, ok := val.(string); ok {
+// 				result = append(result, s)
+// 			} else {
+// 				h := Holder{val, v.Pth.AppendIdx(i)}
+// 				err = h.notOfValKindError(ValKindSetFrom(ValString))
+// 				return
+// 			}
+// 		}
+// 	case ValNil:
+// 		result = []string{}
+// 	default:
+// 		err = v.notOfValKindError(ValKindSetFrom(ValArray, ValArrayOfString, ValNil))
+// 	}
+// 	return
+// }
 
-func (v Holder) MustArrayOfString() (result []string) {
-	var err error
-	if result, err = v.ArrayOfString(); err != nil {
-		bwerr.PanicErr(err)
-	}
-	return
-}
+// func (v Holder) MustArrayOfString() (result []string) {
+// 	var err error
+// 	if result, err = v.ArrayOfString(); err != nil {
+// 		bwerr.PanicErr(err)
+// 	}
+// 	return
+// }
 
 func (v Holder) Map() (result map[string]interface{}, err error) {
 	switch t, kind := Kind(v.Val); kind {
-	case ValMap:
+	case bwtype.ValMap:
 		result, _ = t.(map[string]interface{})
-	case ValNil:
+	case bwtype.ValNil:
 		result = map[string]interface{}{}
 	default:
-		err = v.notOfValKindError(ValKindSetFrom(ValMap, ValNil))
+		err = v.notOfValKindError(bwtype.ValKindSetFrom(bwtype.ValMap, bwtype.ValNil))
 	}
 	return
 }
@@ -444,9 +445,9 @@ func (v Holder) KeyVal(key string, optDefaultValProvider ...defaultValProvider) 
 		return
 	}
 	var val interface{}
-	var kind ValKind
-	if val, kind = Kind(v.Val); kind != ValMap {
-		err = v.notOfValKindError(ValKindSetFrom(ValMap))
+	var kind bwtype.ValKind
+	if val, kind = Kind(v.Val); kind != bwtype.ValMap {
+		err = v.notOfValKindError(bwtype.ValKindSetFrom(bwtype.ValMap))
 		return
 	}
 	m, _ := val.(map[string]interface{})
@@ -560,13 +561,13 @@ func (v *Holder) simplifyPath(path bw.ValPath, optVars []map[string]interface{})
 				return
 			}
 			h := Holder{Val: val}
-			if _, err = h.KindSwitch(map[ValKind]KindCase{
-				ValString: func(val interface{}) (err error) {
+			if _, err = h.KindSwitch(map[bwtype.ValKind]KindCase{
+				bwtype.ValString: func(val interface{}) (err error) {
 					s, _ := val.(string)
 					result = append(result, bw.ValPathItem{Type: bw.ValPathItemKey, Key: s})
 					return
 				},
-				ValInt: func(val interface{}) (err error) {
+				bwtype.ValInt: func(val interface{}) (err error) {
 					i, _ := val.(int)
 					result = append(result, bw.ValPathItem{Type: bw.ValPathItemIdx, Idx: i})
 					return
@@ -595,19 +596,19 @@ func (v Holder) idxHelper(
 ) (err error) {
 	var nidx int
 	var ok bool
-	_, err = v.KindSwitch(map[ValKind]KindCase{
-		ValArray: func(val interface{}) (err error) {
+	_, err = v.KindSwitch(map[bwtype.ValKind]KindCase{
+		bwtype.ValArray: func(val interface{}) (err error) {
 			vals, _ := val.([]interface{})
 			nidx, ok = bw.NormalIdx(idx, len(vals))
 			err = onArray(vals, nidx, ok)
 			return
 		},
-		ValArrayOfString: func(val interface{}) (err error) {
-			ss, _ := val.([]string)
-			nidx, ok = bw.NormalIdx(idx, len(ss))
-			err = onArrayOfString(ss, nidx, ok)
-			return
-		},
+		// ValArrayOfString: func(val interface{}) (err error) {
+		// 	ss, _ := val.([]string)
+		// 	nidx, ok = bw.NormalIdx(idx, len(ss))
+		// 	err = onArrayOfString(ss, nidx, ok)
+		// 	return
+		// },
 	})
 	// switch val, kind := Kind(v.Val); kind {
 	// case ValArray:
@@ -626,12 +627,12 @@ func (v Holder) idxHelper(
 
 type KindCase func(val interface{}) (err error)
 
-func (v Holder) KindSwitch(kindCases map[ValKind]KindCase, optDefaultCase ...KindCase) (val interface{}, err error) {
+func (v Holder) KindSwitch(kindCases map[bwtype.ValKind]KindCase, optDefaultCase ...KindCase) (val interface{}, err error) {
 	val, kind := Kind(v.Val)
 	if KindCase, ok := kindCases[kind]; ok {
 		err = KindCase(val)
 	} else if len(optDefaultCase) == 0 {
-		vkSet := ValKindSet{}
+		vkSet := bwtype.ValKindSet{}
 		for vk := range kindCases {
 			vkSet.Add(vk)
 		}

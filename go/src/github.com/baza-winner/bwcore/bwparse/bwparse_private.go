@@ -310,7 +310,7 @@ type onArray struct {
 func (onArray) IsOn() {}
 
 type onArrayOfString struct {
-	f   func(ss []string, start *Start) (err error)
+	f   func(vals []interface{}, start *Start) (err error)
 	opt Opt
 }
 
@@ -347,7 +347,6 @@ func processOn(p I, processors ...on) (status Status) {
 		s    string
 		path bw.ValPath
 		vals []interface{}
-		ss   []string
 		m    map[string]interface{}
 		b    bool
 		rng  bwtype.Range
@@ -374,7 +373,7 @@ func processOn(p I, processors ...on) (status Status) {
 		case onArray:
 			vals, status = Array(p, t.opt)
 		case onArrayOfString:
-			ss, status = ArrayOfString(p, t.opt)
+			vals, status = parseArrayOfString(p, t.opt, false)
 		case onMap:
 			m, status = Map(p, t.opt)
 		case onNil:
@@ -406,7 +405,7 @@ func processOn(p I, processors ...on) (status Status) {
 			case onArray:
 				status.Err = t.f(vals, status.Start)
 			case onArrayOfString:
-				status.Err = t.f(ss, status.Start)
+				status.Err = t.f(vals, status.Start)
 			case onMap:
 				status.Err = t.f(m, status.Start)
 			case onNil:
@@ -422,7 +421,7 @@ func processOn(p I, processors ...on) (status Status) {
 
 // ============================================================================
 
-func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, status Status) {
+func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []interface{}, status Status) {
 	var needForward uint
 	if status.OK = p.Curr().rune == '<'; !status.OK {
 		if status.OK = CanSkipRunes(p, 'q', 'w') && IsPunctOrSymbol(p.LookAhead(2).rune); !status.OK {
@@ -439,7 +438,7 @@ func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, status S
 		delimiter = r
 	}
 	p.Forward(1)
-	result = []string{}
+	ss := []string{}
 	on := On{p, status.Start, &opt}
 	if !isEmbeded {
 		base := opt.Path
@@ -459,12 +458,12 @@ func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, status S
 		}
 		if status.Err == nil {
 			if !isEmbeded && opt.OnValidateArrayOfStringElem != nil {
-				status.Err = opt.OnValidateArrayOfStringElem(on, result, s)
+				status.Err = opt.OnValidateArrayOfStringElem(on, ss, s)
 			} else if opt.OnValidateString != nil {
 				status.Err = opt.OnValidateString(on, s)
 			}
 			if status.Err == nil {
-				result = append(result, s)
+				ss = append(ss, s)
 			}
 		}
 		on.Opt.Path[len(on.Opt.Path)-1].Idx++
@@ -477,6 +476,12 @@ func parseArrayOfString(p I, opt Opt, isEmbeded bool) (result []string, status S
 				break
 			}
 			parseItem(r)
+		}
+	}
+	if status.Err == nil {
+		result = []interface{}{}
+		for _, s := range ss {
+			result = append(result, s)
 		}
 	}
 	return

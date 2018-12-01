@@ -7,6 +7,7 @@ import (
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwparse"
 	"github.com/baza-winner/bwcore/bwrune"
+	"github.com/baza-winner/bwcore/bwtype"
 )
 
 // ============================================================================
@@ -222,7 +223,7 @@ func expandPaths(val interface{}, rootVal interface{}, isRoot bool, optVars ...m
 	} else {
 		result = val
 		switch _, kind := Kind(val); kind {
-		case ValMap:
+		case bwtype.ValMap:
 			m := result.(map[string]interface{})
 			for key, val := range m {
 				if val, err = expandPaths(val, rootVal, false, optVars...); err != nil {
@@ -230,7 +231,7 @@ func expandPaths(val interface{}, rootVal interface{}, isRoot bool, optVars ...m
 				}
 				m[key] = val
 			}
-		case ValArray:
+		case bwtype.ValArray:
 			vals := result.([]interface{})
 			for i, val := range vals {
 				if val, err = expandPaths(val, rootVal, false, optVars...); err != nil {
