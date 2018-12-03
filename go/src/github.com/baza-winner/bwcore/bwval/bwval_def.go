@@ -5,7 +5,6 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwparse"
@@ -81,7 +80,7 @@ func ParseDef(p bwparse.I, optBase ...bw.ValPath) (result Def, status bwparse.St
 	if len(optBase) > 0 {
 		base = optBase[0]
 	} else {
-		base = bw.ValPath{bw.ValPathItem{Type: bw.ValPathItemVar, Key: "def"}}
+		base = bw.ValPath{bw.ValPathItem{Type: bw.ValPathItemVar, Key: "Def"}}
 	}
 	string2type := map[string]bwtype.ValKind{}
 	for _, t := range defSupportedTypes.ToSlice() {
@@ -89,8 +88,10 @@ func ParseDef(p bwparse.I, optBase ...bw.ValPath) (result Def, status bwparse.St
 		string2type[s] = t
 	}
 	var (
-		tp bwtype.ValKind
-		ok bool
+		tp                  bwtype.ValKind
+		ok                  bool
+		val                 interface{}
+		isOptionalSpecified bool
 	)
 	result.Types = bwtype.ValKindSet{}
 	addType := func(on bwparse.On, tp bwtype.ValKind) (err error) {
@@ -164,7 +165,6 @@ func ParseDef(p bwparse.I, optBase ...bw.ValPath) (result Def, status bwparse.St
 		}
 		return err
 	}
-	var val interface{}
 	if val, status = bwparse.Val(p, setForType(bwparse.Opt{
 		ValFalse: true,
 		KindSet:  bwtype.ValKindSetFrom(bwtype.ValMap),
@@ -174,6 +174,28 @@ func ParseDef(p bwparse.I, optBase ...bw.ValPath) (result Def, status bwparse.St
 					Start: on.Start,
 					Fmt:   bw.Fmt(ansi.String("unexpected key `<ansiErr>%s<ansi>`"), on.Start.Suffix()),
 				})
+			} else {
+				switch key {
+				case "default":
+					if len(result.Types) == 0 {
+						err = p.Error(bwparse.A{
+							Start: on.Start,
+							Fmt:   bw.A{Fmt: "key <ansiVar>type<ansi> must be specified first"},
+						})
+					} else if isOptionalSpecified && !result.IsOptional {
+						err = p.Error(bwparse.A{
+							Start: on.Start,
+							Fmt:   bw.Fmt("while <ansiVar>isOptional <ansiVal>false<ansi>, key <ansiVar>%s<ansi> can not be specified", key),
+						})
+					}
+				default:
+					if result.Default != nil {
+						err = p.Error(bwparse.A{
+							Start: on.Start,
+							Fmt:   bw.Fmt("key <ansiVar>default<ansi> must be LAST specified, but found key <ansiErr>%s<ansi> after it", key),
+						})
+					}
+				}
 			}
 			return
 		},
@@ -285,14 +307,8 @@ func ParseDef(p bwparse.I, optBase ...bw.ValPath) (result Def, status bwparse.St
 					status.Err = bwparse.Expects(p, nil, "<ansiType>Def<ansi>")
 				}
 			case "isOptional":
-				if result.IsOptional, status = bwparse.Bool(p); status.IsOK() {
-					if !result.IsOptional && result.Default != nil {
-						status.Err = p.Error(bwparse.A{
-							Start: status.Start,
-							Fmt:   bw.A{Fmt: "<ansiVar>default<ansi> value is specified, so value of key <ansiVar>isOptional<ansi> must not be <ansiVal>false<ansi>"},
-						})
-					}
-				}
+				result.IsOptional, status = bwparse.Bool(p)
+				isOptionalSpecified = true
 			case "default":
 				result.Default, status = ParseValByDef(p, result, base.AppendKey(key))
 				if result.Default != nil {
@@ -317,6 +333,11 @@ func ParseValByDef(p bwparse.I, def Def, optBase ...bw.ValPath) (result interfac
 	if len(optBase) > 0 {
 		base = optBase[0]
 	}
+	return parseValByDef(p, def, base, false)
+}
+
+func parseValByDef(p bwparse.I, def Def, base bw.ValPath, skipArrayOf bool) (result interface{}, status bwparse.Status) {
+
 	opt := bwparse.Opt{KindSet: bwtype.ValKindSet{}}
 	opt.KindSet.AddSet(def.Types)
 
@@ -346,19 +367,44 @@ func ParseValByDef(p bwparse.I, def Def, optBase ...bw.ValPath) (result interfac
 				keyDef = &Def{Types: defSupportedTypes}
 			}
 			var val interface{}
-			if val, status = ParseValByDef(p, *keyDef, base.AppendKey(key)); status.IsOK() {
+			if val, status = parseValByDef(p, *keyDef, base.AppendKey(key), skipArrayOf); status.IsOK() {
 				m[key] = val
 			}
 			return
 		}
 	}
-	if def.IsArrayOf {
+	if opt.KindSet.Has(bwtype.ValArray) {
+		opt.OnParseArrayElem = func(on bwparse.On, vals []interface{}) (outVals []interface{}, status bwparse.Status) {
+			var elemDef *Def
+			if def.ArrayElem != nil {
+				elemDef = def.ArrayElem
+			}
+			if elemDef == nil {
+				elemDef = def.Elem
+			}
+			if elemDef == nil {
+				elemDef = &Def{Types: defSupportedTypes}
+			}
+			var val interface{}
+			if val, status = parseValByDef(p, *elemDef, base.AppendIdx(len(vals)), skipArrayOf); status.IsOK() {
+				outVals = append(vals, val)
+			}
+			return
+		}
+	} else if !skipArrayOf && def.IsArrayOf {
 		opt.KindSet.Add(bwtype.ValArray)
+		opt.OnParseArrayElem = func(on bwparse.On, vals []interface{}) (outVals []interface{}, status bwparse.Status) {
+			var val interface{}
+			if val, status = parseValByDef(p, def, base.AppendIdx(len(vals)), true); status.IsOK() {
+				outVals = append(vals, val)
+			}
+			return
+		}
 	}
 
 	if result, status = bwparse.Val(p, opt); status.IsOK() {
 		h := Holder{Val: result, Pth: base}
-		if result, status.Err = h.validVal(def); status.Err != nil {
+		if result, status.Err = h.validVal(def, skipArrayOf); status.Err != nil {
 			status.Err = p.Error(bwparse.A{
 				Start: status.Start,
 				Fmt:   bwerr.Err(status.Err),
@@ -370,8 +416,7 @@ func ParseValByDef(p bwparse.I, def Def, optBase ...bw.ValPath) (result interfac
 
 // ============================================================================
 
-func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, err error) {
-	skipArrayOf := optSkipArrayOf != nil && optSkipArrayOf[0]
+func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err error) {
 	if v.Val == nil {
 		if !skipArrayOf {
 			if def.Default != nil {
@@ -390,50 +435,39 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 		}
 	}
 	var (
-		valDeftype bwtype.ValKind
-		kind       bwtype.ValKind
-		val        interface{}
+		defKind bwtype.ValKind
+		kind    bwtype.ValKind
+		val     interface{}
 	)
 	switch val, kind = Kind(v.Val); kind {
-	case bwtype.ValBool:
-		if def.Types.Has(bwtype.ValBool) {
-			valDeftype = bwtype.ValBool
+	case bwtype.ValBool, bwtype.ValMap, bwtype.ValString:
+		if def.Types.Has(kind) {
+			defKind = kind
 		}
 	case bwtype.ValInt:
 		if def.Types.Has(bwtype.ValInt) {
-			valDeftype = bwtype.ValInt
+			defKind = bwtype.ValInt
 		} else if def.Types.Has(bwtype.ValNumber) {
-			valDeftype = bwtype.ValNumber
+			defKind = bwtype.ValNumber
 		}
 		v.Val = val
 	case bwtype.ValFloat64:
 		if def.Types.Has(bwtype.ValNumber) {
-			valDeftype = bwtype.ValNumber
+			defKind = bwtype.ValNumber
 		}
 		v.Val = val
-	case bwtype.ValMap:
-		if def.Types.Has(bwtype.ValMap) {
-			valDeftype = bwtype.ValMap
-		}
 	case bwtype.ValArray:
 		if def.Types.Has(bwtype.ValArray) || !skipArrayOf && def.IsArrayOf {
-			valDeftype = bwtype.ValArray
-		}
-	case bwtype.ValString:
-		if def.Types.Has(bwtype.ValString) {
-			valDeftype = bwtype.ValString
+			defKind = bwtype.ValArray
 		}
 	}
 
-	bwdebug.Print("kind", kind, "val", val, "v.Val:#v", v.Val)
-
-	if valDeftype == bwtype.ValUnknown {
-		types := def.Types
-		err = v.notOfValKindError(types)
+	if defKind == bwtype.ValUnknown {
+		err = v.notOfValKindError(def.Types)
 		return
 	}
 
-	switch valDeftype {
+	switch defKind {
 	case bwtype.ValBool:
 	case bwtype.ValString:
 		if def.Enum != nil {
@@ -488,14 +522,14 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 				elemDef = def.Elem
 			}
 			if elemDef != nil {
-				if v.Val, err = v.arrayHelper(*elemDef); err != nil {
+				if v.Val, err = v.arrayHelper(*elemDef, false); err != nil {
 					return
 				}
 			}
 		}
 	}
 
-	if !skipArrayOf && def.IsArrayOf && valDeftype != bwtype.ValArray {
+	if !skipArrayOf && def.IsArrayOf && defKind != bwtype.ValArray {
 		v.Val = []interface{}{v.Val}
 	}
 
@@ -506,7 +540,7 @@ func (v Holder) validVal(def Def, optSkipArrayOf ...bool) (result interface{}, e
 func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 	vp, _ := v.Key(key)
 	var val interface{}
-	if val, err = vp.validVal(elemDef); err != nil {
+	if val, err = vp.validVal(elemDef, false); err != nil {
 		return
 	} else if val != nil {
 		v.SetKeyVal(val, key)
@@ -514,14 +548,14 @@ func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 	return
 }
 
-func (v Holder) arrayHelper(elemDef Def, optSkipArrayOf ...bool) (result interface{}, err error) {
+func (v Holder) arrayHelper(elemDef Def, skipArrayOf bool) (result interface{}, err error) {
 	arr := v.MustArray()
 	newArr := make([]interface{}, 0, len(arr))
 	for i := range arr {
 		var vp Holder
 		if vp, err = v.Idx(i); err == nil {
 			var val interface{}
-			if val, err = vp.validVal(elemDef, optSkipArrayOf...); err != nil {
+			if val, err = vp.validVal(elemDef, skipArrayOf); err != nil {
 				return
 			}
 			newArr = append(newArr, val)

@@ -44,32 +44,6 @@ func (start Start) Suffix() string {
 
 // ============================================================================
 
-// type ValKind uint8
-
-// const (
-// 	ValNil ValKind = iota
-// 	ValBool
-// 	ValNumber
-// 	ValInt
-// 	ValUint
-// 	ValRange
-// 	ValString
-// 	ValId
-// 	ValMap
-// 	ValArray
-// 	ValPath
-// )
-
-// //go:generate bwsetter -type ValKind -test
-// //go:generate stringer -type ValKind -trimprefix Val
-
-// const (
-// 	_ValKindSetTestItemA = ValBool
-// 	_ValKindSetTestItemB = ValInt
-// )
-
-// ============================================================================
-
 type I interface {
 	Curr() *PosInfo
 	Forward(count uint)
@@ -104,8 +78,6 @@ type ValidatePathFunc func(on On, path bw.ValPath) (err error)
 type ValidateStringFunc func(on On, s string) (err error)
 
 type ValidateArrayOfStringElemFunc func(on On, ss []string, s string) (err error)
-
-// type ValidateArrayOfStringFunc func(on On, ss []string) (err error)
 
 // ============================================================================
 

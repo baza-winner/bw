@@ -2,7 +2,6 @@ package bwval
 
 import (
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwtype"
 )
 
@@ -14,7 +13,7 @@ func Kind(val interface{}) (result interface{}, kind bwtype.ValKind) {
 		kind = bwtype.ValNil
 	} else {
 		caseNumber := func(val interface{}) {
-			bwdebug.Print("val:#v", val)
+			// bwdebug.Print("val:#v", val)
 			if i, ok := bwtype.Int(val); ok {
 				result = i
 				kind = bwtype.ValInt
