@@ -6,7 +6,6 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	bwjson "github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwstr"
@@ -430,7 +429,7 @@ func (v Holder) MustKey(key string, optDefaultValProvider ...defaultValProvider)
 func (v Holder) SetKeyVal(val interface{}, key string) (err error) {
 	var m map[string]interface{}
 	if m, err = v.Map(); err == nil {
-		bwdebug.Print("m", m, "key", key)
+		// bwdebug.Print("m", m, "key", key)
 		m[key] = val
 	}
 	return
@@ -531,8 +530,7 @@ func (v Holder) SetIdxVal(val interface{}, idx int) (err error) {
 }
 
 func (v Holder) ValidVal(def Def) (result interface{}, err error) {
-	result, err = v.validVal(def)
-	// bwdebug.Print("v:#v", v, "result:#v", result)
+	result, err = v.validVal(def, false)
 	if err != nil {
 		err = bwerr.Refine(err, ansi.String("<ansiVal>%s<ansi>::{Error}"), bwjson.Pretty(v.Val))
 	}

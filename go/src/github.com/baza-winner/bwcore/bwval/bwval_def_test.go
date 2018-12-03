@@ -226,6 +226,38 @@ func TestParseDef(t *testing.T) {
 					},
 				},
 				{in: `{
+					type [Array]
+					elem {
+						type Map
+						keys {
+							some {
+								type Int
+								default 273
+							}
+						}
+					}
+					default [ { some 300} {some 400} ]
+				}`,
+					out: bwval.Def{
+						Types:      bwtype.ValKindSetFrom(bwtype.ValArray),
+						IsOptional: true,
+						Elem: &bwval.Def{
+							Types: bwtype.ValKindSetFrom(bwtype.ValMap),
+							Keys: map[string]bwval.Def{
+								"some": {
+									Types:      bwtype.ValKindSetFrom(bwtype.ValInt),
+									Default:    273,
+									IsOptional: true,
+								},
+							},
+						},
+						Default: []interface{}{
+							map[string]interface{}{"some": 300},
+							map[string]interface{}{"some": 400},
+						},
+					},
+				},
+				{in: `{
 					type [ArrayOf Map]
 					default { some: 273 }
 				}`,
@@ -233,6 +265,69 @@ func TestParseDef(t *testing.T) {
 						Types:      bwtype.ValKindSetFrom(bwtype.ValMap),
 						IsArrayOf:  true,
 						Default:    []interface{}{map[string]interface{}{"some": 273}},
+						IsOptional: true,
+					},
+				},
+				{in: `{
+					type [Array]
+					default [ { some: 273 } ]
+				}`,
+					out: bwval.Def{
+						Types:      bwtype.ValKindSetFrom(bwtype.ValArray),
+						Default:    []interface{}{map[string]interface{}{"some": 273}},
+						IsOptional: true,
+					},
+				},
+				{in: `{
+					type [ArrayOf String]
+					enum <some thing good>
+					default <some good thing>
+				}`,
+					out: bwval.Def{
+						Types:      bwtype.ValKindSetFrom(bwtype.ValString),
+						IsArrayOf:  true,
+						Enum:       bwset.StringFrom("some", "thing", "good"),
+						Default:    []interface{}{"some", "good", "thing"},
+						IsOptional: true,
+					},
+				},
+				{in: `{
+					type [Array]
+					arrayElem {
+						type Map
+						keys {
+							some {
+								type Int
+								isOptional true
+							}
+							thing {
+								type String
+								default "not bad"
+							}
+						}
+					}
+					default [ { some: 273 thing "good" } {} ]
+				}`,
+					out: bwval.Def{
+						Types: bwtype.ValKindSetFrom(bwtype.ValArray),
+						ArrayElem: &bwval.Def{
+							Types: bwtype.ValKindSetFrom(bwtype.ValMap),
+							Keys: map[string]bwval.Def{
+								"some": bwval.Def{
+									Types:      bwtype.ValKindSetFrom(bwtype.ValInt),
+									IsOptional: true,
+								},
+								"thing": bwval.Def{
+									Types:      bwtype.ValKindSetFrom(bwtype.ValString),
+									Default:    "not bad",
+									IsOptional: true,
+								},
+							},
+						},
+						Default: []interface{}{
+							map[string]interface{}{"some": 273, "thing": "good"},
+							map[string]interface{}{"thing": "not bad"},
+						},
 						IsOptional: true,
 					},
 				},
@@ -321,8 +416,8 @@ func TestParseDef(t *testing.T) {
 				{in: `{ type Map keys Int }`,
 					out: "expects \x1b[97;1mMap\x1b[0m instead of unexpected char \x1b[96;1m'I'\x1b[0m (\x1b[38;5;201;1mcharCode\x1b[0m: \x1b[96;1m73\x1b[0m)\x1b[0m at pos \x1b[38;5;252;1m16\x1b[0m: \x1b[32m{ type Map keys \x1b[91mI\x1b[0mnt }\n\x1b[0m",
 				},
-				{in: `{ type Int default 1 isOptional false  }`,
-					out: "\x1b[38;5;201;1mdefault\x1b[0m value is specified, so value of key \x1b[38;5;201;1misOptional\x1b[0m must not be \x1b[96;1mfalse\x1b[0m at pos \x1b[38;5;252;1m32\x1b[0m: \x1b[32m{ type Int default 1 isOptional \x1b[91mfalse\x1b[0m  }\n\x1b[0m",
+				{in: `{ type Int isOptional false  default 1 }`,
+					out: "while \x1b[38;5;201;1misOptional \x1b[96;1mfalse\x1b[0m, key \x1b[38;5;201;1mdefault\x1b[0m can not be specified at pos \x1b[38;5;252;1m29\x1b[0m: \x1b[32m{ type Int isOptional false  \x1b[91mdefault\x1b[0m 1 }\n\x1b[0m",
 				},
 				{in: `{ keys { some Int } type Array }`,
 					out: "key \x1b[38;5;201;1mkeys\x1b[0m is specified, so value of key \x1b[38;5;201;1mtype\x1b[0m expects to have \x1b[96;1mMap\x1b[0m at pos \x1b[38;5;252;1m25\x1b[0m: \x1b[32m{ keys { some Int } type \x1b[91mArray\x1b[0m }\n\x1b[0m",
@@ -374,7 +469,7 @@ func TestParseDef(t *testing.T) {
 					}
 					default [ {some 1} ]
 				}`,
-					out: "\x1b[38;5;252;1m$def.default.some\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m200..\x1b[0m at line \x1b[38;5;252;1m10\x1b[0m, col \x1b[38;5;252;1m22\x1b[0m (pos \x1b[38;5;252;1m141\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\t\tdefault 273\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tdefault [ {some \x1b[91m1\x1b[0m} ]\n\t\t\t\t}\n",
+					out: "\x1b[38;5;252;1m$Def.default.0.some\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m200..\x1b[0m at line \x1b[38;5;252;1m10\x1b[0m, col \x1b[38;5;252;1m22\x1b[0m (pos \x1b[38;5;252;1m141\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\t\tdefault 273\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tdefault [ {some \x1b[91m1\x1b[0m} ]\n\t\t\t\t}\n",
 				},
 				{in: `{
 					type [ArrayOf Map]
@@ -385,19 +480,79 @@ func TestParseDef(t *testing.T) {
 					}
 					default [ {some 1} ]
 				}`,
-					out: "\x1b[38;5;252;1m$def.default.some\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m200..\x1b[0m at line \x1b[38;5;252;1m8\x1b[0m, col \x1b[38;5;252;1m22\x1b[0m (pos \x1b[38;5;252;1m120\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\t\trange 200..\n\t\t\t\t\t\t\tdefault 273\n\t\t\t\t\t}\n\t\t\t\t\tdefault [ {some \x1b[91m1\x1b[0m} ]\n\t\t\t\t}\n",
+					out: "\x1b[38;5;252;1m$Def.default.0.some\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m200..\x1b[0m at line \x1b[38;5;252;1m8\x1b[0m, col \x1b[38;5;252;1m22\x1b[0m (pos \x1b[38;5;252;1m120\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\t\trange 200..\n\t\t\t\t\t\t\tdefault 273\n\t\t\t\t\t}\n\t\t\t\t\tdefault [ {some \x1b[91m1\x1b[0m} ]\n\t\t\t\t}\n",
 				},
-				// {in: `{
-				// 	type [ArrayOf Map]
-				// 	elem {
-				// 		type Int
-				// 		range 200..
-				// 		default 273
-				// 	}
-				// 	default [ {some 1} ]
-				// }`,
-				// 	out: "\x1b[38;5;252;1m.\x1b[0m (\x1b[96;1m1\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m200..\x1b[0m at line \x1b[38;5;252;1m10\x1b[0m, col \x1b[38;5;252;1m22\x1b[0m (pos \x1b[38;5;252;1m141\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\t\tdefault 273\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tdefault [ {some \x1b[91m1\x1b[0m} ]\n\t\t\t\t}\n",
-				// },
+				{in: `{
+					default [ {some 1} ]
+					type [ArrayOf Map]
+					elem {
+							default 273
+							type Int
+							range 300..
+					}
+				}`,
+					out: "key \x1b[38;5;201;1mtype\x1b[0m must be specified first at line \x1b[38;5;252;1m2\x1b[0m, col \x1b[38;5;252;1m6\x1b[0m (pos \x1b[38;5;252;1m7\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\t\t\x1b[91mdefault\x1b[0m [ {some 1} ]\n\t\t\t\t\ttype [ArrayOf Map]\n\t\t\t\t\telem {\n\t\t\t\t\t\t\tdefault 273\n\x1b[0m",
+				},
+				{in: `{
+					type [ArrayOf Map]
+					default [ {some 1} ]
+					elem {
+							default 273
+							type Int
+							range 300..
+					}
+				}`,
+					out: "key \x1b[38;5;201;1mdefault\x1b[0m must be LAST specified, but found key \x1b[91;1melem\x1b[0m after it at line \x1b[38;5;252;1m4\x1b[0m, col \x1b[38;5;252;1m6\x1b[0m (pos \x1b[38;5;252;1m57\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\t\ttype [ArrayOf Map]\n\t\t\t\t\tdefault [ {some 1} ]\n\t\t\t\t\t\x1b[91melem\x1b[0m {\n\t\t\t\t\t\t\tdefault 273\n\t\t\t\t\t\t\ttype Int\n\t\t\t\t\t\t\trange 300..\n\x1b[0m",
+				},
+				{in: `{
+					type [Array]
+					elem {
+						type Map
+						keys {
+							some {
+								type Int
+								range 1..
+								default 273
+							}
+						}
+					}
+					default [ {thing 1} ]
+				}`,
+					out: "unexpected key `\x1b[91;1mthing\x1b[0m`\x1b[0m at line \x1b[38;5;252;1m13\x1b[0m, col \x1b[38;5;252;1m17\x1b[0m (pos \x1b[38;5;252;1m169\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tdefault [ {\x1b[91mthing\x1b[0m 1} ]\n\t\t\t\t}\n",
+				},
+				{in: `{
+					type [Array]
+					arrayElem {
+						type Map
+						keys {
+							some {
+								type Int
+								range 1..
+								default 273
+							}
+						}
+					}
+					default [ {thing 1} ]
+				}`,
+					out: "unexpected key `\x1b[91;1mthing\x1b[0m`\x1b[0m at line \x1b[38;5;252;1m13\x1b[0m, col \x1b[38;5;252;1m17\x1b[0m (pos \x1b[38;5;252;1m174\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t\tdefault [ {\x1b[91mthing\x1b[0m 1} ]\n\t\t\t\t}\n",
+				},
+				{in: `{
+					type [ArrayOf String]
+					enum <some thing good>
+					default <some bad thing>
+				}`,
+					out: "\x1b[38;5;252;1m$Def.default.1\x1b[0m: expected one of \x1b[96;1m[\n  \"good\",\n  \"some\",\n  \"thing\"\n]\x1b[0m instead of \x1b[91;1m\"bad\"\x1b[0m at line \x1b[38;5;252;1m4\x1b[0m, col \x1b[38;5;252;1m20\x1b[0m (pos \x1b[38;5;252;1m76\x1b[0m)\x1b[0m:\n\x1b[32m{\n\t\t\t\t\ttype [ArrayOf String]\n\t\t\t\t\tenum <some thing good>\n\t\t\t\t\tdefault <some \x1b[91mbad\x1b[0m thing>\n\t\t\t\t}\n",
+				},
+				{in: `{
+					type [Array]
+					elem {
+						type String
+						enum <some thing good>
+					}
+					default <some bad thing>
+				}`,
+					out: "\x1b[38;5;252;1m$Def.default.1\x1b[0m: expected one of \x1b[96;1m[\n  \"good\",\n  \"some\",\n  \"thing\"\n]\x1b[0m instead of \x1b[91;1m\"bad\"\x1b[0m at line \x1b[38;5;252;1m7\x1b[0m, col \x1b[38;5;252;1m20\x1b[0m (pos \x1b[38;5;252;1m105\x1b[0m)\x1b[0m:\n\x1b[32m\t\t\t\t\t\ttype String\n\t\t\t\t\t\tenum <some thing good>\n\t\t\t\t\t}\n\t\t\t\t\tdefault <some \x1b[91mbad\x1b[0m thing>\n\t\t\t\t}\n",
+				},
 			} {
 				tests[v.in] = bwtesting.Case{
 					In:    []interface{}{v.in},
@@ -406,6 +561,48 @@ func TestParseDef(t *testing.T) {
 			}
 			return tests
 		}(),
+		// `{
+		// 			type [Array]
+		// 			elem {
+		// 				type Map
+		// 				keys {
+		// 					some {
+		// 						type Int
+		// 						range 1..
+		// 						default 273
+		// 					}
+		// 				}
+		// 			}
+		// 			default [ {thing 1} ]
+		// 		}`,
+		// `{
+		// 			type [ArrayOf Map]
+		// 			keys {
+		// 				some {
+		// 					type Int
+		// 					default 273
+		// 				}
+		// 			}
+		// 			default [ {} ]
+		// 		}`,
+		// `{
+		// 			default [ {some 1} ]
+		// 			type [ArrayOf Map]
+		// 			elem {
+		// 					default 273
+		// 					type Int
+		// 					range 300..
+		// 			}
+		// 		}`,
+		// `{
+		// 			default [ {some 1} ]
+		// 			type [ArrayOf Map]
+		// 			elem {
+		// 					type Int
+		// 					range 200..
+		// 					default 273
+		// 			}
+		// 		}`,
 		// `{
 		// 			type [ArrayOf Map]
 		// 			default { some: 273 }
@@ -468,31 +665,31 @@ func TestParseDef(t *testing.T) {
 // 			}
 
 // 			for k, v := range map[string]string{
-// 				"nil":                                           "\x1b[38;5;252;1m$def\x1b[0m is \x1b[91;1m(interface {})<nil>\x1b[0m",
-// 				"true":                                          "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
-// 				"[ Bool true ]":                                 "\x1b[38;5;252;1m$def.1\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mString\x1b[0m",
-// 				"{type true}":                                   "\x1b[38;5;252;1m$def.type\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m",
-// 				`{ type [ Int "bool" ] }`:                       "\x1b[38;5;252;1m$def.type.1\x1b[0m (\x1b[96;1m\"bool\"\x1b[0m)\x1b[0m is \x1b[91;1mnon supported\x1b[0m value\x1b[0m",
-// 				`{ type String enum [ "a" true ] }`:             "\x1b[38;5;252;1m$def.enum.1\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mString\x1b[0m",
-// 				`{ type Number min 1 max 2 default 3 }`:         "\x1b[38;5;252;1m$def.default\x1b[0m (\x1b[96;1m3\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m1..2\x1b[0m",
-// 				`{ enum <Bool Int> }`:                           "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1m{\n  \"enum\": [\n    \"Bool\",\n    \"Int\"\n  ]\n}\x1b[0m)\x1b[0m has no key \x1b[96;1mtype\x1b[0m",
-// 				`{ type Map keys true }`:                        "\x1b[38;5;252;1m$def.keys\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mMap\x1b[0m",
-// 				`{ type Map keys { some true } }`:               "\x1b[38;5;252;1m$def.keys.some\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
-// 				`{ type Array arrayElem true }`:                 "\x1b[38;5;252;1m$def.arrayElem\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
-// 				`{ type Array elem true }`:                      "\x1b[38;5;252;1m$def.elem\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
-// 				`{ type Int min 2.1 }`:                          "\x1b[38;5;252;1m$def.min\x1b[0m (\x1b[96;1m2.1\x1b[0m)\x1b[0m is not \x1b[97;1mInt\x1b[0m",
-// 				`{ type Int max 2.1 }`:                          "\x1b[38;5;252;1m$def.max\x1b[0m (\x1b[96;1m2.1\x1b[0m)\x1b[0m is not \x1b[97;1mInt\x1b[0m",
-// 				`{ type Int min 3 max 2 }`:                      "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1m{\n  \"max\": 2,\n  \"min\": 3,\n  \"type\": \"Int\"\n}\x1b[0m)\x1b[0m: \x1b[38;5;252;1m.max\x1b[0m (\x1b[96;1m2\x1b[0m) must not be \x1b[91;1mless\x1b[0m then \x1b[38;5;252;1m.min\x1b[0m (\x1b[96;1m3\x1b[0m)\x1b[0m",
-// 				`{ type Number min true }`:                      "\x1b[38;5;252;1m$def.min\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
-// 				`{ type Number max true }`:                      "\x1b[38;5;252;1m$def.max\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
-// 				`{ type Number min 3.14 max 2.71 }`:             "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1m{\n  \"max\": 2.71,\n  \"min\": 3.14,\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m: \x1b[38;5;252;1m.max\x1b[0m (\x1b[96;1m2.71\x1b[0m) must not be \x1b[91;1mless\x1b[0m then \x1b[38;5;252;1m.min\x1b[0m (\x1b[96;1m3.14\x1b[0m)\x1b[0m",
-// 				`{ type Number isOptional 3 }`:                  "\x1b[38;5;252;1m$def.isOptional\x1b[0m (\x1b[96;1m3\x1b[0m)\x1b[0m is not \x1b[97;1mBool\x1b[0m",
-// 				`{ type Number isOptional false default 3.14 }`: "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1m{\n  \"default\": 3.14,\n  \"isOptional\": false,\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m: having \x1b[38;5;252;1m.default\x1b[0m can not have \x1b[38;5;252;1m.isOptional\x1b[0m \x1b[96;1mtrue\x1b[0m",
-// 				`{ type Number keyA "valA" keyB "valB" }`:       "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1m{\n  \"keyA\": \"valA\",\n  \"keyB\": \"valB\",\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m has unexpected keys: \x1b[96;1m[\n  \"keyA\",\n  \"keyB\"\n]\x1b[0m",
-// 				`{ type Number keyA "valA" }`:                   "\x1b[38;5;252;1m$def\x1b[0m (\x1b[96;1m{\n  \"keyA\": \"valA\",\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m has unexpected key \x1b[96;1m\"keyA\"\x1b[0m",
-// 				`{ type <ArrayOf> }`:                            "\x1b[38;5;252;1m$def.type\x1b[0m (\x1b[96;1m[\n  \"ArrayOf\"\n]\x1b[0m)\x1b[0m: \x1b[96;1mArrayOf\x1b[0m must be followed by some type, can not be \x1b[91;1mused alone\x1b[0m",
-// 				`{ type <ArrayOf Array> }`:                      "\x1b[38;5;252;1m$def.type\x1b[0m (\x1b[96;1m[\n  \"ArrayOf\",\n  \"Array\"\n]\x1b[0m)\x1b[0m: values \x1b[96;1m\"ArrayOf\"\x1b[0m and \x1b[96;1m\"Array\"\x1b[0m are \x1b[91;1mmutually exclusive\x1b[0m, can not be \x1b[91;1mused both at once\x1b[0m",
-// 				`{ type <Int Number> }`:                         "\x1b[38;5;252;1m$def.type\x1b[0m (\x1b[96;1m[\n  \"Int\",\n  \"Number\"\n]\x1b[0m)\x1b[0m: values \x1b[96;1m\"Int\"\x1b[0m and \x1b[96;1m\"Number\"\x1b[0m are \x1b[91;1mmutually exclusive\x1b[0m, can not be \x1b[91;1mused both at once\x1b[0m",
+// 				"nil":                                           "\x1b[38;5;252;1m$Def\x1b[0m is \x1b[91;1m(interface {})<nil>\x1b[0m",
+// 				"true":                                          "\x1b[38;5;252;1m$Def\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
+// 				"[ Bool true ]":                                 "\x1b[38;5;252;1m$Def.1\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mString\x1b[0m",
+// 				"{type true}":                                   "\x1b[38;5;252;1m$Def.type\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m",
+// 				`{ type [ Int "bool" ] }`:                       "\x1b[38;5;252;1m$Def.type.1\x1b[0m (\x1b[96;1m\"bool\"\x1b[0m)\x1b[0m is \x1b[91;1mnon supported\x1b[0m value\x1b[0m",
+// 				`{ type String enum [ "a" true ] }`:             "\x1b[38;5;252;1m$Def.enum.1\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mString\x1b[0m",
+// 				`{ type Number min 1 max 2 default 3 }`:         "\x1b[38;5;252;1m$Def.default\x1b[0m (\x1b[96;1m3\x1b[0m)\x1b[0m is \x1b[91;1mout of range\x1b[0m \x1b[96;1m1..2\x1b[0m",
+// 				`{ enum <Bool Int> }`:                           "\x1b[38;5;252;1m$Def\x1b[0m (\x1b[96;1m{\n  \"enum\": [\n    \"Bool\",\n    \"Int\"\n  ]\n}\x1b[0m)\x1b[0m has no key \x1b[96;1mtype\x1b[0m",
+// 				`{ type Map keys true }`:                        "\x1b[38;5;252;1m$Def.keys\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mMap\x1b[0m",
+// 				`{ type Map keys { some true } }`:               "\x1b[38;5;252;1m$Def.keys.some\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
+// 				`{ type Array arrayElem true }`:                 "\x1b[38;5;252;1m$Def.arrayElem\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
+// 				`{ type Array elem true }`:                      "\x1b[38;5;252;1m$Def.elem\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m neither \x1b[97;1mString\x1b[0m nor \x1b[97;1mArray\x1b[0m nor \x1b[97;1mMap\x1b[0m",
+// 				`{ type Int min 2.1 }`:                          "\x1b[38;5;252;1m$Def.min\x1b[0m (\x1b[96;1m2.1\x1b[0m)\x1b[0m is not \x1b[97;1mInt\x1b[0m",
+// 				`{ type Int max 2.1 }`:                          "\x1b[38;5;252;1m$Def.max\x1b[0m (\x1b[96;1m2.1\x1b[0m)\x1b[0m is not \x1b[97;1mInt\x1b[0m",
+// 				`{ type Int min 3 max 2 }`:                      "\x1b[38;5;252;1m$Def\x1b[0m (\x1b[96;1m{\n  \"max\": 2,\n  \"min\": 3,\n  \"type\": \"Int\"\n}\x1b[0m)\x1b[0m: \x1b[38;5;252;1m.max\x1b[0m (\x1b[96;1m2\x1b[0m) must not be \x1b[91;1mless\x1b[0m then \x1b[38;5;252;1m.min\x1b[0m (\x1b[96;1m3\x1b[0m)\x1b[0m",
+// 				`{ type Number min true }`:                      "\x1b[38;5;252;1m$Def.min\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
+// 				`{ type Number max true }`:                      "\x1b[38;5;252;1m$Def.max\x1b[0m (\x1b[96;1mtrue\x1b[0m)\x1b[0m is not \x1b[97;1mNumber\x1b[0m",
+// 				`{ type Number min 3.14 max 2.71 }`:             "\x1b[38;5;252;1m$Def\x1b[0m (\x1b[96;1m{\n  \"max\": 2.71,\n  \"min\": 3.14,\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m: \x1b[38;5;252;1m.max\x1b[0m (\x1b[96;1m2.71\x1b[0m) must not be \x1b[91;1mless\x1b[0m then \x1b[38;5;252;1m.min\x1b[0m (\x1b[96;1m3.14\x1b[0m)\x1b[0m",
+// 				`{ type Number isOptional 3 }`:                  "\x1b[38;5;252;1m$Def.isOptional\x1b[0m (\x1b[96;1m3\x1b[0m)\x1b[0m is not \x1b[97;1mBool\x1b[0m",
+// 				`{ type Number isOptional false default 3.14 }`: "\x1b[38;5;252;1m$Def\x1b[0m (\x1b[96;1m{\n  \"default\": 3.14,\n  \"isOptional\": false,\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m: having \x1b[38;5;252;1m.default\x1b[0m can not have \x1b[38;5;252;1m.isOptional\x1b[0m \x1b[96;1mtrue\x1b[0m",
+// 				`{ type Number keyA "valA" keyB "valB" }`:       "\x1b[38;5;252;1m$Def\x1b[0m (\x1b[96;1m{\n  \"keyA\": \"valA\",\n  \"keyB\": \"valB\",\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m has unexpected keys: \x1b[96;1m[\n  \"keyA\",\n  \"keyB\"\n]\x1b[0m",
+// 				`{ type Number keyA "valA" }`:                   "\x1b[38;5;252;1m$Def\x1b[0m (\x1b[96;1m{\n  \"keyA\": \"valA\",\n  \"type\": \"Number\"\n}\x1b[0m)\x1b[0m has unexpected key \x1b[96;1m\"keyA\"\x1b[0m",
+// 				`{ type <ArrayOf> }`:                            "\x1b[38;5;252;1m$Def.type\x1b[0m (\x1b[96;1m[\n  \"ArrayOf\"\n]\x1b[0m)\x1b[0m: \x1b[96;1mArrayOf\x1b[0m must be followed by some type, can not be \x1b[91;1mused alone\x1b[0m",
+// 				`{ type <ArrayOf Array> }`:                      "\x1b[38;5;252;1m$Def.type\x1b[0m (\x1b[96;1m[\n  \"ArrayOf\",\n  \"Array\"\n]\x1b[0m)\x1b[0m: values \x1b[96;1m\"ArrayOf\"\x1b[0m and \x1b[96;1m\"Array\"\x1b[0m are \x1b[91;1mmutually exclusive\x1b[0m, can not be \x1b[91;1mused both at once\x1b[0m",
+// 				`{ type <Int Number> }`:                         "\x1b[38;5;252;1m$Def.type\x1b[0m (\x1b[96;1m[\n  \"Int\",\n  \"Number\"\n]\x1b[0m)\x1b[0m: values \x1b[96;1m\"Int\"\x1b[0m and \x1b[96;1m\"Number\"\x1b[0m are \x1b[91;1mmutually exclusive\x1b[0m, can not be \x1b[91;1mused both at once\x1b[0m",
 // 			} {
 // 				tests[k] = bwtesting.Case{
 // 					In:    []interface{}{func(testName string) interface{} { return bwval.From(testName) }},
