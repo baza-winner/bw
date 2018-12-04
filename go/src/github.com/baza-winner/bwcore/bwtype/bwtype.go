@@ -3,6 +3,7 @@ package bwtype
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
@@ -12,6 +13,7 @@ import (
 // ============================================================================
 
 func Int(val interface{}) (result int, ok bool) {
+	var needRecall bool
 	ok = true
 	switch t := val.(type) {
 	case int8:
@@ -44,13 +46,37 @@ func Int(val interface{}) (result int, ok bool) {
 		if ok = t == float64(result); !ok {
 			result = 0
 		}
+	case Number:
+		val = t.val
+		needRecall = true
+	case RangeLimit:
+		val = t.val
+		needRecall = true
 	default:
 		result, ok = platformSpecificInt(val)
+	}
+	if needRecall {
+		result, ok = Int(val)
 	}
 	return
 }
 
+func reflectInt(val interface{}) (int, bool) {
+	switch value := reflect.ValueOf(val); value.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		val = value.Int()
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		val = value.Uint()
+	case reflect.Float32, reflect.Float64:
+		val = value.Float()
+	default:
+		return 0, false
+	}
+	return Int(val)
+}
+
 func Uint(val interface{}) (result uint, ok bool) {
+	var needRecall bool
 	ok = true
 	switch t := val.(type) {
 	case int8:
@@ -87,13 +113,37 @@ func Uint(val interface{}) (result uint, ok bool) {
 		if ok = t == float64(result); !ok {
 			result = 0
 		}
+	case Number:
+		val = t.val
+		needRecall = true
+	case RangeLimit:
+		val = t.val
+		needRecall = true
 	default:
 		result, ok = platformSpecificUint(val)
+	}
+	if needRecall {
+		result, ok = Uint(val)
 	}
 	return
 }
 
+func reflectUint(val interface{}) (result uint, ok bool) {
+	switch value := reflect.ValueOf(val); value.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		val = value.Int()
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		val = value.Uint()
+	case reflect.Float32, reflect.Float64:
+		val = value.Float()
+	default:
+		return 0, false
+	}
+	return Uint(val)
+}
+
 func Float64(val interface{}) (result float64, ok bool) {
+	var needRecall bool
 	ok = true
 	switch t := val.(type) {
 	case int8:
@@ -120,8 +170,28 @@ func Float64(val interface{}) (result float64, ok bool) {
 		result = float64(t)
 	case float64:
 		result = t
+	case Number:
+		val = t.val
+		needRecall = true
+	case RangeLimit:
+		val = t.val
+		needRecall = true
 	default:
 		ok = false
+		needRecall = true
+		switch value := reflect.ValueOf(val); value.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			val = value.Int()
+		case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			val = value.Uint()
+		case reflect.Float32, reflect.Float64:
+			val = value.Float()
+		default:
+			needRecall = false
+		}
+	}
+	if needRecall {
+		result, ok = Float64(val)
 	}
 	return
 }
@@ -160,10 +230,10 @@ type Number struct {
 
 func NumberFrom(val interface{}) (result Number, ok bool) {
 	var (
-		i  int
-		u  uint
-		f  float64
-		rl RangeLimit
+		i int
+		u uint
+		f float64
+		// rl RangeLimit
 	)
 	if i, ok = Int(val); ok {
 		result = Number{i}
@@ -171,10 +241,10 @@ func NumberFrom(val interface{}) (result Number, ok bool) {
 		result = Number{u}
 	} else if f, ok = Float64(val); ok {
 		result = Number{f}
-	} else if rl, ok = val.(RangeLimit); ok {
-		result, ok = NumberFrom(rl.val)
-	} else {
-		result, ok = val.(Number)
+		// } else if rl, ok = val.(RangeLimit); ok {
+		// 	result, ok = NumberFrom(rl.val)
+		// } else {
+		// 	result, ok = val.(Number)
 	}
 	return
 }
@@ -515,6 +585,184 @@ func ValKindFromString(s string) (result ValKind, err error) {
 	var ok bool
 	if result, ok = mapValKindFromString[s]; !ok {
 		err = bwerr.From(ansiUknownValKind, result)
+	}
+	return
+}
+
+// ============================================================================
+
+func Kind(val interface{}, optExpects ...ValKindSet) (result interface{}, kind ValKind) {
+	expects := ValKindSet{}
+	expectsAny := true
+	if len(optExpects) > 0 && len(optExpects[0]) > 0 {
+		expects = optExpects[0]
+		expectsAny = false
+	}
+	if val == nil {
+		if expectsAny || expects.Has(ValNil) {
+			kind = ValNil
+		}
+	} else {
+		kindOfInt := func(i int64) (result interface{}, kind ValKind) {
+			if (expectsAny || expects.Has(ValInt)) && (i <= int64(bw.MaxInt)) {
+				result = int(i)
+				kind = ValInt
+			} else if (expectsAny || expects.Has(ValUint)) && i >= 0 && (uint64(i) <= uint64(bw.MaxUint)) {
+				result = uint(i)
+				kind = ValUint
+			} else if expectsAny || expects.Has(ValFloat64) {
+				result = float64(i)
+				kind = ValFloat64
+			}
+			return
+		}
+		kindOfUint := func(u uint64) (result interface{}, kind ValKind) {
+			if (len(expects) == 0 || expects.Has(ValInt)) && (u <= uint64(bw.MaxInt)) {
+				result = int(u)
+				kind = ValInt
+			} else if (expectsAny || expects.Has(ValUint)) && (uint64(u) <= uint64(bw.MaxUint)) {
+				result = uint(u)
+				kind = ValUint
+			} else if expectsAny || expects.Has(ValFloat64) {
+				result = float64(u)
+				kind = ValFloat64
+			}
+			return
+		}
+		var needRecall bool
+		switch t := val.(type) {
+		case bool:
+			if expectsAny || expects.Has(ValBool) {
+				result = t
+				kind = ValBool
+			}
+		case string:
+			if expectsAny || expects.Has(ValString) {
+				result = t
+				kind = ValString
+			}
+		case map[string]interface{}:
+			if expectsAny || expects.Has(ValMap) {
+				result = t
+				kind = ValMap
+			}
+		case []interface{}:
+			if expectsAny || expects.Has(ValArray) {
+				result = t
+				kind = ValArray
+			}
+		case bw.ValPath:
+			if expectsAny || expects.Has(ValPath) {
+				result = t
+				kind = ValPath
+			}
+		case Range:
+			if expectsAny || expects.Has(ValRange) {
+				result = t
+				kind = ValRange
+			}
+		case int:
+			result, kind = kindOfInt(int64(t))
+		case int8:
+			result, kind = kindOfInt(int64(t))
+		case int16:
+			result, kind = kindOfInt(int64(t))
+		case int32:
+			result, kind = kindOfInt(int64(t))
+		case int64:
+			result, kind = kindOfInt(t)
+		case uint:
+			result, kind = kindOfUint(uint64(t))
+		case uint8:
+			result, kind = kindOfUint(uint64(t))
+		case uint16:
+			result, kind = kindOfUint(uint64(t))
+		case uint64:
+			result, kind = kindOfUint(t)
+		case float32:
+			if (expectsAny || expects.Has(ValInt)) && float32(int(t)) == t {
+				result = int(t)
+				kind = ValInt
+			} else if (expectsAny || expects.Has(ValUint)) && float32(uint(t)) == t {
+				result = uint(t)
+				kind = ValUint
+			} else if expectsAny || expects.Has(ValFloat64) {
+				result = float64(t)
+				kind = ValFloat64
+			}
+		case float64:
+			if (expectsAny || expects.Has(ValInt)) && (float64(int(t)) == t) {
+				result = int(t)
+				kind = ValInt
+			} else if (expectsAny || expects.Has(ValUint)) && (float64(uint(t)) == t) {
+				result = uint(t)
+				kind = ValUint
+			} else if expectsAny || expects.Has(ValFloat64) {
+				result = t
+				kind = ValFloat64
+			}
+		case Number:
+			val = t.val
+			needRecall = true
+		case RangeLimit:
+			val = t.val
+			needRecall = true
+		default:
+			switch value := reflect.ValueOf(val); value.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				if expectsAny || expects.HasAny(ValInt, ValUint, ValFloat64) {
+					val = value.Int()
+					needRecall = true
+				}
+			case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				if expectsAny || expects.HasAny(ValInt, ValUint, ValFloat64) {
+					val = value.Uint()
+					needRecall = true
+				}
+			case reflect.Float32, reflect.Float64:
+				if expectsAny || expects.HasAny(ValInt, ValUint, ValFloat64) {
+					val = value.Float()
+					needRecall = true
+				}
+			case reflect.Bool:
+				if expectsAny || expects.Has(ValBool) {
+					result = value.Bool()
+					kind = ValBool
+				}
+			case reflect.String:
+				if expectsAny || expects.Has(ValString) {
+					result = value.String()
+					kind = ValString
+				}
+			case reflect.Slice:
+				if expectsAny || expects.Has(ValArray) {
+					len := value.Len()
+					vals := []interface{}{}
+					for i := 0; i < len; i++ {
+						vals = append(vals, value.Index(i).Interface())
+					}
+					result = vals
+					kind = ValArray
+				}
+			case reflect.Map:
+				if expectsAny || expects.Has(ValMap) {
+					if reflect.TypeOf(val).Key().Kind() == reflect.String {
+						m := map[string]interface{}{}
+						keyValues := value.MapKeys()
+						len := len(keyValues)
+						for i := 0; i < len; i++ {
+							keyValue := keyValues[i]
+							m[keyValue.String()] = value.MapIndex(keyValue).Interface()
+						}
+						result = m
+						kind = ValMap
+					}
+				}
+			}
+		}
+		if needRecall {
+			result, kind = Kind(val, expects)
+		}
 	}
 	return
 }

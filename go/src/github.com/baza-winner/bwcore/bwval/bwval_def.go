@@ -450,31 +450,67 @@ func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err err
 	}
 	var (
 		defKind bwtype.ValKind
-		kind    bwtype.ValKind
-		val     interface{}
+		// kind    bwtype.ValKind
+		val interface{}
 	)
-	switch val, kind = Kind(v.Val); kind {
-	case bwtype.ValBool, bwtype.ValMap, bwtype.ValString:
+	setKind := func(kind bwtype.ValKind, val interface{}) error {
 		if def.Types.Has(kind) {
 			defKind = kind
+			v.Val = val
 		}
-	case bwtype.ValInt:
-		if def.Types.Has(bwtype.ValInt) {
-			defKind = bwtype.ValInt
-		} else if def.Types.Has(bwtype.ValNumber) {
-			defKind = bwtype.ValNumber
-		}
-		v.Val = val
-	case bwtype.ValFloat64:
-		if def.Types.Has(bwtype.ValNumber) {
-			defKind = bwtype.ValNumber
-		}
-		v.Val = val
-	case bwtype.ValArray:
-		if def.Types.Has(bwtype.ValArray) || !skipArrayOf && def.IsArrayOf {
-			defKind = bwtype.ValArray
-		}
+		return nil
 	}
+	v.KindSwitch(map[bwtype.ValKind]KindCase{
+		bwtype.ValBool:   setKind,
+		bwtype.ValMap:    setKind,
+		bwtype.ValString: setKind,
+		bwtype.ValInt: func(kind bwtype.ValKind, val interface{}) error {
+			if def.Types.Has(bwtype.ValInt) {
+				defKind = bwtype.ValInt
+				v.Val = val
+			} else if def.Types.Has(bwtype.ValNumber) {
+				defKind = bwtype.ValNumber
+				v.Val = val
+			}
+			return nil
+		},
+		bwtype.ValFloat64: func(kind bwtype.ValKind, val interface{}) error {
+			if def.Types.Has(bwtype.ValNumber) {
+				defKind = bwtype.ValNumber
+				v.Val = val
+			}
+			return nil
+		},
+		bwtype.ValArray: func(kind bwtype.ValKind, val interface{}) error {
+			if def.Types.Has(bwtype.ValArray) || !skipArrayOf && def.IsArrayOf {
+				defKind = bwtype.ValArray
+				v.Val = val
+			}
+			return nil
+		},
+	}, nil)
+	// switch val, kind = bwtype.Kind(v.Val); kind {
+	// case bwtype.ValBool, bwtype.ValMap, bwtype.ValString:
+	// 	if def.Types.Has(kind) {
+	// 		defKind = kind
+	// 	}
+	// case bwtype.ValInt:
+	// 	if def.Types.Has(bwtype.ValInt) {
+	// 		defKind = bwtype.ValInt
+	// 	} else if def.Types.Has(bwtype.ValNumber) {
+	// 		defKind = bwtype.ValNumber
+	// 	}
+	// 	v.Val = val
+	// case bwtype.ValFloat64:
+	// 	if def.Types.Has(bwtype.ValNumber) {
+	// 		defKind = bwtype.ValNumber
+	// 	}
+	// 	v.Val = val
+	// case bwtype.ValArray:
+	// 	if def.Types.Has(bwtype.ValArray) || !skipArrayOf && def.IsArrayOf {
+	// 		defKind = bwtype.ValArray
+	// 	}
+	// }
 
 	if defKind == bwtype.ValUnknown {
 		err = v.notOfValKindError(def.Types)

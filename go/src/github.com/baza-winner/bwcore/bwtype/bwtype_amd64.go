@@ -8,6 +8,8 @@ func platformSpecificInt(val interface{}) (result int, ok bool) {
 	case uint32:
 		result = int(t)
 		ok = true
+	default:
+		result, ok = reflectInt(val)
 	}
 	return
 }
@@ -21,6 +23,8 @@ func platformSpecificUint(val interface{}) (result uint, ok bool) {
 	case uint64:
 		result = uint(t)
 		ok = true
+	default:
+		result, ok = reflectUint(val)
 	}
 	return
 }

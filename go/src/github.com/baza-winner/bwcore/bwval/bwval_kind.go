@@ -1,57 +1,46 @@
 package bwval
 
-import (
-	"github.com/baza-winner/bwcore/bw"
-	"github.com/baza-winner/bwcore/bwtype"
-)
-
 // ============================================================================
 
 // Kind - определяет разновидность  interface{}-значения
-func Kind(val interface{}) (result interface{}, kind bwtype.ValKind) {
-	if val == nil {
-		kind = bwtype.ValNil
-	} else {
-		caseNumber := func(val interface{}) {
-			// bwdebug.Print("val:#v", val)
-			if i, ok := bwtype.Int(val); ok {
-				result = i
-				kind = bwtype.ValInt
-			} else if u, ok := bwtype.Uint(val); ok {
-				result = u
-				kind = bwtype.ValUint
-			} else if f, ok := bwtype.Float64(val); ok {
-				result = f
-				kind = bwtype.ValFloat64
-			}
-		}
-		switch t := val.(type) {
-		case bool:
-			result = t
-			kind = bwtype.ValBool
-		case string:
-			result = t
-			kind = bwtype.ValString
-		case map[string]interface{}:
-			result = t
-			kind = bwtype.ValMap
-		case []interface{}:
-			result = t
-			kind = bwtype.ValArray
-		case bw.ValPath:
-			result = t
-			kind = bwtype.ValPath
-		case bwtype.Range:
-			result = t
-			kind = bwtype.ValRange
-		case bwtype.Number:
-			caseNumber(t.Val())
-		default:
-			caseNumber(val)
-		}
-	}
-	return
-}
+// func Kind(val interface{}) (result interface{}, kind bwtype.ValKind) {
+// 	if val == nil {
+// 		kind = bwtype.ValNil
+// 	} else {
+// 		switch t := val.(type) {
+// 		case bool:
+// 			result = t
+// 			kind = bwtype.ValBool
+// 		case string:
+// 			result = t
+// 			kind = bwtype.ValString
+// 		case map[string]interface{}:
+// 			result = t
+// 			kind = bwtype.ValMap
+// 		case []interface{}:
+// 			result = t
+// 			kind = bwtype.ValArray
+// 		case bw.ValPath:
+// 			result = t
+// 			kind = bwtype.ValPath
+// 		case bwtype.Range:
+// 			result = t
+// 			kind = bwtype.ValRange
+// 		default:
+// 			if i, ok := bwtype.Int(val); ok {
+// 				result = i
+// 				kind = bwtype.ValInt
+// 			} else if u, ok := bwtype.Uint(val); ok {
+// 				result = u
+// 				kind = bwtype.ValUint
+// 			} else if f, ok := bwtype.Float64(val); ok {
+// 				result = f
+// 				kind = bwtype.ValFloat64
+// 			}
+// 		}
+// 	}
+// 	return
+// }
 
 // ============================================================================
 

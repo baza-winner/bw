@@ -12,6 +12,8 @@ func platformSpecificInt(val interface{}) (result int, ok bool) {
 		if ok = t <= uint32(bw.MaxInt); ok {
 			result = int(t)
 		}
+	default:
+		result, ok = reflectInt(val)
 	}
 	return
 }
@@ -26,6 +28,8 @@ func platformSpecificUint(val interface{}) (result uint, ok bool) {
 		if ok = t <= uint64(bw.MaxUint); ok {
 			result = uint(t)
 		}
+	default:
+		result, ok = reflectUint(val)
 	}
 	return
 }

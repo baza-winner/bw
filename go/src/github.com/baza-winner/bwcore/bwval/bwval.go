@@ -222,9 +222,9 @@ func expandPaths(val interface{}, rootVal interface{}, isRoot bool, optVars ...m
 		result, err = h.PathVal(path, optVars...)
 	} else {
 		result = val
-		switch _, kind := Kind(val); kind {
+		switch t, kind := bwtype.Kind(val, bwtype.ValKindSetFrom(bwtype.ValMap, bwtype.ValArray)); kind {
 		case bwtype.ValMap:
-			m := result.(map[string]interface{})
+			m := t.(map[string]interface{})
 			for key, val := range m {
 				if val, err = expandPaths(val, rootVal, false, optVars...); err != nil {
 					return
@@ -232,7 +232,7 @@ func expandPaths(val interface{}, rootVal interface{}, isRoot bool, optVars ...m
 				m[key] = val
 			}
 		case bwtype.ValArray:
-			vals := result.([]interface{})
+			vals := t.([]interface{})
 			for i, val := range vals {
 				if val, err = expandPaths(val, rootVal, false, optVars...); err != nil {
 					return
