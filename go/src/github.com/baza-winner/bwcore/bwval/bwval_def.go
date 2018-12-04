@@ -5,6 +5,7 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
+	"github.com/baza-winner/bwcore/bwdebug"
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwmap"
 	"github.com/baza-winner/bwcore/bwparse"
@@ -407,6 +408,7 @@ func parseValByDef(p bwparse.I, def Def, base bw.ValPath, skipArrayOf bool) (res
 		opt.OnValidateArrayOfStringElem = func(on bwparse.On, ss []string, s string) (err error) {
 			h := Holder{Val: s, Pth: base.AppendIdx(len(ss))}
 			if _, err = h.validVal(elemDef(), subSkipArrayOf); err != nil {
+				bwdebug.Print("err", err)
 				err = p.Error(bwparse.A{
 					Start: on.Start,
 					Fmt:   bwerr.Err(err),
@@ -450,67 +452,39 @@ func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err err
 	}
 	var (
 		defKind bwtype.ValKind
-		// kind    bwtype.ValKind
-		val interface{}
+		val     interface{}
 	)
-	setKind := func(kind bwtype.ValKind, val interface{}) error {
+	setKind := func(val interface{}, kind bwtype.ValKind) (interface{}, error) {
 		if def.Types.Has(kind) {
 			defKind = kind
-			v.Val = val
 		}
-		return nil
+		return val, nil
 	}
-	v.KindSwitch(map[bwtype.ValKind]KindCase{
+	val, _ = v.KindSwitch(map[bwtype.ValKind]KindCase{
 		bwtype.ValBool:   setKind,
 		bwtype.ValMap:    setKind,
 		bwtype.ValString: setKind,
-		bwtype.ValInt: func(kind bwtype.ValKind, val interface{}) error {
+		bwtype.ValInt: func(val interface{}, kind bwtype.ValKind) (interface{}, error) {
 			if def.Types.Has(bwtype.ValInt) {
 				defKind = bwtype.ValInt
-				v.Val = val
 			} else if def.Types.Has(bwtype.ValNumber) {
 				defKind = bwtype.ValNumber
-				v.Val = val
 			}
-			return nil
+			return val, nil
 		},
-		bwtype.ValFloat64: func(kind bwtype.ValKind, val interface{}) error {
+		bwtype.ValFloat64: func(val interface{}, kind bwtype.ValKind) (interface{}, error) {
 			if def.Types.Has(bwtype.ValNumber) {
 				defKind = bwtype.ValNumber
-				v.Val = val
 			}
-			return nil
+			return val, nil
 		},
-		bwtype.ValArray: func(kind bwtype.ValKind, val interface{}) error {
+		bwtype.ValArray: func(val interface{}, kind bwtype.ValKind) (interface{}, error) {
 			if def.Types.Has(bwtype.ValArray) || !skipArrayOf && def.IsArrayOf {
 				defKind = bwtype.ValArray
-				v.Val = val
 			}
-			return nil
+			return val, nil
 		},
 	}, nil)
-	// switch val, kind = bwtype.Kind(v.Val); kind {
-	// case bwtype.ValBool, bwtype.ValMap, bwtype.ValString:
-	// 	if def.Types.Has(kind) {
-	// 		defKind = kind
-	// 	}
-	// case bwtype.ValInt:
-	// 	if def.Types.Has(bwtype.ValInt) {
-	// 		defKind = bwtype.ValInt
-	// 	} else if def.Types.Has(bwtype.ValNumber) {
-	// 		defKind = bwtype.ValNumber
-	// 	}
-	// 	v.Val = val
-	// case bwtype.ValFloat64:
-	// 	if def.Types.Has(bwtype.ValNumber) {
-	// 		defKind = bwtype.ValNumber
-	// 	}
-	// 	v.Val = val
-	// case bwtype.ValArray:
-	// 	if def.Types.Has(bwtype.ValArray) || !skipArrayOf && def.IsArrayOf {
-	// 		defKind = bwtype.ValArray
-	// 	}
-	// }
 
 	if defKind == bwtype.ValUnknown {
 		err = v.notOfValKindError(def.Types)
@@ -528,14 +502,14 @@ func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err err
 			}
 		}
 	case bwtype.ValInt, bwtype.ValNumber:
-		if !def.Range.Contains(v.Val) {
+		if !def.Range.Contains(val) {
 			err = v.outOfRangeError(def.Range)
 			return
 		}
 
 	case bwtype.ValMap:
 		if def.Keys != nil {
-			unexpectedKeys := bwmap.MustUnexpectedKeys(v.Val, def.Keys)
+			unexpectedKeys := bwmap.MustUnexpectedKeys(val, def.Keys)
 			for key, keyDef := range def.Keys {
 				if err = v.mapHelper(key, keyDef); err != nil {
 					return
@@ -556,6 +530,7 @@ func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err err
 		} else if def.Elem != nil {
 			m, _ := val.(map[string]interface{})
 			for k := range m {
+				v.Val = val
 				if err = v.mapHelper(k, *(def.Elem)); err != nil {
 					return
 				}
@@ -563,7 +538,8 @@ func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err err
 		}
 	case bwtype.ValArray:
 		if !skipArrayOf && def.IsArrayOf {
-			if v.Val, err = v.arrayHelper(def, true); err != nil {
+			v.Val = val
+			if val, err = v.arrayHelper(def, true); err != nil {
 				return
 			}
 		} else {
@@ -572,7 +548,8 @@ func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err err
 				elemDef = def.Elem
 			}
 			if elemDef != nil {
-				if v.Val, err = v.arrayHelper(*elemDef, false); err != nil {
+				v.Val = val
+				if val, err = v.arrayHelper(*elemDef, false); err != nil {
 					return
 				}
 			}
@@ -580,10 +557,10 @@ func (v Holder) validVal(def Def, skipArrayOf bool) (result interface{}, err err
 	}
 
 	if !skipArrayOf && def.IsArrayOf && defKind != bwtype.ValArray {
-		v.Val = []interface{}{v.Val}
+		val = []interface{}{val}
 	}
 
-	result = v.Val
+	result = val
 	return
 }
 
