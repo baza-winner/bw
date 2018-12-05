@@ -570,7 +570,7 @@ func (v Holder) mapHelper(key string, elemDef Def) (err error) {
 	if val, err = vp.validVal(elemDef, false); err != nil {
 		return
 	} else if val != nil {
-		v.SetKeyVal(val, key)
+		v.SetKeyVal(key, val)
 	}
 	return
 }

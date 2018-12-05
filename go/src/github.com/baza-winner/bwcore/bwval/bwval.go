@@ -12,30 +12,6 @@ import (
 
 // ============================================================================
 
-// // PathFrom - конструктор-парсер bw.ValPath из строки
-// func PathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath, err error) {
-// 	p := bwparse.From(bwrune.FromString(s))
-// 	a := bwparse.PathA{}
-// 	if len(optBases) > 0 {
-// 		a.Bases = optBases[0]
-// 	}
-// 	if result, err = p.PathContent(a); err == nil {
-// 		err = p.SkipSpace(bwparse.TillEOF)
-// 	}
-// 	return
-// }
-
-// // PathFrom - конструктор-парсер bw.ValPath из строки
-// func MustPathFrom(s string, optBases ...[]bw.ValPath) (result bw.ValPath) {
-// 	var err error
-// 	if result, err = PathFrom(s, optBases...); err != nil {
-// 		bwerr.PanicErr(err)
-// 	}
-// 	return
-// }
-
-// ============================================================================
-
 type PathStr struct {
 	S     string
 	Bases []bw.ValPath
@@ -50,20 +26,12 @@ func (v PathStr) Path() (result bw.ValPath, err error) {
 	return
 }
 
-func (v PathStr) MustPath() (result bw.ValPath) {
-	var err error
-	if result, err = v.Path(); err != nil {
-		bwerr.PanicErr(err)
-	}
-	return
-}
-
 // ============================================================================
 
 func MustPath(pathProvider bw.ValPathProvider) (result bw.ValPath) {
 	var err error
 	if result, err = pathProvider.Path(); err != nil {
-		bwerr.PanicErr(err)
+		bwerr.PanicErr(bwerr.Refine(err, "invalid path: {Error}"))
 	}
 	return
 }
@@ -88,83 +56,12 @@ func MustSetPathVal(val interface{}, v bw.Val, pathProvider bw.ValPathProvider, 
 	var err error
 	path := MustPath(pathProvider)
 	if err = v.SetPathVal(val, path, optVars...); err != nil {
-		bwerr.PanicA(bwerr.Err(bwerr.Refine(err,
+		bwerr.PanicErr(bwerr.Refine(err,
 			ansiMustSetPathValFailed,
 			path, bwjson.Pretty(v), varsJSON(path, optVars),
-		)))
+		))
 	}
 }
-
-// ============================================================================
-
-// type ValByOpt struct {
-// 	Bases []bw.ValPath
-// 	Vars  map[string]interface{}
-// }
-
-// // ValBy - обертка над PathFrom()+bw.Val.PathVal()
-// func ValBy(v bw.Val, pathStr string, opt ...ValByOpt) (result interface{}, err error) {
-// 	var (
-// 		optBases [][]bw.ValPath
-// 		optVars  []map[string]interface{}
-// 		path     bw.ValPath
-// 	)
-// 	if len(opt) > 0 {
-// 		optBases = append(optBases, opt[0].Bases)
-// 		optVars = append(optVars, opt[0].Vars)
-// 	}
-// 	if path, err = PathFrom(pathStr, optBases...); err != nil {
-// 		return
-// 	}
-// 	if result, err = v.PathVal(path, optVars...); err != nil {
-// 		err = bwerr.Refine(err,
-// 			ansiMustPathValFailed,
-// 			path, bwjson.Pretty(v), varsJSON(path, optVars),
-// 		)
-// 	}
-// 	return
-// }
-
-// // MustValBy - must-обертка ValBy()
-// func MustValBy(v bw.Val, pathStr string, opt ...ValByOpt) (result interface{}) {
-// 	var err error
-// 	if result, err = ValBy(v, pathStr, opt...); err != nil {
-// 		bwerr.PanicErr(err)
-// 	}
-// 	return
-// }
-
-// // SetValBy - обертка PathFrom()+bw.Val.SetPathVal()
-// func SetValBy(val interface{}, v bw.Val, pathStr string, opt ...ValByOpt) (err error) {
-// 	var (
-// 		optBases [][]bw.ValPath
-// 		optVars  []map[string]interface{}
-// 		path     bw.ValPath
-// 	)
-// 	if len(opt) > 0 {
-// 		optBases = append(optBases, opt[0].Bases)
-// 		optVars = append(optVars, opt[0].Vars)
-// 	}
-// 	if path, err = PathFrom(pathStr, optBases...); err != nil {
-// 		return
-// 	}
-// 	if err = v.SetPathVal(val, path, optVars...); err != nil {
-// 		err = bwerr.Refine(err,
-// 			ansiMustSetPathValFailed,
-// 			path, bwjson.Pretty(v), varsJSON(path, optVars),
-// 		)
-// 	}
-// 	return
-// }
-
-// // MustSetPathVal - обертка PathFrom()+bw.Val.SetPathVal()
-// func MustSetValBy(val interface{}, v bw.Val, pathStr string, opt ...ValByOpt) {
-// 	var err error
-// 	if err = SetValBy(val, v, pathStr, opt...); err != nil {
-// 		bwerr.PanicErr(err)
-// 	}
-// 	return
-// }
 
 // ============================================================================
 
@@ -189,10 +86,8 @@ func TemplateFrom(s string) (result Template) {
 		var st bwparse.Status
 		if result, st = bwparse.Val(p); st.IsOK() {
 			_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
-		} else if st.Err != nil {
-			err = st.Err
 		} else {
-			err = bwparse.Unexpected(p)
+			err = st.Err
 		}
 		return
 	}(s); err != nil {
@@ -243,188 +138,5 @@ func expandPaths(val interface{}, rootVal interface{}, isRoot bool, optVars ...m
 	}
 	return
 }
-
-// ============================================================================
-
-// Bool - пытается извлечь bool из interface{}
-// func Bool(val interface{}) (result bool, ok bool) {
-// 	if v, kind := Kind(val); kind == ValBool {
-// 		result, ok = v.(bool)
-// 	}
-// 	return
-// }
-
-// // MustBool - must-обертка Bool()
-// func MustBool(val interface{}) (result bool) {
-// 	var ok bool
-// 	if result, ok = Bool(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "Bool")
-// 	}
-// 	return
-// }
-
-// // Int - пытается извлечь int из interface{}
-// func Int(val interface{}) (result int, ok bool) {
-// 	switch v, kind := Kind(val); kind {
-// 	case ValInt:
-// 		result, _ = v.(int)
-// 		ok = true
-// 	// case ValNumber:
-// 	// 	n, _ := v.(bwtype.RangeLimit)
-// 	// 	result, ok = n.Int()
-// 	}
-// 	return
-// }
-
-// // MustInt - must-обертка Int()
-// func MustInt(val interface{}) (result int) {
-// 	var ok bool
-// 	if result, ok = Int(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "Int")
-// 	}
-// 	return
-// }
-
-// // Float64 - пытается извлечь float64 из interface{}
-// func Float64(val interface{}) (result float64, ok bool) {
-// 	switch v, kind := Kind(val); kind {
-// 	case ValInt:
-// 		var i int
-// 		i, _ = v.(int)
-// 		result = float64(i)
-// 		ok = true
-// 	case ValFloat64:
-// 		result, _ = v.(float64)
-// 		ok = true
-// 	case ValNumber:
-// 		n, _ := v.(bwtype.RangeLimit)
-// 		result, ok = n.Float64()
-// 	}
-// 	return
-// }
-
-// // MustFloat64 - must-обертка Float64()
-// func MustFloat64(val interface{}) (result float64) {
-// 	var ok bool
-// 	if result, ok = Float64(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "Float64")
-// 	}
-// 	return
-// }
-
-// // bwtype.RangeLimit - пытается извлечь bwtype.RangeLimit из interface{}
-// func Number(val interface{}) (result bwtype.RangeLimit, ok bool) {
-// 	result, ok = bwtype.RangeLimitFrom(val)
-// 	// var (
-// 	//   kind ValKind
-// 	//   t    interface{}
-// 	// )
-// 	// switch t, kind = Kind(val); kind {
-// 	// case ValInt:
-// 	//   i, _ := t.(int)
-// 	//   result = NumberFromInt(i)
-// 	//   ok = true
-// 	// case ValFloat64:
-// 	//   f, _ := t.(float64)
-// 	//   result = NumberFromFloat64(f)
-// 	//   ok = true
-// 	// case ValNumber:
-// 	//   result, _ = t.(bwtype.RangeLimit)
-// 	//   ok = true
-// 	// }
-// 	// bwdebug.Print("kind", kind, "t", t, "val:#v", val)
-// 	return
-// }
-
-// // MustNumber - must-обертка bwtype.RangeLimit()
-// func MustNumber(val interface{}) (result bwtype.RangeLimit) {
-// 	var ok bool
-// 	if result, ok = Number(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "Number")
-// 	}
-// 	return
-// }
-
-// // String - пытается извлечь string из interface{}
-// func String(val interface{}) (result string, ok bool) {
-// 	if v, kind := Kind(val); kind == ValString {
-// 		result, ok = v.(string)
-// 	}
-// 	return
-// }
-
-// // MustString - must-обертка String()
-// func MustString(val interface{}) (result string) {
-// 	var ok bool
-// 	if result, ok = String(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "String")
-// 	}
-// 	return
-// }
-
-// // Map - пытается извлечь map[string]interface{} из interface{}
-// func Map(val interface{}) (result map[string]interface{}, ok bool) {
-// 	if v, kind := Kind(val); kind == ValMap {
-// 		result, ok = v.(map[string]interface{})
-// 	}
-// 	return
-// }
-
-// // MustMap - must-обертка Map()
-// func MustMap(val interface{}) (result map[string]interface{}) {
-// 	var ok bool
-// 	if result, ok = Map(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "Map")
-// 	}
-// 	return
-// }
-
-// // Map - пытается извлечь []interface{} из interface{}
-// func Array(val interface{}) (result []interface{}, ok bool) {
-// 	if v, kind := Kind(val); kind == ValArray {
-// 		result, ok = v.([]interface{})
-// 	}
-// 	return
-// }
-
-// // MustArray - must-обертка Array()
-// func MustArray(val interface{}) (result []interface{}) {
-// 	var ok bool
-// 	if result, ok = Array(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "Array")
-// 	}
-// 	return result
-// }
-
-// // Map - пытается извлечь []string из interface{}
-// func ArrayOfString(val interface{}) (result []string, ok bool) {
-// 	switch v, kind := Kind(val); kind {
-// 	case ValArrayOfString:
-// 		result, ok = v.([]string)
-// 	case ValArray:
-// 		vals, _ := v.([]interface{})
-// 		result = []string{}
-// 		var s string
-// 		for _, val := range vals {
-// 			if s, ok = val.(string); !ok {
-// 				return
-// 			}
-// 			result = append(result, s)
-// 		}
-// 		ok = true
-// 	}
-// 	return
-// }
-
-// // MustArray - must-обертка Array()
-// func MustArrayOfString(val interface{}) (result []string) {
-// 	var ok bool
-// 	if result, ok = ArrayOfString(val); !ok {
-// 		bwerr.Panic(ansiIsNotOfType, val, "ArrayOfString")
-// 	}
-// 	return result
-// }
-
-// ============================================================================
 
 // ============================================================================

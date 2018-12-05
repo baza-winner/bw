@@ -84,6 +84,8 @@ func (v Vals) Strings() (result []string) {
 
 type A struct {
 	Source              I
+	ForceMulti          bool
+	SinglePrefix        string
 	SingleJoiner        string
 	MultiJoiner         string
 	NoJoinerOnMutliline bool
@@ -133,7 +135,6 @@ func SmartJoin(a A) (result string) {
 	} else if a.Mode == Auto && a.MaxLen > 0 {
 		joinerLen = ansi.Len(a.MultiJoiner)
 		sumLen = ansi.Len(a.MultiPrefix) + ansi.Len(a.MultiSuffix) - joinerLen
-		// bwdebug.Print("sumLen", sumLen, "a.MaxLen", a.MaxLen)
 	}
 	for _, s := range source {
 		if !isMultiline && a.Mode == Auto && strings.IndexRune(s, '\n') >= 0 {
@@ -141,15 +142,18 @@ func SmartJoin(a A) (result string) {
 		}
 		if !isMultiline && a.Mode == Auto && a.MaxLen > 0 {
 			sumLen += ansi.Len(s) + joinerLen
-			// bwdebug.Print("sumLen", sumLen, "ansi.Len(s)", ansi.Len(s), "s", s, "a.MaxLen", a.MaxLen)
 			if sumLen > int(a.MaxLen) {
 				isMultiline = true
 			}
 		}
 		ss = append(ss, s)
 	}
-	if len(ss) <= 2 {
-		result = strings.Join(ss, a.SingleJoiner)
+	maxSingle := 2
+	if a.ForceMulti {
+		maxSingle = 1
+	}
+	if len(ss) <= maxSingle {
+		result = a.SinglePrefix + strings.Join(ss, a.SingleJoiner)
 	} else {
 		if isMultiline && !a.NoJoinerOnMutliline {
 			a.MultiJoiner = strings.TrimRightFunc(a.MultiJoiner, func(r rune) bool { return unicode.IsSpace(r) })

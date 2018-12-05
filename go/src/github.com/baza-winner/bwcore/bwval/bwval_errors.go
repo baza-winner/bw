@@ -8,6 +8,7 @@ import (
 	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwjson"
 	"github.com/baza-winner/bwcore/bwset"
+	"github.com/baza-winner/bwcore/bwstr"
 	"github.com/baza-winner/bwcore/bwtype"
 )
 
@@ -96,15 +97,15 @@ func (v Holder) notEnoughRangeError(l int, idx int) error {
 
 // ============================================================================
 
-func (v Holder) canNotSetNonStringError(idx int, val interface{}) error {
-	return bwerr.From(v.ansiString()+ansiCanNotSetNonString, idx, val)
-}
+// func (v Holder) canNotSetNonStringError(idx int, val interface{}) error {
+// 	return bwerr.From(v.ansiString()+ansiCanNotSetNonString, idx, val)
+// }
 
 // ============================================================================
 
-func (v Holder) nonSupportedValueError() error {
-	return bwerr.From(v.ansiString() + ansi.String(" is <ansiErr>non supported<ansi> value"))
-}
+// func (v Holder) nonSupportedValueError() error {
+// 	return bwerr.From(v.ansiString() + ansi.String(" is <ansiErr>non supported<ansi> value"))
+// }
 
 // ============================================================================
 
@@ -115,50 +116,45 @@ func (v Holder) outOfRangeError(rng bwtype.Range) (err error) {
 
 // ============================================================================
 
-func (v Holder) maxLessThanMinError(max, min bwtype.RangeLimit) error {
-	return bwerr.From(v.ansiString()+
-		": <ansiPath>.max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiPath>.min<ansi> (<ansiVal>%s<ansi>)",
-		bwjson.Pretty(max), bwjson.Pretty(min),
-	)
-}
+// func (v Holder) maxLessThanMinError(max, min bwtype.RangeLimit) error {
+// 	return bwerr.From(v.ansiString()+
+// 		": <ansiPath>.max<ansi> (<ansiVal>%s<ansi>) must not be <ansiErr>less<ansi> then <ansiPath>.min<ansi> (<ansiVal>%s<ansi>)",
+// 		bwjson.Pretty(max), bwjson.Pretty(min),
+// 	)
+// }
 
 // ============================================================================
 
-func (v Holder) defaultNonOptionalError() error {
-	return bwerr.From(v.ansiString() +
-		": having <ansiPath>.default<ansi> can not have <ansiPath>.isOptional<ansi> <ansiVal>true",
-	)
-}
+// func (v Holder) defaultNonOptionalError() error {
+// 	return bwerr.From(v.ansiString() +
+// 		": having <ansiPath>.default<ansi> can not have <ansiPath>.isOptional<ansi> <ansiVal>true",
+// 	)
+// }
 
 // ============================================================================
 
 func (v Holder) unexpectedKeysError(unexpectedKeys bwset.String) (err error) {
-	var fmtString string
-	var fmtArg interface{}
-	ss := unexpectedKeys.ToSlice()
-	switch len(ss) {
-	case 0:
-		return
-	case 1:
-		fmtString = ansi.String(" has unexpected key <ansiVal>%s")
-		fmtArg = bwjson.Pretty(ss[0])
-	default:
-		fmtString = ansi.String(" has unexpected keys: <ansiVal>%s")
-		fmtArg = bwjson.Pretty(ss)
-	}
-	err = bwerr.From(v.ansiString()+fmtString, fmtArg)
+	err = bwerr.From(v.ansiString() + " has unexpected " + bwstr.SmartJoin(bwstr.A{
+		Source: bwstr.SS{
+			SS:        unexpectedKeys.ToSlice(),
+			Preformat: func(s string) string { return fmt.Sprintf(ansi.String("<ansiVal>%q"), s) },
+		},
+		SinglePrefix: "key ",
+		ForceMulti:   true,
+		MultiPrefix:  "keys: [",
+	}))
 	return
 }
 
 // ============================================================================
 
-func (v Holder) arrayOfMustBeFollowedBySomeTypeError() error {
-	return bwerr.From(v.ansiString() + ansi.String(": <ansiVal>ArrayOf<ansi> must be followed by some type, can not be <ansiErr>used alone"))
-}
+// func (v Holder) arrayOfMustBeFollowedBySomeTypeError() error {
+// 	return bwerr.From(v.ansiString() + ansi.String(": <ansiVal>ArrayOf<ansi> must be followed by some type, can not be <ansiErr>used alone"))
+// }
 
-func (v Holder) valuesAreMutuallyExclusiveError(valA, valB interface{}) error {
-	return bwerr.From(v.ansiString()+ansi.String(": values <ansiVal>%s<ansi> and <ansiVal>%s<ansi> are <ansiErr>mutually exclusive<ansi>, can not be <ansiErr>used both at once"), bwjson.Pretty(valA), bwjson.Pretty(valB))
-}
+// func (v Holder) valuesAreMutuallyExclusiveError(valA, valB interface{}) error {
+// 	return bwerr.From(v.ansiString()+ansi.String(": values <ansiVal>%s<ansi> and <ansiVal>%s<ansi> are <ansiErr>mutually exclusive<ansi>, can not be <ansiErr>used both at once"), bwjson.Pretty(valA), bwjson.Pretty(valB))
+// }
 
 // ============================================================================
 
