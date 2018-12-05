@@ -23,6 +23,32 @@ type Provider interface {
 
 // ============================================================================
 
+type ProviderProvider interface {
+	Provider() Provider
+}
+
+// ============================================================================
+
+type S struct {
+	S string
+}
+
+func (v S) Provider() Provider {
+	return FromString(v.S)
+}
+
+// ============================================================================
+
+type F struct {
+	S string
+}
+
+func (v F) Provider() Provider {
+	return MustFromFile(v.S)
+}
+
+// ============================================================================
+
 func FromString(source string) Provider {
 	result := stringProvider{pos: -1, src: []rune(source)}
 	return &result

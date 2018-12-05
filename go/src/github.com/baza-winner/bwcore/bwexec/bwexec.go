@@ -11,41 +11,64 @@ import (
 
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bwos"
+	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwstr"
+	"github.com/baza-winner/bwcore/bwval"
 )
 
 const defaultFailedCode = 1
 
-func ExecCmd(opt map[string]interface{}, cmdName string, cmdArgs ...string) (result map[string]interface{}) {
-	// _ = GetValidMap(`ExecCmd.opt`, opt, map[string]interface{}{
-	//  `type`: `map`,
-	//  `keys`: map[string]interface{}{
-	//    `v`: map[string]interface{}{
-	//      `type`:    `enum`,
-	//      `enum`:    []string{`all`, `err`, `ok`, `none`},
-	//      `default`: `none`,
-	//    },
-	//    `s`: map[string]interface{}{
-	//      `type`:    `enum`,
-	//      `enum`:    []string{`none`, `stderr`, `stdout`, `all`},
-	//      `default`: `all`,
-	//    },
-	//    `exitOnError`: map[string]interface{}{
-	//      `type`:    `bool`,
-	//      `default`: false,
-	//    },
-	//  },
-	// })
+var cmdOptDef bwval.Def
+
+func init() {
+	cmdOptDef = bwval.MustDef(bwrune.S{`
+		{
+			type Map
+			keys {
+				v {
+					type String
+					enum <all err ok none>
+					default "none"
+				}
+				s {
+					type String
+					enum <none stderr stdout all>
+					default "all"
+				}
+				exitOnError {
+					type Bool
+					default false
+				}
+			}
+		}
+	`})
+}
+
+type A struct {
+	Cmd  string
+	Args []string
+}
+
+func Args(cmdName string, cmdArgs ...string) A {
+	return A{Cmd: cmdName, Args: cmdArgs}
+}
+
+func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
+	var opt interface{}
+	if len(optOpt) > 0 {
+		opt = optOpt[0]
+	}
+	hOpt := bwval.From(bwval.V{opt}, bwval.PathStr{S: "Cmd.opt"}).MustValid(cmdOptDef)
 
 	result = map[string]interface{}{}
 
-	cmdTitle := bwstr.SmartQuote(append([]string{cmdName}, cmdArgs...)...)
-	sOpt := getStringKeyOrDefault(opt, `s`, `all`)
-	vOpt := getStringKeyOrDefault(opt, `v`, `none`)
+	cmdTitle := bwstr.SmartQuote(append([]string{a.Cmd}, a.Args...)...)
+	sOpt := hOpt.MustPathStr("s").MustString()
+	vOpt := hOpt.MustPathStr("v").MustString()
 	if vOpt == `all` || vOpt == `allBrief` {
 		fmt.Println(ansi.String(`<ansiPath>` + cmdTitle + `<ansi> . . .`))
 	}
-	cmd := exec.Command(cmdName, cmdArgs...)
+	cmd := exec.Command(a.Cmd, a.Args...)
 
 	cmdStdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -114,7 +137,7 @@ func ExecCmd(opt map[string]interface{}, cmdName string, cmdArgs ...string) (res
 	if len(prefix) > 0 {
 		fmt.Println(ansi.StringA(ansi.A{Default: ansi.MustTag(ansiName), S: prefix + `: <ansiPath>` + cmdTitle}))
 	}
-	if getBoolKeyOrDefault(opt, `exitOnError`, false) && exitCode != 0 {
+	if hOpt.MustPathStr("exitOnError").MustBool() && exitCode != 0 {
 		os.Exit(exitCode)
 	}
 	result[`exitCode`] = exitCode
@@ -122,28 +145,4 @@ func ExecCmd(opt map[string]interface{}, cmdName string, cmdArgs ...string) (res
 	result[`stderr`] = stderr
 	// result[`output`] = output
 	return result
-}
-
-func getBoolKeyOrDefault(m map[string]interface{}, keyName string, defaultValue bool) (result bool) {
-	result = defaultValue
-	if m != nil {
-		if val, ok := m[keyName]; ok {
-			if typedVal, ok := val.(bool); ok {
-				result = typedVal
-			}
-		}
-	}
-	return
-}
-
-func getStringKeyOrDefault(m map[string]interface{}, keyName string, defaultValue string) (result string) {
-	result = defaultValue
-	if m != nil {
-		if val, ok := m[keyName]; ok {
-			if typedVal, ok := val.(string); ok {
-				result = typedVal
-			}
-		}
-	}
-	return
 }

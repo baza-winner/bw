@@ -47,7 +47,7 @@ func (start Start) Suffix() string {
 type I interface {
 	Curr() *PosInfo
 	Forward(count uint)
-	Error(a A) error
+	Error(a E) error
 	LookAhead(ofs uint) *PosInfo
 	Start() *Start
 	Stop(start *Start)
@@ -135,9 +135,9 @@ type P struct {
 	starts        map[int]*Start
 }
 
-func From(p bwrune.Provider, opt ...map[string]interface{}) (result *P) {
+func From(pp bwrune.ProviderProvider, opt ...map[string]interface{}) (result *P) {
 	result = &P{
-		prov:          p,
+		prov:          pp.Provider(),
 		curr:          &PosInfo{pos: -1, line: 1},
 		next:          []*PosInfo{},
 		preLineCount:  3,
@@ -223,12 +223,12 @@ func (p *P) Start() (result *Start) {
 	return
 }
 
-type A struct {
+type E struct {
 	Start *Start
 	Fmt   bw.I
 }
 
-func (p *P) Error(a A) error {
+func (p *P) Error(a E) error {
 	var start Start
 	if a.Start == nil {
 		start = Start{ps: p.curr}
@@ -253,7 +253,7 @@ func (p *P) Error(a A) error {
 // ============================================================================
 
 func Unexpected(p I, optStart ...*Start) error {
-	var a A
+	var a E
 	if len(optStart) > 0 {
 		a.Start = optStart[0]
 	}
@@ -375,7 +375,7 @@ func (v Status) NoErr() bool {
 
 func (v *Status) UnexpectedIfErr(p I) {
 	if v.Err != nil {
-		v.Err = p.Error(A{v.Start, bwerr.Err(v.Err)})
+		v.Err = p.Error(E{v.Start, bwerr.Err(v.Err)})
 	}
 }
 
@@ -605,7 +605,7 @@ func Map(p I, optOpt ...Opt) (result map[string]interface{}, status Status) {
 				on.Opt.Path = base
 				on.Start = start
 				if _, b := result[key]; b {
-					err = p.Error(A{
+					err = p.Error(E{
 						Start: start,
 						Fmt:   bw.Fmt(ansi.String("duplicate key <ansiErr>%s<ansi>"), start.Suffix()),
 					})
@@ -693,7 +693,7 @@ func Path(p I, optOpt ...PathOpt) (result bw.ValPath, status Status) {
 
 func MustPathFrom(s string, bases ...bw.ValPath) (result bw.ValPath) {
 	var err error
-	p := From(bwrune.FromString(s))
+	p := From(bwrune.S{s})
 	if result, err = PathContent(p, PathOpt{Bases: bases}); err == nil {
 		_, err = SkipSpace(p, TillEOF)
 	}
@@ -747,7 +747,7 @@ func PathContent(p I, optOpt ...PathOpt) (bw.ValPath, error) {
 						if nidx, b := bw.NormalIdx(idx, l); b {
 							result = append(result, opt.Bases[nidx]...)
 						} else {
-							err = p.Error(A{start, bw.Fmt(ansiUnexpectedBasePathIdx, idx, l)})
+							err = p.Error(E{start, bw.Fmt(ansiUnexpectedBasePathIdx, idx, l)})
 						}
 						return
 					}},
@@ -1011,7 +1011,7 @@ func Val(p I, optOpt ...Opt) (result interface{}, status Status) {
 					}
 				}
 				if !b && err == nil {
-					err = p.Error(A{start, bw.Fmt(ansiUnexpectedWord, s)})
+					err = p.Error(E{start, bw.Fmt(ansiUnexpectedWord, s)})
 					if expects := getIdExpects(opt, ""); len(expects) > 0 {
 						err = Expects(p, err, expects)
 					}

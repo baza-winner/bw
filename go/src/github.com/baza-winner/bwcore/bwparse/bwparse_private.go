@@ -219,7 +219,7 @@ func (p *proxy) LookAhead(ofs uint) *PosInfo {
 	return p.p.LookAhead(p.ofs + ofs)
 }
 
-func (p *proxy) Error(a A) error {
+func (p *proxy) Error(a E) error {
 	p.p.Forward(p.ofs)
 	return p.p.Error(a)
 }

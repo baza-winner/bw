@@ -1,11 +1,11 @@
-package bwexec
+package bwexec_test
 
 import (
 	"fmt"
 	"os"
 	"testing"
 
-	"github.com/baza-winner/bwcore/bwmap"
+	"github.com/baza-winner/bwcore/bwexec"
 	"github.com/baza-winner/bwcore/bwtesting"
 )
 
@@ -17,19 +17,25 @@ func TestMain(m *testing.M) { // https://stackoverflow.com/questions/23729790/ho
 }
 
 // var installOpt = defparse.MustParseMap("{v: 'err', exitOnError: true, s: 'none'}")
-var installOpt = map[string]interface{}{
-	"v":           "err",
-	"exitOnError": true,
-	"s":           "none",
-}
+// var installOpt map[string]interface{}
+
+// func init() {
+// 	installOpt = bwval.From(bwval.S{S: `
+// 		{
+// 			v "err"
+// 			exitOnError true
+// 			s "none"
+// 		}
+// 		`}).MustMap()
+// }
 
 func mySetupFunction() {
-	ExecCmd(installOpt, `go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper`)
-	ExecCmd(installOpt, `go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper2`)
+	bwexec.Cmd(bwexec.Args(`go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper`))
+	bwexec.Cmd(bwexec.Args(`go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper2`))
 }
 
-func ExampleExecCmd() {
-	ret := ExecCmd(nil, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`)
+func ExampleCmd() {
+	ret := bwexec.Cmd(bwexec.Args(`bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`))
 	for k, v := range ret {
 		fmt.Printf("%s: %v\n", k, v)
 	}
@@ -40,84 +46,76 @@ func ExampleExecCmd() {
 	// - exitCode:2
 }
 
-// type testExecCmdStruct struct {
-// 	opt     map[string]interface{}
-// 	cmdName string
-// 	cmdArgs []string
-// 	result  map[string]interface{}
-// }
-
-func TestExecCmd(t *testing.T) {
-	tests := map[string]bwtesting.Case{
-		"test1": {
-			In: []interface{}{
-				map[string]interface{}(nil),
-				`bwexectesthelper2`,
-				// []string{
-				`-v`, `none`, `-s`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
-				// },
-			},
-			Out: []interface{}{
-				map[string]interface{}{
-					"stdout": []string{
-						"===== exitCode: 2",
-						"===== stdout:",
-						"some",
-						"===== stderr:",
-						"thing",
+func TestCmd(t *testing.T) {
+	bwtesting.BwRunTests(t,
+		bwexec.Cmd,
+		func() map[string]bwtesting.Case {
+			tests := map[string]bwtesting.Case{
+				"test1": {
+					In: []interface{}{
+						bwexec.Args(
+							`bwexectesthelper2`,
+							`-v`, `none`, `-s`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
+						),
 					},
-					"stderr":   []string{},
-					"exitCode": 0,
-				},
-			},
-		},
-		"test2": {
-			In: []interface{}{
-				map[string]interface{}(nil),
-				`bwexectesthelper2`,
-				// []string{
-				`-v`, `none`, `-s`, `all`, `-d`, `-n`, `-e`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
-				// },
-			},
-			Out: []interface{}{
-				map[string]interface{}{
-					"stdout":   []string{},
-					"stderr":   []string{},
-					"exitCode": 2,
-				},
-			},
-		},
-		"test3": {
-			In: []interface{}{
-				map[string]interface{}(nil),
-				`bwexectesthelper2`,
-				// []string{
-				`-v`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
-				// },
-			},
-			Out: []interface{}{
-				map[string]interface{}{
-					"stdout": []string{
-						"bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething . . .",
-						"some",
-						"ERR: bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething",
-						"===== exitCode: 2",
-						"===== stdout:",
-						"some",
-						"===== stderr:",
-						"thing",
+					Out: []interface{}{
+						map[string]interface{}{
+							"stdout": []string{
+								"===== exitCode: 2",
+								"===== stdout:",
+								"some",
+								"===== stderr:",
+								"thing",
+							},
+							"stderr":   []string{},
+							"exitCode": 0,
+						},
 					},
-					"stderr": []string{
-						"thing",
-					},
-					"exitCode": 0,
 				},
-			},
-		},
-	}
-
-	testsToRun := tests
-	bwmap.CropMap(testsToRun)
-	// bwmap.CropMap(testsToRun, "[qw/one two three/]")
-	bwtesting.BwRunTests(t, ExecCmd, testsToRun)
+				"test2": {
+					In: []interface{}{
+						bwexec.Args(
+							`bwexectesthelper2`,
+							`-v`, `none`, `-s`, `all`, `-d`, `-n`, `-e`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
+						),
+					},
+					Out: []interface{}{
+						map[string]interface{}{
+							"stdout":   []string{},
+							"stderr":   []string{},
+							"exitCode": 2,
+						},
+					},
+				},
+				"test3": {
+					In: []interface{}{
+						bwexec.Args(
+							`bwexectesthelper2`,
+							`-v`, `all`, `-d`, `-n`, `bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`,
+						),
+					},
+					Out: []interface{}{
+						map[string]interface{}{
+							"stdout": []string{
+								"bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething . . .",
+								"some",
+								"ERR: bwexectesthelper -exit 2 \u003cstdout\u003esome\u003cstderr\u003ething",
+								"===== exitCode: 2",
+								"===== stdout:",
+								"some",
+								"===== stderr:",
+								"thing",
+							},
+							"stderr": []string{
+								"thing",
+							},
+							"exitCode": 0,
+						},
+					},
+				},
+			}
+			return tests
+		}(),
+		// "test1",
+	)
 }

@@ -453,10 +453,14 @@ func TestHolderValidVal(t *testing.T) {
 			tests := map[string]bwtesting.Case{}
 			testProto := func(source string) bwtesting.Case {
 				test := bwtesting.Case{}
-				bwparse.Map(bwparse.From(bwrune.FromString(source)), bwparse.Opt{
+				p := bwparse.From(bwrune.S{source})
+				if _, err := bwparse.SkipSpace(p, bwparse.TillNonEOF); err != nil {
+					bwerr.PanicErr(err)
+				}
+				bwparse.Map(p, bwparse.Opt{
 					OnValidateMapKey: func(on bwparse.On, m map[string]interface{}, key string) (err error) {
 						if !bwset.StringFrom("val", "def").Has(key) {
-							err = on.P.Error(bwparse.A{
+							err = on.P.Error(bwparse.E{
 								Start: on.Start,
 								Fmt:   bw.Fmt(ansi.String("unexpected key `<ansiErr>%s<ansi>`"), on.Start.Suffix()),
 							})
@@ -499,6 +503,31 @@ func TestHolderValidVal(t *testing.T) {
             elem Number
           }
         }`: map[string]interface{}{"some": 273, "thing": 3.14},
+				`
+					{
+					 	val: nil
+					 	def:
+					 	  {
+								type Map
+								keys {
+									v {
+										type String
+										enum <all err ok none>
+										default "none"
+									}
+									s {
+										type String
+										enum <none stderr stdout all>
+										default "all"
+									}
+									exitOnError {
+										type Bool
+										default false
+									}
+								}
+							}
+					}
+				`: map[string]interface{}{"v": "none", "s": "all", "exitOnError": false},
 			} {
 				test := testProto(k)
 				test.Out = []interface{}{v}
@@ -522,5 +551,31 @@ func TestHolderValidVal(t *testing.T) {
 			}
 			return tests
 		}(),
+		// `
+		// 			{
+		// 			 	val: nil
+		// 			 	def:
+		// 			 	  {
+		// 						type Map
+		// 						keys {
+		// 							v {
+		// 								type String
+		// 								enum <all err ok none>
+		// 								default "none"
+		// 							}
+		// 							s {
+		// 								type String
+		// 								enum <none stderr stdout all>
+		// 								default "all"
+		// 							}
+		// 							exitOnError {
+		// 								type Bool
+		// 								default false
+		// 							}
+		// 						}
+		// 					}
+		// 			}
+		// 		`,
+		// "{ val: nil def: { type Map keys { some {type Int default 273} } } }",
 	)
 }

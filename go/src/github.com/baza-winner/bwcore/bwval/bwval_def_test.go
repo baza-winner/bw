@@ -51,7 +51,10 @@ func TestDefMarshalJSON(t *testing.T) {
 func TestParseDef(t *testing.T) {
 	bwtesting.BwRunTests(t,
 		func(s string) (result bwval.Def) {
-			p := bwparse.From(bwrune.FromString(s))
+			p := bwparse.From(bwrune.S{s})
+			if _, err := bwparse.SkipSpace(p, bwparse.TillNonEOF); err != nil {
+				bwerr.PanicErr(err)
+			}
 			var st bwparse.Status
 			if result, st = bwval.ParseDef(p); st.Err == nil {
 				_, st.Err = bwparse.SkipSpace(p, bwparse.TillEOF)
@@ -291,23 +294,25 @@ func TestParseDef(t *testing.T) {
 						IsOptional: true,
 					},
 				},
-				{in: `{
-					type [Array]
-					arrayElem {
-						type Map
-						keys {
-							some {
-								type Int
-								isOptional true
-							}
-							thing {
-								type String
-								default "not bad"
+				{in: `
+					{
+						type [Array]
+						arrayElem {
+							type Map
+							keys {
+								some {
+									type Int
+									isOptional true
+								}
+								thing {
+									type String
+									default "not bad"
+								}
 							}
 						}
+						default [ { some: 273 thing "good" } {} ]
 					}
-					default [ { some: 273 thing "good" } {} ]
-				}`,
+				`,
 					out: bwval.Def{
 						Types: bwtype.ValKindSetFrom(bwtype.ValArray),
 						ArrayElem: &bwval.Def{
@@ -341,6 +346,9 @@ func TestParseDef(t *testing.T) {
 				in  string
 				out string
 			}{
+				{in: " ",
+					out: "unexpected end of string at pos \x1b[38;5;252;1m1\x1b[0m: \x1b[32m \n",
+				},
 				{in: "Uknown",
 					out: "unexpected `\x1b[91;1mUknown\x1b[0m`\x1b[0m at pos \x1b[38;5;252;1m0\x1b[0m: \x1b[32m\x1b[91mUknown\x1b[0m\n",
 				},

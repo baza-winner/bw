@@ -18,7 +18,7 @@ type PathStr struct {
 }
 
 func (v PathStr) Path() (result bw.ValPath, err error) {
-	p := bwparse.From(bwrune.FromString(v.S))
+	p := bwparse.From(bwrune.S{v.S})
 	opt := bwparse.PathOpt{Bases: v.Bases}
 	if result, err = bwparse.PathContent(p, opt); err == nil {
 		_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
@@ -32,6 +32,27 @@ func MustPath(pathProvider bw.ValPathProvider) (result bw.ValPath) {
 	var err error
 	if result, err = pathProvider.Path(); err != nil {
 		bwerr.PanicErr(bwerr.Refine(err, "invalid path: {Error}"))
+	}
+	return
+}
+
+// ============================================================================
+
+func MustDef(pp bwrune.ProviderProvider, optBaseProvider ...bw.ValPathProvider) (result Def) {
+	var err error
+	p := bwparse.From(pp)
+	if _, err = bwparse.SkipSpace(p, bwparse.TillNonEOF); err != nil {
+		err = bwerr.Refine(err, "failed to MustDef: {Error}")
+		return
+	}
+	var st bwparse.Status
+	if result, st = ParseDef(p); !st.IsOK() {
+		err = st.Err
+	} else {
+		_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
+	}
+	if err != nil {
+		bwerr.PanicErr(err)
 	}
 	return
 }
@@ -65,32 +86,74 @@ func MustSetPathVal(val interface{}, v bw.Val, pathProvider bw.ValPathProvider, 
 
 // ============================================================================
 
-func From(s string, optVars ...map[string]interface{}) (result interface{}) {
-	return FromTemplate(TemplateFrom(s), optVars...)
+type F struct {
+	S    string
+	Vars map[string]interface{}
+}
+
+func (v F) GetVal() interface{} {
+	return FromTemplate(TemplateFrom(bwrune.F{v.S}), v.Vars)
+}
+
+type S struct {
+	S    string
+	Vars map[string]interface{}
+}
+
+func (v S) GetVal() interface{} {
+	return FromTemplate(TemplateFrom(bwrune.S{v.S}), v.Vars)
+}
+
+type T struct {
+	T    Template
+	Vars map[string]interface{}
+}
+
+func (v T) GetVal() interface{} {
+	return FromTemplate(v.T, v.Vars)
+}
+
+type V struct {
+	Val interface{}
+}
+
+func (v V) GetVal() interface{} {
+	return v.Val
+}
+
+type fromProvider interface {
+	GetVal() interface{}
+}
+
+func From(a fromProvider, optPathProvider ...bw.ValPathProvider) (result Holder) {
+	result = Holder{}
+	result.Val = a.GetVal()
+	// FromTemplate(a.Template(), a.Vars())
+	if len(optPathProvider) > 0 {
+		result.Pth = MustPath(optPathProvider[0])
+	}
+	return
 }
 
 type Template struct {
 	val interface{}
 }
 
-func TemplateFrom(s string) (result Template) {
+func TemplateFrom(pp bwrune.ProviderProvider) (result Template) {
 	var err error
 	var val interface{}
-	if val, err = func(s string) (result interface{}, err error) {
-		defer func() {
-			if err != nil {
-				result = nil
-			}
-		}()
-		p := bwparse.From(bwrune.FromString(s))
-		var st bwparse.Status
-		if result, st = bwparse.Val(p); st.IsOK() {
-			_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
-		} else {
-			err = st.Err
-		}
+	p := bwparse.From(pp)
+	if _, err = bwparse.SkipSpace(p, bwparse.TillNonEOF); err != nil {
+		err = bwerr.Refine(err, "failed to TemplateFrom: {Error}")
 		return
-	}(s); err != nil {
+	}
+	var st bwparse.Status
+	if val, st = bwparse.Val(p); !st.IsOK() {
+		err = st.Err
+	} else {
+		_, err = bwparse.SkipSpace(p, bwparse.TillEOF)
+	}
+	if err != nil {
 		bwerr.PanicErr(err)
 	}
 	return Template{val: val}

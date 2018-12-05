@@ -643,13 +643,23 @@ func Kind(val interface{}, optExpects ...ValKindSet) (result interface{}, kind V
 			}
 		case map[string]interface{}:
 			if expectsAny || expects.Has(ValMap) {
-				result = t
-				kind = ValMap
+				if !reflect.ValueOf(t).IsNil() {
+					result = t
+					kind = ValMap
+				} else if expectsAny || expects.Has(ValNil) {
+					result = nil
+					kind = ValNil
+				}
 			}
 		case []interface{}:
 			if expectsAny || expects.Has(ValArray) {
-				result = t
-				kind = ValArray
+				if !reflect.ValueOf(t).IsNil() {
+					result = t
+					kind = ValArray
+				} else if expectsAny || expects.Has(ValNil) {
+					result = nil
+					kind = ValNil
+				}
 			}
 		case bw.ValPath:
 			if expectsAny || expects.Has(ValPath) {
@@ -736,26 +746,36 @@ func Kind(val interface{}, optExpects ...ValKindSet) (result interface{}, kind V
 				}
 			case reflect.Slice:
 				if expectsAny || expects.Has(ValArray) {
-					len := value.Len()
-					vals := []interface{}{}
-					for i := 0; i < len; i++ {
-						vals = append(vals, value.Index(i).Interface())
+					if !reflect.ValueOf(t).IsNil() {
+						len := value.Len()
+						vals := []interface{}{}
+						for i := 0; i < len; i++ {
+							vals = append(vals, value.Index(i).Interface())
+						}
+						result = vals
+						kind = ValArray
+					} else if expectsAny || expects.Has(ValNil) {
+						result = nil
+						kind = ValNil
 					}
-					result = vals
-					kind = ValArray
 				}
 			case reflect.Map:
 				if expectsAny || expects.Has(ValMap) {
 					if reflect.TypeOf(val).Key().Kind() == reflect.String {
-						m := map[string]interface{}{}
-						keyValues := value.MapKeys()
-						len := len(keyValues)
-						for i := 0; i < len; i++ {
-							keyValue := keyValues[i]
-							m[keyValue.String()] = value.MapIndex(keyValue).Interface()
+						if !reflect.ValueOf(t).IsNil() {
+							m := map[string]interface{}{}
+							keyValues := value.MapKeys()
+							len := len(keyValues)
+							for i := 0; i < len; i++ {
+								keyValue := keyValues[i]
+								m[keyValue.String()] = value.MapIndex(keyValue).Interface()
+							}
+							result = m
+							kind = ValMap
+						} else if expectsAny || expects.Has(ValNil) {
+							result = nil
+							kind = ValNil
 						}
-						result = m
-						kind = ValMap
 					}
 				}
 			}
