@@ -7,6 +7,7 @@ import (
 
 	"github.com/baza-winner/bwcore/bwexec"
 	"github.com/baza-winner/bwcore/bwtesting"
+	"github.com/baza-winner/bwcore/bwval"
 )
 
 func TestMain(m *testing.M) { // https://stackoverflow.com/questions/23729790/how-can-i-do-test-setup-using-the-testing-package-in-go/34102842#34102842
@@ -19,23 +20,25 @@ func TestMain(m *testing.M) { // https://stackoverflow.com/questions/23729790/ho
 // var installOpt = defparse.MustParseMap("{v: 'err', exitOnError: true, s: 'none'}")
 // var installOpt map[string]interface{}
 
-// func init() {
-// 	installOpt = bwval.From(bwval.S{S: `
-// 		{
-// 			v "err"
-// 			exitOnError true
-// 			s "none"
-// 		}
-// 		`}).MustMap()
-// }
+var installOpt interface{}
+
+func init() {
+	installOpt = bwval.From(bwval.S{S: `
+		{
+			verbosity "err"
+			exitOnError true
+			silent "none"
+		}
+		`}).MustMap()
+}
 
 func mySetupFunction() {
-	bwexec.Cmd(bwexec.Args(`go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper`))
-	bwexec.Cmd(bwexec.Args(`go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper2`))
+	bwexec.MustCmd(bwexec.Args(`go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper`), installOpt)
+	bwexec.MustCmd(bwexec.Args(`go`, `install`, `github.com/baza-winner/bwcore/bwexec/bwexectesthelper2`), installOpt)
 }
 
 func ExampleCmd() {
-	ret := bwexec.Cmd(bwexec.Args(`bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`))
+	ret := bwexec.MustCmd(bwexec.Args(`bwexectesthelper`, `-exit`, `2`, `<stdout>some<stderr>thing`))
 	for k, v := range ret {
 		fmt.Printf("%s: %v\n", k, v)
 	}
@@ -48,7 +51,7 @@ func ExampleCmd() {
 
 func TestCmd(t *testing.T) {
 	bwtesting.BwRunTests(t,
-		bwexec.Cmd,
+		bwexec.MustCmd,
 		func() map[string]bwtesting.Case {
 			tests := map[string]bwtesting.Case{
 				"test1": {

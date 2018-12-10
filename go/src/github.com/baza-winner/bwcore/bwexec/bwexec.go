@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/baza-winner/bwcore/ansi"
+	"github.com/baza-winner/bwcore/bwerr"
 	"github.com/baza-winner/bwcore/bwos"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwstr"
@@ -25,12 +26,12 @@ func init() {
 		{
 			type Map
 			keys {
-				v {
+				verbosity {
 					type String
 					enum <all err ok none>
 					default "none"
 				}
-				s {
+				silent {
 					type String
 					enum <none stderr stdout all>
 					default "all"
@@ -38,6 +39,10 @@ func init() {
 				exitOnError {
 					type Bool
 					default false
+				}
+				workDir {
+					type String
+					isOptional true
 				}
 			}
 		}
@@ -53,7 +58,15 @@ func Args(cmdName string, cmdArgs ...string) A {
 	return A{Cmd: cmdName, Args: cmdArgs}
 }
 
-func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
+func MustCmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
+	var err error
+	if result, err = Cmd(a, optOpt...); err != nil {
+		bwerr.PanicErr(err)
+	}
+	return
+}
+
+func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}, err error) {
 	var opt interface{}
 	if len(optOpt) > 0 {
 		opt = optOpt[0]
@@ -63,9 +76,19 @@ func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
 	result = map[string]interface{}{}
 
 	cmdTitle := bwstr.SmartQuote(append([]string{a.Cmd}, a.Args...)...)
-	sOpt := hOpt.MustPathStr("s").MustString()
-	vOpt := hOpt.MustPathStr("v").MustString()
-	if vOpt == `all` || vOpt == `allBrief` {
+	optSilent := hOpt.MustPathStr("silent").MustString()
+	optVerbosity := hOpt.MustPathStr("verbosity").MustString()
+	optWorkDir := hOpt.MustPathStr("workDir?").MustString("")
+	var pwd string
+	if optWorkDir != "" {
+		if pwd, err = os.Getwd(); err != nil {
+			return
+		}
+		if err = os.Chdir(optWorkDir); err != nil {
+			return
+		}
+	}
+	if optVerbosity == `all` || optVerbosity == `allBrief` {
 		fmt.Println(ansi.String(`<ansiPath>` + cmdTitle + `<ansi> . . .`))
 	}
 	cmd := exec.Command(a.Cmd, a.Args...)
@@ -91,7 +114,7 @@ func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
 			s := stdoutScanner.Text()
 			stdout = append(stdout, s)
 			// output = append(output, s)
-			if !(sOpt == `all` || sOpt == `stdout`) {
+			if !(optSilent == `all` || optSilent == `stdout`) {
 				fmt.Fprintln(os.Stdout, s)
 			}
 		}
@@ -102,7 +125,7 @@ func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
 			s := stderrScanner.Text()
 			stderr = append(stderr, s)
 			// output = append(output, s)
-			if !(sOpt == `all` || sOpt == `stderr`) {
+			if !(optSilent == `all` || optSilent == `stderr`) {
 				fmt.Fprintln(os.Stderr, stderrScanner.Text())
 			}
 		}
@@ -128,10 +151,10 @@ func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
 	}
 
 	var ansiName, prefix string
-	if exitCode == 0 && (vOpt == `all` || vOpt == `allBrief` || vOpt == `ok`) {
+	if exitCode == 0 && (optVerbosity == `all` || optVerbosity == `allBrief` || optVerbosity == `ok`) {
 		ansiName, prefix = `ansiOK`, `OK`
 	}
-	if exitCode != 0 && (vOpt == `all` || vOpt == `allBrief` || vOpt == `err`) {
+	if exitCode != 0 && (optVerbosity == `all` || optVerbosity == `allBrief` || optVerbosity == `err`) {
 		ansiName, prefix = `ansiErr`, `ERR`
 	}
 	if len(prefix) > 0 {
@@ -140,9 +163,14 @@ func Cmd(a A, optOpt ...interface{}) (result map[string]interface{}) {
 	if hOpt.MustPathStr("exitOnError").MustBool() && exitCode != 0 {
 		os.Exit(exitCode)
 	}
+	if pwd != "" {
+		if err = os.Chdir(pwd); err != nil {
+			return
+		}
+	}
 	result[`exitCode`] = exitCode
 	result[`stdout`] = stdout
 	result[`stderr`] = stderr
 	// result[`output`] = output
-	return result
+	return
 }

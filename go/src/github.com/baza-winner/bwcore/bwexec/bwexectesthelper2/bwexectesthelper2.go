@@ -32,13 +32,17 @@ func main() {
 	}
 	argsWithoutProg := flag.Args()
 
-	exitOnError := *exitOnErrorFlag
-	verbosity := *verbosityFlag
-	silent := *silentFlag
 	display := *displayFlag
 	ansi.NoColor = *noColorFlag
 
-	ret := bwexec.ExecCmd(map[string]interface{}{`v`: verbosity, `s`: silent, `exitOnError`: exitOnError}, argsWithoutProg[0], argsWithoutProg[1:]...)
+	ret := bwexec.MustCmd(
+		bwexec.Args(argsWithoutProg[0], argsWithoutProg[1:]...),
+		map[string]interface{}{
+			"verbosity":   *verbosityFlag,
+			"exitOnError": *exitOnErrorFlag,
+			"silent":      *silentFlag,
+		},
+	)
 	if display {
 		exitCode := ret[`exitCode`].(int)
 		ansiExitCode := `<ansiOK>`

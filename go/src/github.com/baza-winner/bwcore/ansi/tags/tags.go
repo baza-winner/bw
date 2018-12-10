@@ -34,4 +34,8 @@ func init() {
 		ansi.SGRCodeOfColor256(ansi.Color256{Code: 252}),
 		ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
 	)
+	ansi.MustAddTag("ansiCmd",
+		ansi.SGRCodeOfColor256(ansi.Color256{Code: 253}),
+		ansi.MustSGRCodeOfCmd(ansi.SGRCmdBold),
+	)
 }
