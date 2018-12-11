@@ -45,6 +45,8 @@ func (start Start) Suffix() string {
 // ============================================================================
 
 type I interface {
+	FileSpec() string
+	Close() error
 	Curr() *PosInfo
 	Forward(count uint)
 	Error(a E) error
@@ -127,6 +129,7 @@ type Opt struct {
 // ============================================================================
 
 type P struct {
+	pp            bwrune.ProviderProvider
 	prov          bwrune.Provider
 	curr          *PosInfo
 	next          []*PosInfo
@@ -162,6 +165,14 @@ func From(pp bwrune.ProviderProvider, opt ...map[string]interface{}) (result *P)
 }
 
 const Initial uint = 0
+
+func (p *P) FileSpec() string {
+	return p.prov.FileSpec()
+}
+
+func (p *P) Close() error {
+	return p.prov.Close()
+}
 
 func (p *P) Curr() *PosInfo {
 	return p.curr

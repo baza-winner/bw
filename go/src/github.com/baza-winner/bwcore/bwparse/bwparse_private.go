@@ -10,6 +10,7 @@ import (
 	"github.com/baza-winner/bwcore/ansi"
 	"github.com/baza-winner/bwcore/bw"
 	"github.com/baza-winner/bwcore/bwerr"
+	"github.com/baza-winner/bwcore/bwos"
 	"github.com/baza-winner/bwcore/bwrune"
 	"github.com/baza-winner/bwcore/bwset"
 	"github.com/baza-winner/bwcore/bwstr"
@@ -143,6 +144,17 @@ func suffix(p I, start Start, postLineCount uint) (suffix string) {
 		suffix += fmt.Sprintf(ansiPos, start.ps.pos)
 		separator = " "
 	}
+	if fileSpec := p.FileSpec(); fileSpec != "" {
+		// if homeDir := os.Getenv("HOME"); homeDir != "" {
+		// 	if homeDir[len(homeDir)-1] != '/' {
+		// 		homeDir += string('/')
+		// 	}
+		// 	if len(fileSpec) >= len(homeDir) && fileSpec[:len(homeDir)] == homeDir {
+		// 		fileSpec = "~/" + fileSpec[len(homeDir):]
+		// 	}
+		// }
+		suffix += fmt.Sprintf(" of <ansiPath>%s<ansi>", bwos.ShortenFileSpec(fileSpec))
+	}
 	suffix += ":" + separator + ansiOK + start.ps.prefix
 
 	var needPostLines, noNeedNewline bool
@@ -192,6 +204,14 @@ type proxy struct {
 	p      I
 	ofs    uint
 	starts map[int]*Start
+}
+
+func (p *proxy) FileSpec() string {
+	return p.p.FileSpec()
+}
+
+func (p *proxy) Close() error {
+	return p.p.Close()
 }
 
 func (p *proxy) Curr() *PosInfo {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"path/filepath"
 	"unicode/utf8"
 
 	"github.com/baza-winner/bwcore/ansi"
@@ -13,8 +14,9 @@ import (
 // ============================================================================
 
 type Provider interface {
+	FileSpec() string
+	Close() error
 	PullRune() (*rune, error)
-	Close()
 	Line() int
 	Col() int
 	Pos() int
@@ -55,6 +57,9 @@ func FromString(source string) Provider {
 }
 
 func FromFile(fileSpec string) (result Provider, err error) {
+	if fileSpec, err = filepath.Abs(fileSpec); err != nil {
+		return
+	}
 	p := &fileProvider{fileSpec: fileSpec, pos: -1, bytePos: -1, line: 1}
 	p.data, err = os.Open(fileSpec)
 	if err == nil {
@@ -89,6 +94,15 @@ type stringProvider struct {
 	pos  int
 }
 
+func (v *stringProvider) FileSpec() string {
+	return ""
+}
+
+func (v *stringProvider) Close() error {
+	v.src = nil
+	return nil
+}
+
 func (v *stringProvider) PullRune() (result *rune, err error) {
 	v.pos++
 	if v.pos < len(v.src) {
@@ -102,10 +116,6 @@ func (v *stringProvider) PullRune() (result *rune, err error) {
 		}
 	}
 	return
-}
-
-func (v *stringProvider) Close() {
-	v.src = nil
 }
 
 func (v *stringProvider) Pos() int {
@@ -180,8 +190,12 @@ func (v *fileProvider) PullRune() (result *rune, err error) {
 	return
 }
 
-func (v *fileProvider) Close() {
-	v.data.Close()
+func (v *fileProvider) FileSpec() string {
+	return v.fileSpec
+}
+
+func (v *fileProvider) Close() error {
+	return v.data.Close()
 }
 
 func (v *fileProvider) Pos() int {
