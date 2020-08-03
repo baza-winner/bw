@@ -12,14 +12,14 @@ fi
 
 # =============================================================================
 
-_profileFileName=
-if [[ $OSTYPE =~ ^darwin ]]; then
-  _profileFileName=".bash_profile"
-elif [[ $OSTYPE =~ ^linux ]]; then
-  _profileFileName=".bashrc"
-else
-  return _err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE"
-fi
+_profileFileName=".bashrc"
+# if [[ $OSTYPE =~ ^darwin ]]; then
+#   _profileFileName=".bash_profile"
+# elif [[ $OSTYPE =~ ^linux ]]; then
+#   _profileFileName=".bashrc"
+# else
+#   return _err "Неожиданный тип OS ${_ansiPrimaryLiteral}$OSTYPE"
+# fi
 _profileFileSpec="$HOME/$_profileFileName"
 
 # =============================================================================

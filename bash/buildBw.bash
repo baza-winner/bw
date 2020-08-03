@@ -105,7 +105,7 @@ _addBwTar() {
     echo "# ==$archiveName start"
     COPYFILE_DISABLE=1 tar cf - "$@" > "/tmp/archiveName.tar"
     returnCode=$?
-    [[ $returnCode -ne 0 ]] || cat "/tmp/archiveName.tar" | gzip | base64 --break=80
+    [[ $returnCode -ne 0 ]] || cat "/tmp/archiveName.tar" | gzip | base64 
     echo "# ==$archiveName end" 
   } >> "$fileSpec"
   return $returnCode

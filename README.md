@@ -128,6 +128,20 @@ curl -O localhost:8002/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8002 . bw.bash
 
 См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
 
+## Установка для отладки в docker (bw-ubuntu:18) под linux (ubuntu)
+
+```
+curl -O 172.17.0.1:8002/bw.bash && . bw.bash -u 172.17.0.1:8002 bw bt
+```
+
+или
+
+```
+curl -O 172.17.0.1:8002/bw.bash && BW_SELF_UPDATE_SOURCE=172.17.0.1:8002 . bw.bash bw bt
+```
+
+См. также [BW_SELF_UPDATE_SOURCE](#bw_self_update_source)
+
 ## Установка для отладки в гостевой системе под Parallels
 
 ```

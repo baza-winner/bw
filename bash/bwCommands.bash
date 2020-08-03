@@ -14,38 +14,38 @@ _bwProjDefs=()
 
 # =============================================================================
 
-_bwProjDefs+=(
-  'dubu' '
-    --gitOrigin github.com:baza-winner/dev-ubuntu.git
-    --branch master
-    --docker-image-name bazawinner/dev-ubuntu
-    --ssh 2201
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# shellcheck disable=SC2154
-_bw_project_dubu() {
-  _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
-}
-
-# =============================================================================
-
-_bwProjDefs+=(
-  'dubu18' '
-    --gitOrigin github.com:baza-winner/dev-ubuntu18.git
-    --branch master
-    --docker-image-name bazawinner/dev-ubuntu18
-    --ssh 2206
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# shellcheck disable=SC2154
-_bw_project_dubu18() {
-  _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
-}
-
+# _bwProjDefs+=(
+#   'dubu' '
+#     --gitOrigin github.com:baza-winner/dev-ubuntu.git
+#     --branch master
+#     --docker-image-name bazawinner/dev-ubuntu
+#     --ssh 2201
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # shellcheck disable=SC2154
+# _bw_project_dubu() {
+#   _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+# }
+#
+# # =============================================================================
+#
+# _bwProjDefs+=(
+#   'dubu18' '
+#     --gitOrigin github.com:baza-winner/dev-ubuntu18.git
+#     --branch master
+#     --docker-image-name bazawinner/dev-ubuntu18
+#     --ssh 2206
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # shellcheck disable=SC2154
+# _bw_project_dubu18() {
+#   _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+# }
+#
 # =============================================================================
 
 _bwProjDefs+=(
@@ -61,126 +61,126 @@ _bwProjDefs+=(
 
 # =============================================================================
 
-_bwProjDefs+=(
-  'bgate' '
-    --gitOrigin github.com:baza-winner/billing-gate.git
-    --branch develop
-    --ssh 2203
-    --http 8003
-    --https 4403
-    --upstream 6783
-    --mysql 3303
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# shellcheck disable=SC2154
-_bw_project_bgate() {
-  _exec "${sub_OPT[@]}" git submodule update --init --recursive
-}
-
-# =============================================================================
-
-_bwProjDefs+=(
-  'crm' '
-    --gitOrigin github.com:baza-winner/crm.git
-    --branch develop
-    --ssh 2204
-    --http 8004
-    --https 4404
-    --mysql 3304
-    --upstream 3000
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# =============================================================================
-
-_bwProjDefs+=(
-  'agate' '
-    --gitOrigin github.com:baza-winner/agate.git
-    --branch develop
-    --ssh 2205
-    --http 8005
-    --https 4405
-    --mysql 3305
-    --upstream 3005
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# =============================================================================
-
-_bwProjDefs+=(
-  'mls' '
-    --gitOrigin github.com:baza-winner/mls-pm.git
-    --branch develop
-    --ssh 2207
-    --http 8007
-    --https 4407
-    --mysql 3307
-    --postgresql 5407
-    --elastic 9207
-    --upstream 3000
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# =============================================================================
-
-_bwProjDefs+=(
-  'dip' '
-    --gitOrigin github.com:baza-winner/dip2.git
-    --branch develop
-    --upstream 3000
-    --ssh 2208
-    --http 8008
-    --https 4408
-    --mysql 3308
-    --redis 6308
-    --rabbitmq 5608
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# shellcheck disable=SC2154
-_bw_project_dip() {
-  _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
-}
-
-# =============================================================================
-
-_bwProjDefs+=(
-  'wcraw' '
-    --gitOrigin github.com:baza-winner/wcrawler.git
-    --ssh 2209
-    --branch develop
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
-# =============================================================================
-
-_bwProjDefs+=(
-  'geo' '
-    --gitOrigin github.com:baza-winner/geo2-api.git
-    --branch feature/docker
-    --ssh 2210
-    --http 8010
-    --https 4410
-    --mysql 3310
-    --elastic 9210
-    --upstream 3000
-    --docker-compose "docker-compose.nginx.yml"
-    --docker-compose "docker-compose.main.yml"
-  '
-)
-
+# _bwProjDefs+=(
+#   'bgate' '
+#     --gitOrigin github.com:baza-winner/billing-gate.git
+#     --branch develop
+#     --ssh 2203
+#     --http 8003
+#     --https 4403
+#     --upstream 6783
+#     --mysql 3303
+#     --docker-compose "docker-compose.nginx.yml"
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # shellcheck disable=SC2154
+# _bw_project_bgate() {
+#   _exec "${sub_OPT[@]}" git submodule update --init --recursive
+# }
+#
+# # =============================================================================
+#
+# _bwProjDefs+=(
+#   'crm' '
+#     --gitOrigin github.com:baza-winner/crm.git
+#     --branch develop
+#     --ssh 2204
+#     --http 8004
+#     --https 4404
+#     --mysql 3304
+#     --upstream 3000
+#     --docker-compose "docker-compose.nginx.yml"
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # =============================================================================
+#
+# _bwProjDefs+=(
+#   'agate' '
+#     --gitOrigin github.com:baza-winner/agate.git
+#     --branch develop
+#     --ssh 2205
+#     --http 8005
+#     --https 4405
+#     --mysql 3305
+#     --upstream 3005
+#     --docker-compose "docker-compose.nginx.yml"
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # =============================================================================
+#
+# _bwProjDefs+=(
+#   'mls' '
+#     --gitOrigin github.com:baza-winner/mls-pm.git
+#     --branch develop
+#     --ssh 2207
+#     --http 8007
+#     --https 4407
+#     --mysql 3307
+#     --postgresql 5407
+#     --elastic 9207
+#     --upstream 3000
+#     --docker-compose "docker-compose.nginx.yml"
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # =============================================================================
+#
+# _bwProjDefs+=(
+#   'dip' '
+#     --gitOrigin github.com:baza-winner/dip2.git
+#     --branch develop
+#     --upstream 3000
+#     --ssh 2208
+#     --http 8008
+#     --https 4408
+#     --mysql 3308
+#     --redis 6308
+#     --rabbitmq 5608
+#     --docker-compose "docker-compose.nginx.yml"
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # shellcheck disable=SC2154
+# _bw_project_dip() {
+#   _exec "${sub_OPT[@]}" git submodule update --init --remote --recursive # https://stackoverflow.com/questions/1777854/git-submodules-specify-a-branch-tag/15782629#15782629
+# }
+#
+# # =============================================================================
+#
+# _bwProjDefs+=(
+#   'wcraw' '
+#     --gitOrigin github.com:baza-winner/wcrawler.git
+#     --ssh 2209
+#     --branch develop
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
+# # =============================================================================
+#
+# _bwProjDefs+=(
+#   'geo' '
+#     --gitOrigin github.com:baza-winner/geo2-api.git
+#     --branch feature/docker
+#     --ssh 2210
+#     --http 8010
+#     --https 4410
+#     --mysql 3310
+#     --elastic 9210
+#     --upstream 3000
+#     --docker-compose "docker-compose.nginx.yml"
+#     --docker-compose "docker-compose.main.yml"
+#   '
+# )
+#
 # =============================================================================
 
 _unsetBash() {
@@ -507,6 +507,10 @@ _initEnumAnsi
 _enumSpace='(before after both none -)'
 _enumOnOff='(yes no on off -)'
 _ps_user_defaultAnsi='Green'
+_ps_user_defaultSpace='none'
+_ps_userHostSeparator_defaultAnsi='DarkGrey Bold'
+_ps_userHostSeparator_defaultSpace='none'
+_ps_host_defaultAnsi='Green'
 _ps_ptcd_defaultAnsi='White'
 _ps_cd_defaultAnsi='White'
 
@@ -515,19 +519,24 @@ _preparePromptParams=()
 _preparePromptParams() {
   varName=_preparePromptParams codeHolder=_codeToUseCache eval "$_evalCode"
   local -a _psItems; mapfile -t _psItems < <( compgen -v | sed -nEe 's/^_ps_([^_]+)$/\1/p' )
-  local -a _preparePromptParams_itemsDefaults=( user ptcd git error separator )
+  local -a _preparePromptParams_itemsDefaults=( user userHostSeparator host ptcd git error separator )
   local -a _preparePromptParams_itemsEnum=( "${_preparePromptParams_itemsDefaults[@]}" )
   local -a _preparePromptParamsAddon=()
   local _psItem; for _psItem in "${_psItems[@]}"; do
     local defaultAnsiHolder="_ps_${_psItem}_defaultAnsi"
     local defaultValueHolder="_ps_${_psItem}"
+    local defaultSpaceHolder="_ps_${_psItem}_defaultSpace"
     local defaultAnsi="Reset"
     if [[ -n ${!defaultAnsiHolder} ]]; then
       defaultAnsi="${!defaultAnsiHolder}"
     fi
+    local defaultSpace="after"
+    if [[ -n ${!defaultSpaceHolder} ]]; then
+      defaultSpace="${!defaultSpaceHolder}"
+    fi
     _preparePromptParamsAddon+=(
       "--${_psItem}=$(_quotedArgs --strip "${!defaultValueHolder}")"
-      "--${_psItem}Space:${_enumSpace}=after"
+      "--${_psItem}Space:${_enumSpace}=$defaultSpace"
       "@1..--${_psItem}Ansi:${_enumAnsi}=( $defaultAnsi )"
     )
     if ! _hasItem "$_psItem" "${_preparePromptParams_itemsEnum[@]}"; then
@@ -1098,7 +1107,7 @@ bw_project() { eval "$_funcParams2"
       fi
     fi
 
-    bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
+    bwbw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
 
     while true; do
       if [[ -z $uninstall ]]; then
@@ -3029,14 +3038,102 @@ _bw_install_gitCheck() {
   _which git
 }
 _bw_install_gitDarwin() {
-  while true; do
-    bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
-    _exec brew install "${OPT_force[@]}" git || returnCode=$?
-    break
-  done
+    while true; do
+        bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
+        _exec brew install "${OPT_force[@]}" git || { returnCode=$?; break; }
+        break
+    done
 }
 _bw_install_gitLinux() {
-  _exec "${sub_OPT[@]}" --sudo apt-get install -y --force-yes git || returnCode=$?
+  _exec "${sub_OPT[@]}" --sudo apt-get install -y git || returnCode=$?
+}
+
+# =============================================================================
+
+# shellcheck disable=SC2034
+{
+bw_install_vimParams=()
+bw_install_vim_description='Устанавливает ${_ansiPrimaryLiteral}vim${_ansiReset}'
+}
+bw_install_vim() { eval "$_funcParams2"
+  name=vim codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_vimCheck() {
+  _which vim
+}
+_bw_install_vimDarwin() {
+    echo TODO
+  # while true; do
+  #   bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
+  #   _exec brew install "${OPT_force[@]}" vim || returnCode=$?
+  #   break
+  # done
+}
+_bw_install_vimLinux() {
+  _exec "${sub_OPT[@]}" --sudo apt-get install -y vim || returnCode=$?
+}
+
+# =============================================================================
+
+# shellcheck disable=SC2034
+{
+bw_install_dotfilesParams=()
+bw_install_dotfiles_description='Устанавливает ${_ansiPrimaryLiteral}dotfiles${_ansiReset}'
+}
+bw_install_dotfiles() { eval "$_funcParams2"
+  name=dotfiles codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_dotfilesCheck() {
+  [[ -e ~/.dotfiles ]]
+}
+_bw_install_dotfilesDarwin() {
+    echo TODO
+  # while true; do
+  #   bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
+  #   _exec brew install "${OPT_force[@]}" dotfiles || returnCode=$?
+  #   break
+  # done
+}
+_bw_install_dotfilesLinux() {
+    while true; do
+        bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
+        _exec "${sub_OPT[@]}" git clone --recursive -j8 https://github.com/yurybikuzin/dotfiles.git ~/dotfiles || { returnCode=$?; break; }
+        _exec "${sub_OPT[@]}" ~/dotfiles/init.sh || { returnCode=$?; break; }
+        break
+    done
+}
+
+# =============================================================================
+
+# shellcheck disable=SC2034
+{
+bw_install_sshconfigParams=()
+bw_install_sshconfig_description='Устанавливает ${_ansiPrimaryLiteral}./ssh/yb${_ansiReset}'
+}
+bw_install_sshconfig() { eval "$_funcParams2"
+  name=sshconfig codeHolder=_codeToInstallApp eval "$_evalCode"
+}
+_bw_install_sshconfigCheck() {
+  [[ -e ~/.ssh/yb/config ]]
+}
+_bw_install_sshconfigDarwin() {
+    echo TODO
+}
+_bw_install_sshconfigLinux() {
+    while true; do
+        bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
+        _exec "${sub_OPT[@]}" git clone https://github.com/yurybikuzin/yb.git ~/.ssh/yb || { returnCode=$?; break; }
+        for file in $(ls -1 ~/.ssh/yb | grep -v config); do
+            chmod 400 ~/.ssh/yb/$file
+        done
+        local exactLine='Include yb/config'
+        local target=~/.ssh/config
+        local need_append=
+        if [[ ! -e $target ]] || ! grep -qxF "$exactLine" "$target"; then
+            _exec "${sub_OPT[@]}" echo "$exactLine" >> "$target"
+        fi
+        break
+    done
 }
 
 # =============================================================================
@@ -3370,12 +3467,17 @@ _bw_install_dockerDarwin() {
 _bw_install_dockerLinux() {
   while true; do
     # https://docs.docker.com/install/linux/docker-ce/ubuntu/#supported-storage-drivers
+    _exec "${sub_OPT[@]}" --sudo apt-get remove docker docker-engine docker.io containerd runc || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo apt-get update || { returnCode=$?; break; }
-    _exec "${sub_OPT[@]}" --sudo sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" --sudo sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --cmdAsIs 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -' || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo apt-get update || { returnCode=$?; break; }
-    _exec "${sub_OPT[@]}" --sudo apt-get install -y docker-ce || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" --sudo apt-get install -y docker-ce docker-ce-cli containerd.io || { returnCode=$?; break; }
+    # https://docs.docker.com/engine/install/linux-postinstall/
+    _exec "${sub_OPT[@]}" --sudo groupadd docker || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" --sudo usermod -aG docker $USER || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" newgrp docker || { returnCode=$?; break; }
     _bw_install_dockerComposeLinux || { returnCode=$?; break; }
     break
   done
@@ -3402,8 +3504,10 @@ _bw_install_dockerComposeDarwin() {
 _bw_install_dockerComposeLinux() {
   while true; do
     # https://docs.docker.com/compose/install/#install-compose
-    _exec "${sub_OPT[@]}" --sudo curl -L "https://github.com/docker/compose/releases/download/1.21.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose || { returnCode=$?; break; }
+    _exec "${sub_OPT[@]}" --sudo curl -L "https://github.com/docker/compose/releases/download/1.26.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose || { returnCode=$?; break; }
     _exec "${sub_OPT[@]}" --sudo chmod +x /usr/local/bin/docker-compose || { returnCode=$?; break; }
+    # https://docs.docker.com/compose/completion/
+    _exec "${sub_OPT[@]}" --sudo curl -L https://raw.githubusercontent.com/docker/compose/1.26.2/contrib/completion/bash/docker-compose -o /etc/bash_completion.d/docker-compose
     break
   done
 }
@@ -3459,41 +3563,41 @@ _bw_run_dockerDarwinHelper() {
 
 # =============================================================================
 
-_redDir="$_bwDir/red"
-_redForDarwinUrl="$_bwGithubSource/master/red/red-063.darwin"
-# _redForDarwinUrl="https://static.red-lang.org/dl/mac/red-063"
-# _redForLinuxUrl="https://static.red-lang.org/dl/linux/red-063"
-_redForDarwinFileSpec="$_redDir/red-063.darwin"
-_redForLinuxUrl="$_bwGithubSource/master/red/red-063.linux"
-_redForLinuxFileSpec="$_redDir/red-063.linux"
-red() {
-  local returnCode=0
-  _osSpecific || return $?
-  if [[ $returnCode -eq 99 ]]; then
-    _err "Не удалось сделать файл ${_ansiCmd}$_redForDarwinFileSpec${_ansiErr} исполняемым"
-  fi
-  return $returnCode
-}
-_redDarwin() {
-  while true; do
-    _download -s yes "$_redForDarwinUrl" "$_redForDarwinFileSpec" || { returnCode=$?; break; }
-    chmod u+x "$_redForDarwinFileSpec" || { returnCode=99; break; }
-    "$_redForDarwinFileSpec" "$@" || { returnCode=$?; break; }
-    break
-  done
-}
-_redLinux() {
-  while true; do
-    _download -s yes "$_redForLinuxUrl" "$_redForLinuxFileSpec" || { returnCode=$?; break; }
-    chmod u+x "$_redForLinuxFileSpec" || { returnCode=99; break; }
-    if ! _silent dpkg -l libc6:i386 || ! _silent dpkg -l libcurl3:i386; then
-      _exec --sudo dpkg --add-architecture i386
-      _exec --sudo apt-get update
-      _exec --sudo apt-get install -y libc6:i386 libcurl3:i386
-    fi
-    "$_redForLinuxFileSpec" "$@" || { returnCode=$?; break; }
-    break
-  done
-}
+# _redDir="$_bwDir/red"
+# _redForDarwinUrl="$_bwGithubSource/master/red/red-063.darwin"
+# # _redForDarwinUrl="https://static.red-lang.org/dl/mac/red-063"
+# # _redForLinuxUrl="https://static.red-lang.org/dl/linux/red-063"
+# _redForDarwinFileSpec="$_redDir/red-063.darwin"
+# _redForLinuxUrl="$_bwGithubSource/master/red/red-063.linux"
+# _redForLinuxFileSpec="$_redDir/red-063.linux"
+# red() {
+#   local returnCode=0
+#   _osSpecific || return $?
+#   if [[ $returnCode -eq 99 ]]; then
+#     _err "Не удалось сделать файл ${_ansiCmd}$_redForDarwinFileSpec${_ansiErr} исполняемым"
+#   fi
+#   return $returnCode
+# }
+# _redDarwin() {
+#   while true; do
+#     _download -s yes "$_redForDarwinUrl" "$_redForDarwinFileSpec" || { returnCode=$?; break; }
+#     chmod u+x "$_redForDarwinFileSpec" || { returnCode=99; break; }
+#     "$_redForDarwinFileSpec" "$@" || { returnCode=$?; break; }
+#     break
+#   done
+# }
+# _redLinux() {
+#   while true; do
+#     _download -s yes "$_redForLinuxUrl" "$_redForLinuxFileSpec" || { returnCode=$?; break; }
+#     chmod u+x "$_redForLinuxFileSpec" || { returnCode=99; break; }
+#     if ! _silent dpkg -l libc6:i386 || ! _silent dpkg -l libcurl3:i386; then
+#       _exec --sudo dpkg --add-architecture i386
+#       _exec --sudo apt-get update
+#       _exec --sudo apt-get install -y libc6:i386 libcurl3:i386
+#     fi
+#     "$_redForLinuxFileSpec" "$@" || { returnCode=$?; break; }
+#     break
+#   done
+# }
 
 # =============================================================================

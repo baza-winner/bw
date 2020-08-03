@@ -75,7 +75,7 @@ _bwMain() { eval "$_funcParams2"
       done
     fi
 
-    local exactLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")")"
+    local exactLine=". $(_quotedArgs "$(_shortenFileSpec "$_bwFileSpec")" -n)"
     if [[ -n $_isBwDevelop || -n $_isBwDevelopInherited ]]; then
       exactLine+=" -p -"
     fi
