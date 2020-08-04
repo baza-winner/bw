@@ -194,3 +194,14 @@ curl -O localhost:8002/bw.bash && BW_SELF_UPDATE_SOURCE=localhost:8002 . bw.bash
 ### BW_PROFILE
 
 `BW_PROFILE=true` включает обработку `_profileBegin`/`_profileEnd`. Без этого `_profileBegin`/`_profileEnd` игнорируются
+
+### Dotfiles requirements:
+
+- Vim 8
+- tmux 3
+- git 2.8 (for -j8)
+- Ubuntu18
+
+
+
+
