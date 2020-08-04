@@ -3084,17 +3084,9 @@ bw_install_dotfiles() { eval "$_funcParams2"
   name=dotfiles codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_dotfilesCheck() {
-  [[ -e ~/.dotfiles ]]
+  [[ -e ~/dotfiles ]]
 }
-_bw_install_dotfilesDarwin() {
-    echo TODO
-  # while true; do
-  #   bw_install --silentIfAlreadyInstalled brew || { returnCode=$?; break; }
-  #   _exec brew install "${OPT_force[@]}" dotfiles || returnCode=$?
-  #   break
-  # done
-}
-_bw_install_dotfilesLinux() {
+_bw_install_dotfiles() {
     while true; do
         bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" git clone --recursive -j8 https://github.com/yurybikuzin/dotfiles.git ~/dotfiles || { returnCode=$?; break; }
@@ -3116,10 +3108,7 @@ bw_install_sshconfig() { eval "$_funcParams2"
 _bw_install_sshconfigCheck() {
   [[ -e ~/.ssh/yb/config ]]
 }
-_bw_install_sshconfigDarwin() {
-    echo TODO
-}
-_bw_install_sshconfigLinux() {
+_bw_install_sshconfig() {
     while true; do
         bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" git clone https://github.com/yurybikuzin/yb.git ~/.ssh/yb || { returnCode=$?; break; }
