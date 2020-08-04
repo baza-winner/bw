@@ -3509,7 +3509,6 @@ bw_install_rustParams=()
 bw_install_rust_description="Устанавливает ${_ansiPrimaryLiteral}docker-compose${_ansiReset}"
 }
 bw_install_rust() { eval "$_funcParams2"
-  bw_install --silentIfAlreadyInstalled docker || return $?
   name=rust codeHolder=_codeToInstallApp eval "$_evalCode"
 }
 _bw_install_rustCheck() {
