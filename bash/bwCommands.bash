@@ -3089,7 +3089,8 @@ _bw_install_dotfilesCheck() {
 _bw_install_dotfiles() {
     while true; do
         bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
-        _exec "${sub_OPT[@]}" git clone --recursive -j8 https://github.com/yurybikuzin/dotfiles.git ~/dotfiles || { returnCode=$?; break; }
+        # _exec "${sub_OPT[@]}" git clone --recursive -j8 https://github.com/yurybikuzin/dotfiles.git ~/dotfiles || { returnCode=$?; break; } # does not work for old git, e.g. on Ubuntu 14
+        _exec "${sub_OPT[@]}" git clone --recursive https://github.com/yurybikuzin/dotfiles.git ~/dotfiles || { returnCode=$?; break; }
         _exec "${sub_OPT[@]}" ~/dotfiles/init.sh || { returnCode=$?; break; }
         break
     done
