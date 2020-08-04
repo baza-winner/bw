@@ -3506,7 +3506,7 @@ _bw_install_dockerComposeLinux() {
 # shellcheck disable=SC2034
 {
 bw_install_rustParams=()
-bw_install_rust_description="Устанавливает ${_ansiPrimaryLiteral}docker-compose${_ansiReset}"
+bw_install_rust_description="Устанавливает ${_ansiPrimaryLiteral}rust${_ansiReset}"
 }
 bw_install_rust() { eval "$_funcParams2"
   name=rust codeHolder=_codeToInstallApp eval "$_evalCode"
@@ -3523,28 +3523,6 @@ _bw_install_rust() {
 
 # =============================================================================
 
-# shellcheck disable=SC2034
-{
-bw_install_rustParams=()
-bw_install_rust_description="Устанавливает ${_ansiPrimaryLiteral}docker-compose${_ansiReset}"
-}
-bw_install_rust() { eval "$_funcParams2"
-  bw_install --silentIfAlreadyInstalled docker || return $?
-  name=rust codeHolder=_codeToInstallApp eval "$_evalCode"
-}
-_bw_install_rustCheck() {
-  _which docker-compose
-}
-_bw_install_rust() {
-  while true; do
-    _exec "${sub_OPT[@]}" --cmdAsIs "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh" || { returnCode=$?; break; }
-    break
-  done
-}
-
-# =============================================================================
-
-# {
 _prepareAlaParams=()
 _prepareAlaParams() {
     varName=_prepareAlaParams codeHolder=_codeToUseCache eval "$_evalCode"
