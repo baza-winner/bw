@@ -1107,7 +1107,7 @@ bw_project() { eval "$_funcParams2"
       fi
     fi
 
-    bwbw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
+    bw_install --silentIfAlreadyInstalled git || { returnCode=$?; break; }
 
     while true; do
       if [[ -z $uninstall ]]; then
@@ -3499,6 +3499,101 @@ _bw_install_dockerComposeLinux() {
     _exec "${sub_OPT[@]}" --sudo curl -L https://raw.githubusercontent.com/docker/compose/1.26.2/contrib/completion/bash/docker-compose -o /etc/bash_completion.d/docker-compose
     break
   done
+}
+
+# =============================================================================
+
+# {
+_prepareAlaParams=()
+_prepareAlaParams() {
+    varName=_prepareAlaParams codeHolder=_codeToUseCache eval "$_evalCode"
+    dotfiles=~/dotfiles
+    alacritty=${dotfiles}/alacritty
+    dir="${alacritty}"
+    ext="yml"
+    colors="$(find "${dir}" -name "*$ext" -exec basename {} \; | sed 's/\.[^.]*$//' | grep -v current | sort | paste -sd " ")"
+    _prepareAlaParams=(
+        '--size/s:(8 8.5 9 9.5 10 10.5 11 11.5 12 12.5 13 13.5 14 14.5 15 15.5 16)'
+        "--color/c:( ${colors[*]} )"
+    )
+}
+# shellcheck disable=SC2034
+{
+bw_alaParams=()
+bw_alaParams() {
+    _prepareAlaParams
+    bw_alaParams=( "${_prepareAlaParams[@]}" )
+}
+bw_ala_size_description='Размер шрифта'
+bw_ala_color_description='Цветовая тема'
+bw_ala_description="Устанавливает ${_ansiPrimaryLiteral}размер шрифта/цветовую тему alacritty${_ansiReset}"
+}
+bw_ala() { eval "$_funcParams2"
+    local dotfiles=~/dotfiles
+    if [[ ! -e "$dotfiles" ]]; then
+        _err "${_ansiReset}run ${_ansiCmd}bw install dotfiles${_ansiReset} first"
+        return 1
+    fi
+    local target="$dotfiles/alacritty.yml"
+    local mode=
+    if [[ "$size" && "$color" ]]; then
+        mode=set_color_and_size
+    else
+        if [[ ! "$size" && ! "$color" ]]; then
+            mode=just_info
+        elif [[ "$size" ]]; then
+            mode=set_size
+        else
+            mode=set_color
+        fi
+        if [[ ! "$size" ]]; then
+            size=$(sed -n 's/^ \{4\}size: \([0-9]\+\(\.[0-9]*\)\?\)$/\1/p' "$target")
+        fi
+    fi
+    if [[ ! "$color" ]]; then
+        sed -n '5,$p' "$target" > "$dotfiles/alacritty/current.yml"
+    else 
+        cp "$dotfiles/alacritty/$color.yml" "$dotfiles/alacritty/current.yml"
+    fi
+    if [[ "$mode" == "just_info" ]]; then
+        for i in $(find "$dotfiles/alacritty" -name "*.yml" -exec basename {} \; | sed 's/\.[^.]*$//' | grep -v current); do
+            diff -s "$dotfiles/alacritty/current.yml" "$dotfiles/alacritty/$i.yml" >/dev/null
+            if [[ $? -eq 0 ]]; then
+                color="$i"
+                break
+            fi
+        done
+        echo "${_ansiHeader}INFO: ${_ansiOutline}Цветовая тема ${_ansiCmd}alacritty${_ansiReset} установлена в ${_ansiPrimaryLiteral}$color${_ansiReset} и ${_ansiOutline}Размер шрифта${_ansiReset} в ${_ansiPrimaryLiteral}$size"
+    else
+        cat << YAML >$target
+font:
+    size: $size
+selection:
+    save_to_clipboard: true
+YAML
+        cat "$dotfiles/alacritty/current.yml" >> $target
+        case $mode in
+            set_size) 
+                _ok "${_ansiOutline}Размер шрифта${_ansiReset} в ${_ansiPrimaryLiteral}$size"
+            ;;
+            set_color) 
+                _ok "${_ansiOutline}Цветовая тема ${_ansiCmd}alacritty${_ansiReset} установлена в ${_ansiPrimaryLiteral}$color"
+            ;;
+            set_color_and_size) 
+                _ok "${_ansiOutline}Цветовая тема ${_ansiCmd}alacritty${_ansiReset} установлена в ${_ansiPrimaryLiteral}$color${_ansiReset} и ${_ansiOutline}Размер шрифта${_ansiReset} в ${_ansiPrimaryLiteral}$size"
+            ;;
+        esac
+    fi
+}
+_prepare_for_ln() {
+    local target=$1
+    if [[ -e "$target" ]]; then
+        if [[ -L "$target" ]]; then
+            rm "$target"
+        else
+            mv "$target" "$target.bak"
+        fi
+    fi
 }
 
 # =============================================================================
