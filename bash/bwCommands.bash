@@ -1011,7 +1011,8 @@ _prepareBwProjVarsHelper() { eval "$_funcParams2"
     bwProjDockerCompose=( $(_quotedArgs "${dockerCompose[@]}") )
   "
   local port; for port in "${_bwProjPorts[@]}" upstream; do
-    local Port=$(_upperFirst "$port")
+    local Port
+    Port=$(_upperFirst "$port")
     local bwProjDefaultPort="bwProjDefault$Port"
     codeToGetBwProjDef+="$bwProjDefaultPort=\"${!port}\";"
   done
@@ -1032,7 +1033,8 @@ _codeToDeclareLocalBwProjVars='
 }
 _updateCodeToDeclareLocalBwProjVars() {
   local port; for port in "${_bwProjPorts[@]}" upstream; do
-    local Port=$(_upperFirst "$port")
+    local Port
+    Port=$(_upperFirst "$port")
     local bwProjDefaultPort="bwProjDefault$Port"
     _codeToDeclareLocalBwProjVars+="local $bwProjDefaultPort=;"
   done
@@ -1374,10 +1376,10 @@ _initBwProjCmd() {
   )'
   local needNoTestAccessMessage=''
   local port; for port in "${_bwProjPorts[@]:0:3}"; do
-    _prepareVarsForDefaultPort $port && needNoTestAccessMessage=true
+    _prepareVarsForDefaultPort "$port" && needNoTestAccessMessage=true
   done
   local port; for port in "${_bwProjPorts[@]:3}"; do
-    _prepareVarsForDefaultPort $port
+    _prepareVarsForDefaultPort "$port"
   done
   _prepareVarsForDefaultPort upstream 'для сервиса ${_ansiPrimaryLiteral}nginx${_ansiReset}'
   if [[ -n $needNoTestAccessMessage ]]; then
@@ -1563,7 +1565,8 @@ _runInDockerContainer_outOfDocker() {
 }
 _runInDockerContainer_nonWrapped() {
   local bwProjShortcut="${FUNCNAME[1]%%_*}"
-  local code='
+  local code
+  code='
     [[ $- =~ i ]] && . "$HOME/.bashrc"
     . "$HOME/bw.bash" -p -
     . "$HOME/proj/bin/'"$bwProjShortcut"'.bash"
@@ -1619,10 +1622,10 @@ _runInDockerContainer_main() {
   local queueFileSpec="$HOME/proj/docker/${queue:-default}.queue"; shift
   if [[ -s $queueFileSpec ]]; then
     local pid; read -r -d $'\x04' pid < "$queueFileSpec"
-    if [[ $pid -ne $PPID ]] && ps axo pid | awk '{print $1}' | grep -x $pid > /dev/null; then
-      _silent kill -SIGINT $pid
+    if [[ $pid -ne $PPID ]] && ps axo pid | awk '{print $1}' | grep -x "$pid" > /dev/null; then
+      _silent kill -SIGINT "$pid"
       sleep 2
-      _silent kill -SIGTERM $pid
+      _silent kill -SIGTERM "$pid"
     fi
   fi
   if [[ $PPID -gt 8 ]]; then # защита от самоуничтожения
@@ -3531,7 +3534,7 @@ _prepareAlaParams() {
     alacritty=${dotfiles}/alacritty
     dir="${alacritty}"
     ext="yml"
-    colors="$(find "${dir}" -name "*$ext" -exec basename {} \; | sed 's/\.[^.]*$//' | grep -v current | sort | paste -sd " ")"
+    colors="$(find "${dir}" -name "*$ext" -exec basename {} \; | sed 's/\.[^.]*$//' | grep -v current | grep -v base | sort | paste -sd " ")"
     _prepareAlaParams=(
         '--size/s:(8 8.5 9 9.5 10 10.5 11 11.5 12 12.5 13 13.5 14 14.5 15 15.5 16)'
         "--color/c:( ${colors[*]} )"
@@ -3568,34 +3571,38 @@ bw_ala() { eval "$_funcParams2"
         fi
         if [[ ! "$size" ]]; then
             # size=$(sed -n 's/^ \{4\}size: \([0-9]\+\(\.[0-9]*\)\?\)$/\1/p' "$target") # works only on Ubuntu
-            size=$(sed -n 's/ \{4\}size: \(\)/\1/p' "$target") # works both on maxOS and Ubuntu
+            # size=$(sed -n 's/ \{2\}size: \(\)/\1/p' "$target") # works both on maxOS and Ubuntu
+            size=$(sed -n 's/^ \+size: \(.*\)$/\1/p' "$target") 
         fi
     fi
     if [[ ! "$color" ]]; then
-        sed -n '5,$p' "$target" > "$dotfiles/alacritty/current.yml"
+        # sed -n '/^colors:/,$p' "$target" > "$dotfiles/alacritty/current.yml"
+        awk '/^# -- colors/{p=1;next}p' "$target" > "$dotfiles/alacritty/current.yml"
     else 
         cp "$dotfiles/alacritty/$color.yml" "$dotfiles/alacritty/current.yml"
     fi
     if [[ "$mode" == "just_info" ]]; then
-        for i in $(find "$dotfiles/alacritty" -name "*.yml" -exec basename {} \; | sed 's/\.[^.]*$//' | grep -v current); do
-            diff -s "$dotfiles/alacritty/current.yml" "$dotfiles/alacritty/$i.yml" >/dev/null
-            if [[ $? -eq 0 ]]; then
+        for i in $(find "$dotfiles/alacritty" -name "*.yml" -exec basename {} \; | sed 's/\.[^.]*$//' | grep -v current | grep -v base); do
+            if diff -s "$dotfiles/alacritty/current.yml" "$dotfiles/alacritty/$i.yml" >/dev/null; then
                 color="$i"
                 break
             fi
         done
         echo "${_ansiHeader}INFO: ${_ansiOutline}Цветовая тема ${_ansiCmd}alacritty${_ansiReset} установлена в ${_ansiPrimaryLiteral}$color${_ansiReset} и ${_ansiOutline}Размер шрифта${_ansiReset} в ${_ansiPrimaryLiteral}$size"
     else
-        cat << YAML >$target
+        cp "$dotfiles/alacritty/base.yml" "$target"
+        (
+            cat << YAML >> "$target"
 font:
-    size: $size
-selection:
-    save_to_clipboard: true
+  size: $size
 YAML
-        cat "$dotfiles/alacritty/current.yml" >> $target
+            echo "# -- colors"
+            cat "$dotfiles/alacritty/current.yml" 
+        ) >> "$target"
+
         case $mode in
             set_size) 
-                _ok "${_ansiOutline}Размер шрифта${_ansiReset} в ${_ansiPrimaryLiteral}$size"
+                _ok "${_ansiOutline}Размер шрифта${_ansiReset} установлен в ${_ansiPrimaryLiteral}$size"
             ;;
             set_color) 
                 _ok "${_ansiOutline}Цветовая тема ${_ansiCmd}alacritty${_ansiReset} установлена в ${_ansiPrimaryLiteral}$color"
